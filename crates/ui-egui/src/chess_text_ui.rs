@@ -443,6 +443,9 @@ pub fn text_tab(
     }
     if book_pgn.is_some() {
         let mut counts = [0usize; 4];
+        // The choices made on the page's moves, found on them as read now (plan A9-L1b).
+        let mine: Vec<_> = x.chess.pages.iter().map(|p| pgn.choices(p)).collect();
+        let found: Vec<(MoveAt, Choice)> = mine.iter().flat_map(|c| c.found.iter().copied()).collect();
         // Each move with its place on the page, for the decisions on conflicts (R6e).
         let placed = x.chess.pages.iter().flat_map(|p| {
             p.blocks
@@ -455,7 +458,7 @@ pub fn text_tab(
                 Some(LinkKind::Confirmed) => counts.get_mut(0),
                 Some(LinkKind::Recovered) => counts.get_mut(1),
                 Some(LinkKind::Conflict) => {
-                    if pgn.choice(at, &m.san, m.read_san()).is_none()
+                    if !found.iter().any(|(f, _)| *f == at)
                         && let Some(open) = counts.get_mut(3)
                     {
                         *open = open.saturating_add(1);
@@ -474,6 +477,11 @@ pub fn text_tab(
             &[("confirmed", &confirmed), ("recovered", &recovered), ("conflict", &conflict), ("open", &open)],
         );
         ui.label(egui::RichText::new(said).small().color(t.text_muted));
+        let unmatched = mine.iter().map(|c| c.unmatched).sum::<usize>();
+        if unmatched > 0 {
+            let said = crate::i18n::fmt(tl!("Choices made on this page not found in its reading (kept): {n}"), &[("n", &unmatched.to_string())]);
+            ui.label(egui::RichText::new(said).small().color(t.text_muted));
+        }
     }
     ui.separator();
     let figurines = figurines(ui.ctx());
@@ -481,6 +489,8 @@ pub fn text_tab(
         ui.label(tl!("No text on this page."));
         return action;
     };
+    // The choices made on the page's moves, found on them as read now (plan A9-L1b).
+    let chosen = pgn.choices(page_doc);
     if page_doc.blocks.is_empty() {
         ui.label(tl!("No text on this page."));
     }
@@ -512,7 +522,7 @@ pub fn text_tab(
                                 let linked = reference_note(m);
                                 // A conflict the user decided says what they chose (R6e).
                                 let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
-                                let choice = if conflict { pgn.choice(at, &m.san, m.read_san()) } else { None };
+                                let choice = if conflict { chosen.found.iter().find(|(f, _)| *f == at).map(|(_, c)| *c) } else { None };
                                 let note = match choice {
                                     Some(Choice::Book) => Some(tl!("You kept the book's move.").to_string()),
                                     Some(Choice::Pgn) => {
@@ -866,6 +876,10 @@ impl PdfCraftApp {
                         let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
                         if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
                             notes.push(tl!("Chess OCR read nothing on this page.").to_string());
+                        }
+                        // The choices made on the page go to its moves as read now (plan A9-L1b).
+                        if let Some(read_page) = read.doc.pages.first() {
+                            self.rematch_book_decisions(job.doc, read_page);
                         }
                         PageText { doc: job.doc, stamp, page, origin, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards }
                     }

@@ -7,13 +7,20 @@
 //! their order (the line a move continues in first). So each node of the score has exactly one
 //! move on the board ([`BoardGame::paths`]), and a comment before a move stays on that move
 //! wherever PGN would have to write it. Every move of a score was played when the score was
-//! read, so all of them play again; a move the board refuses anyway (a game nested deeper or
-//! longer than the board holds, a score read from JSON that was tampered with) ends its line
-//! there, and the moves left out are counted ([`BoardGame::dropped`]), never silently lost.
+//! read, so all of them play again (a move whose SAN was edited into something no move is
+//! written is found again from the positions before and after it); a move the board refuses
+//! anyway (a game nested deeper or longer than the board holds, a score read from JSON that was
+//! tampered with) ends its line there, and the moves left out are counted
+//! ([`BoardGame::dropped`]) and said ([`BoardGame::warnings`]), never silently lost.
+//!
+//! It is also how the document's games are written as PGN (plan A9-F4, `super::super::pgn`):
+//! the board's game, by the one PGN writer.
 
 use std::collections::HashSet;
 
-use pdfcraft_chess::game::{Game as ChessGame, NodeId, NodePath, NodeSource};
+use cozy_chess::Board;
+use pdfcraft_chess::game::{Game as ChessGame, MAX_TAG_LEN, NodeId, NodePath, NodeSource, PgnWarning, PgnWarningKind};
+use pdfcraft_chess::san::San;
 
 use super::{GameResult, GameScore};
 use crate::doc::{Block, ChessDoc, Inline};
@@ -31,6 +38,11 @@ pub struct BoardGame {
     /// Comments of the score the board had to cut (past `MAX_COMMENT_LEN` bytes): none from a
     /// score the walker read, whose cap is the same; one read from tampered JSON can have some.
     pub comments_cut: usize,
+    /// What was left out or cut, each on the move it is at: [`PgnWarningKind::MovesLeftOut`] on
+    /// the move a refused one was to follow, [`PgnWarningKind::CommentCut`] on the move whose
+    /// comment was cut, [`PgnWarningKind::TagsDropped`] and [`PgnWarningKind::TagCut`] on the start
+    /// for a tag the board can't keep or cuts.
+    pub warnings: Vec<PgnWarning>,
 }
 
 impl BoardGame {
@@ -41,42 +53,82 @@ impl BoardGame {
     }
 }
 
-/// The roster's placeholders, which the board reads as no value (as `Game::from_pgn` does).
+/// The placeholders PGN writes for unknown values, which the board reads as no value (as
+/// `Game::from_pgn` reads a tag, so a game written and read back keeps its tags).
 fn placeholder(value: &str) -> bool {
-    matches!(value.trim(), "" | "?" | "????.??.??")
+    matches!(value.trim(), "" | "?" | "????.??.??" | "*")
 }
 
-/// The board's game of `score` and where each score node went (its board move, `None` when it
-/// was left out), with the count left out and the count of comments cut. `None` when the start
-/// position is not legal.
-fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize, usize)> {
+/// What [`build`] makes of a score.
+struct Built {
+    game: ChessGame,
+    /// Each score node's board move, `None` when it was left out.
+    placed: Vec<Option<NodeId>>,
+    dropped: usize,
+    comments_cut: usize,
+    warnings: Vec<PgnWarning>,
+}
+
+impl Built {
+    fn into_board_game(self) -> BoardGame {
+        let Built { game, placed, dropped, comments_cut, warnings } = self;
+        let paths = placed.iter().enumerate().filter_map(|(n, mv)| Some((n, game.path_of((*mv)?)?))).collect();
+        BoardGame { game, paths, dropped, comments_cut, warnings }
+    }
+}
+
+/// The SAN of the legal move after board move `at` that leads to the position `fen` (castling
+/// rights, en passant and the side to move included, the move counters aside): how a move whose
+/// SAN was edited into something no move is written is named again, never written `--` (PGN's
+/// null move, another move altogether, plan A8 P8a).
+fn san_by_position(game: &ChessGame, at: NodeId, fen: &str) -> Option<String> {
+    let before = Board::from_fen(&game.fen_at(at)?.to_string(), false).ok()?;
+    let after = Board::from_fen(fen.trim(), false).ok()?;
+    let key = |b: &Board| pdfcraft_chess::fen::Fen::from_board(b).full_key();
+    let want = key(&after);
+    let mut found = None;
+    before.generate_moves(|moves| {
+        for mv in moves {
+            let mut b = before.clone();
+            b.play_unchecked(mv);
+            if key(&b) == want {
+                found = Some(mv);
+                return true;
+            }
+        }
+        false
+    });
+    San::from_move(&before, found?).ok().map(|s| s.to_english())
+}
+
+/// The board's game of `score` and where each score node went. `None` when the start position is
+/// not legal.
+fn build(score: &GameScore) -> Option<Built> {
     let mut game = match &score.start_fen {
         None => ChessGame::standard(),
         Some(fen) => ChessGame::from_fen(fen).ok()?,
     };
     let r = &score.roster;
-    for (name, value) in [("Event", &r.event), ("Site", &r.site), ("Date", &r.date), ("Round", &r.round), ("White", &r.white), ("Black", &r.black)] {
-        if !placeholder(value) {
-            // A value the board can't keep (a bad name can't happen here) is only a tag lost.
-            let _ = game.set_tag(name, value);
+    let roster = [("Event", &r.event), ("Site", &r.site), ("Date", &r.date), ("Round", &r.round), ("White", &r.white), ("Black", &r.black)];
+    let result = (score.result != GameResult::Unknown).then(|| ("Result", score.result.as_pgn()));
+    let tags =
+        roster.into_iter().map(|(n, v)| (n, v.as_str())).chain(result).chain(score.extra_tags.iter().map(|t| (t.name.as_str(), t.value.as_str())));
+    // A tag the board can't keep (a name PGN does not allow, past the most a game holds: only in
+    // a score read from tampered JSON) is left out, and one longer than it keeps is cut: said.
+    let mut warnings = Vec::new();
+    for (name, value) in tags.filter(|(_, v)| !placeholder(v)) {
+        if game.set_tag(name, value).is_err() {
+            warnings.push(PgnWarning { kind: PgnWarningKind::TagsDropped, at: 0 });
+        } else if value.trim().len() > MAX_TAG_LEN {
+            warnings.push(PgnWarning { kind: PgnWarningKind::TagCut, at: 0 });
         }
     }
-    if score.result != GameResult::Unknown {
-        let _ = game.set_tag("Result", score.result.as_pgn());
-    }
-    for t in &score.extra_tags {
-        if !placeholder(&t.value) {
-            let _ = game.set_tag(&t.name, &t.value);
-        }
-    }
-    let mut cut = usize::from(game.set_comment(0, &score.comment).is_err());
-
-    let count = score.nodes.len();
-    let mut placed: Vec<Option<NodeId>> = vec![None; count];
+    let mut b = Built { game, placed: vec![None; score.nodes.len()], dropped: 0, comments_cut: 0, warnings };
+    let cut = b.game.set_comment(0, &score.comment).is_err();
+    b.cut(0, cut);
     // Every score node is taken once: a tree read from JSON may point twice at one node or loop.
-    let mut seen = vec![false; count];
+    let mut seen = vec![false; score.nodes.len()];
     let mut on_board: HashSet<NodeId> = HashSet::from([0]);
-    let mut dropped = 0usize;
     // Lines still to play: the score node they go on from (`None`: the start) and its move.
     let mut todo: Vec<(Option<usize>, NodeId)> = vec![(None, 0)];
     while let Some((from, at)) = todo.pop() {
@@ -88,26 +140,43 @@ fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize, us
                 _ => continue,
             }
             let Some(node) = score.nodes.get(child) else { continue };
-            game.go_to_node(at);
-            let played = game.play_san(&node.san).ok().map(|()| game.current()).filter(|&m| m != at && on_board.insert(m));
+            b.game.go_to_node(at);
+            let named =
+                b.game.play_san(&node.san).is_ok() || san_by_position(&b.game, at, &node.fen).is_some_and(|san| b.game.play_san(&san).is_ok());
+            let played = named.then(|| b.game.current()).filter(|&m| m != at && on_board.insert(m));
             let Some(mv) = played else {
-                dropped = dropped.saturating_add(left_out(score, child, &mut seen));
+                b.dropped = b.dropped.saturating_add(left_out(score, child, &mut seen));
+                b.warnings.push(PgnWarning { kind: PgnWarningKind::MovesLeftOut, at });
                 continue;
             };
-            if let Some(slot) = placed.get_mut(child) {
+            if let Some(slot) = b.placed.get_mut(child) {
                 *slot = Some(mv);
             }
             for &code in &node.nags {
                 // A glyph the board can't hold (out of range, or too many) is only a glyph lost.
-                game.set_nag(mv, code);
+                b.game.set_nag(mv, code);
             }
-            cut = cut.saturating_add(usize::from(game.set_comment(mv, &node.comment).is_err()));
-            cut = cut.saturating_add(usize::from(game.set_comment_before(mv, &node.comment_before).is_err()));
+            let cut = b.game.set_comment(mv, &node.comment).is_err();
+            b.cut(mv, cut);
+            let cut = b.game.set_comment_before(mv, &node.comment_before).is_err();
+            b.cut(mv, cut);
             todo.push((Some(child), mv));
         }
     }
-    game.go_to_node(0);
-    Some((game, placed, dropped, cut))
+    b.game.go_to_node(0);
+    // The tags came before the moves: the ones the moves decide describe them as they are.
+    b.game.settle_move_tags(true);
+    Some(b)
+}
+
+impl Built {
+    /// Count and say a comment of board move `node` that was cut.
+    fn cut(&mut self, node: NodeId, cut: bool) {
+        if cut {
+            self.comments_cut = self.comments_cut.saturating_add(1);
+            self.warnings.push(PgnWarning { kind: PgnWarningKind::CommentCut, at: node });
+        }
+    }
 }
 
 /// How many moves are left out with score node `n`: it and every move after it not taken yet
@@ -130,9 +199,7 @@ fn left_out(score: &GameScore, n: usize, seen: &mut [bool]) -> usize {
 /// variation in its order, with the path to each node's move. `None` when the start position is
 /// not legal.
 pub fn to_game(score: &GameScore) -> Option<BoardGame> {
-    let (game, placed, dropped, comments_cut) = build(score)?;
-    let paths = placed.iter().enumerate().filter_map(|(n, mv)| Some((n, game.path_of((*mv)?)?))).collect();
-    Some(BoardGame { game, paths, dropped, comments_cut })
+    build(score).map(Built::into_board_game)
 }
 
 impl ChessDoc {
@@ -141,7 +208,7 @@ impl ChessDoc {
     /// when there is no such game or its start position is not legal.
     pub fn board_game(&self, index: usize) -> Option<BoardGame> {
         let score = &self.games.get(index)?.score;
-        let (mut game, placed, dropped, comments_cut) = build(score)?;
+        let mut built = build(score)?;
         for page in &self.pages {
             for inline in page.blocks.iter().flat_map(Block::inlines) {
                 let Inline::Move(m) = inline else { continue };
@@ -149,15 +216,14 @@ impl ChessDoc {
                 if r.game != index {
                     continue;
                 }
-                let Some(mv) = placed.get(r.node).copied().flatten() else { continue };
+                let Some(mv) = built.placed.get(r.node).copied().flatten() else { continue };
                 // The first place a move was printed is its place.
-                if game.source(mv).is_none() {
-                    game.set_source(mv, Some(NodeSource { page: page.index, rect_user: [rect.x0, rect.y0, rect.x1, rect.y1] }));
+                if built.game.source(mv).is_none() {
+                    built.game.set_source(mv, Some(NodeSource { page: page.index, rect_user: [rect.x0, rect.y0, rect.x1, rect.y1] }));
                 }
             }
         }
         // Setting the sources moved nothing: the game is still shown at its start.
-        let paths = placed.iter().enumerate().filter_map(|(n, mv)| Some((n, game.path_of((*mv)?)?))).collect();
-        Some(BoardGame { game, paths, dropped, comments_cut })
+        Some(built.into_board_game())
     }
 }

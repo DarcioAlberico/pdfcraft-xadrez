@@ -143,12 +143,15 @@ pub struct ChessExport {
     pub read: ChessDocument,
     /// Diagrams drawn (SVG boards or images).
     pub drawn: usize,
-    /// PGN: games with no moves added for positions.
+    /// PGN: games with no moves added for positions (with a reference too, plan A9-F4).
     pub position_games: Option<usize>,
     /// PGN: the diagrams that were to get a game of their own and did not, and why.
     pub positions_skipped: Vec<markdown::SkippedPosition>,
+    /// PGN: what writing left out of the games, by game in the order written (plan A9-F4).
+    pub pgn_warnings: Vec<pdfcraft_chessvision::doc::pgn::GameWarning>,
     /// PGN with [`ChessExportOptions::reference`]: what the book's PGN was given.
-    pub annotated: Option<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>,
+    /// Boxed: the export's result travels in the interface's job messages, which it would make large.
+    pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
 }
@@ -201,6 +204,7 @@ impl Session {
         let mut images = Vec::new();
         let mut position_games = None;
         let mut positions_skipped = Vec::new();
+        let mut pgn_warnings = Vec::new();
         let mut annotated = None;
         // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
         let read_diagrams = read.doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
@@ -234,7 +238,9 @@ impl Session {
                     creator: doc.info.author.clone(),
                     source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
                 };
-                super::epub::epub(&read.doc, &options, &meta)?
+                // A book with no `/PageLabels` is paged by the numbers it prints (plan A9-L1b).
+                let printed = PageLabel::with_folios(&labels, &read.doc);
+                super::epub::epub(&read.doc, &HtmlOptions { page_labels: &printed, ..options.clone() }, &meta)?
             }
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).
@@ -245,14 +251,18 @@ impl Session {
                 };
                 drawn = 0;
                 if let Some(index) = &o.reference {
-                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.pgn_style);
+                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
                     let bytes = made.pgn.clone().into_bytes();
-                    annotated = Some(made);
+                    position_games = Some(made.positions);
+                    positions_skipped.clone_from(&made.skipped);
+                    pgn_warnings.clone_from(&made.warnings);
+                    annotated = Some(Box::new(made));
                     bytes
                 } else {
                     let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
                     position_games = Some(made.positions);
                     positions_skipped = made.skipped;
+                    pgn_warnings = made.warnings;
                     made.pgn.into_bytes()
                 }
             }
@@ -305,9 +315,13 @@ impl Session {
                 };
                 let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);
                 drawn = count;
-                if format == ChessFormat::Docx { super::office::docx(&flow) } else { super::office::rtf(&flow).into_bytes() }
+                if format == ChessFormat::Docx {
+                    super::office::docx(&flow).map_err(|e| e.to_string())?
+                } else {
+                    super::office::rtf(&flow).into_bytes()
+                }
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, annotated, notes })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes })
     }
 }

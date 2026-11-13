@@ -289,7 +289,7 @@ fn the_doc_and_its_games_survive_json_and_pgn() {
     assert!(json.contains("\"type\":\"diagram\"") && json.contains("\"status\":\"illegal\""));
     assert_eq!(ChessDoc::from_json(&json).unwrap(), doc);
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     assert!(ChessDoc::from_json(&" ".repeat(MAX_JSON_BYTES + 1)).is_err());
 }
 
@@ -438,7 +438,8 @@ fn unbracketed_second_solutions_and_brackets_become_variations() {
     let text = page_text(vec![line(230.0, "3.Qh5 Nf6 4.Qxf7# . If 3...g6 then 4.Qf3 [ 4.Qxe5+ Qe7 ] Nf6")]);
     let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
     let pgn = pgn::write_game(&doc.games[0].score);
-    assert!(pgn.ends_with("3. Qh5 Nf6 (3... g6 {then} 4. Qf3 (4. Qxe5+ Qe7) 4... Nf6) 4. Qxf7# {. If} *\n"), "{pgn}");
+    // Mate with no result printed: the board's result (plan A9-F4, one writer for both trees).
+    assert!(pgn.ends_with("3. Qh5 Nf6 (3... g6 {then} 4. Qf3 (4. Qxe5+ Qe7) 4... Nf6) 4. Qxf7# {. If} 1-0\n"), "{pgn}");
 }
 
 #[test]
@@ -551,7 +552,7 @@ fn the_text_between_a_diagram_and_its_move_reaches_the_game() {
     assert_eq!(doc.games[0].score.comment, nag::shown(nag::by_glyph("±").unwrap().code));
     // The PGN reads back as the game.
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
 }
 
 /// Plan A9-L2 (A2-01): a bracket printed after a diagram set inside a variation closes that
@@ -580,7 +581,7 @@ fn text_after_a_moves_variations_comes_before_the_next_move() {
     let pgn = one_line_pgn(game);
     assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) {Better is the knight.} 2... Nc6 3. Bb5"), "{pgn}");
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     // On the board it is that move's comment before.
     let board = crate::doc::games::to_game(&game.score).unwrap();
     let nc6 = game.score.mainline()[3];
@@ -1014,6 +1015,20 @@ fn a_running_head_does_not_end_the_game() {
         let doc = b.finish();
         assert!(moves(&doc.pages[2]).iter().all(|(_, s)| *s == MoveStatus::Unchecked), "{:?}", moves(&doc.pages[2]));
     }
+}
+
+/// Two pages of an issue, `Issue 47` atop both at the same height, each with its number at its
+/// foot; a diagram on the first set in a font the catalogue does not know (its glyphs read as
+/// text inside its box), and a game across the page break.
+pub(super) fn issue_pages() -> ChessDoc {
+    let head = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 15.0, 300.0, 35.0) }];
+    let p0 = page_text(vec![line(20.0, "Issue 47"), line(150.0, "4*+*+p+*+5"), line(230.0, "3.Qh5 Nf6"), line(760.0, "15")]);
+    let p1 = page_text(vec![line(20.0, "Issue 47"), line(100.0, "4.Qxf7#"), line(760.0, "16")]);
+    let board = [reading(0, 60.0, SCHOLAR, true, false)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &board, &head, &[]));
+    b.add_page(&input(1, &p1, &[], &head, &[]));
+    b.finish()
 }
 
 /// The page's printed number, at its foot or its head, is no comment in the game the page break
@@ -1817,7 +1832,7 @@ fn deep_brackets_and_long_comments_are_bounded() {
     }
     assert!(doc.games.iter().any(|g| g.flags.iter().any(|f| f.flag == ReviewFlag::CommentTruncated)));
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     // Text held after a diagram has the comments' cap (plan A9-L2): kept up to it, and said.
     let long = format!("{} 3.Qh5 Nf6", "word ".repeat(14_000));
     let doc = build_page(&input(0, &page_text(vec![line(230.0, &long)]), &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
@@ -1916,7 +1931,7 @@ proptest! {
         let json = doc.to_json().unwrap();
         prop_assert_eq!(ChessDoc::from_json(&json).unwrap(), doc.clone());
         let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-        prop_assert_eq!(pgn::parse(&doc.pgn()), Ok(scores));
+        pgn::tests::assert_reads_back(&scores, &doc.pgn());
     }
 
     #[test]
@@ -1953,7 +1968,16 @@ fn a_hostile_doc_writes_pgn_without_panicking() {
         "start_fen":"not a fen","nodes":[{"san":"e4 }{","ply":4294967295,"fen":"x","parent":5,"children":[0,0,9]}],
         "roots":[0,3],"result":"*"}}]}"#;
     let doc = ChessDoc::from_json(json).unwrap();
-    assert!(doc.pgn().contains("e4"));
+    // No game can start there: left out of the PGN, and said (plan A9-F4).
+    assert_eq!(doc.pgn(), "");
+    let made = pgn::write_report(doc.games.iter().map(|g| &g.score), pdfcraft_chess::pgn_style::PgnStyle::FULL);
+    assert_eq!(made.warnings.iter().map(|w| (w.game, w.warning.kind)).collect::<Vec<_>>(), [(0, pdfcraft_chess::game::PgnWarningKind::GameLeftOut)]);
+    // With a start, the move that is no move is left out, and said.
+    let json = json.replace("\"start_fen\":\"not a fen\"", "\"start_fen\":null");
+    let doc = ChessDoc::from_json(&json).unwrap();
+    let made = pgn::write_report(doc.games.iter().map(|g| &g.score), pdfcraft_chess::pgn_style::PgnStyle::FULL);
+    assert!(made.pgn.ends_with("\n\n*\n"), "{}", made.pgn);
+    assert_eq!(made.warnings.iter().map(|w| w.warning.kind).collect::<Vec<_>>(), [pdfcraft_chess::game::PgnWarningKind::MovesLeftOut]);
 }
 
 /// A game in long algebraic replays like any other.
@@ -2487,4 +2511,100 @@ proptest! {
         prop_assert_eq!(&again, &doc);
         prop_assert_eq!(walk(&again.pages, WalkRules::BOOK), doc);
     }
+}
+
+/// Plan A9-L7 (A2-07): a document holds 20,000 games (it held 4,096: the Polgár would have lost
+/// about 1,200 solutions, unsaid). Past them no game starts, and the first page that loses one
+/// says so, once; the moves stay in the text, unchecked.
+#[test]
+fn past_the_most_games_a_page_says_so() {
+    // 10 games a line, 80 lines a page: 800 games a page, 26 pages.
+    let row = "1.e4 e5 1-0 ".repeat(10);
+    let text = page_text((0..80).map(|i| line(5.0 + i as f32 * 9.8, &row)).collect());
+    let mut b = DocBuilder::new();
+    for p in 0..26u32 {
+        b.add_page(&input(p, &text, &[], &[], &[]));
+    }
+    let doc = b.finish();
+    assert_eq!(doc.games.len(), games::MAX_GAMES);
+    let flagged: Vec<u32> = doc
+        .pages
+        .iter()
+        .filter(|p| p.review.iter().any(|f| matches!(f, ReviewFlag::TooManyGames { max } if *max == games::MAX_GAMES)))
+        .map(|p| p.index)
+        .collect();
+    assert_eq!(flagged, [25], "the page where the 20,001st game would start");
+    assert!(moves(&doc.pages[25]).iter().any(|(_, s)| *s == MoveStatus::Unchecked));
+    assert!(moves(&doc.pages[24]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+}
+
+/// Plan A9-L7 (A2-12): a label in capitals, numbered or not (`A)`, `B2.1)`), separates the lines
+/// it numbers, as `a)` does; a `)` after it closed the variation it stood in. A variation with no
+/// move goes back to the text in its own brackets (`[brackets]` was written `(brackets)`), and a
+/// row of signs (`=====`) is a word, not three assessments.
+#[test]
+fn labels_in_capitals_brackets_and_rows_of_signs_read_as_printed() {
+    let pgn = |t: &str| {
+        let text = page_text(vec![line(230.0, t)]);
+        let doc = build_page(&input(0, &text, &[], &[], &[]));
+        pgn::write_game(&doc.games[0].score).split_whitespace().collect::<Vec<_>>().join(" ")
+    };
+    let got = pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 Instead: A) 3.Bb5 a6 B) 3.d4 exd4 4.Nxd4");
+    assert!(got.contains("3. Bc4 {Instead: A)} (3. Bb5 a6 {B)}) (3. d4 exd4 4. Nxd4)"), "{got}");
+    let got = pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 Instead: B2.1) 3.Bb5 a6 B2.2) 3.d4 exd4 4.Nxd4");
+    assert!(got.contains("3. Bc4 {Instead: B2.1)} (3. Bb5 a6 {B2.2)}) (3. d4 exd4 4. Nxd4)"), "{got}");
+    // A capital label in brackets opens no variation, as `(a)` does not (Kotronias: `disposal:
+    // (A)`, its `)` read as a label, left a variation open).
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 White has: (A) 2...Nc6 3.Bb5 and (B2) 3.Bc4")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "Nf3", "Nc6", "Bb5"], "{:?}", moves(&doc.pages[0]));
+    let got = pgn::write_game(&doc.games[0].score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(got.contains("2. Nf3 {White has: (A)} 2... Nc6 3. Bb5 {and (B2)} (3. Bc4)"), "{got}");
+    // A word with a capital is no label: `Kasparov)` closes its variation.
+    let got = pgn("1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 as played by Kasparov) 2...Nc6");
+    assert!(got.contains("(2. Bc4 Nf6 {as played by Kasparov}) 2... Nc6"), "{got}");
+    let got = pgn("1.e4 e5 2.Nf3 [brackets], 2...Nc6");
+    assert!(got.contains("{[brackets] ,}") || got.contains("{[brackets],}"), "{got}");
+}
+
+/// Plan A9-L7 (R6-07): a page in descriptive notation (`P-K4`, `N-KB3`) gave no game and said
+/// nothing. It says so now (the notation is not converted: decision D27), and a page of algebraic
+/// notation that quotes a descriptive move or two does not.
+#[test]
+fn a_page_in_descriptive_notation_says_so() {
+    let text = page_text(vec![line(100.0, "1.P-K4 P-K4 2.N-KB3 N-QB3 3.B-N5 P-QR3 4.BxN QPxB")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(doc.games.is_empty());
+    let flag = doc.pages[0].review.iter().find_map(|f| match f {
+        ReviewFlag::DescriptiveNotation { words, examples } => Some((*words, examples.clone())),
+        _ => None,
+    });
+    assert_eq!(flag, Some((8, vec!["P-K4".to_owned(), "P-K4".to_owned(), "N-KB3".to_owned()])));
+    let spanish = page_text(vec![line(100.0, "1.P4R P4R 2.C3AR C3AD 3.A5C P3TD")]);
+    assert!(build_page(&input(0, &spanish, &[], &[], &[])).pages[0].review.iter().any(|f| matches!(f, ReviewFlag::DescriptiveNotation { .. })));
+    let algebraic = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6, the old P-K4 P-K4 N-KB3 N-QB3")]);
+    assert!(!build_page(&input(0, &algebraic, &[], &[], &[])).pages[0].review.iter().any(|f| matches!(f, ReviewFlag::DescriptiveNotation { .. })));
+}
+
+/// Plan A9-G7b (A2-16): the pages a reading takes are a `PageSet`, in the book's order, each once,
+/// and a game goes on only onto the next page read: pages 0 and 2 read without page 1 start page
+/// 2 with no game open (its `2...Nc6` went on from page 0's `2.Nf3`).
+#[test]
+fn the_pages_read_are_in_order_once_and_no_game_crosses_a_gap() {
+    assert_eq!(PageSet::new(&[2, 1, 2, 0], 3).unwrap().pages(), [0, 1, 2]);
+    assert_eq!(PageSet::new(&[], 3).unwrap().pages(), [0, 1, 2]);
+    assert!(PageSet::new(&[1, 3], 3).unwrap_err().contains("page 4 is out of range"));
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3")]);
+    let p2 = page_text(vec![line(100.0, "2...Nc6 3.Bb5")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(2, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s != MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    // The same pages as neighbours: the game goes on.
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(1, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
 }

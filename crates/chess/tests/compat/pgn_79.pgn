@@ -1,0 +1,16 @@
+[Event "Compat F4"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Réti, Richard"]
+[Black "Capablanca, José Raúl"]
+[Result "1-0"]
+[ECO "A09"]
+[PlyCount "13"]
+[Annotator "PdfCraft"]
+
+{A long comment before the first move, long enough to be wrapped over more than
+one line of the PGN.} 1. Nf3 d5 2. c4 {Réti's opening: the c-pawn hits the
+centre from the wing, %100 hypermodern} (2. g3 Nf6 (2... c5 $5) 3. Bg2) {Back
+to the game:} 2... d4 {[%csl Gd4] The pawn on d4 cramps White.} 3. b4 $1 g6 4.
+g3 Bg7 5. d3 e5 6. Bg2 Ne7 7. O-O 1-0

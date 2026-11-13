@@ -90,10 +90,13 @@ fn a_comment_before_a_first_reply_is_written_with_the_comment_before_it() {
     g.set_comment(0, "Intro").unwrap();
     assert_eq!(g.movetext(), "{Intro first} 1. e4 e5 {solid now (the) knight} 2. Nf3");
     assert_fixpoint(&g);
-    // With variations of the move before, it comes before them, where PGN has room for it.
+    // With variations of the move before, it comes after them, right before its move, and
+    // reads back there (plan A9-F4, A1-06).
     play_at(&mut g, e4, &["c5"]);
-    assert_eq!(g.movetext(), "{Intro first} 1. e4 e5 {solid now (the) knight} (1... c5) 2. Nf3");
+    assert_eq!(g.movetext(), "{Intro first} 1. e4 e5 {solid} (1... c5) {now (the) knight} 2. Nf3");
     assert_fixpoint(&g);
+    let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
+    assert_eq!((back.comment(at(&back, &[0, 0])), back.comment_before(at(&back, &[0, 0, 0]))), ("solid", "now (the) knight"));
     // The tokens keep the two apart.
     let tokens = g.tokens();
     assert!(tokens.contains(&Token::Comment { node: nf3, text: "now (the) knight".into(), before: true }), "{tokens:?}");

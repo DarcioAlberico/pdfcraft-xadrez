@@ -33,6 +33,7 @@
 //! origin at the displayed page's top-left corner), the space of `TextGlyph::rect`.
 //! [`ChessSpan::user_rect`] converts to PDF user space through [`crate::coords`].
 
+pub mod descriptive;
 mod glyph;
 pub mod lang;
 pub mod quality;

@@ -33,8 +33,8 @@ use crate::{Args, Automation, Result, ToolError, chess_pgn, write_atomic};
 /// Most operations in one call.
 pub(crate) const MAX_OPS: usize = 1000;
 
-/// Largest PGN read, inline or from a file (the app's Open PGN… reads as much).
-pub(crate) const MAX_PGN_BYTES: usize = 32 << 20;
+/// Largest PGN read, inline or from a file: the one cap of every PGN read (plan A9-F4).
+pub(crate) const MAX_PGN_BYTES: usize = pdfcraft_engine::chess::pdfcraft_chess::pgn::MAX_PGN_FILE_BYTES;
 
 /// One game of the collection: the game, and the first move of its PGN that could not be played
 /// (its line ends there) with why, said in the list.

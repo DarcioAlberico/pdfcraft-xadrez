@@ -79,6 +79,13 @@ impl Nag {
         }
     }
 
+    /// The PGN code the glyph takes on a move White (`white_moved`) or Black made: the code of
+    /// the side it speaks of, the side that made the move or, for zugzwang, the side to move
+    /// after it. The one rule for the text read, the graft and the palette (plan A9-F5, A1-07).
+    pub fn code_after(&self, white_moved: bool) -> u16 {
+        self.code_for(if self.side_is_mover { white_moved } else { !white_moved })
+    }
+
     /// The glyph when it is read in text: alone (safe) or glued after a move (suffix only).
     /// `None` for an entry without a glyph and for one whose glyph another entry owns.
     pub fn read_glyph(&self) -> Option<&'static str> {
@@ -376,7 +383,7 @@ fn read_glyphs(text: &str, white_moved: bool, strict: bool) -> Option<Vec<u16>> 
     while let Some(c) = rest.chars().next() {
         match pieces.iter().find(|(p, _)| rest.starts_with(p)) {
             Some((p, n)) => {
-                let code = n.code_for(white_moved);
+                let code = n.code_after(white_moved);
                 if !out.contains(&code) {
                     out.push(code);
                 }
@@ -447,6 +454,10 @@ mod tests {
         assert_eq!(zugzwang.code_for(true), 22);
         assert_eq!(zugzwang.code_for(false), 23);
         assert!(!zugzwang.side_is_mover);
+        // On a move: the side to move after it is in zugzwang (plan A9-F5, A1-07).
+        assert_eq!((zugzwang.code_after(true), zugzwang.code_after(false)), (23, 22));
+        let initiative = by_glyph("↑").unwrap();
+        assert_eq!((initiative.code_after(true), initiative.code_after(false)), (36, 37));
         assert_eq!(by_code(23).and_then(|n| n.glyph), Some("⨀"));
         assert_eq!(by_glyph("±").unwrap().code_for(false), 16);
         assert_eq!(by_glyph("N").unwrap().insert_text(), "$146");
@@ -486,7 +497,9 @@ mod tests {
         assert_eq!(nags_from_suffix("!µ", false), vec![1, 17]);
         assert_eq!(nags_from_suffix("+-", true), vec![18]);
         assert_eq!(nags_from_suffix("N", true), vec![146]);
-        assert_eq!(nags_from_suffix("⨀", false), vec![23]);
+        // Zugzwang is the side to move's: after Black's move, White's (A1-07; it was 23).
+        assert_eq!(nags_from_suffix("⨀", false), vec![22]);
+        assert_eq!(nags_from_suffix("⨀", true), vec![23]);
         assert_eq!(nags_from_suffix("#!", true), vec![1]);
         assert_eq!(nags_from_suffix("!!", true), vec![3]);
         assert_eq!(nags_from_suffix("", true), Vec::<u16>::new());
@@ -555,10 +568,10 @@ mod tests {
                 Some(n) => {
                     proptest::prop_assert!(n.code == code || n.black_code == Some(code));
                     match n.read_glyph().filter(|_| n.safe_glyph) {
-                        // A sign read back gives the code of the side that made the move.
+                        // A sign read back gives the code of the side it speaks of after the move.
                         Some(g) => {
                             proptest::prop_assert_eq!(&text, g);
-                            proptest::prop_assert_eq!(nags_from_suffix(&text, white), vec![n.code_for(white)]);
+                            proptest::prop_assert_eq!(nags_from_suffix(&text, white), vec![n.code_after(white)]);
                         }
                         None => proptest::prop_assert_eq!(text, format!("${code}")),
                     }

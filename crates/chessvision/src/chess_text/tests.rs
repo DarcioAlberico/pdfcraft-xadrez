@@ -375,11 +375,12 @@ fn ischess_signs_and_coloured_pieces_are_read() {
 #[test]
 fn ischess_draws_the_chesspad_signs() {
     // Checked against the font's drawings. The ring (`W`) is space, by the side that moved; the
-    // ringed dot (`[`) zugzwang.
+    // ringed dot (`[`) zugzwang, of the side to move after it: Black after 8.Kf1 (plan A9-F5,
+    // A1-07; it was White's $22).
     let page = Page::new().text("7.Nf3").text_in("W", "ISChess").text(" h6").text_in("W", "ISChess").text(" 8.Kf1").text_in("[", "ISChess");
     assert_eq!(
         runs(&page.read(None)),
-        vec![vec![white(7), mv("Nf3", "Nf3"), ChessRun::Nag(26), mv("h6", "h6"), ChessRun::Nag(27), white(8), mv("Kf1", "Kf1"), ChessRun::Nag(22)]]
+        vec![vec![white(7), mv("Nf3", "Nf3"), ChessRun::Nag(26), mv("h6", "h6"), ChessRun::Nag(27), white(8), mv("Kf1", "Kf1"), ChessRun::Nag(23)]]
     );
     // The cross `k` is a weak point, and the capture before it stays a capture.
     let page = Page::new().text("19.Nxe5").text_in("k", "ISChess");
@@ -695,4 +696,17 @@ fn long_algebraic_moves_are_moves() {
         .filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None })
         .collect();
     assert_eq!(moves, ["e2e4", "e7e5", "Ng1f3", "Nb8c6", "Bf1xc6", "d7xc6"], "{:?}", runs(&read));
+}
+
+/// Plan A9-L7 (A2-12): a row of three or more `=`, `-` or `*` is a rule or a break set in text,
+/// a word of prose: `=====` was read as three assessments (`$144 $144 $10`). `=` and `==` alone
+/// stay signs.
+#[test]
+fn a_row_of_signs_is_prose() {
+    for row in ["=====", "---", "***", "=-=-="] {
+        let read = Page::new().text(&format!("Nf3 {row} Nc6")).read(None);
+        assert_eq!(runs(&read), vec![vec![mv("Nf3", "Nf3"), text(row), mv("Nc6", "Nc6")]], "{row}");
+    }
+    let read = Page::new().text("Nf3 = Nc6").read(None);
+    assert!(runs(&read)[0].iter().any(|r| matches!(r, ChessRun::Nag(_))), "{:?}", runs(&read));
 }

@@ -9,7 +9,10 @@
 //! named by the caller, which writes the image), or, without images, the FEN in backticks, with
 //! the lichess link under it. Text is escaped so that a Markdown reader shows it as printed:
 //! `1. e4` at the start of a paragraph stays text, not a list item, and `*`, `_`, `[` and friends
-//! stay characters (plan A8 P9d).
+//! stay characters (plan A8 P9d); so do `&` (`&copy;` is not ©) and a paragraph made only of
+//! `-`, `=`, `_` or `*` (`---` is not a rule; plan A9-X1a, A2-13). The images' folder is written in
+//! the link with each of its names percent-encoded (RFC 3986), so `Livro #2 100%_diagrams` finds
+//! its images (A2-14).
 //!
 //! **PGN** ([`pgn_export`]). The games found in the text, and for every legal diagram that is
 //! in none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and diagram it
@@ -82,14 +85,21 @@ pub fn image_name(index: u32, number: usize) -> String {
     format!("diagram-p{:04}-{}.png", u64::from(index) + 1, number + 1)
 }
 
-/// Escape inline Markdown: backslash, emphasis, code, links, HTML and line-start markers.
+/// Escape inline Markdown: backslash, emphasis, code, links, HTML and its entities (`&`), and
+/// line-start markers.
 fn esc(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars().filter(|c| !c.is_control()) {
-        if matches!(c, '\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '|' | '~') {
+        if matches!(c, '\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '|' | '~' | '&') {
             out.push('\\');
         }
         out.push(c);
+    }
+    // A paragraph of nothing but `-` and `=` (and spaces) is a rule or a heading's underline:
+    // its first stays a character. (`_` and `*` are escaped above.)
+    if out.chars().any(|c| matches!(c, '-' | '=')) && out.chars().all(|c| matches!(c, '-' | '=' | ' ')) {
+        out.insert(0, '\\');
+        return out;
     }
     // A paragraph that starts like a list item or a heading stays a paragraph: `1. e4`, `- x`,
     // `+ x`, `# x` (`#` matters only there: `4.Qxf7#` keeps its mate sign as printed).
@@ -99,6 +109,27 @@ fn esc(text: &str) -> String {
         out.insert(digits, '\\');
     } else if out.starts_with("- ") || out.starts_with("+ ") || out == "-" || out == "+" || out.starts_with('#') {
         out.insert(0, '\\');
+    }
+    out
+}
+
+/// `path`, a relative path with `/` between its names, as a link's destination (plan A9-X1a,
+/// A2-14): each name percent-encoded but for RFC 3986's unreserved characters (letters, digits,
+/// `-`, `.`, `_`, `~`), a byte at a time in UTF-8, so `#` (a fragment), `%` (an escape), a space and
+/// a bracket name the folder they are in.
+pub fn link_path(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    for (k, name) in path.split('/').enumerate() {
+        if k > 0 {
+            out.push('/');
+        }
+        for b in name.bytes() {
+            if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+                out.push(char::from(b));
+            } else {
+                let _ = write!(out, "%{b:02X}");
+            }
+        }
     }
     out
 }
@@ -120,11 +151,18 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
     let _ = write!(s, "---\n\n# {}\n\n", esc(o.title));
     let start = s.len();
     // A chapter starts at each heading of the top level the book uses.
-    let top = doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Heading { level, .. } = b { Some(*level) } else { None }).min();
+    // The book's text only: its number, running heads and a diagram's own text are not (plan
+    // A9-L1b, A2-04).
+    let top = doc
+        .pages
+        .iter()
+        .flat_map(|p| p.book_blocks())
+        .filter_map(|(_, b)| if let Block::Heading { level, .. } = b { Some(*level) } else { None })
+        .min();
     for page in &doc.pages {
         let book_lang = page.text_language();
         let label = PageLabel::of(o.page_labels, page.index).to_string();
-        for block in &page.blocks {
+        for (_, block) in page.book_blocks() {
             match block {
                 Block::Heading { level, inlines, .. } => {
                     if Some(*level) == top && s.len() > start {
@@ -149,14 +187,8 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                     match o.diagrams {
                         MarkdownDiagrams::Images => {
                             let name = image_name(page.index, d.number);
-                            // A link destination: spaces encoded, nothing that would end it.
-                            let dir: String = o
-                                .image_dir
-                                .trim_matches('/')
-                                .chars()
-                                .filter(|c| !"()<>".contains(*c) && !c.is_control())
-                                .collect::<String>()
-                                .replace(' ', "%20");
+                            // A link destination: each of the folder's names percent-encoded.
+                            let dir = link_path(o.image_dir.trim_matches('/'));
                             let path = if dir.is_empty() { name } else { format!("{dir}/{name}") };
                             // The alt text says the diagram; the title keeps its FEN.
                             let alt = esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, book_lang));
@@ -248,6 +280,29 @@ pub struct PgnExport {
     pub positions: usize,
     /// The diagrams [`PgnPositions`] asked a game for that got none, in the order of the book.
     pub skipped: Vec<SkippedPosition>,
+    /// What writing left out of the games (plan A9-F4), by game in the order written.
+    pub warnings: Vec<super::pgn::GameWarning>,
+}
+
+/// The game of its own that diagram `d` of page `page` gets ([`PgnPositions`]), with the
+/// origin's tags; why it gets none when its position was not read, is not legal or was made
+/// legal by a guess.
+pub(crate) fn position_game_of(doc: &ChessDoc, book: &PgnBook, page: u32, d: &super::DiagramBlock) -> Result<GameScore, SkippedPosition> {
+    let at = DiagramAt { page, diagram: d.number };
+    // The position it shows: the PGN's, the one the text settled, the one read.
+    let shown = d.shown().map(|s| (s.fen, s.confirmed));
+    match (&d.reading, shown) {
+        (Some(r), Some((fen, confirmed)))
+            if (confirmed || (r.legal() && !r.repaired)) && GameScore::new(Some(fen.to_owned())).start_board().is_some() =>
+        {
+            let game = position_game(fen, page, d.number, d.puzzle, r.accepted);
+            let origin = origin_of(doc, book, page, Some(d.number), d.puzzle);
+            Ok(apply_origin(game, &origin, true))
+        }
+        (None, _) => Err(SkippedPosition { at, reason: SkipReason::NotRead }),
+        (Some(r), _) if r.repaired => Err(SkippedPosition { at, reason: SkipReason::Repaired }),
+        (Some(_), _) => Err(SkippedPosition { at, reason: SkipReason::Illegal }),
+    }
 }
 
 /// A game with no moves for a diagram: its position, and where it came from.
@@ -295,25 +350,12 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
                 PgnPositions::None => false,
             };
             if wanted {
-                // The position it shows: the PGN's, the one the text settled, the one read.
-                let shown = d.shown().map(|s| (s.fen, s.confirmed));
-                match (&d.reading, shown) {
-                    (Some(r), Some((fen, confirmed)))
-                        if (confirmed || (r.legal() && !r.repaired)) && GameScore::new(Some(fen.to_owned())).start_board().is_some() =>
-                    {
-                        let game = position_game(fen, page.index, d.number, d.puzzle, r.accepted);
-                        let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
-                        out.push(apply_origin(game, &origin, true));
+                match position_game_of(doc, book, page.index, d) {
+                    Ok(game) => {
+                        out.push(game);
                         made.positions = made.positions.saturating_add(1);
                     }
-                    (reading, _) => {
-                        let reason = match reading {
-                            None => SkipReason::NotRead,
-                            Some(r) if r.repaired => SkipReason::Repaired,
-                            Some(_) => SkipReason::Illegal,
-                        };
-                        made.skipped.push(SkippedPosition { at, reason });
-                    }
+                    Err(skipped) => made.skipped.push(skipped),
                 }
             }
             if let Some(i) = from_here
@@ -340,7 +382,8 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
             out.push(with_origin(doc, book, g));
         }
     }
-    made.pgn = super::pgn::write_with(out.iter(), style);
+    let written = super::pgn::write_report(out.iter(), style);
+    (made.pgn, made.warnings) = (written.pgn, written.warnings);
     made
 }
 

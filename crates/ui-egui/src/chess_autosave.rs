@@ -12,11 +12,13 @@
 //! PGN text and what PGN can't hold: the move shown (its [`NodePath`]), the board's side, an
 //! illegal position as its FEN, the diagram it came from, where each move was read on its page
 //! (`NodeSource`, by path) and the comments PGN can't place exactly (a comment before a first
-//! reply is written into the comment after the move before it, and read back as part of that
-//! one): every move whose comments read back differently is stored with both of its comments, so
-//! a reload puts them back where they were. The installed builds put comments back only through
-//! these, so they are written as long as the files are `*.games` of version 1 (plan A9 §2.10,
-//! R9-01); a sample of the format is frozen in `tests/compat/games_v1.games`.
+//! reply with no variation before it is written into the comment after the move before it, and
+//! read back as part of that one): every move whose comments read back differently is stored
+//! with both of its comments, so a reload puts them back where they were. The installed builds
+//! put comments back only through these, so they are written as long as the files are `*.games`
+//! of version 1 (plan A9 §2.10, R9-01), and also for every comment before a first reply and the
+//! move before it, which a build before plan A9-F2b reads differently from what this build
+//! writes; a sample of the format is frozen in `tests/compat/games_v1.games`.
 //!
 //! **Versions** (plan A9-G12). A file a newer PdfCraft wrote (a higher version) is never renamed,
 //! set aside or written over, whichever document it is for: its own document's games are read as
@@ -237,12 +239,22 @@ pub(crate) fn record(board: &BoardState) -> Option<GameRecord> {
         }
         let (after, before) = (game.comment(node), game.comment_before(node));
         let back = reloaded.as_ref().and_then(|r| r.node_at(&path).map(|n| (r.comment(n), r.comment_before(n))));
-        if back != Some((after, before)) {
+        if back != Some((after, before)) || old_readers_move(game, node) {
             comments.push(StoredComments { path: path.indices().to_vec(), after: after.to_owned(), before: before.to_owned() });
         }
     }
     let current = game.path_of(game.current()).map(|p| p.indices().to_vec()).unwrap_or_default();
     Some(GameRecord { pgn, current, flipped: board.flipped, illegal_fen: None, origin, sources, comments })
+}
+
+/// Whether a build before plan A9-F2b reads move `node`'s comments elsewhere from what this
+/// build writes, so they are stored whatever this build's reader makes of the PGN (R9-01): a
+/// comment before a first reply, which this build writes after the variations of the move before
+/// it (plan A9-F4), and the comment of that move before, into which those builds read it. The
+/// installed builds put comments back in place only from what is stored.
+fn old_readers_move(game: &Game, node: NodeId) -> bool {
+    let before_first_reply = |n: NodeId| !game.comment_before(n).is_empty() && game.path_of(n).is_some_and(|p| p.indices().last() == Some(&0));
+    before_first_reply(node) || game.replies(node).first().is_some_and(|&first| before_first_reply(first))
 }
 
 /// The board a stored game puts back, its diagram in document `doc`. `None` when it can't be
@@ -859,9 +871,10 @@ pub(crate) mod tests {
         vec![crate::chess_trash::Trashed { pgn: "1. e4 e5 2. Nf3 *".into(), name: "Game 1".into(), moves: 3, deleted: 1, at: 7 }]
     }
 
-    /// A game with a variation, a comment before a first reply (which PGN merges into the comment
-    /// after the move before it), a comment before a variation's first move, glyphs, tags,
-    /// sources and a move shown inside the variation.
+    /// A game with a variation, a comment before a first reply (which PGN wrote with the comment
+    /// after the move before it, and writes after that move's variations since plan A9-F4), a
+    /// comment before a variation's first move, glyphs, tags, sources and a move shown inside the
+    /// variation.
     fn annotated() -> BoardState {
         let mut b = BoardState::default();
         let g = &mut b.game;
@@ -875,7 +888,7 @@ pub(crate) mod tests {
         g.play_uci("c7c5").unwrap();
         let c5 = g.current();
         g.set_comment(e5, "after e5").unwrap();
-        // Nf3 is e5's first reply: PGN would write this one inside "after e5".
+        // Nf3 is e5's first reply, after e5's variation: PGN writes it after the `)`.
         g.set_comment_before(nf3, "before Nf3").unwrap();
         // c5 starts a variation: PGN has room for this one, after the "(".
         g.set_comment_before(c5, "before c5").unwrap();
@@ -905,10 +918,13 @@ pub(crate) mod tests {
     fn a_game_comes_back_as_it_was_with_what_pgn_cannot_hold() {
         let board = annotated();
         let rec = record(&board).unwrap();
-        // PGN alone loses where the comment before Nf3 was.
+        // PGN keeps the comment before Nf3 in its place since plan A9-F4; it is stored all the same,
+        // with e5's, into which a build before plan A9-F2b reads it (R9-01).
         let (plain, _) = Game::from_pgn(&rec.pgn).unwrap();
         let nf3 = plain.node_at(&NodePath::new(vec![0, 0, 0])).unwrap();
-        assert_eq!(plain.comment_before(nf3), "");
+        assert_eq!(plain.comment_before(nf3), "before Nf3");
+        let stored: Vec<(&[u16], &str, &str)> = rec.comments.iter().map(|c| (c.path.as_slice(), c.after.as_str(), c.before.as_str())).collect();
+        assert_eq!(stored, [(&[0u16, 0][..], "after e5", ""), (&[0u16, 0, 0][..], "", "before Nf3")]);
         let text = serde_json::to_string(&rec).unwrap();
         let back = restore(&serde_json::from_str(&text).unwrap(), None).unwrap();
         same(&board, &back);
@@ -1182,7 +1198,22 @@ pub(crate) mod tests {
         let refs: Vec<&BoardState> = sample.iter().collect();
         store.write("abc-2", &v1_keys(), 1, &refs, &v1_sample_trash()).unwrap();
         let written = std::fs::read(store.path("abc-2")).unwrap();
-        assert_eq!(v1_lines(&written), v1_lines(GAMES_V1), "the version 1 format, unchanged");
+        // The version 1 format, unchanged; the PGN in it is the one writer's since plan A9-F4
+        // (wrapped, a comment before a move after the variations of the move before), and reads
+        // back, with the comments stored apart, to the same games.
+        let without_pgn = |(header, mut body): (Value, Value)| {
+            for g in body["games"].as_array_mut().into_iter().flatten() {
+                g["pgn"] = Value::Null;
+            }
+            (header, body)
+        };
+        assert_eq!(without_pgn(v1_lines(&written)), without_pgn(v1_lines(GAMES_V1)), "the version 1 format, unchanged");
+        let (_, written_body) = v1_lines(&written);
+        let (again, lost) = decode(&serde_json::from_value(written_body).unwrap(), Some(DocId(7)));
+        assert_eq!((again.len(), lost), (sample.len(), 0));
+        for (a, b) in sample.iter().zip(&again) {
+            same(a, b);
+        }
         let (_, body) = v1_lines(GAMES_V1);
         let stored: Vec<&Value> = body["games"].as_array().unwrap().iter().flat_map(|g| g["comments"].as_array().unwrap()).collect();
         assert_eq!(stored.len(), 4, "every comment PGN would move is stored apart (R9-01)");
