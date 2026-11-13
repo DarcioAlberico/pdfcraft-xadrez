@@ -2426,11 +2426,16 @@ impl PdfCraftApp {
         self.session.get(id).map(|doc| doc.info.encrypted || !doc.allows_copying())
     }
 
-    /// Match the collections to the open documents: the one shown, new ones given theirs,
-    /// closed ones written.
+    /// Match the collections and the chess views to the open documents: the one shown, new ones
+    /// given theirs, closed ones written (the games) or dropped (the views, plan A9-I1a).
     pub(crate) fn sync_chess_docs(&mut self) {
         self.chess.games.current = self.active_ids().map(|(_, id)| id);
+        self.chess.shown = self.chess.games.current;
         let open: Vec<DocId> = self.views.iter().map(|v| v.id).collect();
+        self.chess.docs.retain(|id, _| open.contains(id));
+        for id in &open {
+            self.chess.doc_mut(*id);
+        }
         let gone: Vec<DocId> = self.chess.games.docs.keys().filter(|id| !open.contains(id)).copied().collect();
         for id in gone {
             self.chess.games.detach(id);
@@ -2514,14 +2519,8 @@ impl PdfCraftApp {
     /// many on the page (when the page was scanned), and the book's title as the export names it.
     pub(crate) fn chess_pgn_origin(&self, src: Source) -> pdfcraft_engine::chess::pdfcraft_chess::origin::PgnOrigin {
         let doc = self.session.get(src.doc);
-        let of = self
-            .chess
-            .results
-            .as_ref()
-            .filter(|r| r.doc == src.doc)
-            .and_then(|r| r.pages.iter().find(|p| p.page == src.page))
-            .map(|p| p.diagrams.len())
-            .filter(|n| *n > 0);
+        let of =
+            self.chess.results_of(src.doc).and_then(|r| r.pages.iter().find(|p| p.page == src.page)).map(|p| p.diagrams.len()).filter(|n| *n > 0);
         pdfcraft_engine::chess::pdfcraft_chess::origin::PgnOrigin {
             book_title: doc.map(|d| d.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string()),
             page_index: u32::try_from(src.page).unwrap_or(u32::MAX),

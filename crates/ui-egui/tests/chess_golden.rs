@@ -102,7 +102,7 @@ fn harness(name: &str, path: Option<String>, bytes: Vec<u8>, store: std::path::P
 
 /// What the user did with diagram `index` of page 1.
 fn kind(h: &Harness<'static, PdfCraftApp>, index: usize) -> Option<String> {
-    h.state().chess.results.as_ref().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
+    h.state().chess.results().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
 }
 
 /// One entry of a zip archive (stored or deflated); a test's own reader.

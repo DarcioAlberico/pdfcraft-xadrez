@@ -3437,5 +3437,6 @@ castling	long	grand
 	Larger text	Texte plus grand
 diagram state	Read	Lu
 the move's comment	Move comment	Commentaire du coup
+	Detecting in another book… page {d} of {t}	Détection dans un autre livre… page {d} sur {t}
 	Redraw in the PDF?	Redessiner dans le PDF ?
 	Diagram {n}, open	Diagramme {n}, ouvrir

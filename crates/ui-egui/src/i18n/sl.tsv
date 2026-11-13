@@ -3442,5 +3442,6 @@ castling	long	dolga
 	Larger text	Večje besedilo
 diagram state	Read	Prebrano
 the move's comment	Move comment	Komentar k potezi
+	Detecting in another book… page {d} of {t}	Zaznavanje v drugi knjigi … stran {d} od {t}
 	Redraw in the PDF?	Ponovno narisati v PDF?
 	Diagram {n}, open	Diagram {n}, odpri

@@ -96,7 +96,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         return;
     };
     // What the arrows walk: the list's chip, or the ones to review (plan A8, P4).
-    let filter = app.chess.list.filter;
+    let filter = app.chess.filter(id);
     let reviewing = matches!(filter, None | Some(DiagramState::Review));
     let queue = results.walk(filter);
     let review_done = app.chess.review_done;
@@ -119,7 +119,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut hint = !app.chess.diagram_hint_seen;
     let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
     let board_keys = app.chess.diagram_keys.board.take();
-    let suggestion = crate::chess_reference_ui::suggestion(app.chess.text.as_ref(), id, current, page, index);
+    let suggestion = crate::chess_reference_ui::suggestion(app.chess.text_of(id), id, current, page, index);
     let Some(ed) = app.chess.editor.as_mut() else { return };
 
     // The tab's keys (plan A8, P3c), taken in `raw_input_hook`.

@@ -81,7 +81,7 @@ fn harness_on(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
 
 /// Where move `san` was printed, as the Text tab read it: (page, box in user space).
 fn printed(h: &Harness<'static, PdfCraftApp>, san: &str) -> (usize, [f32; 4]) {
-    let text = h.state().chess.text.as_ref().expect("the page was read");
+    let text = h.state().chess.text().expect("the page was read");
     let page = &text.chess.pages[0];
     let m = page
         .blocks
@@ -241,7 +241,7 @@ fn a_game_running_on_to_the_next_page_opens_whole() {
     h.state_mut().views[0].go_to_page(1);
     h.run_steps(4);
     h.get_by_label("Recognised text of page 2");
-    assert!(h.state().chess.text.as_ref().is_some_and(|t| t.chess.games.is_empty()), "no game on page 2 alone");
+    assert!(h.state().chess.text().is_some_and(|t| t.chess.games.is_empty()), "no game on page 2 alone");
     let at = text_move(&h, "d6").rect().center();
     double_click_at(&mut h, at);
     assert_eq!((movetext(&h).as_str(), shown(&h).as_str()), (WHOLE, "d6"));
