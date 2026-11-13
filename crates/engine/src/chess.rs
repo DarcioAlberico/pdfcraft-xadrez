@@ -35,6 +35,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use pdfcraft_chess::recognize::side::SideSource;
+use pdfcraft_chess::stipulation::Scope;
 use pdfcraft_chessvision::board::{self, BoardReading, ReadPosition, SquareClassifier};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, Rotation, ViewRect, view_to_pixels};
 use pdfcraft_chessvision::detect::embedded::{self, ImageBox};
@@ -1008,7 +1009,9 @@ fn scan_page(
 }
 
 /// The side to move (and move number) from the bold move number under each diagram, in a
-/// born-digital page's text (`side_text`). The position still overrules it.
+/// born-digital page's text (`side_text`); else from the words printed by it or over the page
+/// (`White to move`, `Pretas jogam`: plan A9-L6c, R6-03), at their scope. The position still
+/// overrules either, and a contradiction is flagged.
 fn sides_from_move_numbers(text: &pdfcraft_render::PageText, geometry: &PageGeometry, diagrams: &[Merged], readings: &mut [BoardReading]) {
     if !readings.iter().any(|r| r.position().is_some()) {
         return;
@@ -1018,11 +1021,16 @@ fn sides_from_move_numbers(text: &pdfcraft_render::PageText, geometry: &PageGeom
     let boxes: Vec<ViewRect> = diagrams.iter().map(|d| geometry.user_to_view(d.candidate.bbox_user).unwrap_or(nowhere)).collect();
     let chess = chess_text::from_page_text(text, None);
     let hints = side_text::hints(text, &chess, &boxes);
+    let stipulations = side_text::stipulations(&chess, &boxes);
     for reading in readings {
-        if let Some(hint) = hints.get(reading.index).copied().flatten()
-            && let Ok(position) = &mut reading.outcome
-        {
+        let Ok(position) = &mut reading.outcome else { continue };
+        if let Some(hint) = hints.get(reading.index).copied().flatten() {
             position.declare_side(hint.color, SideSource::MoveNumber, u32::from(hint.number));
+        } else if let Some(s) = stipulations.get(reading.index).copied().flatten()
+            && let Some(color) = s.side
+        {
+            let source = if s.scope == Scope::Diagram { SideSource::Text } else { SideSource::TextPageScope };
+            position.declare_side(color, source, 1);
         }
     }
 }

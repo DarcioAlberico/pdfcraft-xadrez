@@ -365,6 +365,53 @@ fn a_bold_move_number_under_a_diagram_sets_the_side_to_move() {
     assert_eq!((read.side.color, read.side.source), (Color::White, SideSource::Default), "{read:?}");
 }
 
+/// White's king in check from a rook (`4k3/8/8/8/8/8/4r3/4K3`) in the Chess Merida layout: only
+/// White can be to move.
+const MERIDA_CHECKED: [&str; 8] = [" + +l+ +", "+ + + + ", " + + + +", "+ + + + ", " + + + +", "+ + + + ", " + +t+ +", "+ + K + "];
+
+/// `placement` set in Chess Merida 150 pt from the top of the page, `caption` under it and
+/// `heading` at the top of the page (beyond a caption's reach), in Times-Roman.
+fn board_with_words(placement: [&str; 8], caption: &str, heading: &str) -> Vec<u8> {
+    let content =
+        format!("{}BT /F2 10 Tf 50 476 Td ({caption}) Tj ET\nBT /F2 10 Tf 50 770 Td ({heading}) Tj ET\n", font_board(50.0, 150.0, placement));
+    pdf_fonts(&content, &["ChessMerida", "Times-Roman"], None, "")
+}
+
+/// Plan A9-L6c (R6-03): the side printed in words under the diagram, or over the page, is its
+/// side to move; a side the position contradicts is flagged, and the position wins.
+#[test]
+fn the_side_printed_in_words_sets_the_side_to_move() {
+    let side = |placement, caption, heading| {
+        let (mut s, id) = open(board_with_words(placement, caption, heading));
+        let page = s.chess_page(id, 0, &no_model()).unwrap();
+        let read = page.readings.as_ref().unwrap()[0].position().unwrap().clone();
+        (read.side.color, read.side.source, read.side.conflicting, read.fen)
+    };
+    let black = format!("{START} b KQkq - 0 1");
+    assert_eq!(side(MERIDA_START, "Black to move", ""), (Color::Black, SideSource::Text, false, black.clone()));
+    assert_eq!(side(MERIDA_START, "(3)", "Pretas jogam"), (Color::Black, SideSource::TextPageScope, false, black));
+    assert_eq!(side(MERIDA_START, "if it were Black to move here he would lose at once", "").1, SideSource::Default);
+    let (color, source, conflicting, _) = side(MERIDA_CHECKED, "Black to move", "");
+    assert_eq!((color, source, conflicting), (Color::White, SideSource::Legality, true));
+
+    // In the document: the side is the book's, not assumed; the contradiction is for review.
+    let review = |placement| {
+        let (mut s, id) = open(board_with_words(placement, "Black to move", ""));
+        let doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+        let Some(pdfcraft_chessvision::doc::Block::Diagram(d)) =
+            doc.pages[0].blocks.iter().find(|b| matches!(b, pdfcraft_chessvision::doc::Block::Diagram(_)))
+        else {
+            panic!("no diagram")
+        };
+        (d.reading.as_ref().map(|r| r.side_source), d.review.clone())
+    };
+    let (source, flags) = review(MERIDA_START);
+    assert_eq!(source, Some(pdfcraft_chessvision::doc::SideSource::Printed));
+    assert!(!flags.contains(&pdfcraft_chessvision::doc::ReviewFlag::SideAssumed), "{flags:?}");
+    let (_, flags) = review(MERIDA_CHECKED);
+    assert!(flags.contains(&pdfcraft_chessvision::doc::ReviewFlag::SideConflict), "{flags:?}");
+}
+
 /// An illegal reading (no kings) is reported, but gets no lichess link.
 #[test]
 fn an_illegal_reading_gets_no_lichess_link() {
