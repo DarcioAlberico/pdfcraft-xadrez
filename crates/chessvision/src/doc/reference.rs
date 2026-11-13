@@ -590,14 +590,14 @@ fn moves_position(d: &DiagramBlock) -> bool {
 /// nearly show ([`DiagramKind::Suggested`]).
 fn link_diagrams(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> DiagramCounts {
     let mut counts = DiagramCounts::default();
-    let shown: HashMap<(u32, usize), RefNode> = alignment.diagrams.iter().filter_map(|d| Some(((d.at.page, d.at.diagram), d.node?))).collect();
+    let shown: HashMap<DiagramAt, RefNode> = alignment.diagrams.iter().filter_map(|d| Some((d.at, d.node?))).collect();
     let nearby = NearbyPositions::new(index, alignment);
     for page in &mut doc.pages {
         let page_index = page.index;
         for block in &mut page.blocks {
             let Block::Diagram(d) = block else { continue };
             let Some(reading) = d.reading.as_ref() else { continue };
-            if let Some(&at) = shown.get(&(page_index, d.number)) {
+            if let Some(&at) = shown.get(&DiagramAt::on(page_index, d.number)) {
                 if confirm(d, index, at) {
                     counts.confirmed = counts.confirmed.saturating_add(1);
                 }
@@ -736,7 +736,7 @@ fn tokens(doc: &ChessDoc) -> Vec<Token<'_>> {
                 Block::Diagram(d) => {
                     if let Some(r) = d.reading.as_ref().filter(|r| !r.fen.trim().is_empty()) {
                         let placement = Fen::parse(&r.fen).ok().map(|f| f.placement_key());
-                        out.push(Token::Diagram { at: DiagramAt { page: page.index, diagram: d.number }, placement });
+                        out.push(Token::Diagram { at: DiagramAt::on(page.index, d.number), placement });
                     }
                 }
                 Block::Paragraph { inlines, .. } => {
@@ -761,7 +761,7 @@ pub fn align(doc: &ChessDoc, index: &ReferenceIndex) -> Alignment {
     loop {
         rounds += 1;
         let pass = Pass::run(index, &tokens, &map);
-        let voters = pass.moves.iter().map(|(at, _, n)| (at.page, *n)).chain(pass.diagrams.iter().map(|(at, n)| (at.page, *n)));
+        let voters = pass.moves.iter().map(|(at, _, n)| (at.page, *n)).chain(pass.diagrams.iter().map(|(at, n)| (at.page_index(), *n)));
         let next = vote(index, voters.filter_map(|(page, n)| Some((page, n?))));
         if next == map || rounds >= MAX_ROUNDS {
             let node_at = |n: Option<usize>| n.and_then(|n| index.node(n)).map(|n| n.at);
@@ -788,7 +788,7 @@ fn first_vote(index: &ReferenceIndex, tokens: &[Token]) -> BTreeMap<u32, usize> 
     let mut votes: BTreeMap<u32, BTreeMap<usize, usize>> = BTreeMap::new();
     for token in tokens {
         let (page, positions): (u32, Vec<usize>) = match token {
-            Token::Diagram { at, placement } => (at.page, placement.and_then(|k| index.by_placement.get(&k)).cloned().unwrap_or_default()),
+            Token::Diagram { at, placement } => (at.page_index(), placement.and_then(|k| index.by_placement.get(&k)).cloned().unwrap_or_default()),
             Token::Move { at, mv } if mv.status == MoveStatus::Valid => {
                 (at.page, move_key(mv.fen.as_deref()).and_then(|k| index.by_key.get(&k).copied()).into_iter().collect())
             }
@@ -921,7 +921,7 @@ impl Pass {
             .filter_map(|&pos| index.position(pos))
             .flat_map(|pos| pos.nodes.iter().filter_map(|&n| index.node(n).map(|node| (n, node.at.game))))
             .collect();
-        let page_game = map.get(&link.0.page).copied();
+        let page_game = map.get(&link.0.page_index()).copied();
         link.1 = match nodes.iter().find(|(_, game)| Some(*game) == page_game) {
             Some(&(n, _)) => Some(n),
             None => nodes.first().filter(|(_, first)| nodes.iter().all(|(_, g)| g == first)).map(|&(n, _)| n),

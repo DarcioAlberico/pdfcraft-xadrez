@@ -187,7 +187,7 @@ fn the_pgn_positions_option_says_which_diagrams_get_a_game() {
     let diagram = |pgn: &str| -> Vec<String> {
         read_games(pgn).iter().map(|g| format!("{}{}", g.tag("PdfDiagram").unwrap_or("?"), if g.is_empty() { "" } else { "+moves" })).collect()
     };
-    let skipped = |made: &crate::doc::markdown::PgnExport| made.skipped.iter().map(|s| (s.at.diagram, s.reason)).collect::<Vec<_>>();
+    let skipped = |made: &crate::doc::markdown::PgnExport| made.skipped.iter().map(|s| (s.at.index, s.reason)).collect::<Vec<_>>();
     let bad = vec![(2, SkipReason::Illegal), (3, SkipReason::Repaired), (4, SkipReason::NotRead)];
 
     let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
@@ -201,7 +201,7 @@ fn the_pgn_positions_option_says_which_diagrams_get_a_game() {
     let none = pgn_export(&doc, &PgnBook::default(), PgnPositions::None, PgnStyle::FULL);
     assert_eq!((diagram(&none.pgn), none.positions), (vec!["1+moves".to_owned()], 0), "{}", none.pgn);
     assert_eq!(none.skipped, Vec::<SkippedPosition>::new());
-    assert_eq!(unused.skipped.first().map(|s| s.at), Some(DiagramAt { page: 0, diagram: 2 }));
+    assert_eq!(unused.skipped.first().map(|s| s.at), Some(DiagramAt::new(0, 2)));
     for (name, positions) in [("all", PgnPositions::All), ("unused", PgnPositions::Unused), ("none", PgnPositions::None)] {
         assert_eq!(PgnPositions::from_name(name), Some(positions));
     }

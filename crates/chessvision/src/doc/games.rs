@@ -689,12 +689,8 @@ pub struct Game {
     pub shown: Vec<DiagramAt>,
 }
 
-/// A diagram of the document: its page index and its number on the page, both from 0.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct DiagramAt {
-    pub page: u32,
-    pub diagram: usize,
-}
+/// A diagram of the document: the one address of a diagram ([`super::DiagramAt`], plan A9-T2b).
+pub use super::DiagramAt;
 
 impl Game {
     /// The starting position as a repair context (`pdfcraft_chess::repair`), for repairing this
@@ -1546,7 +1542,7 @@ impl Walker {
         let Some((open, game)) = self.open.as_ref().and_then(|o| Some((o, self.games.get(o.game)?))) else { return };
         let Some(main) = open.lines.first() else { return };
         let same = game.score.board_after(main.cursor).is_some_and(|b| Fen::from_board(&b).placement_key() == fen.placement_key());
-        let at = DiagramAt { page: seed.page, diagram: seed.diagram };
+        let at = DiagramAt::on(seed.page, seed.diagram);
         if same
             && let Some(game) = self.games.get_mut(open.game)
             && game.shown.len() < MAX_SHOWN_DIAGRAMS

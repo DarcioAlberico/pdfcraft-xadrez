@@ -12,6 +12,7 @@
 //! with it ([`PdfCraftApp::sync_chess_docs`]).
 
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::DiagramAt;
 use pdfcraft_engine::chess::export::ChessFormat;
 
 use crate::PdfCraftApp;
@@ -157,14 +158,15 @@ impl PdfCraftApp {
 }
 
 impl crate::chess_ui::ChessState {
-    /// The diagrams of `doc` with unconfirmed changes (page, index): the drafts, and the one in
-    /// the editor when it has changes.
-    pub(crate) fn draft_keys(&self, doc: DocId) -> Vec<(usize, usize)> {
-        let mut keys: Vec<(usize, usize)> = self.drafts.iter().filter(|d| d.target.doc == doc).map(|d| (d.target.page, d.target.index)).collect();
+    /// The diagrams of `doc` with unconfirmed changes: the drafts, and the one in the editor
+    /// when it has changes.
+    pub(crate) fn draft_keys(&self, doc: DocId) -> Vec<DiagramAt> {
+        let mut keys: Vec<DiagramAt> =
+            self.drafts.iter().filter(|d| d.target.doc == doc).map(|d| DiagramAt::new(d.target.page, d.target.index)).collect();
         if let Some(ed) = self.editor.as_ref().filter(|e| e.doc == doc && e.dirty())
-            && !keys.contains(&(ed.page, ed.index))
+            && !keys.contains(&DiagramAt::new(ed.page, ed.index))
         {
-            keys.push((ed.page, ed.index));
+            keys.push(DiagramAt::new(ed.page, ed.index));
         }
         keys
     }
@@ -175,8 +177,10 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let Some(p) = app.chess.draft_prompt.as_ref() else { return };
     let (n, page) = (p.draft.target.index + 1, p.draft.target.page);
     let squares = p.draft.squares;
-    let label =
-        app.session.get(p.draft.target.doc).and_then(|d| d.info.pages.get(page)).map_or_else(|| (page + 1).to_string(), |pg| pg.label.clone());
+    let label = app
+        .session
+        .get(p.draft.target.doc)
+        .map_or_else(|| page.saturating_add(1).to_string(), |d| pdfcraft_engine::chess::export::page_label_of(&d.info, page).to_string());
     let mut answer = None;
     let title = crate::i18n::fmt(tl!("Keep the correction of diagram {n} (page {p})?"), &[("n", &n.to_string()), ("p", &label)]);
     let shown = crate::widgets::show_titled_modal(ctx, "chess-draft-prompt", &title, |ui| {

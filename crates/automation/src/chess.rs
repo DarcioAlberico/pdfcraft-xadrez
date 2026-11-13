@@ -779,8 +779,8 @@ impl Automation {
             "position_games": made.position_games,
             "pgn_warnings": made.pgn_warnings.iter().map(|w| json!({ "game": w.game.saturating_add(1), "kind": w.warning.kind.name() })).collect::<Vec<_>>(),
             "positions_skipped": made.positions_skipped.iter().map(|s| json!({
-                "page": u64::from(s.at.page) + 1,
-                "diagram": s.at.diagram.saturating_add(1),
+                "page": s.at.page.saturating_add(1),
+                "diagram": s.at.index.saturating_add(1),
                 "reason": s.reason.name(),
             })).collect::<Vec<_>>(),
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,

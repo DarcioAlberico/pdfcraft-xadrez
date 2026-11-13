@@ -153,16 +153,18 @@ impl GameEntry {
     }
 
     /// The game's name in the list, `number` being its place (1-based): "White–Black" from its
-    /// details, else its event, else the diagram it came from, else "Game {number}".
-    pub fn name(&self, number: usize) -> String {
+    /// details, else its event, else the diagram it came from, its page said as the book numbers
+    /// it (`labels`: its document's page labels, by index; plan A9-T2b, R3-08), else
+    /// "Game {number}".
+    pub fn name(&self, number: usize, labels: &[String]) -> String {
         if let Some(name) = self.names().display() {
             return name;
         }
         match self.board.source {
-            Some(s) => crate::i18n::fmt(
-                tl!("Diagram {n}, p. {page}"),
-                &[("n", &(s.index.saturating_add(1)).to_string()), ("page", &(s.page.saturating_add(1)).to_string())],
-            ),
+            Some(s) => {
+                let page = pdfcraft_engine::chess::pdfcraft_chessvision::doc::PageLabel::of(labels, u32::try_from(s.page).unwrap_or(u32::MAX));
+                crate::i18n::fmt(tl!("Diagram {n}, p. {page}"), &[("n", &(s.index.saturating_add(1)).to_string()), ("page", &page.to_string())])
+            }
             None => crate::i18n::fmt(tl!("Game {n}"), &[("n", &number.to_string())]),
         }
     }
@@ -395,6 +397,11 @@ pub struct ChessCollection {
     autosave: Autosave,
     /// The games as they were before moves left them, kept with the games (plan A8 §7, V5).
     trash: crate::chess_trash::Trash,
+    /// Its document's page labels, by index, and the document state they are of (its edit
+    /// generation and page count): the names of the games opened from a diagram say its page as
+    /// the book numbers it ([`PdfCraftApp::sync_chess_docs`]; plan A9-T2b).
+    pub(crate) labels: std::sync::Arc<[String]>,
+    labels_of: (u64, usize),
 }
 
 impl Default for ChessCollection {
@@ -405,6 +412,12 @@ impl Default for ChessCollection {
 }
 
 impl ChessCollection {
+    /// The name of game `i` (from 0) in the list ([`GameEntry::name`]), its diagram's page said
+    /// as the book numbers it.
+    pub fn name_of(&self, i: usize) -> Option<String> {
+        self.get(i).map(|e| e.name(i.saturating_add(1), &self.labels))
+    }
+
     /// One blank game.
     fn new(keys: DocKeys, cid: String) -> ChessCollection {
         let mut c = ChessCollection {
@@ -414,6 +427,8 @@ impl ChessCollection {
             cid,
             autosave: Autosave::default(),
             trash: crate::chess_trash::Trash::default(),
+            labels: std::sync::Arc::from(Vec::new()),
+            labels_of: (0, 0),
         };
         c.settle();
         c
@@ -791,7 +806,7 @@ impl ChessCollection {
                 continue;
             }
             let removed = std::mem::take(&mut entry.board.removed);
-            let name = entry.name(index.saturating_add(1));
+            let name = entry.name(index.saturating_add(1), &self.labels);
             for (game, deleted) in removed {
                 self.trash.keep(&game, &name, deleted);
             }
@@ -897,7 +912,7 @@ impl ChessCollection {
         // The last place first, so each game keeps the place it had among the others.
         for &index in places.iter().rev() {
             left_blank = self.len() == 1;
-            let name = self.get(index).map(|e| e.name(index.saturating_add(1))).unwrap_or_default();
+            let name = self.get(index).map(|e| e.name(index.saturating_add(1), &self.labels)).unwrap_or_default();
             let Some(entry) = self.games.delete(index) else { continue };
             // An illegal position has no game to keep: it stays on the redo side only.
             if !entry.untouched()
@@ -1524,7 +1539,7 @@ fn newer_note(version: u32) -> String {
 fn restored_note(c: &ChessCollection, lost: usize) -> String {
     let mut note = if c.len() == 1 {
         let g = c.active();
-        crate::i18n::fmt(tl!("Chess game restored: {name}, moves: {n}"), &[("name", &g.name(1)), ("n", &g.moves().to_string())])
+        crate::i18n::fmt(tl!("Chess game restored: {name}, moves: {n}"), &[("name", &g.name(1, &c.labels)), ("n", &g.moves().to_string())])
     } else {
         crate::i18n::fmt(tl!("Chess games restored: {n}"), &[("n", &c.len().to_string())])
     };
@@ -2026,7 +2041,7 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
     let mut action = None;
     let (uid, len, active) = (e.uid, c.len(), i == c.active_index());
     let selected = list.sel.contains(c, uid);
-    let name = e.name(i.saturating_add(1));
+    let name = e.name(i.saturating_add(1), &c.labels);
     // The game shown, while other games are selected without it, in bold.
     let text = if active && !selected { egui::RichText::new(name.as_str()).strong() } else { egui::RichText::new(name.as_str()) };
     // The row's buttons show while the pointer is on the row (as the last frame left it) or the
@@ -2188,7 +2203,7 @@ fn pending(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollect
     let name = if many.len() > 1 {
         crate::i18n::fmt(tl!("{n} selected"), &[("n", &many.len().to_string())])
     } else {
-        c.get(i).map(|e| e.name(i.saturating_add(1))).unwrap_or_default()
+        c.get(i).map(|e| e.name(i.saturating_add(1), &c.labels)).unwrap_or_default()
     };
     let mut action = None;
     egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
@@ -2483,6 +2498,15 @@ impl PdfCraftApp {
                 self.chess.games.attach(id, keys, protected);
             }
         }
+        // The page labels the games' names say, taken again when the document changed.
+        for (id, c) in &mut self.chess.games.docs {
+            let Some(doc) = self.session.get(*id) else { continue };
+            let state = (doc.edit_generation(), doc.info.pages.len());
+            if c.labels_of != state {
+                c.labels = doc.info.pages.iter().map(|p| p.label.clone()).collect();
+                c.labels_of = state;
+            }
+        }
     }
 
     /// Document `id` was saved: its collection takes the document's keys now (a first `/ID`, a
@@ -2730,13 +2754,14 @@ impl PdfCraftApp {
     /// selected in the list (named as every game is: "<document> games.pgn").
     fn save_chess_games_pgn(&mut self, which: PgnGames) {
         // Games read only up to an impossible move are written cut: said first (plan A9-G8, R1-02).
+        let labels = self.chess.games.collection().labels.clone();
         let cut: Vec<(String, String)> = self
             .chess
             .games
             .chosen(&which)
             .into_iter()
             .filter(|(_, e)| e.board.illegal.is_none())
-            .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1)), m)))
+            .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1), &labels), m)))
             .collect();
         if !cut.is_empty() {
             self.chess.games.cut_prompt = Some((which, cut));
@@ -2788,7 +2813,7 @@ impl PdfCraftApp {
             )
         } else {
             let c = self.chess.games.collection();
-            c.active().name(c.active_index().saturating_add(1))
+            c.active().name(c.active_index().saturating_add(1), &c.labels)
         };
         let name = format!("{}.pgn", file_stem(&stem));
         let bytes = pgn::encode(&text, self.chess.games.pgn_bom);
@@ -3108,14 +3133,14 @@ mod tests {
         let mut e = GameEntry::new(board_with(&["e2e4"]));
         let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
         assert!(e.rename(&names).changed);
-        assert_eq!(e.name(1), "Werle–Jianu");
+        assert_eq!(e.name(1, &[]), "Werle–Jianu");
         assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() });
         assert_eq!(e.board.undo_label().as_deref(), Some("Edit game details"));
         assert!(!e.rename(&names).changed, "the same names change nothing");
         assert!(e.board.undo());
-        assert_eq!(e.name(1), "Game 1", "one step took all three back");
+        assert_eq!(e.name(1, &[]), "Game 1", "one step took all three back");
         assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }).changed);
-        assert_eq!(e.name(1), "Training", "named by its event without players");
+        assert_eq!(e.name(1, &[]), "Training", "named by its event without players");
         assert!(e.rename(&GameNames::default()).changed);
         assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
         // Site, Date and Round, from the list, with the names: one step for all of them.
@@ -3338,14 +3363,14 @@ mod tests {
     #[test]
     fn a_game_is_named_by_its_players_its_diagram_or_its_place() {
         let mut e = GameEntry::new(BoardState::default());
-        assert_eq!(e.name(3), "Game 3");
+        assert_eq!(e.name(3, &[]), "Game 3");
         e.board.source = Some(Source { doc: DocId(1), page: 16, index: 2 });
-        assert_eq!(e.name(3), "Diagram 3, p. 17");
+        assert_eq!(e.name(3, &[]), "Diagram 3, p. 17");
         e.board.game.set_tag("White", "?").unwrap();
-        assert_eq!(e.name(3), "Diagram 3, p. 17", "an unknown player is no name");
+        assert_eq!(e.name(3, &[]), "Diagram 3, p. 17", "an unknown player is no name");
         e.board.game.set_tag("White", "Werle").unwrap();
         e.board.game.set_tag("Black", "Jianu").unwrap();
-        assert_eq!(e.name(3), "Werle–Jianu");
+        assert_eq!(e.name(3, &[]), "Werle–Jianu");
         e.board.game.play_uci("e2e4").unwrap();
         e.board.game.play_uci("e7e5").unwrap();
         e.board.game.play_uci("g1f3").unwrap();

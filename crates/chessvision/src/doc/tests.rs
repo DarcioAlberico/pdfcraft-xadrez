@@ -509,7 +509,7 @@ fn a_game_goes_on_past_a_diagram_of_its_own_position() {
         let pgn = pgn::write_game(&doc.games[0].score);
         assert!(pgn.contains("2. Nf3 {Black to play.} 2... Nc6"), "{pgn}");
         // The game remembers the diagram that reprints its position, not the other (plan A8 P8b).
-        let shown = if flagged { Vec::new() } else { vec![crate::doc::games::DiagramAt { page: 1, diagram: 0 }] };
+        let shown = if flagged { Vec::new() } else { vec![crate::doc::games::DiagramAt::new(1, 0)] };
         assert_eq!(doc.games[0].shown, shown, "{fen}");
     }
 }

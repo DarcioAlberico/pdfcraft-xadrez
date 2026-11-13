@@ -27,11 +27,11 @@
 use std::collections::HashMap;
 
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
     Correction, CorrectionError, CorrectionFile, Corrections as CorrectionsKind, Kind, Loaded, NewCorrection, Original, PageBoxes, Status,
     StoreError, assign, normalize,
 };
+use pdfcraft_engine::chess::{DiagramAt, DocKeys};
 
 use crate::chess_fixes::FixState;
 use crate::chess_history::ChessEdit;
@@ -246,9 +246,9 @@ impl PdfCraftApp {
             for page in &results.pages {
                 for (i, _) in page.diagrams.iter().enumerate() {
                     let reading = crate::chess_ui::ChessResults::reading(page, i);
-                    let kind = kinds.get(&(page.page, i)).map(|k: &Kept| k.kind);
+                    let kind = kinds.get(&DiagramAt::new(page.page, i)).map(|k: &Kept| k.kind);
                     if Status::with_reference(reading, kind, Some(index)) == Status::Reference {
-                        confirmed.insert((page.page, i));
+                        confirmed.insert(DiagramAt::new(page.page, i));
                     }
                 }
             }
@@ -264,7 +264,7 @@ impl PdfCraftApp {
     /// document state: every diagram and correction placed once, O(D + C) (plan A9-G2b, R8-04).
     /// The boxes are the scan's, those the exports' readings carry, of every page with a visible
     /// area: a diagram the page's raster could not read is marked too.
-    fn chess_marks(&mut self, id: DocId) -> HashMap<(usize, usize), Kept> {
+    fn chess_marks(&mut self, id: DocId) -> HashMap<DiagramAt, Kept> {
         let Some(file) = self.session.chess_corrections(id) else { return HashMap::new() };
         let Some(fingerprints) = self.session.chess_fingerprints(id) else { return HashMap::new() };
         let Some(results) = self.chess.results_of(id) else { return HashMap::new() };
@@ -282,7 +282,9 @@ impl PdfCraftApp {
         let (assigned, _) = assign(&pages, &located);
         assigned
             .into_iter()
-            .map(|a| ((a.page, a.index), Kept { uid: a.correction.uid.clone(), kind: a.correction.kind, fen: a.correction.fen.clone() }))
+            .map(|a| {
+                (DiagramAt::new(a.page, a.index), Kept { uid: a.correction.uid.clone(), kind: a.correction.kind, fen: a.correction.fen.clone() })
+            })
             .collect()
     }
 
@@ -308,7 +310,7 @@ impl PdfCraftApp {
                 return Err(why);
             }
         };
-        let before = FixState { entries: vec![(stored.uid, stored.before)], diagram: Some((target.page, target.index)) };
+        let before = FixState { entries: vec![(stored.uid, stored.before)], diagram: Some(DiagramAt::new(target.page, target.index)) };
         let seq = self.record_chess_fix(target.doc, ChessEdit::ConfirmCorrection, before);
         let state = crate::chess_widgets::DiagramState::of(None, Some(stored.kind), false).name();
         let text = crate::i18n::fmt(
@@ -430,10 +432,11 @@ impl PdfCraftApp {
             let reviewing = matches!(self.chess.filter(id), None | Some(crate::chess_widgets::DiagramState::Review));
             let finished = self.chess.results_of(id).filter(|r| reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
             match finished {
-                Some((checked, of)) => {
-                    let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
+                Some(done) => {
+                    let (d, n) = (done.checked.to_string(), done.of.to_string());
+                    let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &d), ("n", &n)]);
                     self.chess.diagram_keys.announce = said.clone();
-                    self.chess.review_done = Some((checked, of));
+                    self.chess.review_done = Some(done);
                     self.notify(said);
                 }
                 None => self.chess_editor_action(crate::chess_editor::EditorAction::Next),
@@ -486,7 +489,11 @@ impl PdfCraftApp {
             ed.settle();
         }
         self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
-        let seq = self.record_chess_fix(id, ChessEdit::ForgetCorrection, FixState { entries: vec![(uid, before)], diagram: Some((page, index)) });
+        let seq = self.record_chess_fix(
+            id,
+            ChessEdit::ForgetCorrection,
+            FixState { entries: vec![(uid, before)], diagram: Some(DiagramAt::new(page, index)) },
+        );
         let text = crate::i18n::fmt(
             tl!("Diagram {n}, page {p}: correction forgotten"),
             &[("n", &(index + 1).to_string()), ("p", &self.chess_page_label(page))],
@@ -500,7 +507,7 @@ impl PdfCraftApp {
     /// one the marks show ([`Self::chess_marks`]).
     fn chess_correction_uid(&mut self, id: DocId, page: usize, index: usize) -> Option<String> {
         self.refresh_chess_kinds(id);
-        self.chess.results_of(id)?.kinds.get(&(page, index)).map(|k| k.uid.clone())
+        self.chess.results_of(id)?.kinds.get(&DiagramAt::new(page, index)).map(|k| k.uid.clone())
     }
 
     /// The store kept `file` for `id` under `keys`: the session holds it, and the marks follow.
@@ -529,11 +536,20 @@ impl PdfCraftApp {
         }
     }
 
-    /// The printed label of page `page` (0-based) of the active document, else its number.
+    /// Page `page` (0-based) of document `id` as the book numbers it ([`Self::chess_page_label`]).
+    pub(crate) fn page_label_in(&self, id: DocId, page: usize) -> String {
+        match self.session.get(id) {
+            Some(doc) => pdfcraft_engine::chess::export::page_label_of(&doc.info, page).to_string(),
+            None => page.saturating_add(1).to_string(),
+        }
+    }
+
+    /// Page `page` (0-based) of the active document as the book numbers it: its printed label,
+    /// else its number from 1, by the one rule the exports follow (plan A9-T2b, R3-08).
     pub(crate) fn chess_page_label(&self, page: usize) -> String {
-        self.active_ids()
-            .and_then(|(_, id)| self.session.get(id))
-            .and_then(|d| d.info.pages.get(page))
-            .map_or_else(|| (page + 1).to_string(), |p| p.label.clone())
+        match self.active_ids().and_then(|(_, id)| self.session.get(id)) {
+            Some(doc) => pdfcraft_engine::chess::export::page_label_of(&doc.info, page).to_string(),
+            None => page.saturating_add(1).to_string(),
+        }
     }
 }

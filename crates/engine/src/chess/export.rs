@@ -171,9 +171,16 @@ impl ChessExport {
 
 /// What page `index` (0-based) of `doc` is called (plan A9-T2a, R3-08): the label its
 /// `/PageLabels` prints, else its number from 1 ([`PageLabel`]). The exports say every page by
-/// this one rule; the interface's places that still count from the index come with step T2b.
+/// this one rule, and so does the interface everywhere it names a page (plan A9-T2b,
+/// [`page_label_of`]).
 pub fn page_label(doc: &crate::Document, index: u32) -> PageLabel {
-    PageLabel::new(usize::try_from(index).ok().and_then(|i| doc.info.pages.get(i)).map(|p| p.label.as_str()), index)
+    page_label_of(&doc.info, usize::try_from(index).unwrap_or(usize::MAX))
+}
+
+/// [`page_label`] of a document's `info`, page `index` (0-based; a page past `u32::MAX`, which no
+/// document has, as `u32::MAX`).
+pub fn page_label_of(info: &crate::DocInfo, index: usize) -> PageLabel {
+    PageLabel::new(info.pages.get(index).map(|p| p.label.as_str()), u32::try_from(index).unwrap_or(u32::MAX))
 }
 
 impl Session {

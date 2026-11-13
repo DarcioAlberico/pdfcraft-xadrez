@@ -15,8 +15,8 @@
 //! moves the focus by itself), and Enter or Space opens it.
 
 use egui::{Align, Event, Id, Key, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
-use pdfcraft_engine::chess::ChessPage;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
+use pdfcraft_engine::chess::{ChessPage, DiagramAt};
 use pdfcraft_render::DocInfo;
 
 use crate::chess_ui::{ChessResults, PanelAction};
@@ -59,12 +59,12 @@ pub struct ListState {
     pub(crate) follow: bool,
     /// The page Follow the page last brought up.
     followed: Option<usize>,
-    /// The row (page, index) that takes the keyboard when it is next built.
-    focus: Option<(usize, usize)>,
+    /// The row that takes the keyboard when it is next built.
+    focus: Option<DiagramAt>,
     /// The row whose ⋯ menu is open.
-    menu: Option<(usize, usize)>,
+    menu: Option<DiagramAt>,
     /// The row that had the keyboard when the list was last built.
-    focused: Option<(usize, usize)>,
+    focused: Option<DiagramAt>,
     /// The keys taken for the focused row this frame.
     keys: Vec<Key>,
 }
@@ -76,7 +76,11 @@ enum Item {
     Page(usize),
     Error(usize),
     Truncated(usize),
-    Row(usize, usize),
+    /// Diagram `index` of the page at `pi` in the results' pages.
+    Row {
+        pi: usize,
+        index: usize,
+    },
 }
 
 impl Item {
@@ -84,7 +88,7 @@ impl Item {
         match self {
             Item::Page(_) => PAGE_H,
             Item::Error(_) | Item::Truncated(_) => NOTE_H,
-            Item::Row(..) => ROW_H,
+            Item::Row { .. } => ROW_H,
         }
     }
 }
@@ -98,8 +102,8 @@ pub(crate) fn row_id(page: usize, index: usize) -> Id {
 /// left it) and nothing else must have them (`free`).
 pub(crate) fn take_keys(list: &mut ListState, ctx: &egui::Context, events: &mut Vec<Event>, free: bool) {
     list.keys.clear();
-    let Some((page, index)) = list.focused.filter(|_| free) else { return };
-    if !ctx.memory(|m| m.has_focus(row_id(page, index))) {
+    let Some(at) = list.focused.filter(|_| free) else { return };
+    if !ctx.memory(|m| m.has_focus(row_id(at.page, at.index))) {
         return;
     }
     let keys = &mut list.keys;
@@ -143,7 +147,7 @@ fn items(list: &ListState, results: &ChessResults, page_now: usize) -> Vec<Item>
                     out.push(Item::Truncated(pi));
                 }
             }
-            out.push(Item::Row(pi, i));
+            out.push(Item::Row { pi, index: i });
         }
         if !header && error {
             out.push(Item::Page(pi));
@@ -181,7 +185,7 @@ pub(crate) fn list(
     results: &ChessResults,
     info: &DocInfo,
     page_now: usize,
-    drafts: &[(usize, usize)],
+    drafts: &[DiagramAt],
     reveal: bool,
     focus_row: bool,
 ) -> Option<PanelAction> {
@@ -207,22 +211,25 @@ pub(crate) fn list(
         tops.push(total);
         total += item.height();
     }
-    let row_at =
-        |key: (usize, usize)| items.iter().position(|it| matches!(it, Item::Row(pi, i) if results.pages.get(*pi).map(|p| (p.page, *i)) == Some(key)));
+    let row_at = |key: DiagramAt| {
+        items
+            .iter()
+            .position(|it| matches!(it, Item::Row { pi, index } if results.pages.get(*pi).map(|p| DiagramAt::new(p.page, *index)) == Some(key)))
+    };
 
     // Where to scroll, and the row the keyboard goes to.
     let mut scroll = None;
     if let Some(at) = list.focused.and_then(row_at) {
         for key in std::mem::take(&mut list.keys) {
-            let rows = || items.iter().enumerate().filter(|(_, it)| matches!(it, Item::Row(..)));
+            let rows = || items.iter().enumerate().filter(|(_, it)| matches!(it, Item::Row { .. }));
             let to = match key {
                 Key::ArrowUp => rows().rfind(|(k, _)| *k < at),
                 Key::ArrowDown => rows().find(|(k, _)| *k > at),
                 Key::Home => rows().next(),
                 _ => rows().next_back(),
             };
-            if let Some((k, Item::Row(pi, i))) = to {
-                list.focus = results.pages.get(*pi).map(|p| (p.page, *i));
+            if let Some((k, Item::Row { pi, index })) = to {
+                list.focus = results.pages.get(*pi).map(|p| DiagramAt::new(p.page, *index));
                 scroll = Some((k, None));
             }
         }
@@ -285,14 +292,14 @@ pub(crate) fn list(
                 let n = results.pages.get(pi).map_or(0, |p| p.diagrams.len());
                 note(ui, t, r, &crate::i18n::fmt(tl!("Only the first {n} diagrams on this page are listed."), &[("n", &n.to_string())]));
             }
-            Item::Row(pi, i) => {
+            Item::Row { pi, index: i } => {
                 let Some(page) = results.pages.get(pi) else { continue };
                 let out = row(ui, t, r, results, page, i, drafts, list);
                 if out.focused {
-                    focused = Some((page.page, i));
+                    focused = Some(DiagramAt::new(page.page, i));
                 }
                 if out.menu_open {
-                    menu = Some((page.page, i));
+                    menu = Some(DiagramAt::new(page.page, i));
                 }
                 if out.action.is_some() {
                     action = out.action;
@@ -355,7 +362,7 @@ fn chip(ui: &mut egui::Ui, t: &Tokens, state: Option<DiagramState>, text: &str, 
 /// a click goes to the page; its context menu marks the page as checked (plan A8, P2b).
 fn page_header(ui: &mut egui::Ui, t: &Tokens, rect: Rect, page: usize, info: &DocInfo, total: usize) -> Option<PanelAction> {
     let number = page.saturating_add(1).to_string();
-    let label = info.pages.get(page).map_or_else(|| number.clone(), |p| p.label.clone());
+    let label = pdfcraft_engine::chess::export::page_label_of(info, page).to_string();
     let head = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
     let place = (label != number).then(|| crate::i18n::fmt(tl!("· {n} of {m}"), &[("n", &number), ("m", &total.to_string())]));
     let r = Rect::from_min_max(pos2(rect.min.x, rect.min.y + 4.0), rect.max);
@@ -407,10 +414,10 @@ fn row(
     results: &ChessResults,
     page: &ChessPage,
     index: usize,
-    drafts: &[(usize, usize)],
+    drafts: &[DiagramAt],
     list: &mut ListState,
 ) -> RowOut {
-    let key = (page.page, index);
+    let key = DiagramAt::new(page.page, index);
     let reading = ChessResults::reading(page, index);
     let kind = results.kind(page.page, index);
     let state = results.state(page, index);
@@ -443,7 +450,7 @@ fn row(
 
     // ⋯ while the row is pointed at, selected or focused, or its menu is open.
     let position = reading.and_then(BoardReading::position);
-    let fen = results.kept_fen(key.0, key.1).or(position.map(|p| p.fen.as_str()));
+    let fen = results.kept_fen(key.page, key.index).or(position.map(|p| p.fen.as_str()));
     let mut action = None;
     let mut menu_open = false;
     let mut focused = focused;
@@ -476,7 +483,7 @@ fn row(
         None => format!("{name}\n{}", state.hint()),
     };
     if resp.clicked() {
-        action = Some(PanelAction::Select(page.page, index));
+        action = Some(PanelAction::Select(key));
     }
     resp.context_menu(|ui| menu(ui, key, position, fen, &mut action));
     theme::hand(resp).on_hover_text(tip);
@@ -487,7 +494,7 @@ fn row(
 /// position.
 fn menu(
     ui: &mut egui::Ui,
-    (page, index): (usize, usize),
+    at: DiagramAt,
     position: Option<&pdfcraft_engine::chess::pdfcraft_chessvision::board::ReadPosition>,
     fen: Option<&str>,
     action: &mut Option<PanelAction>,
@@ -495,14 +502,14 @@ fn menu(
     // Each item closes the menu, whatever clicked it (plan A9-I15, finding A6-18).
     use crate::widgets::menu_entry;
     if menu_entry(ui, position.is_some(), egui::Button::new(tl!("Open on the board"))).clicked() {
-        *action = Some(PanelAction::OpenBoard(page, index));
+        *action = Some(PanelAction::OpenBoard(at));
     }
     let icon = crate::icons::image("gauge", 14.0, crate::theme::Tokens::get(ui.ctx()).icon);
     if menu_entry(ui, position.is_some(), egui::Button::image_and_text(icon, tl!("Analyze")))
         .on_hover_text(tl!("Open on the board with the engine analysing it"))
         .clicked()
     {
-        *action = Some(PanelAction::Analyze(page, index));
+        *action = Some(PanelAction::Analyze(at));
     }
     if menu_entry(ui, fen.is_some(), egui::Button::new(tl!("Copy FEN"))).on_hover_text(tl!("Position code other chess programs accept.")).clicked()
         && let Some(fen) = fen

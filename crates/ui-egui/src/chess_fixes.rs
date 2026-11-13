@@ -23,6 +23,7 @@
 //! brings the correction back, not the changes made over it.
 
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::DiagramAt;
 use pdfcraft_engine::chess::corrections::Correction;
 
 use crate::PdfCraftApp;
@@ -37,8 +38,8 @@ pub(crate) struct FixState {
     /// Each correction the step changed, by uid, as it is on this side: `None` when no
     /// correction of that uid is live here.
     pub(crate) entries: Vec<(String, Option<Correction>)>,
-    /// The diagram it was about, (page, index) as the scan numbered it then, when one.
-    pub(crate) diagram: Option<(usize, usize)>,
+    /// The diagram it was about, as the scan numbered it then, when one.
+    pub(crate) diagram: Option<DiagramAt>,
 }
 
 impl Estimate for FixState {
@@ -138,8 +139,9 @@ impl PdfCraftApp {
     /// forgotten again shows the reading; a confirmation undone leaves the position on the board as
     /// changes not confirmed, nothing of the user's lost.
     fn chess_fix_shown(&mut self, id: DocId, edit: &ChessEdit, target: &FixState) {
-        let Some((page, index)) = target.diagram else { return };
-        let kept = self.chess.results_of(id).and_then(|r| r.kinds.get(&(page, index))).map(|k| k.fen.clone());
+        let Some(at) = target.diagram else { return };
+        let (page, index) = (at.page, at.index);
+        let kept = self.chess.results_of(id).and_then(|r| r.kinds.get(&at)).map(|k| k.fen.clone());
         let Some(ed) = self.chess.editor.as_mut().filter(|e| (e.doc, e.page, e.index) == (id, page, index)) else { return };
         match (kept, edit) {
             (Some(fen), ChessEdit::ForgetCorrection) => ed.show_kept(&fen),

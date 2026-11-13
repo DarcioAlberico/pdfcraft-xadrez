@@ -121,7 +121,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         results.confirmed(page, index),
     );
     let kept = results.kind(page, index).is_some();
-    let place = queue.iter().position(|q| *q == (page, index));
+    let place = queue.iter().position(|q| *q == pdfcraft_engine::chess::DiagramAt::new(page, index));
     let label = app.chess_page_label(page);
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
@@ -187,7 +187,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     ui.scope_builder(UiBuilder::new().max_rect(body_rect.shrink2(egui::vec2(8.0, 0.0))), |ui| {
         egui::ScrollArea::vertical().id_salt("chess-diagram-tab").auto_shrink([false, false]).show(ui, |ui| {
             // The review just finished (plan A8, P4).
-            if let Some((checked, of)) = review_done {
+            if let Some(crate::chess_ui::Reviewed { checked, of }) = review_done {
                 ui.horizontal(|ui| {
                     ui.add(crate::icons::image("badge-check", 14.0, t.success_text));
                     let done = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
