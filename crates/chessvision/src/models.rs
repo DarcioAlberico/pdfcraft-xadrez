@@ -884,4 +884,42 @@ mod tests {
         let dir = glyph_folder("parity-short", &bytes, classes, Some(r#"{"count": 3, "probabilities": [0.5]}"#));
         assert!(matches!(ChessModels::load_from(&dir).glyphs, ModelState::Invalid(why) if why.contains("parity file")));
     }
+
+    /// Plan A9-Q3a: the hostile models `cargo xtask fuzz` writes into model folders, each as the
+    /// glyph model and as the piece model: refused with a reason, or loaded and run on a batch
+    /// with an error or with probabilities, never an abort (which would end this test binary).
+    /// Those built to ask for a tensor too large are refused before rten sees them, and so is the
+    /// chain of 60,000 operators, which overflowed the stack in rten's planner before.
+    #[test]
+    fn every_hostile_model_of_the_fuzzer_is_refused_or_runs() {
+        let piece_meta = serde_json::json!({ "kind": "chess-pieces", "input": { "name": "cells" },
+            "output": { "name": "logits", "classes": PIECE_CLASS_NAMES } })
+        .to_string();
+        let glyph_classes = 5;
+        // Refused by the checker before rten loads them: each would abort the process (a tensor
+        // too large to allocate; the chain, rten's planner overflowing the stack).
+        let too_large =
+            ["constant-of-shape", "expand", "tile", "range", "resize", "pad", "broadcast", "conv-padding", "conv-kernel", "reshape", "chain"];
+        let mut seen = 0;
+        for (name, bytes) in onnx::build::hostile_models("glyphs", GLYPH_SIDE as i64, glyph_classes as i64) {
+            seen += 1;
+            match GlyphModel::from_bytes(bytes, onnx::build::glyph_meta(glyph_classes).as_bytes()) {
+                Ok(model) => {
+                    assert!(!too_large.contains(&name), "{name} was loaded");
+                    let _ = model.probabilities(&parity_input(2, GLYPH_SIDE), 2);
+                }
+                Err(e) => assert!(!e.to_string().is_empty(), "{name}"),
+            }
+        }
+        for (name, bytes) in onnx::build::hostile_models("cells", PIECE_SIDE as i64, CLASS_COUNT as i64) {
+            match PieceModel::from_bytes(bytes, piece_meta.as_bytes()) {
+                Ok(model) => {
+                    assert!(!too_large.contains(&name), "{name} was loaded");
+                    let _ = model.probabilities(&parity_input(2, PIECE_SIDE), 2);
+                }
+                Err(e) => assert!(!e.to_string().is_empty(), "{name}"),
+            }
+        }
+        assert!(seen >= too_large.len() + 5, "{seen} hostile models");
+    }
 }

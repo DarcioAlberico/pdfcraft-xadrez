@@ -21,6 +21,7 @@
 mod automation_args;
 mod batch;
 mod chess;
+mod pgn_check;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -265,6 +266,7 @@ const CHECK_ONE_OPTIONS: &[OptionSpec] = &[
     OptionSpec { name: "--dpi", takes_value: true },
     OptionSpec { name: "--edit", takes_value: false },
     OptionSpec { name: "--chess", takes_value: false },
+    OptionSpec { name: "--models", takes_value: true },
 ];
 const CHECK_OPTIONS: &[OptionSpec] = &[
     OptionSpec { name: "--timeout", takes_value: true },
@@ -686,9 +688,10 @@ fn check_one(args: &[String]) -> Result<(), CliError> {
     if args.iter().any(|a| a == "--edit") {
         edit_round_trip(&std::fs::read(path).map_err(|e| e.to_string())?);
     }
-    // `--chess` (fuzzing, blueprint S18): the chess paths end to end, also with no safety net.
+    // `--chess` (fuzzing, blueprint S18): the chess paths end to end, also with no safety net;
+    // with `--models DIR`, reading every page with the models of that folder (plan A9-Q3a).
     if args.iter().any(|a| a == "--chess") {
-        chess_round_trip(&std::fs::read(path).map_err(|e| e.to_string())?);
+        chess_round_trip(&std::fs::read(path).map_err(|e| e.to_string())?, flag(args, "--models").map(Path::new));
     }
     let line = serde_json::json!({ "file": path, "status": status, "pages": pages, "failed_pages": failed, "warnings": warnings,
         "ms": start.elapsed().as_millis() as u64, "detail": detail.chars().take(400).collect::<String>() });
@@ -722,12 +725,17 @@ fn edit_round_trip(bytes: &[u8]) {
     }
 }
 
-/// Capture the pages' text into games (`chess_capture_round_trip`), scan for diagrams, read the
-/// pages as a chess document, write every chess export, then link and replace the diagrams found
-/// and save. No models are loaded (`models_dir` is a folder that holds none), so only the paths
-/// every user runs are exercised. Errors are fine; panics, hangs and aborts are bugs. (A page's
-/// scan has its own last-resort guard; everything after it has none.)
-fn chess_round_trip(bytes: &[u8]) {
+/// Capture the pages' text into games (`chess_capture_round_trip`), read each page's text as a
+/// PGN file (`chess_pgn_round_trip`), scan for diagrams, read the pages as a chess document,
+/// write every chess export, then link and replace the diagrams found and save. Errors are fine;
+/// panics, hangs and aborts are bugs. (A page's scan has its own last-resort guard; everything
+/// after it has none.)
+///
+/// Without `models`, no model is loaded (`models_dir` is a folder that holds none) and chess OCR is
+/// off: the paths every user runs. With a models folder (`cargo xtask fuzz --models`: the user's
+/// models, a hostile one built to break the loader, or one with bytes mutated; plan A9-Q3a), its
+/// models read every page's diagrams and every page is read by chess OCR (`OcrMode::All`).
+fn chess_round_trip(bytes: &[u8], models: Option<&Path>) {
     use pdfcraft_engine::Session;
     use pdfcraft_engine::chess::ChessScanSettings;
     use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
@@ -735,15 +743,22 @@ fn chess_round_trip(bytes: &[u8]) {
     let mut s = Session::new();
     let Ok(id) = s.open("fuzz.pdf", None, Arc::new(bytes.to_vec()), None) else { return };
     chess_capture_round_trip(&s, id, bytes);
+    chess_pgn_round_trip(bytes);
     let pages: Vec<usize> = (0..s.get(id).map_or(0, |d| d.info.pages.len()).min(8)).collect();
-    let none = std::env::temp_dir().join("pdfcraft-fuzz-no-models");
-    let _ = std::fs::create_dir_all(&none);
-    let scan = ChessScanSettings { dpi: 72.0, max_read_dpi: 72.0, models_dir: Some(none), ..ChessScanSettings::default() };
-    let _ = s.chess_document_with(id, &pages, &scan, None, &OcrOptions::new(OcrMode::Off).with_general(false));
+    let (models_dir, ocr) = match models {
+        Some(dir) => (dir.to_path_buf(), OcrMode::All),
+        None => {
+            let none = std::env::temp_dir().join("pdfcraft-fuzz-no-models");
+            let _ = std::fs::create_dir_all(&none);
+            (none, OcrMode::Off)
+        }
+    };
+    let scan = ChessScanSettings { dpi: 72.0, max_read_dpi: 72.0, models_dir: Some(models_dir), ..ChessScanSettings::default() };
+    let _ = s.chess_document_with(id, &pages, &scan, None, &OcrOptions::new(ocr).with_general(false));
     let mut options = ChessExportOptions::new("fuzz", None);
     options.pages = pages.clone();
     options.scan = scan.clone();
-    options.ocr = OcrMode::Off;
+    options.ocr = ocr;
     options.pieces = Arc::new(pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet::geometric());
     options.diagram_px = 64;
     for format in ChessFormat::ALL {
@@ -826,6 +841,24 @@ fn chess_capture_round_trip(s: &pdfcraft_engine::Session, id: pdfcraft_engine::D
                     assert_pgn_fixed_point(&game);
                 }
             }
+        }
+    }
+}
+
+/// Each page's text (the first [`FUZZ_CAPTURE_PAGES`], at most [`FUZZ_CAPTURE_GLYPHS`] glyphs) read
+/// as a PGN file, as a book's PGN is loaded (plan A9-Q3a): a cut that is not the text or merges
+/// games ends the process, as a crash finding keyed by its `fatal:` line ([`pgn_check::problem`]).
+fn chess_pgn_round_trip(bytes: &[u8]) {
+    let mut r = PageRenderer::new(Arc::new(bytes.to_vec()), RenderConfig::default());
+    let pages = inspect(Arc::new(bytes.to_vec()), None).map_or(0, |info| info.pages.len());
+    for page in 0..pages.min(FUZZ_CAPTURE_PAGES) {
+        let out = r.render(RenderRequest { page, kind: RequestKind::Text, tile: None, scale: 1.0, tag: 0, preview: false });
+        let Some(text) = out.text else { continue };
+        let text = text.text_of(0..text.glyphs.len().min(FUZZ_CAPTURE_GLYPHS));
+        if let Some(problem) = pgn_check::problem(&text) {
+            eprintln!("fatal: {problem}");
+            eprintln!("{text}");
+            std::process::abort();
         }
     }
 }

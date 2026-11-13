@@ -688,8 +688,9 @@ fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
     let ours = folder(&folder_dir);
     let steps = serde_json::json!([
         { "tool": "doc_open", "args": { "path": "book.pdf" } },
-        { "tool": "chess_reference_status", "args": { "doc": 1 } },
-        { "tool": "chess_reference_set", "args": { "doc": 1, "path": "other.pgn" } },
+        // Named: a build since plan A9-G5a keeps the store in the app's data folder by default.
+        { "tool": "chess_reference_status", "args": { "doc": 1, "reference_store": ".pdfcraft/chess-reference" } },
+        { "tool": "chess_reference_set", "args": { "doc": 1, "path": "other.pgn", "reference_store": ".pdfcraft/chess-reference" } },
     ]);
     std::fs::write(dir.join("steps.json"), steps.to_string()).unwrap();
     let out = std::process::Command::new(&cli)
@@ -702,11 +703,19 @@ fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
     let report: serde_json::Value = serde_json::from_slice(&out.stdout)
         .unwrap_or_else(|e| panic!("{e}: {}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr)));
     let status = &report["steps"][1]["result"][0];
-    assert_eq!((status["kept"].as_bool(), status["file"].as_str()), (Some(false), Some(name_before(&keys).as_str())), "{report:#}");
+    let own = own_name(&keys);
     assert_eq!(report["steps"][2]["status"], "ok", "{report:#}");
     let after = folder(&folder_dir);
-    let own = own_name(&keys);
-    assert_eq!(after.iter().find(|(n, _)| *n == own), ours.iter().find(|(n, _)| *n == own), "this build's file left as it was");
+    if status["kept"].as_bool() == Some(true) {
+        // A build that reads version 2 (since plan A9-G3a) finds this build's file and keeps the
+        // other PGN in it, where it is.
+        assert_eq!(status["file"].as_str(), Some(own.as_str()), "{report:#}");
+    } else {
+        // A build before keeps to the name before: it never sees this build's file, and leaves it
+        // as it was.
+        assert_eq!((status["kept"].as_bool(), status["file"].as_str()), (Some(false), Some(name_before(&keys).as_str())), "{report:#}");
+        assert_eq!(after.iter().find(|(n, _)| *n == own), ours.iter().find(|(n, _)| *n == own), "this build's file left as it was");
+    }
     assert!(after.iter().all(|(n, _)| !n.contains(".bad")), "nothing set aside: {:?}", after.iter().map(|(n, _)| n).collect::<Vec<_>>());
     // What it kept under the name before, later: seen here.
     assert_eq!(store.load(&keys, pages).unwrap().pgn().map(|p| p.text.as_str()), Some(OTHER));
