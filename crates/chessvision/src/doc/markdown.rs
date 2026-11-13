@@ -87,7 +87,7 @@ pub fn image_name(index: u32, number: usize) -> String {
 
 /// Escape inline Markdown: backslash, emphasis, code, links, HTML and its entities (`&`), and
 /// line-start markers.
-fn esc(text: &str) -> String {
+pub(crate) fn esc(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars().filter(|c| !c.is_control()) {
         if matches!(c, '\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '|' | '~' | '&') {
