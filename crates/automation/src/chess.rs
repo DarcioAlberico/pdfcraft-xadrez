@@ -1103,5 +1103,8 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
         },
         "pages": a.pages.iter().map(|p| json!({ "page": u64::from(p.page) + 1, "game": p.game + 1, "name": name(p.game) })).collect::<Vec<_>>(),
         "warnings": linked.warnings,
+        // The moves were walked again from the diagrams the PGN confirmed with another position
+        // (plan A9-L0b, L8: A2-11).
+        "walked_again": linked.walked_again,
     })
 }
