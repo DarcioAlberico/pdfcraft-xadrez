@@ -3701,3 +3701,7 @@ the move's comment	Move comment	Bình luận của nước đi
 	Forget the correction?	Bỏ chỉnh sửa?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Các thay đổi chưa xác nhận cũng bị bỏ. Tệp PDF không bị thay đổi.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Không vẽ gì vào PDF: không lưu được chỉnh sửa ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	không đọc được dữ liệu đã lưu trước đó, dữ liệu này được cất riêng trước; hãy thử lại sau giây lát
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Không đọc được các chỉnh sửa sơ đồ đã lưu ({why}). Chúng được cất riêng ở lần lưu tới, và từ đó các chỉnh sửa mới được lưu.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Không đọc được các tệp PGN của sách đã lưu ({why}). Chúng được cất riêng ở lần lưu tới, và từ đó các tệp mới được lưu.

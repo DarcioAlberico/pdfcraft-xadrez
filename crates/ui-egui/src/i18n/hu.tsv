@@ -3447,3 +3447,7 @@ the move's comment	Move comment	A lépés megjegyzése
 	Forget the correction?	Elveti a javítást?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	A még meg nem erősített módosítások is elvesznek. A PDF nem változik.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	A PDF-be semmi sem került: a javítást nem sikerült menteni ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	a korábban mentett adatot nem sikerült beolvasni, ezért előbb félre lesz téve; próbálja újra kicsit később
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	A mentett diagramjavításokat nem sikerült beolvasni ({why}). A következő mentéskor félre lesznek téve, és onnantól az új javítások megmaradnak.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	A könyvek mentett PGN-jeit nem sikerült beolvasni ({why}). A következő mentéskor félre lesznek téve, és onnantól az újak megmaradnak.

@@ -33,7 +33,8 @@ const PAGES_PER_JOB: usize = 8;
 /// One open document's chess view (plan A9-I1a, §2.7): what the Chess panel shows of it, kept
 /// while another document is shown or scanned. Made and dropped with the documents
 /// ([`PdfCraftApp::sync_chess_docs`]). What the document's reads taught (its book cipher), what the
-/// user said of it (its book origin) and its corrections live in the engine's session.
+/// user said of it (its book origin), its corrections and its book's PGN with the decisions live
+/// in the engine's session (plan A9-I1b).
 #[derive(Default)]
 pub struct DocChess {
     /// What scanning found in it.
@@ -49,6 +50,11 @@ pub struct DocChess {
     pub pgn_source: crate::chess_export_ui::PgnSource,
     /// The corrections kept and forgotten in it, as steps Undo and Redo take (plan A9-G10).
     pub(crate) fixes: crate::chess_history::History<crate::chess_fixes::FixState>,
+    /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered while the document
+    /// keeps none (R6c; desktop only).
+    pub(crate) pgn_sibling: Option<std::path::PathBuf>,
+    /// What Link the whole book found, for the session (R6d).
+    pub(crate) book_link: Option<crate::chess_reference_ui::BookLink>,
 }
 
 /// Chess diagrams: each open document's view, and the running scan.
@@ -687,6 +693,7 @@ pub(crate) fn panel(
     page_now: usize,
     in_window: bool,
     editor_here: bool,
+    pgn: &crate::chess_reference_ui::BookPgnView,
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
     // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12),
@@ -702,8 +709,8 @@ pub(crate) fn panel(
         return in_window_note(ui, t);
     }
     let offer = if state.tools_offer { tools_offer(ui, t) } else { None };
-    let pgn_offer = state.book_pgns.offer(id).and_then(|name| pgn_offer(ui, t, &name));
-    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, origin, page_now, editor_here).or(offer).or(pgn_offer)
+    let pgn_offer = pgn.offer.as_deref().and_then(|name| pgn_offer(ui, t, name));
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, origin, page_now, editor_here, pgn).or(offer).or(pgn_offer)
 }
 
 /// The offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f): Use it, or Not now,
@@ -791,13 +798,13 @@ pub(crate) fn tab_contents(
     origin: pdfcraft_engine::chess::document::BookOrigin,
     page_now: usize,
     editor_here: bool,
+    pgn: &crate::chess_reference_ui::BookPgnView,
 ) -> Option<PanelAction> {
     if text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
-        let pgn = state.book_pgns.view(id);
         let doc = state.doc_mut(id);
         let (positions, source) = (doc.pgn_positions, doc.pgn_source);
-        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, positions, &pgn, source)
+        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, positions, pgn, source)
             .map(PanelAction::Text);
     }
     let mut action = None;
@@ -806,7 +813,7 @@ pub(crate) fn tab_contents(
         (s.done, s.total)
     });
     // The header: Detect diagrams ▾, the export, board and models buttons, the progress (P2a2).
-    let kept = state.book_pgns.summary(id).is_some();
+    let kept = pgn.summary.is_some();
     let doc = state.doc_mut(id);
     let (positions, source) = (doc.pgn_positions, kept.then_some(doc.pgn_source));
     if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, positions, source) {
@@ -1890,7 +1897,7 @@ mod view_tests {
                 return;
             }
             let t = Tokens::get(ui.ctx());
-            let _ = tab_contents(ui, &t, &mut state, false, shown, &info, None, Default::default(), 0, false);
+            let _ = tab_contents(ui, &t, &mut state, false, shown, &info, None, Default::default(), 0, false, &Default::default());
         });
         h.run();
         h.get_by_label("Detecting in another book… page 306 of 748");

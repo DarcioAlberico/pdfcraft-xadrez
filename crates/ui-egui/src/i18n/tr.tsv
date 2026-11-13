@@ -3444,3 +3444,7 @@ the move's comment	Move comment	Hamlenin yorumu
 	Forget the correction?	Düzeltme unutulsun mu?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Henüz onaylanmamış değişiklikler de atılır. PDF değişmez.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF’e hiçbir şey çizilmedi: düzeltme kaydedilemedi ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	daha önce kaydedilen okunamadı ve önce kenara ayrılıyor; birazdan yeniden deneyin
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Kaydedilmiş diyagram düzeltmeleri okunamadı ({why}). Bir sonraki kayıtta kenara ayrılırlar, o andan itibaren yeni düzeltmeler saklanır.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Kitapların kaydedilmiş PGN dosyaları okunamadı ({why}). Bir sonraki kayıtta kenara ayrılırlar, o andan itibaren yenileri saklanır.

@@ -586,19 +586,13 @@ impl MemBackend {
         MemBackend { files: Default::default(), writing: Default::default(), budget }
     }
 
-    /// A store holding `files` (as [`MemBackend::files`] gave them) within `budget` bytes, a file
-    /// over `max_file` bytes or past the budget left out.
-    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize, max_file: usize) -> MemBackend {
-        let mut kept = std::collections::BTreeMap::new();
-        let mut used = 0usize;
-        for (name, bytes) in files {
-            let total = used.saturating_add(bytes.len());
-            if total <= budget && bytes.len() <= max_file {
-                used = total;
-                kept.insert(name, bytes);
-            }
-        }
-        MemBackend { files: std::sync::Mutex::new(kept), writing: Default::default(), budget }
+    /// A store holding `files` (as [`MemBackend::files`] gave them), every one of them: the
+    /// `budget` refuses a write that would pass it ([`StoreFailure::over_budget`]), never drops
+    /// what is there (plan A9-I1b, finding A4-15: files past it used to be left out, and gone at
+    /// the next save). A file too large to read is reported by a load and set aside by a change,
+    /// as in a folder.
+    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize) -> MemBackend {
+        MemBackend { files: std::sync::Mutex::new(files.into_iter().collect()), writing: Default::default(), budget }
     }
 
     /// Every file by name, to save.
@@ -862,10 +856,10 @@ impl<K: StoreKind> DocStore<K, MemBackend> {
         DocStore::on(MemBackend::new(budget))
     }
 
-    /// A memory store holding `files` (as [`DocStore::files`] gave them) within `budget` bytes: a
-    /// file that would pass it, or the kind's largest file, is left out.
+    /// A memory store holding `files` (as [`DocStore::files`] gave them), all of them, writing
+    /// within `budget` bytes ([`MemBackend::with_files`]).
     pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize) -> Self {
-        DocStore::on(MemBackend::with_files(files, budget, K::MAX_FILE_BYTES))
+        DocStore::on(MemBackend::with_files(files, budget))
     }
 
     /// Every file by name, to save.

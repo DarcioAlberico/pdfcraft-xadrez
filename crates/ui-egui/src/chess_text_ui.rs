@@ -929,7 +929,7 @@ impl PdfCraftApp {
                                 ("conflict", &link.counts.conflict.to_string()),
                             ],
                         ));
-                        self.chess.book_pgns.keep_link(job.doc, link);
+                        self.chess.doc_mut(job.doc).book_link = Some(link);
                     }
                     Err(e) => self.notify(e),
                 }

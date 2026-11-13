@@ -3450,3 +3450,7 @@ the move's comment	Move comment	手のコメント
 	Forget the correction?	修正を取り消しますか?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	まだ確定していない変更も破棄されます。PDF は変更されません。
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF には何も描画されませんでした: 修正を保存できませんでした ({e})。
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	以前に保存した内容を読み込めなかったため、先に別に保管します。しばらくしてからもう一度お試しください
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	保存済みの局面図の修正を読み込めませんでした ({why})。次回の保存時に別に保管され、それ以降は新しい修正が保存されます。
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	保存済みの本の PGN を読み込めませんでした ({why})。次回の保存時に別に保管され、それ以降は新しいものが保存されます。

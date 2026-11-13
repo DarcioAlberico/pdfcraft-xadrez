@@ -9,6 +9,14 @@
 //! `<hash>.reference.json`, found by its keys. Reading it never renames a file: one that can't be
 //! read is said, and set aside only by the next change, which says so too. The wait for another
 //! writer's lock (at most three seconds) stays on the interface thread until step I3b's writer.
+//! Where they are kept is one type for every kind of store ([`crate::chess_store_ui::UiStore`],
+//! plan A9-I1b).
+//!
+//! **Who holds it** (plan A9-I1b, §2.7). The engine's session holds each open document's PGN,
+//! indexed, with the user's decisions ([`pdfcraft_engine::Session::chess_book_pgn`]): the one copy
+//! in memory, which the Text tab, its jobs and the Diagrams list read. The app keeps only the keys
+//! it was loaded under, and in each document's view ([`crate::chess_ui::DocChess`]) the PGN beside
+//! the PDF it offers and what Link the whole book found.
 //!
 //! **What uses it.** Chess ▸ Load the book's PGN… (`chess.reference.load`) keeps the PGN chosen
 //! for the active document, and Remove the book's PGN (`chess.reference.clear`) removes it. Each
@@ -20,12 +28,14 @@
 use std::sync::Arc;
 
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::BookPgn;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
-use pdfcraft_engine::chess::reference_store::{Choice, Decision, Kept, KeptPgn, Loaded, MemStore, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{Choice, Decision, Kept, KeptPgn, Loaded, Reference, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
 
 use crate::PdfCraftApp;
+use crate::chess_store_ui::{UiStore, in_store};
 
 /// The web build's `Storage` key for the books' PGNs.
 pub const STORAGE_KEY: &str = "pdfcraft-chess-reference-v1";
@@ -37,75 +47,44 @@ pub const WEB_BUDGET: usize = 2 << 20;
 pub const MAX_DECLINED: usize = 256;
 
 /// Where the books' PGNs are kept.
-enum Store {
-    #[cfg(not(target_arch = "wasm32"))]
-    Folder(pdfcraft_engine::chess::reference_store::DirStore),
-    /// The web build's `Storage` value (`changed`: since eframe last took it), or the session's
-    /// memory until a store is set.
-    Memory { store: MemStore, changed: bool },
-}
+type Store = UiStore<Reference>;
 
-impl Default for Store {
-    fn default() -> Self {
-        Store::Memory { store: MemStore::new(WEB_BUDGET), changed: false }
-    }
-}
-
-impl Store {
+impl UiStore<Reference> {
     fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, ReferenceStoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.load(keys, pages),
-            Store::Memory { store, .. } => store.load(keys, pages),
-        }
+        in_store!(&self.place, s => s.load(keys, pages))
     }
 
-    fn set(&mut self, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), ReferenceStoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.set(keys, pages, pgn, has_move),
-            Store::Memory { store, changed } => {
-                let out = store.set(keys, pages, pgn, has_move)?;
-                *changed = true;
-                Ok(out)
-            }
-        }
+    /// The writes say why not in words that follow "was not kept as the book's PGN:".
+    fn set(&mut self, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), String> {
+        self.writable()?;
+        let out = in_store!(&self.place, s => s.set(keys, pages, pgn, has_move)).map_err(|e| e.to_string())?;
+        self.wrote();
+        Ok(out)
     }
 
-    fn clear(&mut self, keys: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.clear(keys, pages, now()),
-            Store::Memory { store, changed } => {
-                let cleared = store.clear(keys, pages, now())?;
-                *changed |= cleared;
-                Ok(cleared)
-            }
+    fn clear(&mut self, keys: &DocKeys, pages: usize) -> Result<bool, String> {
+        self.writable()?;
+        let cleared = in_store!(&self.place, s => s.clear(keys, pages, now())).map_err(|e| e.to_string())?;
+        if cleared {
+            self.wrote();
         }
+        Ok(cleared)
     }
 
-    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, ReferenceStoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.decide(keys, pages, decision),
-            Store::Memory { store, changed } => {
-                let out = store.decide(keys, pages, decision)?;
-                *changed = true;
-                Ok(out)
-            }
-        }
+    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, String> {
+        self.writable()?;
+        let out = in_store!(&self.place, s => s.decide(keys, pages, decision)).map_err(|e| e.to_string())?;
+        self.wrote();
+        Ok(out)
     }
 
-    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.rekey(old, new, pages),
-            Store::Memory { store, changed } => {
-                let moved = store.rekey(old, new, pages)?;
-                *changed |= moved;
-                Ok(moved)
-            }
+    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
+        self.writable()?;
+        let moved = in_store!(&self.place, s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
+        if moved {
+            self.wrote();
         }
+        Ok(moved)
     }
 }
 
@@ -179,6 +158,9 @@ pub struct BookPgnView {
     pub progress: Option<(usize, usize)>,
     /// The user's decisions on moves in conflict with the PGN (R6e).
     pub decisions: Vec<Decision>,
+    /// The PGN beside the PDF, by its file name, when the panel offers it (R6f): the document
+    /// keeps none and the user did not say Not now to it.
+    pub offer: Option<String>,
 }
 
 impl BookPgnView {
@@ -189,25 +171,14 @@ impl BookPgnView {
     }
 }
 
-/// One open document's PGN, as loaded.
+/// One open document's PGN, as loaded: the keys it was loaded under, so a save that changes them
+/// moves it along. The session holds the PGN itself ([`pdfcraft_engine::Session::chess_book_pgn`]).
 struct DocPgn {
     doc: DocId,
-    /// The keys it was loaded under: a save that changes them moves it along.
     keys: DocKeys,
-    /// The PGN indexed, when the document keeps one that could be read.
-    index: Option<Arc<ReferenceIndex>>,
-    summary: Option<BookPgnSummary>,
-    /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered when none is kept
-    /// (R6c; desktop only).
-    sibling: Option<std::path::PathBuf>,
-    /// The whole book linked to it, when Link the whole book ran (R6d).
-    link: Option<BookLink>,
-    /// The user's decisions on moves in conflict with it (R6e).
-    decisions: Vec<Decision>,
 }
 
 /// The books' PGNs in the app.
-#[derive(Default)]
 pub struct BookPgns {
     store: Store,
     docs: Vec<DocPgn>,
@@ -221,89 +192,52 @@ pub struct BookPgns {
     told: Vec<DocId>,
     /// PGN files the browser read for a document, picked up on the next frame.
     #[cfg(target_arch = "wasm32")]
-    pub(crate) uploads: Arc<std::sync::Mutex<Vec<(DocId, String, Vec<u8>)>>>,
+    pub(crate) uploads: Arc<std::sync::Mutex<Vec<(DocId, String, Result<Vec<u8>, String>)>>>,
+}
+
+impl Default for BookPgns {
+    fn default() -> Self {
+        BookPgns {
+            store: UiStore::memory(WEB_BUDGET),
+            docs: Vec::new(),
+            progress: None,
+            declined: Vec::new(),
+            told: Vec::new(),
+            #[cfg(target_arch = "wasm32")]
+            uploads: Default::default(),
+        }
+    }
 }
 
 impl BookPgns {
     /// Keep the books' PGNs in `dir` (the desktop; tests pass their own folder).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn use_folder(&mut self, dir: std::path::PathBuf) {
-        self.store = Store::Folder(pdfcraft_engine::chess::reference_store::DirStore::new(dir));
+        self.store = UiStore::folder(dir, WEB_BUDGET);
         self.docs.clear();
     }
 
     /// Keep the books' PGNs in the web's `Storage` value `text` (the files by name, as
-    /// [`Self::storage_value`] wrote them). A value that can't be read starts empty.
+    /// [`Self::storage_values`] wrote them). A value that can't be read is kept aside at the next
+    /// save, never written over, and nothing is kept until then (plan A9-I1b).
     pub fn use_storage(&mut self, text: Option<&str>) {
-        let files: Vec<(String, Vec<u8>)> = text
-            .and_then(|t| serde_json::from_str::<Vec<(String, String)>>(t).ok())
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(name, body)| (name, body.into_bytes()))
-            .collect();
-        self.store = Store::Memory { store: MemStore::with_files(files, WEB_BUDGET), changed: false };
+        self.store = UiStore::storage(STORAGE_KEY, WEB_BUDGET, text);
         self.docs.clear();
     }
 
-    /// The web's `Storage` value, when the PGNs changed since it was last taken.
-    pub fn storage_value(&mut self) -> Option<String> {
-        let (store, changed) = match &mut self.store {
-            Store::Memory { store, changed } => (store, changed),
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(_) => return None,
-        };
-        if !std::mem::take(changed) {
-            return None;
-        }
-        let files: Vec<(String, String)> =
-            store.files().into_iter().filter_map(|(name, bytes)| String::from_utf8(bytes).ok().map(|b| (name, b))).collect();
-        serde_json::to_string(&files).ok()
+    /// The web's `Storage` values to save ([`UiStore::storage_values`]): `current` is what the
+    /// `Storage` holds under [`STORAGE_KEY`] now, merged in; `taken` says which keys are.
+    pub fn storage_values(&mut self, current: Option<&str>, taken: impl Fn(&str) -> bool) -> Vec<(String, String)> {
+        self.store.storage_values(current, taken)
+    }
+
+    /// Why the PGNs the web's `Storage` held could not be read, while they are not kept aside yet.
+    pub fn unreadable(&self) -> Option<&str> {
+        self.store.unreadable()
     }
 
     fn doc(&self, id: DocId) -> Option<&DocPgn> {
         self.docs.iter().find(|d| d.doc == id)
-    }
-
-    /// What document `id` keeps, as last loaded (the Text tab loads it when it reads a page).
-    pub(crate) fn summary(&self, id: DocId) -> Option<&BookPgnSummary> {
-        self.doc(id)?.summary.as_ref()
-    }
-
-    /// What the Text tab shows of document `id`'s book's PGN.
-    pub(crate) fn view(&self, id: DocId) -> BookPgnView {
-        let progress = self.progress.as_ref().map(|(done, of)| (done.load(std::sync::atomic::Ordering::Relaxed), *of));
-        let decisions = self.doc(id).map(|d| d.decisions.clone()).unwrap_or_default();
-        BookPgnView {
-            summary: self.summary(id).cloned(),
-            sibling: self.sibling_name(id),
-            link: self.doc(id).and_then(|d| d.link.clone()),
-            progress,
-            decisions,
-        }
-    }
-
-    /// Keep what Link the whole book found for document `id`.
-    pub(crate) fn keep_link(&mut self, id: DocId, link: BookLink) {
-        if let Some(d) = self.docs.iter_mut().find(|d| d.doc == id) {
-            d.link = Some(link);
-        }
-    }
-
-    /// The PGN beside document `id`'s PDF, by its file name, when the panel offers it (R6f): the
-    /// document keeps none and the user did not say Not now to it.
-    pub(crate) fn offer(&self, id: DocId) -> Option<String> {
-        let d = self.doc(id)?;
-        let key = pdfcraft_engine::chess::corrections::file_name(&d.keys)?;
-        if self.declined.contains(&key) {
-            return None;
-        }
-        self.sibling_name(id)
-    }
-
-    /// The file name of the PGN beside document `id`'s PDF, when it keeps none.
-    pub(crate) fn sibling_name(&self, id: DocId) -> Option<String> {
-        let d = self.doc(id).filter(|d| d.summary.is_none())?;
-        d.sibling.as_ref()?.file_name().map(|n| n.to_string_lossy().into_owned())
     }
 }
 
@@ -313,52 +247,83 @@ fn now() -> u64 {
 }
 
 impl PdfCraftApp {
-    /// Document `id`'s PGN, loaded from the store the first time and indexed. A PGN that can't
-    /// be read is said once, and the document reads without it.
-    fn book_pgn_for(&mut self, id: DocId) -> Option<&DocPgn> {
+    /// Load document `id`'s PGN from the store into the session the first time it is asked for,
+    /// indexed; from then on the session holds it. A PGN that can't be read is said once, and the
+    /// document reads without it. Whether the document is open.
+    fn book_pgn_for(&mut self, id: DocId) -> bool {
         let open: Vec<DocId> = self.session.docs().iter().map(|d| d.id).collect();
         self.chess.book_pgns.docs.retain(|d| open.contains(&d.doc));
-        if self.chess.book_pgns.doc(id).is_none() {
-            let doc = self.session.get(id)?;
-            let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-            let (mut index, mut summary, mut decisions) = (None, None, Vec::new());
-            match self.chess.book_pgns.store.load(&keys, pages) {
-                Ok(loaded) => {
-                    // Reading never renames (plan A9-G3a): a file that can't be read is said, and
-                    // the next change sets it aside.
-                    if let Some((_, why)) = &loaded.unreadable {
-                        self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
-                    }
-                    decisions.clone_from(&loaded.file.decisions);
-                    if let Some(pgn) = loaded.pgn() {
-                        match ReferenceIndex::from_pgn(&pgn.text) {
-                            Ok(i) => {
-                                summary = Some(BookPgnSummary { name: pgn.name.clone(), games: i.games().len(), moves: i.moves() });
-                                index = Some(Arc::new(i));
-                            }
-                            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
-                        }
+        if self.chess.book_pgns.doc(id).is_some() {
+            return true;
+        }
+        let Some(doc) = self.session.get(id) else { return false };
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let mut kept = None;
+        match self.chess.book_pgns.store.load(&keys, pages) {
+            Ok(loaded) => {
+                // Reading never renames (plan A9-G3a): a file that can't be read is said, and
+                // the next change sets it aside.
+                if let Some((_, why)) = &loaded.unreadable {
+                    self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
+                }
+                if let Some(pgn) = loaded.pgn() {
+                    match ReferenceIndex::from_pgn(&pgn.text) {
+                        Ok(i) => kept = Some(BookPgn { name: pgn.name.clone(), index: Arc::new(i), decisions: loaded.file.decisions.clone() }),
+                        Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
                     }
                 }
-                // No keys: nothing is kept for it.
-                Err(ReferenceStoreError::NoKeys) => {}
-                Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
             }
-            // The folder is looked through only when there is something to offer.
-            let sibling = if summary.is_none() { find_sibling_pgn(&keys) } else { None };
-            self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary, sibling, link: None, decisions });
+            // No keys: nothing is kept for it.
+            Err(ReferenceStoreError::NoKeys) => {}
+            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
         }
-        self.chess.book_pgns.doc(id)
+        // The folder is looked through only when there is something to offer.
+        let sibling = if kept.is_none() { find_sibling_pgn(&keys) } else { None };
+        self.chess.doc_mut(id).pgn_sibling = sibling;
+        self.session.set_chess_book_pgn(id, kept);
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+        true
     }
 
     /// Document `id`'s PGN, indexed, when it keeps one.
     pub(crate) fn book_pgn_index(&mut self, id: DocId) -> Option<Arc<ReferenceIndex>> {
-        self.book_pgn_for(id)?.index.clone()
+        self.book_pgn_for(id);
+        self.session.chess_book_pgn(id).map(|p| p.index.clone())
     }
 
     /// What the Text tab says about document `id`'s PGN, when it keeps one.
     pub fn book_pgn_summary(&mut self, id: DocId) -> Option<BookPgnSummary> {
-        self.book_pgn_for(id)?.summary.clone()
+        self.book_pgn_for(id);
+        self.kept_book_pgn(id)
+    }
+
+    /// What document `id` keeps, as the session holds it (loaded when the Text tab reads a page).
+    fn kept_book_pgn(&self, id: DocId) -> Option<BookPgnSummary> {
+        let p = self.session.chess_book_pgn(id)?;
+        Some(BookPgnSummary { name: p.name.clone(), games: p.index.games().len(), moves: p.index.moves() })
+    }
+
+    /// What the Chess panel and its Text tab show of document `id`'s book's PGN, as loaded.
+    pub(crate) fn book_pgn_view(&self, id: DocId) -> BookPgnView {
+        let pgns = &self.chess.book_pgns;
+        let progress = pgns.progress.as_ref().map(|(done, of)| (done.load(std::sync::atomic::Ordering::Relaxed), *of));
+        let kept = self.session.chess_book_pgn(id);
+        let view = self.chess.doc(id);
+        let sibling = view
+            .filter(|_| kept.is_none())
+            .and_then(|v| v.pgn_sibling.as_ref())
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned());
+        let declined =
+            pgns.doc(id).and_then(|d| pdfcraft_engine::chess::corrections::file_name(&d.keys)).is_none_or(|key| pgns.declined.contains(&key));
+        BookPgnView {
+            summary: self.kept_book_pgn(id),
+            offer: sibling.clone().filter(|_| !declined),
+            sibling,
+            link: view.and_then(|v| v.book_link.clone()),
+            progress,
+            decisions: kept.map(|p| p.decisions.clone()).unwrap_or_default(),
+        }
     }
 
     /// Chess ▸ Load the book's PGN…: choose a PGN file and keep it for the active document.
@@ -382,11 +347,9 @@ impl PdfCraftApp {
             let ctx = self.ctx.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let Some(h) = rfd::AsyncFileDialog::new().add_filter("PGN", &["pgn", "txt"]).pick_file().await else { return };
-                let bytes = h.read().await;
-                match uploads.lock() {
-                    Ok(mut q) => q.push((id, h.file_name(), bytes)),
-                    Err(poisoned) => poisoned.into_inner().push((id, h.file_name(), bytes)),
-                }
+                // At most the cap, read as the models' picker reads (plan A9-I1b, R2-05).
+                let bytes = crate::chess_models::read_picked(&h, MAX_REFERENCE_BYTES).await;
+                uploads.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push((id, h.file_name(), bytes));
                 if let Some(ctx) = ctx {
                     ctx.request_repaint();
                 }
@@ -402,7 +365,10 @@ impl PdfCraftApp {
             Err(poisoned) => std::mem::take(&mut *poisoned.into_inner()),
         };
         for (id, name, bytes) in files {
-            self.set_book_pgn(id, &name, &bytes);
+            match bytes {
+                Ok(bytes) => self.set_book_pgn(id, &name, &bytes),
+                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+            }
         }
     }
 
@@ -424,6 +390,7 @@ impl PdfCraftApp {
         };
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
         let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now())
+            .map_err(|e| e.to_string())
             .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes), |san| index.has_move(san)));
         // The decisions stay, with the same PGN (plan A9-F1) and with another (decision D25, plan
         // A9-G4); those naming a move the new one doesn't have are said.
@@ -435,16 +402,13 @@ impl PdfCraftApp {
             Err(e) => return self.notify(refused(&e)),
         };
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
-        self.chess.book_pgns.docs.push(DocPgn {
-            doc: id,
-            keys,
-            index: Some(Arc::new(index)),
-            summary: Some(summary.clone()),
-            // It keeps one now: nothing beside it to offer (Remove the book's PGN looks again).
-            sibling: None,
-            link: None,
-            decisions,
-        });
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+        self.session.set_chess_book_pgn(id, Some(BookPgn { name: Some(name.to_owned()), index: Arc::new(index), decisions }));
+        // It keeps one now: nothing beside it to offer (Remove the book's PGN looks again), and the
+        // whole book is linked to another PGN no more.
+        let view = self.chess.doc_mut(id);
+        view.pgn_sibling = None;
+        view.book_link = None;
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
         self.chess.doc_mut(id).text = None;
         self.refresh_chess_kinds(id);
@@ -484,7 +448,7 @@ impl PdfCraftApp {
     /// Keep the PGN beside the active document's PDF as its book's PGN (R6c).
     pub(crate) fn use_sibling_pgn(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
-        let Some(path) = self.chess.book_pgns.doc(id).and_then(|d| d.sibling.clone()) else { return };
+        let Some(path) = self.chess.doc(id).and_then(|d| d.pgn_sibling.clone()) else { return };
         let name = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
         #[cfg(not(target_arch = "wasm32"))]
         match read_pgn(&path) {
@@ -507,11 +471,12 @@ impl PdfCraftApp {
         match self.chess.book_pgns.store.decide(&keys, pages, decision) {
             Ok(loaded) => {
                 self.say_book_pgn_set_aside(&loaded);
-                if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
-                    d.decisions = loaded.file.decisions;
+                if let Some(kept) = self.session.chess_book_pgn(id) {
+                    let pgn = BookPgn { decisions: loaded.file.decisions, ..BookPgn::clone(&kept) };
+                    self.session.set_chess_book_pgn(id, Some(pgn));
                 }
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e.to_string())])),
+            Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e)])),
         }
     }
 
@@ -525,8 +490,8 @@ impl PdfCraftApp {
         let block = page.blocks.get(usize::try_from(at.block).ok()?)?;
         let Inline::Move(m) = block.inlines().get(usize::try_from(at.inline).ok()?)? else { return None };
         let r = m.reference.as_ref()?;
-        let index = self.chess.book_pgns.doc(id)?.index.as_ref()?;
-        index.san(RefNode { game: r.game?, node: r.node? }).map(str::to_owned)
+        let kept = self.session.chess_book_pgn(id)?;
+        kept.index.san(RefNode { game: r.game?, node: r.node? }).map(str::to_owned)
     }
 
     /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document.
@@ -538,13 +503,17 @@ impl PdfCraftApp {
             Ok(cleared) => {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = find_sibling_pgn(&keys);
-                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None, decisions: Vec::new() });
-                self.chess.doc_mut(id).text = None;
+                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+                self.session.set_chess_book_pgn(id, None);
+                let view = self.chess.doc_mut(id);
+                view.pgn_sibling = sibling;
+                view.book_link = None;
+                view.text = None;
                 self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.notify(said.to_string());
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e.to_string())])),
+            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e)])),
         }
     }
 
@@ -571,7 +540,7 @@ impl PdfCraftApp {
                     d.keys = keys;
                 }
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN was not kept for the saved file: {e}"), &[("e", &e.to_string())])),
+            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN was not kept for the saved file: {e}"), &[("e", &e)])),
         }
     }
 }
@@ -617,9 +586,9 @@ impl PdfCraftApp {
         let Some((vi, id)) = self.active_ids() else { return };
         // The PGN beside a document opened is offered (R6f): looked for once per document, and
         // said once per session.
-        if self.book_pgn_for(id).is_some()
+        if self.book_pgn_for(id)
             && !self.chess.book_pgns.told.contains(&id)
-            && let Some(name) = self.chess.book_pgns.offer(id)
+            && let Some(name) = self.book_pgn_view(id).offer
         {
             self.chess.book_pgns.told.push(id);
             self.notify(crate::i18n::fmt(
@@ -628,7 +597,7 @@ impl PdfCraftApp {
             ));
         }
         let Some(page) = self.chess.editor.as_ref().filter(|e| e.doc == id).map(|e| e.page) else { return };
-        if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.job.is_some() || self.chess.book_pgns.summary(id).is_none() {
+        if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.job.is_some() || self.session.chess_book_pgn(id).is_none() {
             return;
         }
         let stamp = self.session.chess_stamp(id);

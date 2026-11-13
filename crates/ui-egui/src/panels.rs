@@ -538,6 +538,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let preparing = app.is_preparing();
     // Where the chess panel draws the diagram editor (plan A9-I15).
     let chess_editor_here = app.chess_editor_in_panel();
+    // What the chess panel shows of the book's PGN, which the session holds (plan A9-I1b).
+    let chess_pgn = app.book_pgn_view(id);
     {
         let Some(doc) = app.session.get(id) else { return };
         let info = &doc.info;
@@ -749,8 +751,19 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
                     RightPanel::Chess => {
-                        chess_action =
-                            crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, chess_origin, view.current, chess_in_window, chess_editor_here)
+                        chess_action = crate::chess_ui::panel(
+                            ui,
+                            &t,
+                            chess,
+                            id,
+                            info,
+                            chess_now,
+                            chess_origin,
+                            view.current,
+                            chess_in_window,
+                            chess_editor_here,
+                            &chess_pgn,
+                        )
                     }
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {

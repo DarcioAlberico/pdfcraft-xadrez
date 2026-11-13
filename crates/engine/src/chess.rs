@@ -338,17 +338,33 @@ pub(crate) struct ChessCache {
     fingerprints: Vec<(DocId, (u64, usize), Arc<corrections::Fingerprints>)>,
     /// Pages [`Session::chess_scan`] has scanned (not answered from here): [`Session::chess_scanned`].
     scanned: usize,
-    /// What each open document's reads taught and what the user said of its pages (plan A9-I1a):
-    /// [`Session::chess_cipher`], [`Session::chess_origin`].
+    /// What each open document's reads taught and what the user said of its pages (plan A9-I1a),
+    /// and its book's PGN (plan A9-I1b): [`Session::chess_cipher`], [`Session::chess_origin`],
+    /// [`Session::chess_book_pgn`].
     books: std::collections::HashMap<DocId, BookState>,
 }
 
 /// One document's book cipher, as its reads and exports taught it, and its book origin, as the
-/// user said (plan A9-I1a, finding A5-10: one slot for every document lost them).
+/// user said (plan A9-I1a, finding A5-10: one slot for every document lost them); its book's
+/// PGN, as its caller loaded it from a store (plan A9-I1b).
 #[derive(Default)]
 struct BookState {
     cipher: Option<pdfcraft_chessvision::cipher::BookCipher>,
     origin: document::BookOrigin,
+    pgn: Option<Arc<BookPgn>>,
+}
+
+/// A document's book PGN, as the session holds it (plan A9-I1b, §2.7: the domain state per
+/// document lives in the engine's session): indexed once, with the user's decisions on the moves
+/// in conflict with it. The one copy in memory, which the app's Text tab, its jobs and the
+/// Diagrams list read.
+#[derive(Clone, Debug)]
+pub struct BookPgn {
+    /// The PGN file's name, when it was kept.
+    pub name: Option<String>,
+    pub index: Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>,
+    /// The user's choices on the moves in conflict with it (R6e of `plano-pgn-do-livro.md`).
+    pub decisions: Vec<reference_store::Decision>,
 }
 
 impl ChessCache {
@@ -1388,6 +1404,21 @@ impl Session {
     /// Where document `id`'s pages came from, as the user said (Auto until said, plan A9-I1a).
     pub fn chess_origin(&self, id: DocId) -> document::BookOrigin {
         self.chess.books.get(&id).map(|b| b.origin).unwrap_or_default()
+    }
+
+    /// Document `id`'s book PGN, as given ([`Self::set_chess_book_pgn`]): `None` when it keeps
+    /// none, or none was given yet.
+    pub fn chess_book_pgn(&self, id: DocId) -> Option<Arc<BookPgn>> {
+        self.chess.books.get(&id).and_then(|b| b.pgn.clone())
+    }
+
+    /// Keep `pgn` as document `id`'s book PGN (`None`: it keeps none), as its caller loaded it
+    /// from a store or the user chose it. Nothing for a document that is not open; closing it
+    /// forgets it.
+    pub fn set_chess_book_pgn(&mut self, id: DocId, pgn: Option<BookPgn>) {
+        if self.get(id).is_some() {
+            self.chess.books.entry(id).or_default().pgn = pgn.map(Arc::new);
+        }
     }
 
     /// The user said where document `id`'s pages came from: its later reads and exports follow it.

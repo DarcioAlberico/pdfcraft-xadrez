@@ -3361,3 +3361,7 @@ the move's comment	Move comment	Комментарий к ходу
 	Forget the correction?	Забыть исправление?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Ещё не подтверждённые изменения тоже будут отброшены. PDF не изменится.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	В PDF ничего не нарисовано: не удалось сохранить исправление ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	ранее сохранённое не удалось прочитать, и сначала оно откладывается; попробуйте ещё раз чуть позже
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Не удалось прочитать сохранённые исправления диаграмм ({why}). При следующем сохранении они откладываются, и с этого момента новые исправления сохраняются.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Не удалось прочитать сохранённые PGN книг ({why}). При следующем сохранении они откладываются, и с этого момента новые сохраняются.
