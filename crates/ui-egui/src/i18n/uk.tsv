@@ -3464,6 +3464,7 @@ the move's comment	Move comment	Коментар до ходу
 	Detecting in another book… page {d} of {t}	Пошук в іншій книзі… сторінка {d} з {t}
 	Redraw in the PDF?	Перемалювати в PDF?
 	Diagram {n}, open	Діаграма {n}, відкрити
+	Choices made on this page not found in its reading (kept): {n}	Вибори на цій сторінці, не знайдені в її прочитанні (збережено): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	документ закрито
 	Diagram {n}, page {p}: correction forgotten	Діаграма {n}, стор. {p}: виправлення забуто

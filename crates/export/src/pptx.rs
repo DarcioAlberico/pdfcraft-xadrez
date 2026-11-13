@@ -113,7 +113,7 @@ fn pptx_table(shape_id: usize, t: &Table, x: i64, y: i64, content_w: i64) -> (St
 ///
 /// When `pages` is empty, produces a presentation with a single blank slide so the resulting
 /// `.pptx` file is a valid OpenXML package that PowerPoint can open without repair warnings.
-pub fn pptx(pages: &[Page], title: &str) -> Vec<u8> {
+pub fn pptx(pages: &[Page], title: &str) -> Result<Vec<u8>, crate::ZipError> {
     let dummy = [Page::default()];
     let pages = if pages.is_empty() { &dummy[..] } else { pages };
 
@@ -330,23 +330,23 @@ xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" type=\"blank\"
 </a:themeElements></a:theme>";
 
     let mut z = Zip::default();
-    z.add("[Content_Types].xml", types.as_bytes(), true);
-    z.add("_rels/.rels", rels.as_bytes(), true);
-    z.add("docProps/core.xml", core.as_bytes(), true);
-    z.add("ppt/presentation.xml", pres.as_bytes(), true);
-    z.add("ppt/_rels/presentation.xml.rels", pres_rels.as_bytes(), true);
-    z.add("ppt/slideMasters/slideMaster1.xml", slide_master.as_bytes(), true);
-    z.add("ppt/slideMasters/_rels/slideMaster1.xml.rels", slide_master_rels.as_bytes(), true);
-    z.add("ppt/slideLayouts/slideLayout1.xml", slide_layout.as_bytes(), true);
-    z.add("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slide_layout_rels.as_bytes(), true);
-    z.add("ppt/theme/theme1.xml", theme.as_bytes(), true);
+    z.add("[Content_Types].xml", types.as_bytes(), true)?;
+    z.add("_rels/.rels", rels.as_bytes(), true)?;
+    z.add("docProps/core.xml", core.as_bytes(), true)?;
+    z.add("ppt/presentation.xml", pres.as_bytes(), true)?;
+    z.add("ppt/_rels/presentation.xml.rels", pres_rels.as_bytes(), true)?;
+    z.add("ppt/slideMasters/slideMaster1.xml", slide_master.as_bytes(), true)?;
+    z.add("ppt/slideMasters/_rels/slideMaster1.xml.rels", slide_master_rels.as_bytes(), true)?;
+    z.add("ppt/slideLayouts/slideLayout1.xml", slide_layout.as_bytes(), true)?;
+    z.add("ppt/slideLayouts/_rels/slideLayout1.xml.rels", slide_layout_rels.as_bytes(), true)?;
+    z.add("ppt/theme/theme1.xml", theme.as_bytes(), true)?;
     for (i, (s_xml, s_rels)) in slides.iter().enumerate() {
         let num = i + 1;
-        z.add(&format!("ppt/slides/slide{num}.xml"), s_xml.as_bytes(), true);
-        z.add(&format!("ppt/slides/_rels/slide{num}.xml.rels"), s_rels.as_bytes(), true);
+        z.add(&format!("ppt/slides/slide{num}.xml"), s_xml.as_bytes(), true)?;
+        z.add(&format!("ppt/slides/_rels/slide{num}.xml.rels"), s_rels.as_bytes(), true)?;
     }
     for (name, im) in &global_media {
-        z.add(&format!("ppt/media/{name}"), &im.bytes, false);
+        z.add(&format!("ppt/media/{name}"), &im.bytes, false)?;
     }
     z.finish()
 }
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     pub fn pptx_is_a_presentationml_package() {
         let p = sample_page();
-        let bytes = pptx(&[p], "Executive Deck");
+        let bytes = pptx(&[p], "Executive Deck").unwrap();
         assert!(bytes.starts_with(b"PK"));
         for part_name in [
             "[Content_Types].xml",
@@ -427,7 +427,7 @@ mod tests {
     #[test]
     pub fn pptx_slide_has_title_body_and_images_in_order() {
         let p = sample_page();
-        let bytes = pptx(&[p], "Deck");
+        let bytes = pptx(&[p], "Deck").unwrap();
         let slide_xml = part(&bytes, "ppt/slides/slide1.xml");
         assert!(slide_xml.contains("name=\"Title 2\""));
         assert!(slide_xml.contains("txBox=\"1\""));
@@ -446,7 +446,7 @@ mod tests {
     #[test]
     pub fn pptx_text_colour_and_formatting() {
         let p = sample_page();
-        let bytes = pptx(&[p], "Deck");
+        let bytes = pptx(&[p], "Deck").unwrap();
         let slide_xml = part(&bytes, "ppt/slides/slide1.xml");
         assert!(slide_xml.contains("sz=\"2800\""));
         assert!(slide_xml.contains("b=\"1\""));
@@ -525,7 +525,7 @@ mod tests {
             ],
             images: Vec::new(),
         };
-        let bytes = pptx(&[sample_page(), table_page], "Two");
+        let bytes = pptx(&[sample_page(), table_page], "Two").unwrap();
         let parts = entries(&bytes);
         assert_eq!(parts.first().map(|p| p.0.as_str()), Some("[Content_Types].xml"), "content types come first");
         let names: std::collections::HashSet<&str> = parts.iter().map(|p| p.0.as_str()).collect();
@@ -622,7 +622,7 @@ mod tests {
             .map(|k| Image { ext: "png", bytes: vec![0; 4], rect: [0.0, -1e300, 1e-300, 1e300 - k as f64], size: [1.0, 1.0], rotation: 0.0 })
             .collect();
         let p = Page { links: Vec::new(), width: f64::MAX, height: f64::NAN, blocks, images };
-        let bytes = pptx(&[p], "Hostile");
+        let bytes = pptx(&[p], "Hostile").unwrap();
         let slide = part(&bytes, "ppt/slides/slide1.xml");
         assert!(slide.contains("Title") && slide.contains("<p:pic>"), "the slide is still written");
         assert!(!slide.contains("y=\"-"), "positions never wrap negative");
@@ -631,7 +631,7 @@ mod tests {
 
     #[test]
     pub fn pptx_empty_pages_produce_valid_slide() {
-        let bytes = pptx(&[], "Blank");
+        let bytes = pptx(&[], "Blank").unwrap();
         assert!(bytes.starts_with(b"PK"));
         let pres_xml = part(&bytes, "ppt/presentation.xml");
         assert!(pres_xml.contains("<p:sldId id=\"256\" r:id=\"rIdSld1\"/>"));
@@ -643,25 +643,25 @@ mod tests {
     fn pptx_slide_dimensions_and_clamping() {
         // Known dimensions: 720x540 pt (10x7.5 in) = 9144000x6858000 EMU
         let p = Page { width: 720.0, height: 540.0, ..Page::default() };
-        let bytes = pptx(&[p], "Known Dimensions");
+        let bytes = pptx(&[p], "Known Dimensions").unwrap();
         let pres_xml = part(&bytes, "ppt/presentation.xml");
         assert!(pres_xml.contains("<p:sldSz cx=\"9144000\" cy=\"6858000\"/>"), "{pres_xml}");
 
         // Tiny page (10x10 pt) clamps to PowerPoint minimum of 1 inch (914400 EMU)
         let tiny = Page { width: 10.0, height: 10.0, ..Page::default() };
-        let tiny_bytes = pptx(&[tiny], "Tiny");
+        let tiny_bytes = pptx(&[tiny], "Tiny").unwrap();
         let tiny_pres = part(&tiny_bytes, "ppt/presentation.xml");
         assert!(tiny_pres.contains("<p:sldSz cx=\"914400\" cy=\"914400\"/>"), "{tiny_pres}");
 
         // Poster page (10000x10000 pt) clamps to PowerPoint maximum of 56 inches (51206400 EMU)
         let poster = Page { width: 10_000.0, height: 10_000.0, ..Page::default() };
-        let poster_bytes = pptx(&[poster], "Poster");
+        let poster_bytes = pptx(&[poster], "Poster").unwrap();
         let poster_pres = part(&poster_bytes, "ppt/presentation.xml");
         assert!(poster_pres.contains("<p:sldSz cx=\"51206400\" cy=\"51206400\"/>"), "{poster_pres}");
 
         // Non-finite dimensions fall back to default
         let nan_page = Page { width: f64::NAN, height: -1.0, ..Page::default() };
-        let nan_bytes = pptx(&[nan_page], "NaN");
+        let nan_bytes = pptx(&[nan_page], "NaN").unwrap();
         let nan_pres = part(&nan_bytes, "ppt/presentation.xml");
         assert!(nan_pres.contains("<p:sldSz cx=\"9144000\" cy=\"6858000\"/>"), "{nan_pres}");
     }
@@ -702,7 +702,7 @@ mod tests {
             ],
             images: Vec::new(),
         };
-        let bytes = pptx(&[p], "Table Check");
+        let bytes = pptx(&[p], "Table Check").unwrap();
         let slide_xml = part(&bytes, "ppt/slides/slide1.xml");
         // Title should be the block outside the table ("Monthly Summary"), not the "+99%" cell
         assert!(slide_xml.contains("Monthly Summary"));
@@ -716,7 +716,7 @@ mod tests {
     #[test]
     fn pptx_opens_in_libreoffice() {
         let p = sample_page();
-        let bytes = pptx(&[p], "LibreOffice Check");
+        let bytes = pptx(&[p], "LibreOffice Check").unwrap();
         let dir = std::env::temp_dir().join(format!("pdfcraft-pptx-lo-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::create_dir_all(&dir);

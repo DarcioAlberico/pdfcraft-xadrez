@@ -86,6 +86,7 @@ pub(super) fn doc(pages: Vec<Vec<Block>>) -> ChessDoc {
             blocks,
             review: Vec::new(),
             trailing: None,
+            running_heads: Vec::new(),
         })
         .collect();
     ChessDoc { format: FORMAT_VERSION, pages, games: Vec::new() }

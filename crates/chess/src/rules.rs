@@ -220,20 +220,27 @@ pub fn fatal_violations(placement: &Placement) -> Vec<Violation> {
 }
 
 /// Pawns `color` no longer has, each of which may have promoted.
-fn missing_pawns(placement: &Placement, color: Color) -> usize {
+pub(crate) fn missing_pawns(placement: &Placement, color: Color) -> usize {
     8usize.saturating_sub(placement.count(Piece::new(color, PieceKind::Pawn)))
 }
 
 /// Pieces of `color` beyond what the initial position holds, each needing a promotion.
 /// Bishops count per square colour: one light-squared and one dark-squared bishop to start.
-fn promotions_needed(placement: &Placement, color: Color) -> usize {
+pub(crate) fn promotions_needed(placement: &Placement, color: Color) -> usize {
+    promotions(placement, color, true)
+}
+
+/// [`promotions_needed`], the bishops counted per square colour (`by_colour`) or only past two
+/// (the decoder's measure with that rule off, [`crate::recognize::decode::Rules`]).
+pub(crate) fn promotions(placement: &Placement, color: Color, by_colour: bool) -> usize {
     let count = |kind| placement.count(Piece::new(color, kind));
     let bishops = |light: bool| placement.pieces().filter(|(sq, p)| *p == Piece::new(color, PieceKind::Bishop) && sq.is_light() == light).count();
-    count(PieceKind::Queen).saturating_sub(1)
-        + count(PieceKind::Rook).saturating_sub(2)
-        + count(PieceKind::Knight).saturating_sub(2)
-        + bishops(true).saturating_sub(1)
-        + bishops(false).saturating_sub(1)
+    let extra_bishops = if by_colour {
+        bishops(true).saturating_sub(1).saturating_add(bishops(false).saturating_sub(1))
+    } else {
+        count(PieceKind::Bishop).saturating_sub(2)
+    };
+    count(PieceKind::Queen).saturating_sub(1) + count(PieceKind::Rook).saturating_sub(2) + count(PieceKind::Knight).saturating_sub(2) + extra_bishops
 }
 
 /// The violations that depend on `side` being the side to move. Assumes one king per side;

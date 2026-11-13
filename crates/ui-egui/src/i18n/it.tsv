@@ -3654,6 +3654,7 @@ the move's comment	Move comment	Commento della mossa
 	Detecting in another book… page {d} of {t}	Rilevamento in un altro libro… pagina {d} di {t}
 	Redraw in the PDF?	Ridisegnare nel PDF?
 	Diagram {n}, open	Diagramma {n}, apri
+	Choices made on this page not found in its reading (kept): {n}	Scelte fatte su questa pagina non trovate nella sua lettura (conservate): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	il documento è chiuso
 	Diagram {n}, page {p}: correction forgotten	Diagramma {n}, pag. {p}: correzione dimenticata

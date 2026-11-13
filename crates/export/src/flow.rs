@@ -145,7 +145,7 @@ fn docx_runs(runs: &[Run], links: &mut Vec<String>) -> String {
 }
 
 /// The document as a `.docx` file.
-pub fn docx(doc: &FlowDoc) -> Vec<u8> {
+pub fn docx(doc: &FlowDoc) -> Result<Vec<u8>, crate::ZipError> {
     let mut body = String::new();
     let mut links: Vec<String> = Vec::new();
     let mut media: Vec<&[u8]> = Vec::new();
@@ -247,17 +247,17 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
         esc(&doc.title)
     );
     let mut z = Zip::default();
-    z.add("[Content_Types].xml", types.as_bytes(), true);
-    z.add("_rels/.rels", rels.as_bytes(), true);
-    z.add("docProps/core.xml", core.as_bytes(), true);
-    z.add("word/document.xml", document.as_bytes(), true);
-    z.add("word/styles.xml", styles.as_bytes(), true);
-    z.add("word/_rels/document.xml.rels", doc_rels.as_bytes(), true);
+    z.add("[Content_Types].xml", types.as_bytes(), true)?;
+    z.add("_rels/.rels", rels.as_bytes(), true)?;
+    z.add("docProps/core.xml", core.as_bytes(), true)?;
+    z.add("word/document.xml", document.as_bytes(), true)?;
+    z.add("word/styles.xml", styles.as_bytes(), true)?;
+    z.add("word/_rels/document.xml.rels", doc_rels.as_bytes(), true)?;
     for (i, png) in media.iter().enumerate() {
-        z.add(&format!("word/media/diagram{}.png", i + 1), png, false);
+        z.add(&format!("word/media/diagram{}.png", i + 1), png, false)?;
     }
     for (n, svg) in &svgs {
-        z.add(&format!("word/media/diagram{n}.svg"), svg.as_bytes(), true);
+        z.add(&format!("word/media/diagram{n}.svg"), svg.as_bytes(), true)?;
     }
     z.finish()
 }
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn any_text_stays_text_in_word_and_rtf() {
         let doc = hostile();
-        let word = docx(&doc);
+        let word = docx(&doc).unwrap();
         for name in
             ["[Content_Types].xml", "_rels/.rels", "docProps/core.xml", "word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels"]
         {
