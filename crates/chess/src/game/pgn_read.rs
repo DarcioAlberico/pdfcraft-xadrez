@@ -475,8 +475,20 @@ fn glued_glyphs(word: &str) -> Option<WordRead> {
     })
 }
 
-/// Step three: the items played into a new game.
+/// Whether the `Variant` tag `name` names standard chess: none, `Standard`, or `From Position`
+/// as lichess writes a game from a set-up position (plan A9-F5, R6-05).
+fn is_standard(name: &str) -> bool {
+    let name = name.trim();
+    name.is_empty() || name.eq_ignore_ascii_case("standard") || name.eq_ignore_ascii_case("from position")
+}
+
+/// Step three: the items played into a new game. A game of another variant (Chess960,
+/// Crazyhouse…) is refused whole, with its name: read as chess, it would stop at its first move
+/// chess has not and be written back cut.
 pub(super) fn build(parsed: Parsed) -> Result<(Game, PgnReport), GameError> {
+    if let Some((_, variant)) = parsed.tags.iter().find(|(n, v)| n == "Variant" && !is_standard(v)) {
+        return Err(GameError::UnsupportedVariant(variant.trim().to_owned()));
+    }
     let fen = parsed.tags.iter().find(|(n, _)| n == "FEN").map(|(_, v)| v.as_str());
     let (mut game, repaired) = match fen {
         Some(fen) => start_from(fen)?,
@@ -785,8 +797,11 @@ impl Builder {
     }
 
     /// The result after the moves: the game's when no tag says one; one that disagrees with the
-    /// tag, or a tag that is no result, is said (A1-21).
-    fn result(&mut self, read: Option<&str>) {
+    /// tag, or a tag that is no result, is said (A1-21). A tag the board at the end of the main
+    /// line disagrees with (a mate, a stalemate) is kept, and said (plan A9-F5, R6-04). A result
+    /// read as unknown (`*`, in the tag or after the moves, `unknown` for the tag) stays unknown
+    /// where the board would decide one: the board never writes over what was read.
+    fn result(&mut self, read: Option<&str>, unknown: bool) {
         let tag = self.game.tag("Result").map(str::to_owned);
         match (tag.as_deref(), read) {
             (Some(t), _) if normal_result(t).is_none() => self.note(0, PgnWarningKind::ResultIgnored, 0),
@@ -796,6 +811,16 @@ impl Builder {
                 let _ = self.game.set_tag("Result", r);
             }
             _ => {}
+        }
+        if self.game.tag("Result").is_none() && (unknown || read == Some("*")) && self.game.board_result().is_some() {
+            let _ = self.game.set_tag("Result", "*");
+        }
+        let decided = self.game.tag("Result").filter(|t| matches!(*t, "1-0" | "0-1" | "1/2-1/2"));
+        if let (Some(tag), Some(board)) = (decided, self.game.board_result())
+            && tag != board
+        {
+            let end = self.game.main_line().last().copied().unwrap_or(0);
+            self.note(usize::MAX, PgnWarningKind::ResultMismatch, end);
         }
     }
 
@@ -808,7 +833,8 @@ impl Builder {
         self.dead = None;
         self.place_rest();
         self.flush_after_close();
-        self.result(parsed.result.as_deref());
+        let unknown = parsed.tags.iter().any(|(n, v)| n == "Result" && v == "*");
+        self.result(parsed.result.as_deref(), unknown);
         let mut notes: Vec<(usize, PgnWarningKind, NodeId)> =
             parsed.notes.iter().filter_map(|&(index, kind)| Some((index, kind, self.at.get(index).copied().flatten()?))).collect();
         notes.append(&mut self.notes);
