@@ -59,6 +59,7 @@ fn the_markdown_has_chapters_front_matter_and_diagrams_in_words() {
         level,
         inlines: vec![Inline::Text { text: t.into(), source_rect: None, review: Vec::new() }],
         source_rect: None,
+        role: BlockRole::Content,
     };
     doc.pages[1].blocks.insert(0, heading(1, "Chapter 2"));
     doc.pages[1].blocks.push(heading(2, "A section"));
@@ -86,8 +87,11 @@ fn text_stays_text_and_unread_diagrams_say_so() {
     r.outcome = Err(crate::board::Unreadable::NoModel);
     let text = page_text(vec![line(230.0, "Some prose here.")]);
     let mut doc = build_page(&input(0, &text, &[r], &[], &[]));
-    let plain =
-        |t: &str| Block::Paragraph { inlines: vec![Inline::Text { text: t.into(), source_rect: None, review: Vec::new() }], source_rect: None };
+    let plain = |t: &str| Block::Paragraph {
+        inlines: vec![Inline::Text { text: t.into(), source_rect: None, review: Vec::new() }],
+        source_rect: None,
+        role: BlockRole::Content,
+    };
     doc.pages[0].blocks.extend([plain("1. e4 is a move"), plain("- not a list"), plain("a*b_c [x](y) <b> # ~ |"), plain("# not a heading")]);
     let md = write(&doc, &options());
     assert!(md.contains("*Diagram 1, page 1 (not read)*"), "{md}");

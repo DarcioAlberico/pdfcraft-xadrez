@@ -8,6 +8,7 @@ use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
 mod board;
+mod compat;
 mod fragment;
 mod html;
 mod markdown;
@@ -1032,6 +1033,60 @@ fn a_page_number_is_no_comment() {
     let pgn = pgn::write_game(&game.score);
     assert!(pgn.contains("{1999}"), "{pgn}");
     assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
+}
+
+/// Plan A9-L1a (A2-06): the lines inside a diagram's box are its text, whatever their font and
+/// hint: a diagram set in a font the catalogue does not know (its glyphs extracted as `4*+*+p+`)
+/// was read as a heading under the layout's hint, which ended the game and left the diagram's
+/// moves with no position. They are a paragraph of [`BlockRole::DiagramText`] now, never joined
+/// with the lines outside the box, and the walk passes over them.
+#[test]
+fn a_diagrams_own_text_is_no_heading_and_ends_no_game() {
+    let text = page_text(vec![line(150.0, "4*+*+p+*+5"), line(165.0, "3+*+*+*+*4"), line(230.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 145.0, 200.0, 180.0) }];
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &hints, &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(kinds(&doc.pages[0]), ["D0", "P:4*+*+p+*+5 3+*+*+*+*4", "P:3.Qh5 Nf6 4.Qxf7#"]);
+    let roles: Vec<Option<BlockRole>> = doc.pages[0].blocks.iter().map(Block::role).collect();
+    assert_eq!(roles, [None, Some(BlockRole::DiagramText), Some(BlockRole::Content)]);
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert!(!pgn::write_game(&game.score).contains("4*+"), "the diagram's text is no comment");
+}
+
+/// Plan A9-L1a (A2-04): a text block's role, decided from its page alone, is in the document's
+/// JSON: the page's number (`folio`), a game's header (`game_header`: the players' line and the
+/// event's), a diagram's text (`diagram_text`); the book's text has none written. Walking the page
+/// again from its JSON gives the same roles, and a page read before roles were kept (none in its
+/// JSON) gets the page's own ones when walked again, so it walks as it did.
+#[test]
+fn a_blocks_role_is_kept_and_walking_again_gives_it_back() {
+    let doc = compat::page_with_roles();
+    let roles: Vec<Option<BlockRole>> = doc.pages[0].blocks.iter().map(Block::role).collect();
+    use BlockRole::*;
+    assert_eq!(
+        roles,
+        [Some(Content), None, Some(DiagramText), Some(GameHeader), Some(GameHeader), Some(Content), Some(Folio)],
+        "{:?}",
+        kinds(&doc.pages[0])
+    );
+    let json = doc.to_json().unwrap();
+    for role in ["\"role\":\"folio\"", "\"role\":\"game_header\"", "\"role\":\"diagram_text\""] {
+        assert!(json.contains(role), "{role}");
+    }
+    assert!(!json.contains("\"role\":\"content\""));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    // Walked again from its JSON: the same document.
+    let again = walk(&ChessDoc::from_json(&json).unwrap().pages, WalkRules::BOOK);
+    assert_eq!(again, doc);
+    // Without its roles (an earlier build's JSON): the page's own roles come back, but the
+    // diagram's text, which only the lines' grouping knows.
+    let old = json.replace(",\"role\":\"folio\"", "").replace(",\"role\":\"game_header\"", "").replace(",\"role\":\"diagram_text\"", "");
+    let again = walk(&ChessDoc::from_json(&old).unwrap().pages, WalkRules::BOOK);
+    let roles: Vec<Option<BlockRole>> = again.pages[0].blocks.iter().map(Block::role).collect();
+    assert_eq!(roles, [Some(Content), None, Some(Content), Some(GameHeader), Some(GameHeader), Some(Content), Some(Folio)]);
+    assert_eq!(again.games, doc.games);
 }
 
 /// A word a hyphen cut at a line's end is one word in the document's text and in the game's
@@ -2303,7 +2358,7 @@ fn the_reading_is_kept_and_an_older_document_walks_as_before() {
     let old = ChessDoc::from_json(&old.to_string()).unwrap();
     let again = walk(&old.pages, WalkRules::BOOK);
     assert_eq!(walked(&again), walked(&doc), "walked from its SAN `exd4` and its flag, as before");
-    assert_eq!(READER_VERSION, 1);
+    assert_eq!(READER_VERSION, 2, "plan A9-L1a: a diagram's text is a block of its own");
 }
 
 proptest! {

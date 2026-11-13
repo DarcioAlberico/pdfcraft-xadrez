@@ -42,6 +42,12 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 |---|---|---|
 | A9-L2 | #293 | O texto entre um diagrama e o lance fica guardado (`Held`, com o teto de 64 KiB dos comentários) e é lido no lugar quando a partida continua (colchetes e resultado contam), ou vira o comentário inicial da partida que começa no diagrama. **Decisões:** (1) a deixa de uma legenda "Position after" sai com a frase dela quando o lance é lido como legenda **ou** quando a partida aberta o joga (o diagrama reimprime a posição e a legenda nomeia o próximo lance); (2) o texto depois das variantes de um lance vira `comment_before` do próximo lance (A2-02, parte do walker) e, quando o PGN não tem lugar para ele (as variantes não entraram na árvore, ou a ordem das linhas mudou), vai para o comentário do lance anterior ao fechar a partida (`settle_comments_before`), para que o PGN do documento releia igual; o leitor PGN do documento (só de testes, A2-18) lê assim também; o escritor do tabuleiro (`chess::game`) continua no F4; (3) não feito: o texto depois de um diagrama da posição final, sem lance depois (nenhum lance o resolve: continua só no documento), e a contagem de "texto não atribuído" no resumo do `chess_document` que o A2 propôs. |
 
+## Onda 3 (em andamento)
+
+| Passo | PR | Desvios e decisões |
+|---|---|---|
+| A9-L1a | #295 | `BlockRole { Content, Folio, GameHeader, DiagramText }` em `Heading`/`Paragraph` (`role` no JSON, `Content` não escrito). **Decisões:** (1) os papéis são dados por uma função só da página (`assign_roles`), chamada pelo walk, então a página construída e a página re-percorrida do JSON dão os mesmos papéis, e um documento gravado antes ganha os papéis da página quando é re-percorrido (o `walk_bench`, que re-percorre JSONs antigos, não muda); (2) `DiagramText` é decidido ao agrupar as linhas (o centro da linha dentro da caixa de um diagrama), por isso não volta num JSON antigo; (3) a segmentação muda (essas linhas nunca se juntam às de fora): `READER_VERSION` = 2, sem gravar (L1b); as decisões gravadas sobre uma página cujo bloco mudou de índice deixam de casar até o recasamento do L1b (nunca caem noutro lance: casam por endereço **e** `san_read`, L0b); (4) o cabeçalho corrente continua decidido no walk (precisa das páginas anteriores); as exportações pulam o que não é conteúdo no L1b. |
+
 ## Fora do plano, no mesmo período
 
 - #257: o modelo de peças retreinado no ChessVisionOFF (`fccd0097`) e o limiar de aceite por modelo (`accept_min_confidence`).
