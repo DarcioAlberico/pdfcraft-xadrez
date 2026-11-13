@@ -1531,10 +1531,7 @@ impl Op {
                 if on_main_line(game, at) {
                     return Err(tl!("This move is on the main line already.").to_owned());
                 }
-                let revision = game.revision();
-                game.promote(at);
-                // `promote` leaves the game as it is when the old main line would nest too deep.
-                if game.revision() == revision { Err(refused(StructureError::TooDeep)) } else { Ok(ChessEdit::MakeMainLine) }
+                game.promote(at).map(|()| ChessEdit::MakeMainLine).map_err(refused)
             }
             Op::CutAfter => {
                 if !has_reply(game, at) {

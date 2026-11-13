@@ -473,7 +473,9 @@ proptest::proptest! {
                         proptest::prop_assert_eq!(g.path_of(g.current()), parent);
                     }
                 }
-                7 => g.promote(node),
+                7 => {
+                    let _ = g.promote(node);
+                }
                 8 => g.set_comment(node, TEXTS.iter().chain(&AFTER_TEXTS).nth(b % (TEXTS.len() + AFTER_TEXTS.len())).copied().unwrap_or_default()).unwrap(),
                 9 => g.set_comment_before(node, TEXTS[b % TEXTS.len()]).unwrap(),
                 10 => { g.set_nag(node, [1u16, 2, 3, 6, 10, 14, 18, 22, 36, 146, 255][b % 11]); }

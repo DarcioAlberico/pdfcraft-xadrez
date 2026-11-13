@@ -364,6 +364,8 @@ pub struct Game {
     /// shown, a step forward goes towards it rather than along the first reply, so stepping back
     /// out of a variation and forward again returns into it. Not part of the PGN.
     tip: NodeId,
+    /// The moves in reading order, read once for each revision ([`line::ReadingCache`]).
+    reading: line::ReadingCache,
 }
 
 impl Default for Game {
@@ -379,7 +381,14 @@ impl Game {
     }
 
     fn from_board(board: Board) -> Game {
-        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: fresh_revision(), tip: 0 }
+        Game {
+            nodes: vec![Node::start(board)],
+            current: 0,
+            tags: Vec::new(),
+            revision: fresh_revision(),
+            tip: 0,
+            reading: line::ReadingCache::default(),
+        }
     }
 
     /// A game from `position`, `side` to move when the position does not say.
@@ -795,10 +804,12 @@ impl Game {
     /// Make the line through `node` the main line: at each move on the way from the start it
     /// becomes the first reply. The old main line becomes a variation, one level deeper with
     /// everything under it; when that would nest a move deeper than [`MAX_DEPTH`] (where it could
-    /// no longer be written out), the game is left as it is.
-    pub fn promote(&mut self, node: NodeId) {
+    /// no longer be written out), the game is left as it is and [`StructureError::TooDeep`] says
+    /// so (plan A9-F5, A1-19: the refusal was silent); [`StructureError::NoSuchMove`] for a move
+    /// the game does not have.
+    pub fn promote(&mut self, node: NodeId) -> Result<(), StructureError> {
         if node >= self.nodes.len() {
-            return;
+            return Err(StructureError::NoSuchMove);
         }
         let mut promoted = self.clone();
         let mut at = node;
@@ -813,9 +824,11 @@ impl Game {
             at = parent;
         }
         promoted.compact();
-        if promoted.nodes.iter().all(|n| n.depth <= MAX_DEPTH) {
-            *self = promoted;
+        if promoted.nodes.iter().any(|n| n.depth > MAX_DEPTH) {
+            return Err(StructureError::TooDeep);
         }
+        *self = promoted;
+        Ok(())
     }
 
     /// Whether `node` is `ancestor` or comes after it.
@@ -1495,7 +1508,7 @@ mod tests {
         g.go_to(1);
         play(&mut g, &[("c7", "c5"), ("g1", "f3")]);
         let nf3 = g.current();
-        g.promote(nf3);
+        g.promote(nf3).unwrap();
         assert_eq!(g.movetext(), "1. e4 c5 (1... e5) 2. Nf3");
         assert_eq!(g.san(g.current()), "Nf3", "the move shown follows its renumbering");
         // Delete the e5 variation.
@@ -1879,16 +1892,18 @@ mod tests {
         g.play_san("d4").unwrap();
         let d4 = g.current();
         let before = g.movetext();
-        g.promote(d4);
+        // Refused, and said (plan A9-F5, A1-19: it was silent).
+        assert_eq!(g.promote(d4), Err(StructureError::TooDeep));
         assert_eq!(g.movetext(), before);
         assert!(g.movetext().starts_with("1. e4"), "{}", g.movetext());
+        assert_eq!(g.promote(9999), Err(StructureError::NoSuchMove));
         // A shallow promotion still works.
         let mut h = Game::standard();
         h.play_san("e4").unwrap();
         h.go_to_node(0);
         h.play_san("d4").unwrap();
         let d4 = h.current();
-        h.promote(d4);
+        assert_eq!(h.promote(d4), Ok(()));
         assert!(h.movetext().starts_with("1. d4 (1. e4)"), "{}", h.movetext());
     }
 
@@ -2080,7 +2095,9 @@ mod tests {
                 match op {
                     0 => { g.back(); }
                     1 => g.delete(g.current()),
-                    2 => g.promote(g.current()),
+                    2 => {
+                        let _ = g.promote(g.current());
+                    }
                     3 => g.toggle_nag(g.current(), 1),
                     4 => g.go_to(t.index() % 5),
                     _ => {}

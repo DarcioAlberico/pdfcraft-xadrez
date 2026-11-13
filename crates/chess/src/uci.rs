@@ -30,17 +30,24 @@ const MAX_NAME_CHARS: usize = 80;
 pub enum Score {
     /// In hundredths of a pawn.
     Centipawns(i32),
-    /// Mate in this many moves; negative when the side the score is for is being mated.
+    /// Mate in this many moves; negative when the side the score is for is being mated, and 0
+    /// when it is mated already (an engine's `mate 0` in a mated position: the side to move lost).
     Mate(i32),
+    /// The side to move is mated, the score put for White ([`Score::for_white`] of a `Mate(0)`):
+    /// which side lost (plan A9-F5, A1-25: `Mate(0)` showed an even bar and `#0`).
+    Mated(Color),
 }
 
 impl Score {
     /// The score for White, from one given for `side` (the side to move, in engine output).
     pub fn for_white(self, side: Color) -> Score {
         match (self, side) {
+            (Score::Mate(0), side) => Score::Mated(side),
             (s, Color::White) => s,
             (Score::Centipawns(cp), Color::Black) => Score::Centipawns(cp.saturating_neg()),
             (Score::Mate(n), Color::Black) => Score::Mate(n.saturating_neg()),
+            // Already White's.
+            (Score::Mated(c), Color::Black) => Score::Mated(c),
         }
     }
 
@@ -55,8 +62,9 @@ impl Score {
                 (1.0 / (1.0 + (-0.003_682_08 * x).exp())) as f32
             }
             Score::Mate(n) if n > 0 => 1.0,
-            Score::Mate(n) if n < 0 => 0.0,
-            Score::Mate(_) => 0.5,
+            // Being mated, or mated already (the score is White's: White lost).
+            Score::Mate(_) | Score::Mated(Color::White) => 0.0,
+            Score::Mated(Color::Black) => 1.0,
         }
     }
 
@@ -74,6 +82,7 @@ impl Score {
                 let abs = cp.unsigned_abs();
                 format!("{sign}{}.{:02}", abs / 100, abs % 100)
             }
+            Score::Mate(0) | Score::Mated(_) => "#".to_owned(),
             Score::Mate(n) => format!("#{n}"),
         }
     }
@@ -348,5 +357,12 @@ mod tests {
         assert!((Score::Centipawns(0).white_share() - 0.5).abs() < 1e-6);
         assert_eq!(Score::Mate(1).white_share(), 1.0);
         assert_eq!(Score::Mate(-1).white_share(), 0.0);
+        // Plan A9-F5 (A1-25): an engine's `mate 0` is the side to move mated (it was an even
+        // bar and `#0`).
+        assert_eq!(Score::Mate(0).for_white(Color::White), Score::Mated(Color::White));
+        assert_eq!(Score::Mate(0).for_white(Color::White).white_share(), 0.0);
+        assert_eq!(Score::Mate(0).for_white(Color::Black).white_share(), 1.0);
+        assert_eq!(Score::Mate(0).white_share(), 0.0, "for the side it is given for");
+        assert_eq!((Score::Mate(0).text(), Score::Mated(Color::Black).text()), ("#".to_owned(), "#".to_owned()));
     }
 }

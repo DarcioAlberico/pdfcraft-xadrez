@@ -415,19 +415,12 @@ fn candidate_json(c: &Candidate) -> Value {
 }
 
 /// Make the line through `at` the main line, saying so when it could not be (it would nest the
-/// old main line deeper than the cap).
+/// old main line deeper than the cap), and show the move there.
 fn make_main(game: &mut Game, at: NodeId) -> std::result::Result<(), Refusal> {
-    let sans: Vec<String> =
-        game.line_of(at).iter().skip(1).take(game.path_of(at).map_or(0, |p| p.indices().len())).map(|&n| game.san(n).to_owned()).collect();
-    let depth = sans.len();
-    game.promote(at);
+    let depth = game.path_of(at).map_or(0, |p| p.indices().len());
+    game.promote(at).map_err(|e| e.to_string())?;
     // The moves now lead from the start along first replies.
-    let first_replies = NodePath::new(vec![0; depth]);
-    let now = game.node_at(&first_replies).ok_or("variations would nest too deep")?;
-    let line: Vec<String> = game.line_of(now).iter().skip(1).take(depth).map(|&n| game.san(n).to_owned()).collect();
-    if line != sans {
-        return Err("variations would nest too deep".into());
-    }
+    let now = game.node_at(&NodePath::new(vec![0; depth])).ok_or("there is no such move")?;
     game.go_to_node(now);
     Ok(())
 }
