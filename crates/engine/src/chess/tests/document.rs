@@ -113,6 +113,22 @@ fn a_page_without_text_needs_ocr_and_a_given_language_is_kept() {
     assert!(s.chess_document(id, &[1], &no_model(), None).unwrap_err().contains("out of range"));
 }
 
+/// Plan A9-L6a (A2-08, A2's probe3): the book's language is its PDF's `/Lang`, else what its
+/// prose says, never its piece letters' (a book with figurines reads as English): the document
+/// says it, apart from the letters' language, and every page takes it.
+#[test]
+fn the_books_language_is_its_pdfs_else_its_proses() {
+    let prose = "As brancas podem jogar o lance com a dama, mas a torre do rei para o ataque e os peoes da ala.";
+    let page = format!("{}{}", helv(100.0, 11.0, prose), helv(140.0, 11.0, "1.e4 e5 2.Nf3 Nc6"));
+    for (catalog, said) in [("", "pt"), ("/Lang (en-GB) ", "en-GB"), ("/Lang (not a tag!) ", "pt")] {
+        let (mut s, id) = open(helvetica_pages_in(std::slice::from_ref(&page), catalog));
+        let read = s.chess_document(id, &[0], &no_model(), None).unwrap();
+        assert_eq!(read.lang.lang, pdfcraft_chess::san::Lang::En, "the letters say English");
+        assert_eq!(read.text_lang.as_str(), said, "{catalog}");
+        assert_eq!(read.doc.pages[0].text_lang.as_str(), said, "{catalog}");
+    }
+}
+
 fn block(text: &str, size: f64, top: f64) -> pdfcraft_edit::TextBlock {
     pdfcraft_edit::TextBlock {
         text: text.into(),
@@ -162,10 +178,15 @@ fn headings_are_larger_than_the_body_and_short() {
 
 /// Pages in Helvetica (`/F2`), one content stream each.
 fn helvetica_pages(contents: &[String]) -> Vec<u8> {
+    helvetica_pages_in(contents, "")
+}
+
+/// [`helvetica_pages`] with `catalog` more entries in the catalog (`/Lang (pt-BR)`).
+fn helvetica_pages_in(contents: &[String], catalog: &str) -> Vec<u8> {
     let n = contents.len();
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
     let mut objs: Vec<Vec<u8>> = vec![
-        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        format!("<< /Type /Catalog /Pages 2 0 R {catalog}>>").into_bytes(),
         format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")).into_bytes(),
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec(),
     ];

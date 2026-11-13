@@ -49,7 +49,7 @@ use pdfcraft_render::text::{PageText, TextGlyph};
 
 use crate::coords::{PageGeometry, PageRect, ViewRect};
 
-pub use lang::{LangGuess, LangTally};
+pub use lang::{LangGuess, LangTally, ProseTally};
 pub use quality::{PoorReason, TextQuality};
 
 /// One piece of a line of chess text.
@@ -210,6 +210,18 @@ fn read(page: &PageText, lang_hint: Option<Lang>, selection: Option<Lang>) -> Ch
 }
 
 impl ChessPageText {
+    /// The function words of the page's prose, which say the language of its text
+    /// ([`ProseTally`]; plan A9-L6a): its text runs, not its moves.
+    pub fn prose(&self) -> ProseTally {
+        let mut tally = ProseTally::default();
+        for span in self.lines.iter().flat_map(|l| &l.spans) {
+            if let ChessRun::Text(t) = &span.run {
+                tally.add_text(t);
+            }
+        }
+        tally
+    }
+
     /// Judge the layer again on a page that is a picture (images cover most of it): a layer
     /// mostly drawn invisibly over it is another program's OCR ([`quality::over_page_image`]).
     pub fn over_page_image(&mut self) {

@@ -30,7 +30,9 @@ use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 use super::fragment::{hyphen_join, join_hyphens};
 use super::games::{Key, Loc, Name, Seed, Walker};
 use super::header::{GameHeader, event_line, players_line};
-use super::{Block, BlockRole, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
+use super::{
+    Block, BlockRole, ChessPage, DiagramBlock, HintKind, Inline, LangTag, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect,
+};
 use crate::chess_text::{ChessLine, ChessRun, PoorReason, TextQuality};
 use crate::coords::{PageGeometry, ViewRect};
 
@@ -1213,6 +1215,12 @@ fn played(m: &mut MoveInline, page: u32, walker: &mut Walker) {
     }
 }
 
+/// The language the page's prose votes for by its function words
+/// ([`crate::chess_text::ChessPageText::prose`]), as a tag; empty when it says too little.
+fn prose_lang(text: &crate::chess_text::ChessPageText) -> LangTag {
+    text.prose().guess().map(LangTag::of).unwrap_or_default()
+}
+
 fn poor_reason(reason: &PoorReason) -> String {
     match reason {
         PoorReason::Type0WithoutUnicode { ratio } => format!("two-byte codes with no Unicode text ({:.0}% of glyphs)", ratio * 100.0),
@@ -1243,7 +1251,8 @@ pub(crate) fn page(
     walk(input.index, input.ocr, &mut blocks, walker, trailing, heads);
     let page = ChessPage {
         index: input.index,
-        lang: input.text.lang.lang.code().to_owned(),
+        lang: LangTag::of(input.text.lang.lang),
+        text_lang: prose_lang(input.text),
         text_layer: (&input.text.quality).into(),
         ocr: input.ocr,
         blocks,

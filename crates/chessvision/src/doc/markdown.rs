@@ -24,11 +24,10 @@ use std::fmt::Write as _;
 use pdfcraft_chess::describe;
 use pdfcraft_chess::origin::{PgnOrigin, with_origin_comment, with_origin_tags};
 use pdfcraft_chess::pgn_style::PgnStyle;
-use pdfcraft_chess::san::Lang;
 
 use super::games::{DiagramAt, GameOrigin, GameResult, GameScore, MAX_SHOWN_DIAGRAMS, Tag};
 use super::html::{Figurines, plain_text_with};
-use super::{Block, ChessDoc, PageLabel};
+use super::{Block, ChessDoc, ChessPage, PageLabel};
 
 /// How [`write`] sets diagrams.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -123,7 +122,7 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
     // A chapter starts at each heading of the top level the book uses.
     let top = doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Heading { level, .. } = b { Some(*level) } else { None }).min();
     for page in &doc.pages {
-        let book_lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+        let book_lang = page.text_language();
         let label = PageLabel::of(o.page_labels, page.index).to_string();
         for block in &page.blocks {
             match block {
@@ -398,7 +397,7 @@ fn origin_of(doc: &ChessDoc, book: &PgnBook, page: u32, diagram: Option<usize>, 
         diagram: diagram.map(|d| d.saturating_add(1)),
         of: (diagrams > 0).then_some(diagrams),
         puzzle,
-        lang: read.and_then(|p| Lang::from_tag(&p.lang)),
+        lang: read.map(ChessPage::text_language),
     }
 }
 

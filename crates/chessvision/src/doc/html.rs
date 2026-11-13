@@ -337,7 +337,7 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     let number = d.number.saturating_add(1);
     let id = format!("p{}-d{number}", u64::from(page.index) + 1);
     // Said in the book's language, with the number printed on the page (plan A8 P9b).
-    let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+    let lang = page.text_language();
     let page_label = page_label(o, page.index);
     let label = page_label.to_string();
     let Some(reading) = &d.reading else {

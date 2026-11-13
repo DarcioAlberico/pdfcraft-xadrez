@@ -23,7 +23,6 @@
 //! out of the game it was in or that holds none of the game's moves (prose after a game's last
 //! move, on the next page, is not taken for its comment). Read-only.
 
-use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, GameOrigin, GameResult, Inline, NodeRef};
 
 use super::ChessScanSettings;
@@ -180,7 +179,7 @@ impl Session {
         if centre.index != at.page {
             return Err("the move is not on the page read".into());
         }
-        let lang = Lang::ALL.into_iter().find(|l| l.code() == centre.lang);
+        let lang = centre.lang.lang();
         let mut cipher = ocr.book.cloned().unwrap_or_default();
         let mut notes = Vec::new();
         let span = span_game(centre, at, pages, |p| {

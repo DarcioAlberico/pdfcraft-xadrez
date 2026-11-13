@@ -178,6 +178,9 @@ impl Session {
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
         let read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        // The book's language, not its piece letters' (plan A9-L6a, A2-08): `<html lang>`,
+        // `dc:language`, `w:lang`; the letters' only when nothing says the text's.
+        let book_lang = if read.text_lang.is_empty() { read.lang.lang.code() } else { read.text_lang.as_str() };
         // The printed page numbers and the book's language say each diagram (plan A8 P9b, P9d).
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
         let options = HtmlOptions {
@@ -190,7 +193,7 @@ impl Session {
             link_text: &o.link_text,
             text_font: o.text_font.as_deref(),
             sign_font: o.sign_font.as_deref(),
-            lang: read.lang.lang.code(),
+            lang: book_lang,
             page_labels: &labels,
             review_marks: o.review_marks.unwrap_or(format != ChessFormat::Epub),
         };
@@ -217,7 +220,7 @@ impl Session {
                 };
                 let meta = super::epub::EpubMeta {
                     title: o.title.clone(),
-                    lang: read.lang.lang.code().to_owned(),
+                    lang: book_lang.to_owned(),
                     // The PDF's own identifier outlives saving; its bytes do not. The identifier
                     // every new file used to get names no document (`DocKeys::id`); a part of the
                     // document is another book.
@@ -281,7 +284,7 @@ impl Session {
                     links: o.links,
                     link_text: &o.link_text,
                     image_dir: &o.image_dir,
-                    lang: read.lang.lang.code(),
+                    lang: book_lang,
                     page_labels: &labels,
                 };
                 markdown::write(&read.doc, &md).into_bytes()
@@ -297,7 +300,7 @@ impl Session {
                     diagram_px: o.diagram_px,
                     text_font: o.text_font.as_deref(),
                     sign_font: o.sign_font.as_deref(),
-                    lang: read.lang.lang.code(),
+                    lang: book_lang,
                     page_labels: &labels,
                 };
                 let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);

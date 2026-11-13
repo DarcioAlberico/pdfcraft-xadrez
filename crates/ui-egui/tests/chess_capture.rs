@@ -360,7 +360,7 @@ fn figurines_and_the_documents_language_are_read() {
     h.run_steps(2);
     h.get_by_label("Text").click();
     h.run_steps(4);
-    let lang = h.state().chess.text().map(|t| t.chess.pages[0].lang.clone());
+    let lang = h.state().chess.text().map(|t| t.chess.pages[0].lang.as_str().to_owned());
     assert_eq!(lang.as_deref(), Some("pt"), "the page reads as Portuguese");
     assert!(h.state_mut().execute("chess.tool.capture"));
     h.run_steps(2);

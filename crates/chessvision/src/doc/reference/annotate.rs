@@ -141,7 +141,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
     let mut made = AnnotatedPgn::default();
 
     for page in &doc.pages {
-        let lang = Lang::from_tag(&page.lang);
+        let lang = page.lang.lang();
         // Text before any linked move of the page's game goes before its first move.
         if current.is_none() {
             current = page_game.get(&page.index).map(|&game| RefNode { game, node: 0 });
