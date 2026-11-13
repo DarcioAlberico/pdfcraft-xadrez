@@ -694,7 +694,9 @@ fn chess_document_links_the_moves_to_the_books_pgn() {
     assert_eq!(moves[0]["reference"], json!({ "kind": "confirmed", "game": 0, "node": 1 }));
     assert_eq!((moves[4]["status"].as_str(), &moves[4]["reference"]["kind"]), (Some("out_of_sequence"), &json!("recovered")), "{:#}", moves[4]);
     assert_eq!(moves[4]["review"], json!([{ "flag": "from_reference", "san": "Bb5" }]));
-    assert_eq!(moves[5]["reference"], json!({ "kind": "recovered", "game": 0, "node": 6 }));
+    // A recovered move carries the position after the PGN's move (plan A9-N2), for the exports.
+    let a6 = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4";
+    assert_eq!(moves[5]["reference"], json!({ "kind": "recovered", "game": 0, "node": 6, "fen": a6 }));
     // Without the PGN, no link and no summary.
     let plain = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "include": ["json"] }));
     assert!(plain["reference"].is_null() && !plain["document"].to_string().contains("reference"), "{plain:#}");
@@ -815,7 +817,11 @@ fn chess_export_pgn_writes_the_books_pgn_with_its_text() {
     let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
     let args = json!({ "doc": doc, "lang": "en", "out": "annotated.pgn", "title": "Ruy Book", "reference_pgn": "book.pgn" });
     let made = ok(&mut a, "chess_export_pgn", args);
-    assert_eq!(made["reference"], json!({ "pgn": "book.pgn", "games": 1, "moves": 6, "commented": 1, "book_only": 0, "diagrams": 0 }), "{made:#}");
+    assert_eq!(
+        made["reference"],
+        json!({ "pgn": "book.pgn", "games": 1, "moves": 6, "commented": 1, "book_only": 0, "diagrams": 0, "linked": { "confirmed": 6, "recovered": 0, "conflict": 0, "absent": 0 } }),
+        "{made:#}"
+    );
     let pgn = std::fs::read_to_string(root.join("annotated.pgn")).unwrap();
     let games = split_pgn(&pgn, 10);
     assert_eq!(games.len(), 1, "{pgn}");
@@ -833,6 +839,56 @@ fn chess_export_pgn_writes_the_books_pgn_with_its_text() {
         other => panic!("a PGN outside the root accepted: {other:?}"),
     }
     assert!(!root.join("refused.pgn").exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-N2 (A8-03): every export takes the book's PGN and the user's games, not only the PGN
+/// export. The book's variation lost its brackets, so the reader could not play White's a6 after
+/// 3...Nf6; the HTML gives that move the PGN's position, marked as the PGN's, its printed text and
+/// the reader's status kept. The user's games (games_pgn) link too, before the book's PGN, and
+/// alone they give the PGN export its games; outside the root, they are refused.
+#[test]
+fn every_export_takes_the_books_pgn_and_the_users_games() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let (base, root) = workdir("export-one-truth");
+    std::fs::write(root.join("line.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 a6 4.Ba4")).unwrap();
+    std::fs::write(root.join("book.pgn"), "[Event \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 (3...Nf6 4.O-O) 4.Ba4 *\n").unwrap();
+    std::fs::write(root.join("mine.pgn"), "[Event \"Mine\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n").unwrap();
+    std::fs::write(base.join("outside").join("mine.pgn"), "1.e4 e5 *\n").unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "line.pdf" }))["doc"].as_u64().unwrap();
+    let mut a6 = Game::standard();
+    for m in ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"] {
+        a6.play_san(m).unwrap();
+    }
+    let marked = format!("data-fen=\"{}\" data-reference=\"recovered\" data-reference-san=\"a6\" data-status=\"illegal\"", a6.fen());
+    let made = ok(&mut a, "chess_export_html", json!({ "doc": doc, "lang": "en", "out": "book.html", "reference_pgn": "book.pgn" }));
+    // 4.Ba4, played from the wrong position, is in conflict with the PGN's.
+    assert_eq!(made["reference"]["linked"], json!({ "confirmed": 6, "recovered": 1, "conflict": 1, "absent": 0 }), "{made:#}");
+    assert!(made["games_reference"].is_null(), "{made:#}");
+    let html = std::fs::read_to_string(root.join("book.html")).unwrap();
+    assert!(html.contains(&marked), "{html}");
+    // Without a PGN the move has no position, as before.
+    ok(&mut a, "chess_export_html", json!({ "doc": doc, "lang": "en", "out": "plain.html" }));
+    assert!(!std::fs::read_to_string(root.join("plain.html")).unwrap().contains("data-reference"));
+    // The user's games link first; the book's PGN takes what they do not have.
+    let both = ok(
+        &mut a,
+        "chess_export_html",
+        json!({ "doc": doc, "lang": "en", "out": "both.html", "reference_pgn": "book.pgn", "games_pgn": "mine.pgn" }),
+    );
+    assert_eq!(both["games_reference"]["linked"], json!({ "confirmed": 5, "recovered": 1, "conflict": 0, "absent": 2 }), "{both:#}");
+    assert!(std::fs::read_to_string(root.join("both.html")).unwrap().contains(&marked));
+    // Alone, the user's games are the PGN export's games, with the book's text.
+    let pgn = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "lang": "en", "out": "mine-annotated.pgn", "games_pgn": "mine.pgn" }));
+    assert_eq!((pgn["reference"]["pgn"].as_str(), pgn["reference"]["games"].as_u64()), (Some("mine.pgn"), Some(1)), "{pgn:#}");
+    assert!(std::fs::read_to_string(root.join("mine-annotated.pgn")).unwrap().contains("[Event \"Mine\"]"));
+    // games_pgn stays inside the root, and nothing is written when it is refused.
+    match a.call("chess_export_html", &json!({ "doc": doc, "out": "refused.html", "games_pgn": "../outside/mine.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("games outside the root accepted: {other:?}"),
+    }
+    assert!(!root.join("refused.html").exists());
     let _ = std::fs::remove_dir_all(base);
 }
 

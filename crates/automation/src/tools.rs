@@ -188,6 +188,9 @@ fn chess_export_schema() -> Value {
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
                 o.insert("pieces".into(), json!({ "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." }));
+                o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB and 4,096 games (relative to --root when set; without it, the one kept for doc, see reference). The pages read are linked to it as chess_document links them (plan A9-N2: one truth of the games for every export): a diagram it confirms shows its position, the moves are walked again from it, and in HTML and EPUB a move the reader could not play and the PGN did gets the PGN's position as data-fen, data-reference=\"recovered\", the PGN's move as data-reference-san and the class linked, its printed text and data-status the reader's. The reply's reference is chess_document's." }));
+                o.insert("games_pgn".into(), json!({ "type": "string", "description": "The user's own games for the book (the document's games saved as PGN, at most 32 MiB; relative to --root when set): linked before the book's PGN, so they outrank it, and the reading comes last; the reply's games_reference says how they linked." }));
+                insert_kept_reference(o);
             }
             insert_corrections(&mut props);
             props
@@ -228,9 +231,8 @@ fn chess_export_pgn_schema() -> Value {
         );
         props.insert(
             "reference_pgn".into(),
-            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only and diagrams." }),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference; without either, games_pgn's games are written so). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only, diagrams and linked (how the text linked to it: confirmed, recovered, conflict, absent)." }),
         );
-        insert_kept_reference(props);
     }
     s
 }
