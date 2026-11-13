@@ -16,7 +16,7 @@
 
 use std::fmt;
 
-use super::{Cut, Game, MAX_DEPTH, MAX_NAGS, NodeId, clean_comment, nag_group};
+use super::{Cut, Game, MAX_DEPTH, MAX_NAGS, NodeId, clean_comment, nag_group, split_drawings};
 
 /// Where on a PDF page a move was read: the page index and the rectangle `[x0, y0, x1, y1]` in
 /// the page's user space. It is kept with the move but is not part of the PGN.
@@ -292,11 +292,28 @@ impl Game {
     /// A9-F4); before a first reply whose move before has none, it is written in one comment
     /// with the one after the move before, and read back as that one. Ignored for the start. Past
     /// [`super::MAX_COMMENT_LEN`] bytes it is cut, and [`Cut`] says so.
+    ///
+    /// On a first reply, drawing commands in it (`[%csl …]`, `[%cal …]`) are taken out and drawn
+    /// on the position before the move, the move before's (plan A9-Q3a): written with that move's
+    /// comment (the first move's with the game's own), they are read back there and taken out
+    /// ([`split_drawings`]), so the PGN written reads back the same. A variation's first move
+    /// keeps them as text, as reading `({[%csl Gd4] …} 1. d4)` does: they would draw on the line's
+    /// own position too.
     pub fn set_comment_before(&mut self, node: NodeId, text: &str) -> Result<(), Cut> {
         if node == 0 {
             return Ok(());
         }
-        let (clean, cut) = clean_comment(text);
+        let Some(parent) = self.nodes.get(node).map(|n| n.parent) else { return Ok(()) };
+        let first_reply = self.nodes.get(parent).is_some_and(|p| p.children.first() == Some(&node));
+        let mut drawings = self.nodes.get(parent).map(|p| p.drawings.clone()).unwrap_or_default();
+        let text = if first_reply { split_drawings(text, &mut drawings) } else { text.to_owned() };
+        let (clean, cut) = clean_comment(&text);
+        if let Some(p) = self.nodes.get_mut(parent)
+            && p.drawings != drawings
+        {
+            p.drawings = drawings;
+            self.revision = super::fresh_revision();
+        }
         if let Some(n) = self.nodes.get_mut(node)
             && n.comment_before != clean
         {

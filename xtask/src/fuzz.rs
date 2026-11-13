@@ -2,21 +2,38 @@
 //!
 //! Seeds are small PDFs (synthetic ones, plus pdf.js corpus files under 64 KB when `corpus/` is
 //! present). Each iteration mutates a seed, writes it to `fuzz-out/work/`, and runs
-//! `pdfcraft-cli check-one <file> --edit` in a child process with a timeout. That opens,
+//! `pdfcraft-cli check-one <file> --edit --chess` in a child process with a timeout. That opens,
 //! inspects, renders and extracts text from every page (the bootstrap renderer), then runs our
-//! object layer end to end: decode streams, edit, save incrementally and in full, reopen.
+//! object layer end to end: decode streams, edit, save incrementally and in full, reopen; and the
+//! chess paths (capture, each page's text read as a PGN file, reading, exports, links, a diagram
+//! replaced).
+//!
+//! The chess inputs that matter are reached on purpose (plan A9-Q3a, A7-08): a third of the runs
+//! mutate **move text** instead of bytes ([`text`]: the capture seed and a page of PGN edited word
+//! by word from a chess vocabulary, written as a new PDF), and with `--models DIR` every run reads
+//! its pages with models (chess OCR on every page): the user's (`DIR`), one of the **hostile
+//! models** built for it ([`models`]: graphs that ask rten for a tensor too large, a path too
+//! long, a cycle…), or one with bytes mutated. The first runs take each seed and each models
+//! folder as they are. `--cli EXE` runs that CLI instead of building one (`dist/app`'s, or one
+//! built from a worktree); a run on a plain seed checks first that it knows `check-one
+//! --models`.
 //!
 //! A child that dies (panic outside a safety net, abort, stack overflow, signal) is a **crash**,
 //! and one that runs past the timeout is a **hang**. Each finding is minimized (chunks are
-//! removed while it still fails the same way) and kept in `fuzz-out/findings/` with a JSON note.
-//! `fuzz-out/` is git-ignored; findings derived from corpus files must not be committed. Turn
-//! each real bug into a synthetic regression test instead.
+//! removed while it still fails the same way) and kept in `fuzz-out/findings/` with a JSON note
+//! naming the models folder (a mutated one is copied beside it). `fuzz-out/` is git-ignored;
+//! findings derived from corpus files must not be committed. Turn each real bug into a synthetic
+//! regression test instead.
 //!
 //! ```text
 //! cargo xtask fuzz [--time 300] [--iterations N] [--seed 1] [--jobs 8] [--timeout 10]
+//!                  [--cli EXE] [--models DIR]
 //! ```
 //! It exits non-zero when it finds a crash (hangs are reported but, like the corpus sweep's
 //! known renderer hangs, do not fail the run).
+
+mod models;
+mod text;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -34,16 +51,16 @@ fn flag<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
 
 /// xorshift64*: small, deterministic, good enough for mutation choices.
 #[derive(Clone)]
-struct Rng(u64);
+pub(crate) struct Rng(pub(crate) u64);
 
 impl Rng {
-    fn next(&mut self) -> u64 {
+    pub(crate) fn next(&mut self) -> u64 {
         self.0 ^= self.0 >> 12;
         self.0 ^= self.0 << 25;
         self.0 ^= self.0 >> 27;
         self.0.wrapping_mul(0x2545_F491_4F6C_DD1D)
     }
-    fn below(&mut self, n: usize) -> usize {
+    pub(crate) fn below(&mut self, n: usize) -> usize {
         if n == 0 { 0 } else { (self.next() % n as u64) as usize }
     }
 }
@@ -144,25 +161,28 @@ fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
     hay.windows(needle.len()).position(|w| w == needle)
 }
 
+/// A PDF of `objs` (object 1 first) with a classic cross-reference table.
+pub(crate) fn pdf(objs: &[&str], trailer: &str) -> Vec<u8> {
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offs = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offs.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let x = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offs {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} {trailer} >>\nstartxref\n{x}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
 /// Synthetic seeds, so fuzzing works without the corpus: plain, object-stream and encrypted
-/// shapes, nested page trees, annotations, forms and inline images; a chess page (S18) and a page
-/// of move text to capture (T16).
+/// shapes, nested page trees, annotations, forms and inline images; a chess page (S18), a page
+/// of move text to capture (T16) and a page of PGN whose `;` and `%` lines hold braces (A9-Q3a).
 fn synthetic_seeds() -> Vec<Vec<u8>> {
-    let build = |objs: &[&str], trailer: &str| {
-        let mut out = b"%PDF-1.7\n".to_vec();
-        let mut offs = Vec::new();
-        for (i, o) in objs.iter().enumerate() {
-            offs.push(out.len());
-            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
-        }
-        let x = out.len();
-        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
-        for o in offs {
-            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
-        }
-        out.extend_from_slice(format!("trailer\n<< /Size {} {trailer} >>\nstartxref\n{x}\n%%EOF\n", objs.len() + 1).as_bytes());
-        out
-    };
+    let build = pdf;
     let content = "BT /F1 24 Tf 20 150 Td (Hello) Tj ET 0 0 1 rg 10 10 50 50 re f q 20 0 0 20 100 100 cm BI /W 2 /H 2 /BPC 8 /CS /G ID \u{0}\u{ff}\u{ff}\u{0} EI Q";
     let stream = format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len());
     let rows = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
@@ -183,19 +203,6 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
     }
     chess.push_str("f q 128 0 0 128 20 20 cm /Im1 Do Q");
     let chess_stream = format!("<< /Length {} >>\nstream\n{chess}\nendstream", chess.len());
-    // Captured move text (PGN toolbar, T16): the main line in a bold face, analysis in a regular
-    // one with brackets, `;` and `a)` separators, glyphs as signs and as `$14`, a null move, an
-    // unbalanced bracket and results, and figurines in a figurine font (SemFig draws its K Q R B N
-    // as pieces) and in a private-use one (FigurineCB). `check-one --chess` plans each page's text
-    // as a selection in every capture mode and applies it.
-    let capture = concat!(
-        r"BT /F1 10 Tf 20 470 Td (1.e4 e5 2.Nf3 ) Tj /F3 10 Tf (N) Tj /F1 10 Tf (c6 3.) Tj /F3 10 Tf (B) Tj /F1 10 Tf (b5 a6) Tj ET ",
-        r"BT /F2 10 Tf 20 455 Td (Or 2...d6 3.d4 !? \(3.) Tj /F4 10 Tf (Q) Tj /F2 10 Tf (c4 $14; a\) 3...Nf6 b\) 3...exd4 +=\) 3...Nd7 ~ 1:0) Tj ET ",
-        r"BT /F1 10 Tf 20 440 Td (18.Nd5! Qxe1 19.Nxe7+ Kh7 20.Raxe1) Tj ET ",
-        r"BT /F2 10 Tf 20 425 Td (After 18...Qd8 19.Bxf6! Bxf6 20.fxg6 \(less good is 20.Nxf6+ exf6 21.Bxc4 Rxc4\) 20...fxg6) Tj ",
-        r"0 -12 Td (21.Qg3 +- 21...Kh7 22.e5!! -- 22...Rf7 \(\(\) 0-0-0 23.Qh4# 1-0 \(1/2\)) Tj ET",
-    );
-    let capture_stream = format!("<< /Length {} >>\nstream\n{capture}\nendstream", capture.len());
     let pixels: String = (0..64 * 64).map(|i| if ((i % 64) / 8 + (i / 64) / 8) % 2 == 0 { 'f' } else { '3' }).flat_map(|c| [c, c]).collect();
     let chess_image = format!(
         "<< /Type /XObject /Subtype /Image /Width 64 /Height 64 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode /Length {} >>\nstream\n{pixels}>\nendstream",
@@ -239,19 +246,9 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
             ],
             "/Root 1 0 R",
         ),
-        build(
-            &[
-                "<< /Type /Catalog /Pages 2 0 R >>",
-                "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 500] >>",
-                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> >> >>",
-                &capture_stream,
-                "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>",
-                "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>",
-                "<< /Type /Font /Subtype /Type1 /BaseFont /SemFig >>",
-                "<< /Type /Font /Subtype /Type1 /BaseFont /FigurineCB-Time >>",
-            ],
-            "/Root 1 0 R",
-        ),
+        // Move text to capture (T16) and a page of PGN (A9-Q3a): [`text`] has their lines.
+        text::pdf(&text::capture()),
+        text::pdf(&text::pgn()),
     ]
 }
 
@@ -306,12 +303,13 @@ fn child_command(exe: &Path) -> Command {
     }
 }
 
-fn run_one(exe: &Path, file: &Path, timeout: Duration) -> (Outcome, String) {
-    let child = child_command(exe)
-        .args(["check-one", &file.to_string_lossy(), "--dpi", "18", "--edit", "--chess"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn();
+fn run_one(exe: &Path, file: &Path, models: Option<&Path>, timeout: Duration) -> (Outcome, String) {
+    let mut command = child_command(exe);
+    command.args(["check-one", &file.to_string_lossy(), "--dpi", "18", "--edit", "--chess"]);
+    if let Some(dir) = models {
+        command.arg("--models").arg(dir);
+    }
+    let child = command.stdout(Stdio::null()).stderr(Stdio::piped()).spawn();
     let Ok(mut child) = child else { return (Outcome::Ok, String::new()) };
     let start = Instant::now();
     loop {
@@ -355,11 +353,11 @@ fn run_one(exe: &Path, file: &Path, timeout: Duration) -> (Outcome, String) {
 }
 
 /// Remove chunks while the input still fails with the same outcome and message.
-fn minimize(exe: &Path, work: &Path, data: Vec<u8>, outcome: Outcome, what: &str, timeout: Duration) -> Vec<u8> {
+fn minimize(exe: &Path, work: &Path, data: Vec<u8>, models: Option<&Path>, outcome: Outcome, what: &str, timeout: Duration) -> Vec<u8> {
     let mut best = data;
     let mut chunk = best.len() / 2;
     let mut tries = 0;
-    let probe = work.join("minimize.pdf");
+    let probe = work.join(format!("minimize-{}.pdf", fxhash(what.as_bytes())));
     while chunk >= 1 && tries < 300 {
         let mut i = 0;
         let mut progressed = false;
@@ -370,7 +368,7 @@ fn minimize(exe: &Path, work: &Path, data: Vec<u8>, outcome: Outcome, what: &str
             if std::fs::write(&probe, &cand).is_err() {
                 break;
             }
-            let (o, w) = run_one(exe, &probe, timeout);
+            let (o, w) = run_one(exe, &probe, models, timeout);
             if o == outcome && (outcome == Outcome::Hang || w == what) {
                 best = cand;
                 progressed = true;
@@ -386,6 +384,52 @@ fn minimize(exe: &Path, work: &Path, data: Vec<u8>, outcome: Outcome, what: &str
     best
 }
 
+/// What a run fuzzes: a seed's bytes mutated, or a page of move text mutated word by word and
+/// written as a PDF; and the models folder its child reads with, if any.
+struct Input {
+    name: String,
+    data: Vec<u8>,
+    models: Option<models::Folder>,
+}
+
+/// Run `n`'s input: the first runs take each seed, and each models folder, as they are (so a
+/// failure a seed or a built model holds is found at once); then a third of the runs mutate move
+/// text, the rest bytes, and the models folder is the user's half of the time, a hostile one a
+/// quarter, and a mutated copy (written into `mutated`) the rest.
+fn input(rng: &mut Rng, n: usize, seeds: &[(String, Vec<u8>)], folders: &[models::Folder], mutated: &Path) -> Input {
+    let first = seeds.len().max(folders.len());
+    if n < first {
+        let (name, data) = &seeds[n % seeds.len()];
+        let models = folders.get(n % folders.len().max(1)).cloned();
+        return Input { name: name.clone(), data: data.clone(), models };
+    }
+    let (name, data) = if rng.below(3) == 0 {
+        let (name, page) = match rng.below(3) {
+            0 => ("text:capture", text::capture()),
+            1 => ("text:pgn", text::pgn()),
+            _ => ("text:random", text::random_page(rng)),
+        };
+        (name.to_owned(), text::pdf(&text::mutate(rng, page)))
+    } else {
+        let (name, base) = &seeds[rng.below(seeds.len())];
+        let other = &seeds[rng.below(seeds.len())].1;
+        (name.clone(), mutate(rng, base, other))
+    };
+    let models = match (folders.len(), rng.below(4)) {
+        (0, _) => None,
+        (_, 0 | 1) => folders.first().cloned(),
+        (k, 2) => folders.get(rng.below(k)).cloned(),
+        (k, _) => {
+            let from = &folders[rng.below(k)];
+            match models::mutate_into(rng, from, mutated) {
+                Ok(()) => Some(models::Folder { name: format!("mutated:{}", from.name), dir: mutated.to_path_buf() }),
+                Err(_) => Some(from.clone()),
+            }
+        }
+    };
+    Input { name, data, models }
+}
+
 pub fn run(args: &[String]) -> Result<()> {
     let time = Duration::from_secs(flag(args, "--time").unwrap_or("300").parse()?);
     let iterations: usize = flag(args, "--iterations").map(str::parse).transpose()?.unwrap_or(usize::MAX);
@@ -394,18 +438,29 @@ pub fn run(args: &[String]) -> Result<()> {
     let jobs: usize =
         flag(args, "--jobs").map(str::parse).transpose()?.unwrap_or_else(|| std::thread::available_parallelism().map_or(2, |n| (n.get() / 2).max(1)));
     let timeout = Duration::from_secs(flag(args, "--timeout").unwrap_or("10").parse()?);
-
-    let status = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
-        .current_dir(root())
-        .args(["build", "--release", "-q", "-p", "pdfcraft-cli"])
-        .status()?;
-    if !status.success() {
-        bail!("building pdfcraft-cli failed");
+    let real_models = flag(args, "--models").map(PathBuf::from);
+    if let Some(dir) = &real_models
+        && !dir.is_dir()
+    {
+        bail!("--models {}: not a folder", dir.display());
     }
-    let exe = release_cli();
+
+    let exe = match flag(args, "--cli") {
+        Some(cli) => PathBuf::from(cli),
+        None => {
+            let status = Command::new(std::env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
+                .current_dir(root())
+                .args(["build", "--release", "-q", "-p", "pdfcraft-cli"])
+                .status()?;
+            if !status.success() {
+                bail!("building pdfcraft-cli failed");
+            }
+            release_cli()
+        }
+    };
     if !exe.is_file() {
         // Every run would fail to start and count as a pass.
-        bail!("{} not found after building it", exe.display());
+        bail!("{} not found", exe.display());
     }
     let out = root().join("fuzz-out");
     let work = out.join("work");
@@ -413,63 +468,99 @@ pub fn run(args: &[String]) -> Result<()> {
     std::fs::create_dir_all(&work)?;
     std::fs::create_dir_all(&findings)?;
     let seeds = Arc::new(seeds());
-    println!("fuzz: {} seeds, {jobs} jobs, {} s, timeout {} s, seed {seed}", seeds.len(), time.as_secs(), timeout.as_secs());
+    let folders = Arc::new(match &real_models {
+        Some(real) => models::folders(real, &out.join("models"))?,
+        None => Vec::new(),
+    });
+    // A CLI older than this harness refuses `--models` (or another option): every run would be a
+    // crash. One plain seed, with the user's models, must pass first.
+    let probe = work.join("probe.pdf");
+    std::fs::write(&probe, &seeds[0].1)?;
+    let (outcome, what) = run_one(&exe, &probe, real_models.as_deref(), timeout * 6);
+    if outcome != Outcome::Ok {
+        bail!(
+            "{} fails `check-one --edit --chess` on a plain seed ({outcome:?}: {what}); a CLI older than plan A9-Q3a does not know `--models`",
+            exe.display()
+        );
+    }
+    println!(
+        "fuzz: {} seeds, {} models folders, {jobs} jobs, {} s, timeout {} s, seed {seed}, {}",
+        seeds.len(),
+        folders.len(),
+        time.as_secs(),
+        timeout.as_secs(),
+        exe.display()
+    );
 
     let done = Arc::new(AtomicUsize::new(0));
-    let found: Arc<Mutex<Vec<(Outcome, String, String)>>> = Arc::default();
+    // Each failure found: its outcome and its key (the message; a hang's seed).
+    let found: Arc<Mutex<Vec<(Outcome, String)>>> = Arc::default();
     // Held while confirming a hang; the other jobs keep running, so this only serializes
     // confirmations with each other.
     let solo = Arc::new(Mutex::new(()));
     let start = Instant::now();
     std::thread::scope(|s| {
         for job in 0..jobs {
-            let (seeds, done, found, exe, work, findings, solo) =
-                (seeds.clone(), done.clone(), found.clone(), exe.clone(), work.clone(), findings.clone(), solo.clone());
+            let (seeds, folders, done, found, exe, work, findings, solo) =
+                (seeds.clone(), folders.clone(), done.clone(), found.clone(), exe.clone(), work.clone(), findings.clone(), solo.clone());
             s.spawn(move || {
                 let mut rng = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(job as u64 + 1) | 1);
                 let file = work.join(format!("job{job}.pdf"));
+                let mutated = work.join(format!("models-job{job}"));
                 while start.elapsed() < time {
                     let n = done.fetch_add(1, Ordering::Relaxed);
                     if n >= iterations {
                         break;
                     }
-                    let (name, base) = &seeds[rng.below(seeds.len())];
-                    let other = &seeds[rng.below(seeds.len())].1;
-                    let data = mutate(&mut rng, base, other);
+                    let Input { name, data, models } = input(&mut rng, n, &seeds, &folders, &mutated);
                     if std::fs::write(&file, &data).is_err() {
                         continue;
                     }
-                    let (outcome, what) = run_one(&exe, &file, timeout);
+                    let dir = models.as_ref().map(|m| m.dir.as_path());
+                    let (outcome, what) = run_one(&exe, &file, dir, timeout);
                     if outcome == Outcome::Ok {
                         continue;
                     }
-                    let key = format!("{outcome:?}:{what}");
+                    // One finding per distinct failure (hangs: one per seed), claimed before it is
+                    // minimized, so two jobs that meet it at once keep it once.
+                    let claim = if outcome == Outcome::Hang { format!("Hang:{name}") } else { format!("{outcome:?}:{what}") };
                     {
-                        let f = found.lock().expect("lock");
-                        // One finding per distinct failure (hangs: one per seed).
-                        let k = if outcome == Outcome::Hang { format!("Hang:{name}") } else { key.clone() };
-                        if f.iter().any(|(o, w, s)| (if *o == Outcome::Hang { format!("Hang:{s}") } else { format!("{o:?}:{w}") }) == k) {
+                        let mut f = found.lock().expect("lock");
+                        if f.iter().any(|(_, k)| *k == claim) {
                             continue;
                         }
+                        f.push((outcome, claim.clone()));
                     }
                     // A hang under full load may just be a slow machine: confirm it alone, with
                     // three times the time, before recording it. Hangs are not minimized (each
                     // probe costs a full timeout).
                     let small = if outcome == Outcome::Hang {
                         let _guard = solo.lock().expect("lock");
-                        if run_one(&exe, &file, timeout * 3).0 != Outcome::Hang {
+                        if run_one(&exe, &file, dir, timeout * 3).0 != Outcome::Hang {
+                            found.lock().expect("lock").retain(|(_, k)| *k != claim);
                             continue;
                         }
                         data.clone()
                     } else {
-                        minimize(&exe, &work, data.clone(), outcome, &what, timeout)
+                        minimize(&exe, &work, data.clone(), dir, outcome, &what, timeout)
                     };
                     let id = format!("{:?}-{:016x}", outcome, fxhash(&small)).to_lowercase();
                     let _ = std::fs::write(findings.join(format!("{id}.pdf")), &small);
-                    let note = serde_json::json!({ "outcome": format!("{outcome:?}"), "detail": what, "seed_file": name, "bytes": small.len(), "original_bytes": data.len() });
+                    // A mutated models folder is written again by the next run: keep a copy.
+                    let models_note = match &models {
+                        Some(m) if m.dir == mutated => {
+                            let kept = findings.join(format!("{id}.models"));
+                            models::copy(&m.dir, &kept);
+                            serde_json::json!({ "name": m.name, "dir": kept.display().to_string() })
+                        }
+                        Some(m) => serde_json::json!({ "name": m.name, "dir": m.dir.display().to_string() }),
+                        None => serde_json::Value::Null,
+                    };
+                    let note = serde_json::json!({ "outcome": format!("{outcome:?}"), "detail": what, "seed_file": name, "models": models_note,
+                        "bytes": small.len(), "original_bytes": data.len() });
                     let _ = std::fs::write(findings.join(format!("{id}.json")), serde_json::to_string_pretty(&note).unwrap_or_default());
-                    println!("  {outcome:?} from {name}: {what} → fuzz-out/findings/{id}.pdf ({} bytes)", small.len());
-                    found.lock().expect("lock").push((outcome, what, name.clone()));
+                    let with = models.as_ref().map_or_else(String::new, |m| format!(" with models {}", m.name));
+                    println!("  {outcome:?} from {name}{with}: {what} → fuzz-out/findings/{id}.pdf ({} bytes)", small.len());
                 }
             });
         }
