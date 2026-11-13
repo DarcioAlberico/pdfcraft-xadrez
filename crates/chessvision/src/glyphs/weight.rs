@@ -9,8 +9,8 @@
 //! pixels (ink with paper beside it), the width of a long stroke whatever its length. Bold type
 //! measures 1.45 to 1.9 times the body on Pinski's scans, an italic running head 1.2.
 
-use super::seg::{self, Gray};
-use super::{GlyphError, GlyphLine, clamp_region, crop, rank_height, union_rect};
+use super::seg;
+use super::{GlyphError, GlyphLine, PageInk, rank_height, union_rect};
 use crate::coords::PixelRect;
 use crate::raster::GrayImage;
 
@@ -119,20 +119,26 @@ fn ink_edge(bin: &seg::Bin, rect: PixelRect) -> (u64, u64, u64) {
 /// 51 Posição após c5`, `Fighting for the light squares`) belongs to it. Whether its words read
 /// as a heading is the caller's to judge.
 pub fn bolder_lines(image: &GrayImage, lines: &[GlyphLine], diagrams: &[PixelRect]) -> Result<Vec<PixelRect>, GlyphError> {
+    match PageInk::new(image, None, None, &[])? {
+        Some(ink) => bolder_lines_in(&ink, lines, diagrams),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// [`bolder_lines`] on a page's ink worked out before ([`PageInk`]).
+pub fn bolder_lines_in(ink: &PageInk, lines: &[GlyphLine], diagrams: &[PixelRect]) -> Result<Vec<PixelRect>, GlyphError> {
     let heights: Vec<(f32, usize)> = lines.iter().filter_map(|l| l.height().map(|h| (h as f32, l.glyphs().count()))).collect();
     let Some(body) = weighted_median(heights).filter(|&b| b > 0.0) else { return Ok(Vec::new()) };
     let mut runs = runs(lines, body);
     if runs.is_empty() || runs.len() > MAX_RUNS {
         return Ok(Vec::new());
     }
-    let Some(region) = clamp_region(image, None) else { return Ok(Vec::new()) };
-    let (w, h, px) = crop(image, region)?;
-    let bin = seg::binarize(&Gray { w, h, px: &px });
+    let bin = &ink.bin;
     // Lines may overlap a little; more than twice the page is no page of text.
-    let budget = (w as u64).saturating_mul(h as u64).saturating_mul(2);
+    let budget = (ink.w as u64).saturating_mul(ink.h as u64).saturating_mul(2);
     let mut looked = 0u64;
     for run in &mut runs {
-        let (s, n) = stroke(&bin, run.rect);
+        let (s, n) = stroke(bin, ink.local(run.rect));
         looked = looked.saturating_add(n);
         if looked > budget {
             return Ok(Vec::new());
@@ -228,21 +234,27 @@ fn weighs(text: &str) -> bool {
 /// around it in regular type, which a text layer tells by its fonts and a scan only by its ink.
 /// A page set mostly in bold has a bold body, and no word is bolder than it.
 pub fn bold_words(image: &GrayImage, lines: &[GlyphLine]) -> Result<Vec<PixelRect>, GlyphError> {
+    match PageInk::new(image, None, None, &[])? {
+        Some(ink) => bold_words_in(&ink, lines),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// [`bold_words`] on a page's ink worked out before ([`PageInk`]).
+pub fn bold_words_in(page: &PageInk, lines: &[GlyphLine]) -> Result<Vec<PixelRect>, GlyphError> {
     let words: Vec<&super::GlyphWord> = lines.iter().flat_map(|l| &l.words).collect();
     if words.is_empty() || words.len() > MAX_RUNS.saturating_mul(4) {
         return Ok(Vec::new());
     }
-    let Some(region) = clamp_region(image, None) else { return Ok(Vec::new()) };
-    let (w, h, px) = crop(image, region)?;
-    let bin = seg::binarize(&Gray { w, h, px: &px });
-    let budget = (w as u64).saturating_mul(h as u64).saturating_mul(2);
+    let bin = &page.bin;
+    let budget = (page.w as u64).saturating_mul(page.h as u64).saturating_mul(2);
     let mut looked = 0u64;
     // (word's box, stroke, glyphs measured)
     let mut measured: Vec<(PixelRect, f32, usize)> = Vec::new();
     for word in words {
         let (mut ink, mut edge, mut n) = (0u64, 0u64, 0usize);
         for g in word.glyphs.iter().filter(|g| weighs(&g.text)) {
-            let (i, e, l) = ink_edge(&bin, g.rect);
+            let (i, e, l) = ink_edge(bin, page.local(g.rect));
             looked = looked.saturating_add(l);
             if looked > budget {
                 return Ok(Vec::new());

@@ -399,7 +399,7 @@ fn ex(c: &mut Canvas, x: i64) {
 }
 
 fn reader<'a>(model: &'a Templates, c: &'a Canvas) -> Reader<'a> {
-    Reader { model, classes: Classes::new(&model.names), gray: c.gray() }
+    Reader::new(model, Classes::new(&model.names), c.gray())
 }
 
 fn blob_and_x() -> Templates {
@@ -953,11 +953,16 @@ fn empty_blank_and_huge_inputs_are_values_not_panics() {
     assert!(matches!(read(&huge, None, None, &model, &opts), Err(GlyphError::TooLarge { .. })));
     assert!(matches!(text_scale(&huge, &[]), Err(GlyphError::TooLarge { .. })));
     assert!(read(&huge, Some(PixelRect { x0: 0, y0: 0, x1: 100, y1: 100 }), None, &model, &opts).unwrap().is_empty());
-    // Speckle: more components than a text region has.
+    // Speckle of single pixels: dust, left out without counting (plan A9-V2); no text in it.
     let side = 320usize;
     let speckle: Vec<u8> = (0..side * side).map(|i| if (i % side).is_multiple_of(2) && (i / side).is_multiple_of(2) { 0 } else { 255 }).collect();
     let speckle = GrayImage::new(side as u32, side as u32, speckle).unwrap();
-    assert!(matches!(read(&speckle, None, None, &model, &opts), Err(GlyphError::TooManyComponents { .. })));
+    assert!(read(&speckle, None, None, &model, &opts).unwrap().is_empty());
+    // More components above the dust floor than any text region holds: no text at all.
+    let side = 2200usize;
+    let coarse: Vec<u8> = (0..side * side).map(|i| if (i % side) % 3 < 2 && (i / side) % 3 < 2 { 0 } else { 255 }).collect();
+    let coarse = GrayImage::new(side as u32, side as u32, coarse).unwrap();
+    assert!(matches!(read(&coarse, None, None, &model, &opts), Err(GlyphError::TooManyComponents { .. })));
 }
 
 #[test]
@@ -1301,4 +1306,197 @@ fn a_bolder_line_standing_alone_is_a_heading() {
     let boards = [PixelRect { x0: 20, y0: 50, x1: 200, y1: 190 }, PixelRect { x0: 20, y0: 390, x1: 200, y1: 530 }];
     assert_eq!(crate::glyphs::bolder_lines(&c.image(), &lines, &[]).unwrap().len(), 2);
     assert!(crate::glyphs::bolder_lines(&c.image(), &lines, &boards).unwrap().is_empty());
+}
+
+/// A page of `lines` lines of ten letter blocks (14 × 20, every 30 rows from row 40, from x 20)
+/// and a halftone of `dot` × `dot` dots every `pitch` pixels over `[x0, x1) × [y0, y1)`.
+fn page_with_a_picture(lines: i64, (x0, y0, x1, y1): (i64, i64, i64, i64), dot: i64, pitch: i64) -> Canvas {
+    let mut c = Canvas::new(1400, (40 + lines * 30 + 40) as usize);
+    for l in 0..lines {
+        for k in 0..10 {
+            c.rect(20 + k * 18, 40 + l * 30, 20 + k * 18 + 14, 60 + l * 30);
+        }
+    }
+    let mut y = y0;
+    while y < y1 {
+        let mut x = x0;
+        while x < x1 {
+            c.rect(x, y, x + dot, y + dot);
+            x += pitch;
+        }
+        y += pitch;
+    }
+    c
+}
+
+/// Plan A9-V2 (A3-02, A3's probe c06): a picture's fine dots beside the text, 22,500 of them,
+/// no longer make the page "not text" (it was refused past 20,000 components): they are dust,
+/// left out without counting, and the 40 lines are read.
+#[test]
+fn a_halftone_of_fine_dots_leaves_the_text_read() {
+    let model = blob_and_x();
+    let c = page_with_a_picture(40, (500, 100, 950, 550), 1, 3);
+    let lines = read(&c.image(), None, None, &model, &GlyphOptions::default()).unwrap();
+    assert_eq!(lines.len(), 40);
+    let ink = PageInk::new(&c.image(), None, None, &[]).unwrap().unwrap();
+    assert_eq!((ink.scale(), ink.skipped().len()), (Some(SCALE as u32), 0));
+}
+
+/// Plan A9-V2: coarser dots (2 × 2, every 3 pixels, more than [`MAX_COMPONENTS`] of them) are no
+/// dust: the strip of the page they fill is left out, and said, and the lines above and below it
+/// are read; a line beside the picture goes with it.
+#[test]
+fn a_halftone_of_coarse_dots_leaves_out_its_strip_only() {
+    let model = blob_and_x();
+    let (y0, y1) = (400, 880);
+    let c = page_with_a_picture(40, (500, y0, 1380, y1), 2, 3);
+    let image = c.image();
+    let ink = PageInk::new(&image, None, None, &[]).unwrap().unwrap();
+    let skipped = ink.skipped().to_vec();
+    assert_eq!(skipped.len(), 1, "{skipped:?}");
+    let strip = skipped[0];
+    assert!(strip.y0 <= y0 as u32 && strip.y1 >= y1 as u32 && strip.y1 <= y1 as u32 + 30, "{strip:?}");
+    let lines = read_ink(&ink, &model, &GlyphOptions::default()).unwrap();
+    let beside = (0..40).filter(|l| {
+        let (top, bottom) = (40 + l * 30, 60 + l * 30);
+        bottom > i64::from(strip.y0) && top < i64::from(strip.y1)
+    });
+    assert_eq!(lines.len(), 40 - beside.count());
+    assert!(lines.iter().all(|l| l.rect.y1 <= strip.y0 || l.rect.y0 >= strip.y1), "no line read inside the strip");
+    assert_eq!(read(&image, None, None, &model, &GlyphOptions::default()).unwrap().len(), lines.len());
+}
+
+/// Plan A9-V2: the strips left out are the fewest, densest ones that bring the components under
+/// the cap, and every component outside them is kept.
+#[test]
+fn dense_strips_are_left_out_until_the_cap_holds() {
+    let comp = |y0: i64, y1: i64| seg::Comp { b: Bx { x0: 0, y0, x1: 4, y1 }, area: 8, ring: false };
+    // Strips: rows 0-9 (3 comps), 20-29 (6), 40-49 (2), with gaps of 10 rows.
+    let mut comps: Vec<seg::Comp> = Vec::new();
+    for (y, n) in [(0, 3), (20, 6), (40, 2)] {
+        for _ in 0..n {
+            comps.push(comp(y, y + 10));
+        }
+    }
+    let mut kept = comps.clone();
+    assert!(seg::drop_dense_strips(&mut kept, 60, 11, 2).is_empty(), "under the cap");
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 5, 2), [(20, 30)]);
+    assert_eq!(kept.len(), 5);
+    // Over the cap alone (6), then the densest left (3) until the cap holds.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 4, 2), [(0, 10), (20, 30)]);
+    assert_eq!(kept.iter().map(|c| c.b.y0).collect::<Vec<_>>(), [40, 40]);
+    // Every strip over the cap: none kept.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 1, 2), [(0, 10), (20, 30), (40, 50)]);
+    assert!(kept.is_empty());
+    // Gaps of at most `bridge` rows join strips.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 5, 10), [(0, 50)]);
+    assert!(kept.is_empty());
+}
+
+/// A classifier whose reading of a cell is a hash of its pixels: deterministic, the same in any
+/// batch, and as likely to merge two boxes as not. Counts its calls.
+struct Hashed {
+    names: Vec<String>,
+    calls: std::cell::Cell<usize>,
+}
+
+impl Hashed {
+    fn new() -> Self {
+        Hashed { names: ["a", "b", "(", ")", "-"].iter().map(|s| (*s).to_owned()).collect(), calls: std::cell::Cell::new(0) }
+    }
+}
+
+impl GlyphClassifier for Hashed {
+    fn classes(&self) -> &[String] {
+        &self.names
+    }
+    fn classify(&self, cells: &[f32], count: usize) -> Result<Vec<f32>, crate::models::ModelError> {
+        self.calls.set(self.calls.get() + 1);
+        let k = self.names.len();
+        let mut out = Vec::with_capacity(count * k);
+        for cell in cells.chunks(CELL_VALUES).take(count) {
+            let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+            for v in cell {
+                h ^= (v * 255.0).round() as u64;
+                h = h.wrapping_mul(0x0000_0100_0000_01b3);
+            }
+            // Skewed (a fourth power), so a reading is often confident enough to join a pair.
+            let raw: Vec<f32> = (0..k).map(|i| (((h >> (i * 7)) & 0x7f) as f32 + 1.0).powi(4)).collect();
+            let sum: f32 = raw.iter().sum();
+            out.extend(raw.iter().map(|v| v / sum));
+        }
+        Ok(out)
+    }
+}
+
+/// A reader of `c` with the hashed classifier.
+fn hashed_reader<'a>(model: &'a Hashed, c: &'a Canvas) -> Reader<'a> {
+    Reader::new(model, Classes::new(&model.names), c.gray())
+}
+
+/// A page of `lines` lines of `per_line` italic strokes (3 pixels wide, slanting a third of a
+/// pixel a row over 20 rows) every 8 pixels: each stroke's box overlaps its neighbour's by two
+/// columns, as italic letters' do, and no stroke touches another.
+fn italic_page(lines: usize, per_line: usize) -> Canvas {
+    let mut c = Canvas::new(40 + per_line * 8, 40 + lines * 30 + 20);
+    for l in 0..lines {
+        let top = 40 + (l * 30) as i64;
+        for k in 0..per_line {
+            let x0 = 20 + (k * 8) as i64;
+            for y in top..top + 20 {
+                let o = (top + 20 - y) / 3;
+                c.rect(x0 + o, y, x0 + o + 3, y + 1);
+            }
+        }
+    }
+    c
+}
+
+/// Plan A9-V3 (A3-03): an italic page is read in a handful of model calls, not one for each
+/// pair of neighbouring boxes and each line (1,960 calls on A3's page of 40 lines of 60); and
+/// what is read is what pair-by-pair reading read.
+#[test]
+fn an_italic_page_is_read_in_a_handful_of_calls() {
+    let model = Hashed::new();
+    let c = italic_page(40, 60);
+    let lines = read(&c.image(), None, None, &model, &GlyphOptions::default()).unwrap();
+    assert!(!lines.is_empty());
+    assert!(model.calls.get() <= 10, "{} calls", model.calls.get());
+    // The merges are the pair-by-pair ones.
+    let r = hashed_reader(&model, &c);
+    let comps = seg::components(&c.bin(), MAX_COMPONENTS).unwrap();
+    let (boxes, _) = seg::char_boxes(&comps, SCALE);
+    let ordered = seg::order_in_strip(&boxes);
+    assert_eq!(r.merge_broken(&ordered, SCALE).unwrap(), r.merge_broken_one_by_one(&ordered, SCALE).unwrap());
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(48))]
+
+    /// Plan A9-V3: on boxes anywhere on a page of random ink, batched merging and joining make
+    /// what pair-by-pair reading made (a deterministic classifier reads a cell the same in any
+    /// batch).
+    #[test]
+    fn batched_reading_merges_as_pair_by_pair_did(
+        ink in proptest::collection::vec((0i64..200, 0i64..60, 1i64..14, 1i64..24), 1..60),
+        scale in 8i64..30,
+    ) {
+        let mut c = Canvas::new(220, 90);
+        for &(x, y, w, h) in &ink {
+            c.rect(x, y, (x + w).min(219), (y + h).min(89));
+        }
+        let model = Hashed::new();
+        let r = hashed_reader(&model, &c);
+        let mut boxes: Vec<Bx> = ink.iter().map(|&(x, y, w, h)| Bx { x0: x, y0: y, x1: x + w, y1: y + h }).collect();
+        boxes.sort_by_key(|b| (b.x0, b.y0));
+        prop_assert_eq!(r.merge_broken(&boxes, scale).unwrap(), r.merge_broken_one_by_one(&boxes, scale).unwrap());
+        let reads = r.read(&boxes).unwrap();
+        let batched = r.join_fragments_in(vec![(boxes.clone(), reads.clone())], scale).unwrap().pop().unwrap();
+        let single = r.join_fragments_one_by_one(boxes.clone(), reads, scale).unwrap();
+        prop_assert_eq!(batched.0, single.0);
+        prop_assert_eq!(batched.1.iter().map(|x| x.class).collect::<Vec<_>>(), single.1.iter().map(|x| x.class).collect::<Vec<_>>());
+    }
 }

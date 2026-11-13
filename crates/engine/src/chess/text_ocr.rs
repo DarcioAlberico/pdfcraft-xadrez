@@ -45,7 +45,9 @@ use pdfcraft_chessvision::cipher::{BookCipher, repair_lines};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, ViewRect, pixels_to_view};
 use pdfcraft_chessvision::doc::TextReview;
 use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, set_bold, to_chess_text, to_page_text};
-use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, bold_words, bolder_lines, read, text_scale};
+use pdfcraft_chessvision::glyphs::{
+    GlyphClassifier, GlyphError, GlyphLine, GlyphOptions, PageInk, bold_words_in, bolder_lines_in, frames_in, read, read_ink, text_scale,
+};
 use pdfcraft_chessvision::raster::GrayImage;
 use pdfcraft_render::text::PageText;
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, Tile};
@@ -82,6 +84,10 @@ pub struct OcrText {
     /// The lines set bolder than the page's body at its size, standing alone (view space,
     /// `glyphs::bolder_lines`): a section's title.
     pub bolder: Vec<ViewRect>,
+    /// What the reading left out and why: a strip of the page with too much fine ink to be text,
+    /// a layout hint (frames, bolder lines, bold words) that could not be worked out (plan A9-V2:
+    /// either failed the whole page).
+    pub notes: Vec<String>,
 }
 
 /// A line at least this many times as tall as the page's body text is set larger, as a title is.
@@ -220,7 +226,10 @@ pub fn read_page(
     page: u32,
 ) -> Result<OcrText, String> {
     let image = masked(gray, diagrams).ok_or("the page image could not be prepared")?;
-    let scale = text_scale(&image, &[]).map_err(|e| e.to_string())?;
+    // The page's ink, once (plan A9-V2): the reading and every layout hint use it.
+    let mut ink = PageInk::new(&image, None, None, &[]).map_err(|e| e.to_string())?;
+    let scale = ink.as_ref().and_then(PageInk::scale);
+    let mut notes = Vec::new();
     // A frame that hugs a diagram (at most [`BOARD_FRAME_AREA`] times its area) is the board's
     // border the mask missed: it goes, with what it holds (pieces the mask missed too, which a
     // frame no longer hides as its inner detail). A larger frame around a diagram is a box around
@@ -229,7 +238,15 @@ pub fn read_page(
     let area = |r: &PixelRect| f64::from(r.x1.saturating_sub(r.x0)) * f64::from(r.y1.saturating_sub(r.y0));
     let mut boards = Vec::new();
     let mut frames = Vec::new();
-    for f in pdfcraft_chessvision::glyphs::frames(&image, None, scale).map_err(|e| e.to_string())? {
+    // A layout hint: one that cannot be worked out is said, and the page is read without it.
+    let found = match ink.as_ref().map(frames_in).transpose() {
+        Ok(found) => found.unwrap_or_default(),
+        Err(e) => {
+            notes.push(format!("the frames around text were not looked for: {e}"));
+            Vec::new()
+        }
+    };
+    for f in found {
         let touched: Vec<&PixelRect> = diagrams.iter().filter(|d| f.x0 < d.x1 && d.x0 < f.x1 && f.y0 < d.y1 && d.y0 < f.y1).collect();
         if touched.is_empty() {
             frames.push(f);
@@ -237,15 +254,35 @@ pub fn read_page(
             boards.push(f);
         }
     }
-    let image = if boards.is_empty() { image } else { masked(&image, &boards).ok_or("the page image could not be prepared")? };
-    let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
+    // Boards the mask missed go, and the page's ink is worked out again without them.
+    if !boards.is_empty() {
+        let image = masked(&image, &boards).ok_or("the page image could not be prepared")?;
+        ink = PageInk::new(&image, None, scale, &[]).map_err(|e| e.to_string())?;
+    }
+    let Some(ink) = ink else { return Err("the page image is empty".into()) };
+    let height = ink.skipped().iter().map(|r| r.y1.saturating_sub(r.y0)).sum::<u32>();
+    if height > 0 {
+        let share = 100.0 * f64::from(height) / f64::from(image.height().max(1));
+        notes.push(format!(
+            "{share:.0}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan): those strips were not read"
+        ));
+    }
+    let lines = read_ink(&ink, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
     let larger = larger_lines(&lines, dpi);
     // A caption beside a board, bold or not, is the board's, not a heading.
     let board_boxes: Vec<PixelRect> = diagrams.iter().chain(&boards).copied().collect();
-    let bolder: Vec<ViewRect> =
-        bolder_lines(&image, &lines, &board_boxes).map_err(|e| e.to_string())?.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
+    let mut hint = |what: &str, found: Result<Vec<PixelRect>, GlyphError>| -> Vec<ViewRect> {
+        match found {
+            Ok(found) => found.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect(),
+            Err(e) => {
+                notes.push(format!("the {what} were not looked for: {e}"));
+                Vec::new()
+            }
+        }
+    };
+    let bolder = hint("lines set bolder", bolder_lines_in(&ink, &lines, &board_boxes));
+    let bold = hint("words set in bold", bold_words_in(&ink, &lines));
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
-    let bold: Vec<ViewRect> = bold_words(&image, &lines).map_err(|e| e.to_string())?.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),
@@ -268,6 +305,7 @@ pub fn read_page(
         frames,
         larger,
         bolder,
+        notes,
     })
 }
 

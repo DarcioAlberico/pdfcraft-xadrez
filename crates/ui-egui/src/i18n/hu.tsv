@@ -3468,3 +3468,14 @@ the move's comment	Move comment	A lépés megjegyzése
 	Keep them	Megőrzés
 	Don't keep	Nem őrizzük meg
 	The book's PGN couldn't be saved: {e}	A könyv PGN-jét nem sikerült menteni: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	A(z) {n}. diagram nem található a(z) {p}. oldalon.
+	Mate in {n}: {key}! (unique)	Matt {n} lépésben: {key}! (egyetlen)
+	Mate in {n}: {key}! (not proved the only key)	Matt {n} lépésben: {key}! (nem bizonyított, hogy ez az egyetlen kulcs)
+	Mate in {n}: no key found within the search budget	Matt {n} lépésben: a keresési kereten belül nincs kulcs
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Matt {n} lépésben: nincs; legjobb kísérlet {best}, cáfolja {reply}
+	Mate in {n}: none found	Matt {n} lépésben: nincs
+	Mate in {n}: {keys} ({k} keys)	Matt {n} lépésben: {keys} ({k} kulcs)
+	mates in {m}	{m} lépésben mattol
+	supposes castling is allowed	feltételezi, hogy a sáncolás megengedett
+	Mate in {n}: both sides mate, so who moves stays assumed	Matt {n} lépésben: mindkét fél mattol, így hogy ki lép, feltételezett marad
