@@ -22,7 +22,7 @@
 //! diagram images in a folder beside it), through the engine's `chess_export`; the menu, the
 //! notice about diagrams still to review and what the export said are `chess_export_ui`.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use egui::{Color32, FontId, TextureHandle};
 use pdfcraft_engine::DocId;
@@ -72,18 +72,16 @@ pub struct PageText {
 /// of its own, opened from the document's working bytes, and the result is picked up when it is
 /// done (inline on the web and in tests). The session is given what the app's session read for
 /// the document's state, and what it reads anew is given back (plan A9, G11): the book is read
-/// once per session.
+/// once per session. A [`crate::chess_job::Job`] (plan A9-I2): a panic in the work comes back as
+/// an error, and dropping it asks the work to stop.
 pub struct ChessJob {
     pub doc: DocId,
     pub kind: JobKind,
     /// The document's state when the job began: what it read is kept only while the document is
     /// still in it.
     stamp: Option<ScanStamp>,
-    result: JobSlot,
+    job: crate::chess_job::Job<(JobDone, JobRead)>,
 }
-
-/// Where a job leaves what it did, and what its session holds then.
-type JobSlot = Arc<Mutex<Option<(JobDone, Option<JobRead>)>>>;
 
 /// What a job's session holds when it is done, to give back to the app's session.
 struct JobRead {
@@ -130,6 +128,25 @@ enum JobDone {
     Linked(Result<crate::chess_reference_ui::BookLink, String>),
 }
 
+impl JobKind {
+    /// A job that reads the whole book (Export, Align the book), in the slot of the long jobs
+    /// ([`crate::chess_ui::ChessState::long`]); the others read a page or a few, in the page
+    /// read's ([`crate::chess_ui::ChessState::reading`]).
+    pub fn is_long(&self) -> bool {
+        matches!(self, JobKind::Export { .. } | JobKind::LinkBook { .. })
+    }
+
+    /// What a job of this kind came to when its work could not run or did not end (`why`).
+    fn failed(&self, why: String) -> JobDone {
+        match self {
+            JobKind::Read { .. } => JobDone::Read(Err(why)),
+            JobKind::Game { .. } => JobDone::Game(Err(why)),
+            JobKind::Export { .. } => JobDone::Export(Err(why)),
+            JobKind::LinkBook { .. } => JobDone::Linked(Err(why)),
+        }
+    }
+}
+
 impl ChessJob {
     /// What the panel says while it runs.
     pub fn label(&self) -> &'static str {
@@ -141,11 +158,53 @@ impl ChessJob {
             JobKind::LinkBook { .. } => tl!("Aligning the book to the PGN…"),
         }
     }
+
+    /// The row of a long job ([`JobKind::is_long`]): which page it is on, of how many.
+    pub fn long_row(&self) -> LongRow {
+        let (done, total) = self.job.progress();
+        let said = match self.kind {
+            JobKind::Export { .. } => tl!("Exporting the chess document: page {done} of {of}"),
+            _ => tl!("Aligning the book to the PGN: page {done} of {of}"),
+        };
+        // The page it is on, as the scan's row says it: one more than those done, at most the last.
+        let on = done.saturating_add(1).min(total);
+        LongRow { said: crate::i18n::fmt(said, &[("done", &on.to_string()), ("of", &total.to_string())]), done, total }
+    }
 }
 
-/// The lock, even after a worker panicked while holding it (it holds plain data).
-fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
+/// A long job of the document shown, as its row says it: pages done of the total (plan A9-I2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct LongRow {
+    pub said: String,
+    pub done: usize,
+    pub total: usize,
+}
+
+/// Export document `id` as `format` (plan A9-I2): its pages' diagrams are scanned first, a block
+/// at a time, so the job says how far it is and stops between two blocks; the export then finds
+/// them scanned. Reading their text and writing come after the last page, and are not counted.
+fn export_in_steps(
+    s: &mut pdfcraft_engine::Session,
+    id: DocId,
+    format: ChessFormat,
+    options: &ChessExportOptions,
+    ctl: &crate::chess_job::JobCtl,
+) -> Result<pdfcraft_engine::chess::export::ChessExport, String> {
+    /// Pages scanned at a time.
+    const BLOCK: usize = 16;
+    let pages: Vec<usize> = if options.pages.is_empty() { (0..s.get(id).map_or(0, |d| d.info.pages.len())).collect() } else { options.pages.clone() };
+    ctl.progress(0, pages.len());
+    let mut done: usize = 0;
+    for block in pages.chunks(BLOCK) {
+        // Stopped: the job was dropped, and what it says now is never seen.
+        if ctl.cancelled() {
+            return Err(String::new());
+        }
+        s.chess_scan(id, block, &options.scan, true)?;
+        done = done.saturating_add(block.len());
+        ctl.progress(done, pages.len());
+    }
+    s.chess_export(id, format, options)
 }
 
 /// What the text tab asks for.
@@ -178,6 +237,8 @@ pub enum TextAction {
     },
     /// Read every page and link it to the book's PGN (R6d).
     LinkBook,
+    /// Stop the long job of the document shown (Export, Align the book; plan A9-I2).
+    Stop,
     /// Go to page `page` (0-based) and put game `game` of the book's PGN on the board at its start
     /// (R6d: the PGN's games list).
     PgnGameAt {
@@ -236,10 +297,8 @@ fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::
 fn book_link_section(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
     let mut action = None;
     view.summary.as_ref()?;
-    if let Some((done, of)) = view.progress {
-        let said =
-            crate::i18n::fmt(tl!("Aligning the book to the PGN: page {done} of {of}"), &[("done", &done.to_string()), ("of", &of.to_string())]);
-        ui.label(egui::RichText::new(said).small().color(t.text_muted));
+    // Aligning: the long job's row at the top says how far it is, with Stop.
+    if view.aligning {
         return None;
     }
     let label = if view.link.is_some() { tl!("Align again") } else { tl!("Align the book to the PGN") };
@@ -382,12 +441,18 @@ pub fn text_tab(
     now: Option<ScanStamp>,
     origin: BookOrigin,
     busy: Option<&'static str>,
+    long: Option<&LongRow>,
     positions: PgnPositions,
     pgn: &crate::chess_reference_ui::BookPgnView,
     source: crate::chess_export_ui::PgnSource,
 ) -> Option<TextAction> {
     let book_pgn = pgn.summary.as_ref();
     let mut action = None;
+    if let Some(row) = long
+        && crate::chess_panel_head::long_job(ui, t, row)
+    {
+        action = Some(TextAction::Stop);
+    }
     if let Some(label) = busy {
         ui.horizontal(|ui| {
             ui.spinner();
@@ -712,16 +777,14 @@ impl PdfCraftApp {
             self.chess.doc_mut(id).text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
             return;
         }
-        if self.chess.job.is_some() {
-            return;
-        }
+        // A read running is dropped for this one (plan A9-I2): the last asked wins.
         let ocr = ocr || origin == BookOrigin::Scanned;
         let mode = if ocr { OcrMode::All } else { OcrMode::Off };
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
         // The book's PGN, when the document keeps one: the page read is linked to it.
         let reference = self.book_pgn_index(id);
-        self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id| {
+        self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id, _| {
             let options = OcrOptions::new(mode).with_book(book.as_ref());
             let mut read = s.chess_document_with(id, &[page], &settings, None, &options);
             if let (Ok(read), Some(index)) = (read.as_mut(), reference.as_deref()) {
@@ -744,12 +807,9 @@ impl PdfCraftApp {
         };
         let Some(centre) = text.chess.pages.first().filter(|p| p.index == at.page).cloned() else { return };
         let mode = if text.ocr { OcrMode::All } else { OcrMode::Off };
-        if self.chess.job.is_some() {
-            return self.notify(tl!("A chess document is already being read or exported").to_string());
-        }
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
-        self.start_chess_job(id, JobKind::Game { at, stamp }, move |s, id| {
+        self.start_chess_job(id, JobKind::Game { at, stamp }, move |s, id, _| {
             let options = OcrOptions::new(mode).with_book(book.as_ref());
             JobDone::Game(s.chess_game_span(id, centre, at, &settings, &options))
         });
@@ -766,29 +826,32 @@ impl PdfCraftApp {
         let Some(index) = self.book_pgn_index(id) else {
             return self.notify(tl!("This document keeps no book's PGN.").to_string());
         };
-        if self.chess.job.is_some() {
+        if self.chess.long.is_some() {
             return self.notify(tl!("A chess document is already being read or exported").to_string());
         }
         if !self.may_copy(id) {
             return;
         }
         let (Some(stamp), Some(pages)) = (self.session.chess_stamp(id), self.session.get(id).map(|d| d.info.pages.len())) else { return };
-        let done = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        self.chess.book_pgns.progress = Some((done.clone(), pages));
         let mode = self.chess_origin(id).ocr_mode();
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
-        self.start_chess_job(id, JobKind::LinkBook { stamp }, move |s, id| {
+        self.start_chess_job(id, JobKind::LinkBook { stamp }, move |s, id, ctl| {
             let options = OcrOptions::new(mode).with_book(book.as_ref());
             let all: Vec<usize> = (0..pages).collect();
             let mut doc =
                 ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
+            ctl.progress(0, pages);
             for block in all.chunks(BLOCK) {
+                // Stopped: the job was dropped, and what it says now is never seen.
+                if ctl.cancelled() {
+                    return JobDone::Linked(Err(String::new()));
+                }
                 match s.chess_document_with(id, block, &settings, None, &options) {
                     Ok(read) => doc.pages.extend(read.doc.pages),
                     Err(e) => return JobDone::Linked(Err(e)),
                 }
-                done.fetch_add(block.len(), std::sync::atomic::Ordering::Relaxed);
+                ctl.progress(doc.pages.len(), pages);
             }
             let aligned = reference::align(&doc, &index);
             JobDone::Linked(Ok(crate::chess_reference_ui::BookLink::new(&aligned, &index, pages)))
@@ -807,8 +870,19 @@ impl PdfCraftApp {
     }
 
     /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
-    /// worker thread (inline on the web and in tests); [`Self::poll_chess_job`] picks it up.
-    fn start_chess_job(&mut self, id: DocId, kind: JobKind, work: impl FnOnce(&mut pdfcraft_engine::Session, DocId) -> JobDone + Send + 'static) {
+    /// worker thread (inline on the web and in tests); [`Self::poll_chess_job`] picks it up. A
+    /// long job ([`JobKind::is_long`]) waits for none running; a page read takes the place of the
+    /// one running, which is dropped (plan A9-I2).
+    fn start_chess_job(
+        &mut self,
+        id: DocId,
+        kind: JobKind,
+        work: impl FnOnce(&mut pdfcraft_engine::Session, DocId, &crate::chess_job::JobCtl) -> JobDone + Send + 'static,
+    ) {
+        let long = kind.is_long();
+        if long && self.chess.long.is_some() {
+            return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
         // The diagram corrections go with the document: the job reads in a session of its own.
         let corrections = self.chess_corrections_file(id);
         // So does what this session read for the document as it is: the job reads none of it again.
@@ -816,54 +890,65 @@ impl PdfCraftApp {
         let stamp = self.session.chess_stamp(id);
         let Some(doc) = self.session.get(id) else { return };
         let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
-        let result: JobSlot = Arc::default();
-        let slot = result.clone();
-        let is_read = matches!(kind, JobKind::Read { .. });
-        let run = move || {
+        let job = crate::chess_job::Job::spawn("pdfcraft-chess-job", self.run_inline, move |ctl| {
             let mut s = pdfcraft_engine::Session::new();
-            let done = match s.open(name, None, bytes, password.as_deref()) {
-                Ok(job_id) => {
-                    s.set_chess_corrections(job_id, corrections);
-                    s.prime_chess_cache(job_id, cached);
-                    let done = work(&mut s, job_id);
-                    (done, Some(JobRead { cached: s.chess_cached(job_id, &[]), scanned: s.chess_scanned() }))
-                }
-                Err(e) if is_read => (JobDone::Read(Err(e.to_string())), None),
-                Err(e) => (JobDone::Export(Err(e.to_string())), None),
-            };
-            *lock(&slot) = Some(done);
-        };
-        self.chess.job = Some(ChessJob { doc: id, kind, stamp, result });
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.run_inline {
-            run();
-        } else if let Err(e) = std::thread::Builder::new().name("pdfcraft-chess-job".into()).spawn(run) {
-            self.chess.job = None;
-            self.notify(e.to_string());
-            return;
+            let job_id = s.open(name, None, bytes, password.as_deref()).map_err(|e| e.to_string())?;
+            s.set_chess_corrections(job_id, corrections);
+            s.prime_chess_cache(job_id, cached);
+            let done = work(&mut s, job_id, ctl);
+            Ok((done, JobRead { cached: s.chess_cached(job_id, &[]), scanned: s.chess_scanned() }))
+        });
+        let job = Some(ChessJob { doc: id, kind, stamp, job });
+        if long {
+            self.chess.long = job;
+        } else {
+            self.chess.reading = job;
         }
-        #[cfg(target_arch = "wasm32")]
-        run();
         self.poll_chess_job();
+    }
+
+    /// Stop the long job running (Export, Align the book; plan A9-I2): dropped at once, so
+    /// nothing it did is written or shown, and said.
+    pub fn stop_chess_job(&mut self) {
+        let Some(job) = self.chess.long.take() else { return };
+        let said = match job.kind {
+            JobKind::LinkBook { .. } => tl!("Aligning was stopped: the book's link is as it was."),
+            _ => tl!("The export was stopped: nothing was written."),
+        };
+        // Dropping it asks its work to stop; its thread ends at its next block of pages.
+        drop(job);
+        self.notify(said.to_owned());
     }
 
     /// Pick up a finished job: show the page read, or write the export.
     pub fn poll_chess_job(&mut self) {
-        let Some(job) = self.chess.job.as_ref() else { return };
-        let Some((done, read)) = lock(&job.result).take() else {
+        self.poll_chess_slot(false);
+        self.poll_chess_slot(true);
+    }
+
+    /// Pick up the page read's job, or (`long`) the long job's, when it is done.
+    fn poll_chess_slot(&mut self, long: bool) {
+        let slot = if long { &mut self.chess.long } else { &mut self.chess.reading };
+        let Some(out) = slot.as_mut().map(|j| j.job.poll()) else { return };
+        let Some(out) = out else {
             if let Some(ctx) = &self.ctx {
                 ctx.request_repaint_after(std::time::Duration::from_millis(200));
             }
             return;
         };
-        let Some(job) = self.chess.job.take() else { return };
-        // What the job read is this session's too, while the document is in the state it read.
-        if let Some(read) = read {
-            self.chess.job_scanned = Some(read.scanned);
-            if job.stamp.is_some() && self.session.chess_stamp(job.doc) == job.stamp {
-                self.session.prime_chess_cache(job.doc, read.cached);
+        let Some(job) = (if long { self.chess.long.take() } else { self.chess.reading.take() }) else { return };
+        let done = match out {
+            Ok((done, read)) => {
+                // What the job read is this session's too, while the document is in the state it read.
+                self.chess.job_scanned = Some(read.scanned);
+                if job.stamp.is_some() && self.session.chess_stamp(job.doc) == job.stamp {
+                    self.session.prime_chess_cache(job.doc, read.cached);
+                }
+                done
             }
-        }
+            // The document could not be opened again, or the work panicked (said with its message).
+            Err(why) => job.kind.failed(why),
+        };
         match (job.kind, done) {
             (JobKind::Read { page, stamp, origin, ocr }, JobDone::Read(read)) => {
                 // The document changed meanwhile: the reading describes a state that is gone.
@@ -945,7 +1030,6 @@ impl PdfCraftApp {
                 Err(e) => self.notify(e),
             },
             (JobKind::LinkBook { stamp }, JobDone::Linked(linked)) => {
-                self.chess.book_pgns.progress = None;
                 // The document changed meanwhile: the pages linked are of a state that is gone.
                 if self.session.chess_stamp(job.doc) != Some(stamp) {
                     return;
@@ -970,10 +1054,7 @@ impl PdfCraftApp {
                     Err(e) => self.notify(e),
                 }
             }
-            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => {
-                self.chess.book_pgns.progress = None;
-                self.notify(e)
-            }
+            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
             _ => {}
         }
     }
@@ -1002,6 +1083,7 @@ impl PdfCraftApp {
                 self.show_chess_tab(ChessTab::Diagrams);
             }
             TextAction::OpenGame(at) => self.read_book_game(at),
+            TextAction::Stop => self.stop_chess_job(),
             TextAction::Export(format) => self.export_chess_dialog(format),
             TextAction::PgnPositions(p) => {
                 if let Some((_, id)) = self.active_ids() {
@@ -1100,8 +1182,8 @@ impl PdfCraftApp {
             options.ocr = self.chess_origin(id).ocr_mode();
             options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
             options.reference = self.export_reference(id, format);
-            self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
-                JobDone::Export(s.chess_export(id, format, &options))
+            self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id, ctl| {
+                JobDone::Export(export_in_steps(s, id, format, &options, ctl))
             });
         }
     }
@@ -1109,7 +1191,7 @@ impl PdfCraftApp {
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn export_chess_to(&mut self, id: DocId, format: ChessFormat, path: &std::path::Path) {
-        if self.chess.job.is_some() {
+        if self.chess.long.is_some() {
             return self.notify(tl!("A chess document is already being read or exported").to_string());
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
@@ -1124,7 +1206,7 @@ impl PdfCraftApp {
         options.reference = self.export_reference(id, format);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());
-        self.start_chess_job(id, kind, move |s, id| JobDone::Export(s.chess_export(id, format, &options)));
+        self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_in_steps(s, id, format, &options, ctl)));
     }
 
     /// Write a finished export to `path`, Markdown's images in `image_dir` beside it.

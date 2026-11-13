@@ -3475,3 +3475,10 @@ the move's comment	Move comment	Коментар до ходу
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	раніше збережене не вдалося прочитати, і спершу його буде відкладено; спробуйте ще раз трохи згодом
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Не вдалося прочитати збережені виправлення діаграм ({why}). Під час наступного збереження їх буде відкладено, і відтоді нові виправлення зберігатимуться.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Не вдалося прочитати збережені PGN книжок ({why}). Під час наступного збереження їх буде відкладено, і відтоді нові зберігатимуться.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Зупинити
+	Exporting the chess document: page {done} of {of}	Експорт шахового документа: сторінка {done} з {of}
+	The export was stopped: nothing was written.	Експорт зупинено: нічого не записано.
+	Aligning was stopped: the book's link is as it was.	Зіставлення зупинено: зв’язок книги лишився як був.
+	The work stopped on an internal error: {why}	Роботу зупинено через внутрішню помилку: {why}
+	The work stopped on an internal error.	Роботу зупинено через внутрішню помилку.

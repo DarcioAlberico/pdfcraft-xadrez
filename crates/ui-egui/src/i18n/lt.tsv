@@ -3704,3 +3704,10 @@ the move's comment	Move comment	Ėjimo komentaras
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	anksčiau įrašytų duomenų nepavyko perskaityti, todėl jie pirmiausia atidedami; po akimirkos bandykite dar kartą
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Nepavyko perskaityti įrašytų diagramų pataisymų ({why}). Kito įrašymo metu jie atidedami, o nuo tada nauji pataisymai išsaugomi.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Nepavyko perskaityti įrašytų knygų PGN ({why}). Kito įrašymo metu jie atidedami, o nuo tada nauji išsaugomi.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Stabdyti
+	Exporting the chess document: page {done} of {of}	Eksportuojamas šachmatų dokumentas: puslapis {done} iš {of}
+	The export was stopped: nothing was written.	Eksportavimas sustabdytas: nieko neįrašyta.
+	Aligning was stopped: the book's link is as it was.	Derinimas sustabdytas: knygos susiejimas liko toks, koks buvo.
+	The work stopped on an internal error: {why}	Darbas sustojo dėl vidinės klaidos: {why}
+	The work stopped on an internal error.	Darbas sustojo dėl vidinės klaidos.

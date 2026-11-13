@@ -3454,3 +3454,10 @@ the move's comment	Move comment	Kommentar des Zugs
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	das zuvor Gespeicherte war nicht lesbar und wird zuerst beiseitegelegt; versuchen Sie es gleich noch einmal
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Gespeicherte Diagrammkorrekturen waren nicht lesbar ({why}). Beim nächsten Speichern werden sie beiseitegelegt; danach werden neue Korrekturen gespeichert.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Gespeicherte PGNs der Bücher waren nicht lesbar ({why}). Beim nächsten Speichern werden sie beiseitegelegt; danach werden neue gespeichert.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Beenden
+	Exporting the chess document: page {done} of {of}	Schachdokument wird exportiert: Seite {done} von {of}
+	The export was stopped: nothing was written.	Der Export wurde beendet: Es wurde nichts geschrieben.
+	Aligning was stopped: the book's link is as it was.	Das Ausrichten wurde beendet: Die Verknüpfung des Buchs bleibt, wie sie war.
+	The work stopped on an internal error: {why}	Die Arbeit wurde wegen eines internen Fehlers abgebrochen: {why}
+	The work stopped on an internal error.	Die Arbeit wurde wegen eines internen Fehlers abgebrochen.

@@ -2,6 +2,37 @@ use super::*;
 use crate::game::{DrawColor, Drawing, GameError, MAX_NODES, Token};
 use crate::placement::Square;
 
+/// Plan A9-Q3a (found by `cargo xtask fuzz`, a capture of page text holding `[%cal Ge2e4]`): a
+/// drawing command in a comment before a move is drawn on the position before the move, as a
+/// PGN reader draws it when that comment is written with the move before's (the first move's,
+/// with the game's own): the PGN written reads back to itself. Before, the command stayed in the
+/// text, and reading it back moved it to the front of the comment.
+#[test]
+fn a_drawing_in_a_comment_before_a_move_reads_back_the_same() {
+    let fixed_point = |g: &Game| {
+        let pgn = g.pgn();
+        let again = Game::from_pgn(&pgn).unwrap().0.pgn();
+        assert_eq!(again, pgn);
+    };
+    // The first move's, written as the game's comment.
+    let mut g = game(&["e4"]);
+    let e4 = at(&g, &[0]);
+    g.set_comment_before(e4, "2.e4 )v[%cal Ge2e4]").unwrap();
+    assert_eq!(g.comment_before(e4), "2.e4 )v");
+    assert_eq!(g.drawings(0), [Drawing { from: Square::parse("e2").unwrap(), to: Square::parse("e4").unwrap(), color: DrawColor::Green }]);
+    fixed_point(&g);
+    // A first reply's, written with the move before's comment; and one after the variations of
+    // the move before, written on its own.
+    let mut g = game(&["e4", "e5", "Nf3"]);
+    let (e4, e5) = (at(&g, &[0]), at(&g, &[0, 0]));
+    g.set_comment(e4, "the king's pawn").unwrap();
+    g.set_comment_before(e5, "now [%csl Rd5] Black").unwrap();
+    assert_eq!((g.comment_before(e5), g.drawings(e4).len()), ("now Black", 1));
+    fixed_point(&g);
+    play_at(&mut g, e4, &["c5"]);
+    fixed_point(&g);
+}
+
 /// The game after `moves` (SAN), shown at the last one.
 fn game(moves: &[&str]) -> Game {
     let mut g = Game::standard();
