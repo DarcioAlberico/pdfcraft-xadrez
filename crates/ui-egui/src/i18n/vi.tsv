@@ -3713,3 +3713,5 @@ the move's comment	Move comment	Bình luận của nước đi
 	Aligning was stopped: the book's link is as it was.	Đã dừng căn sách: liên kết của sách vẫn như cũ.
 	The work stopped on an internal error: {why}	Công việc đã dừng do lỗi nội bộ: {why}
 	The work stopped on an internal error.	Công việc đã dừng do lỗi nội bộ.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Trong trình duyệt, chưa thể xuất hoặc căn theo PGN một cuốn sách dài hơn {n} trang: thẻ sẽ ngừng phản hồi cho đến khi xong. Ứng dụng máy tính làm việc này ở chế độ nền.

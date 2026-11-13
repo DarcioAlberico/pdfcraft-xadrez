@@ -3477,3 +3477,5 @@ the move's comment	Move comment	Comentário do lance
 	Aligning was stopped: the book's link is as it was.	O alinhamento foi interrompido: a ligação do livro ficou como estava.
 	The work stopped on an internal error: {why}	O trabalho parou por um erro interno: {why}
 	The work stopped on an internal error.	O trabalho parou por um erro interno.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	No navegador, um livro de mais de {n} páginas ainda não pode ser exportado nem alinhado ao PGN: a aba pararia de responder até o fim. O app para desktop faz isso em segundo plano.
