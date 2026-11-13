@@ -364,7 +364,8 @@ pub struct BookPgn {
     pub name: Option<String>,
     pub index: Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>,
     /// The user's choices on the moves in conflict with it (R6e of `plano-pgn-do-livro.md`).
-    pub decisions: Vec<reference_store::Decision>,
+    /// With the reading they were matched against (plan A9-L1b: `reader_version`, the ordinals).
+    pub decisions: reference_store::Decisions,
 }
 
 impl ChessCache {
