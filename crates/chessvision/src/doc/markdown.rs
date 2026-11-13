@@ -280,6 +280,29 @@ pub struct PgnExport {
     pub positions: usize,
     /// The diagrams [`PgnPositions`] asked a game for that got none, in the order of the book.
     pub skipped: Vec<SkippedPosition>,
+    /// What writing left out of the games (plan A9-F4), by game in the order written.
+    pub warnings: Vec<super::pgn::GameWarning>,
+}
+
+/// The game of its own that diagram `d` of page `page` gets ([`PgnPositions`]), with the
+/// origin's tags; why it gets none when its position was not read, is not legal or was made
+/// legal by a guess.
+pub(crate) fn position_game_of(doc: &ChessDoc, book: &PgnBook, page: u32, d: &super::DiagramBlock) -> Result<GameScore, SkippedPosition> {
+    let at = DiagramAt::on(page, d.number);
+    // The position it shows: the PGN's, the one the text settled, the one read.
+    let shown = d.shown().map(|s| (s.fen, s.confirmed));
+    match (&d.reading, shown) {
+        (Some(r), Some((fen, confirmed)))
+            if (confirmed || (r.legal() && !r.repaired)) && GameScore::new(Some(fen.to_owned())).start_board().is_some() =>
+        {
+            let game = position_game(fen, page, d.number, d.puzzle, r.accepted);
+            let origin = origin_of(doc, book, page, Some(d.number), d.puzzle);
+            Ok(apply_origin(game, &origin, true))
+        }
+        (None, _) => Err(SkippedPosition { at, reason: SkipReason::NotRead }),
+        (Some(r), _) if r.repaired => Err(SkippedPosition { at, reason: SkipReason::Repaired }),
+        (Some(_), _) => Err(SkippedPosition { at, reason: SkipReason::Illegal }),
+    }
 }
 
 /// A game with no moves for a diagram: its position, and where it came from.
@@ -316,7 +339,7 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
     for page in &doc.pages {
         for block in &page.blocks {
             let Block::Diagram(d) = block else { continue };
-            let at = DiagramAt { page: page.index, diagram: d.number };
+            let at = DiagramAt::on(page.index, d.number);
             let from_here = doc
                 .games
                 .iter()
@@ -327,25 +350,12 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
                 PgnPositions::None => false,
             };
             if wanted {
-                // The position it shows: the PGN's, the one the text settled, the one read.
-                let shown = d.shown().map(|s| (s.fen, s.confirmed));
-                match (&d.reading, shown) {
-                    (Some(r), Some((fen, confirmed)))
-                        if (confirmed || (r.legal() && !r.repaired)) && GameScore::new(Some(fen.to_owned())).start_board().is_some() =>
-                    {
-                        let game = position_game(fen, page.index, d.number, d.puzzle, r.accepted);
-                        let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
-                        out.push(apply_origin(game, &origin, true));
+                match position_game_of(doc, book, page.index, d) {
+                    Ok(game) => {
+                        out.push(game);
                         made.positions = made.positions.saturating_add(1);
                     }
-                    (reading, _) => {
-                        let reason = match reading {
-                            None => SkipReason::NotRead,
-                            Some(r) if r.repaired => SkipReason::Repaired,
-                            Some(_) => SkipReason::Illegal,
-                        };
-                        made.skipped.push(SkippedPosition { at, reason });
-                    }
+                    Err(skipped) => made.skipped.push(skipped),
                 }
             }
             if let Some(i) = from_here
@@ -372,7 +382,8 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
             out.push(with_origin(doc, book, g));
         }
     }
-    made.pgn = super::pgn::write_with(out.iter(), style);
+    let written = super::pgn::write_report(out.iter(), style);
+    (made.pgn, made.warnings) = (written.pgn, written.warnings);
     made
 }
 
@@ -399,9 +410,9 @@ fn mark_shown(doc: &ChessDoc, shown: &[DiagramAt], score: &mut GameScore) {
     // Each main-line move's pieces, read once for all the diagrams.
     let mut keys: Vec<Option<Option<PlacementKey>>> = vec![None; main.len()];
     for at in shown.iter().take(MAX_SHOWN_DIAGRAMS) {
-        let reading = doc.pages.iter().find(|p| p.index == at.page).and_then(|p| {
+        let reading = doc.pages.iter().find(|p| p.index == at.page_index()).and_then(|p| {
             p.blocks.iter().find_map(|b| match b {
-                Block::Diagram(d) if d.number == at.diagram => d.reading.as_ref(),
+                Block::Diagram(d) if d.number == at.index => d.reading.as_ref(),
                 _ => None,
             })
         });

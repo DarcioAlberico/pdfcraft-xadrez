@@ -2421,7 +2421,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // With the chess OCR area on (T9), a drag draws the area to read rather than selecting text.
     let chess_area = crate::chess_ocr_area::drawing(&app.chess);
     if crate::chess_history::pressed_in(ui) && !capture_armed {
-        app.chess.leave_scope();
+        app.chess.leave_for_document();
     }
     // Keyboard scrolling applies to this frame's page view only, never later.
     let key_scroll = std::mem::take(&mut app.views[index].key_scroll);
@@ -2879,7 +2879,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // Chess diagrams found in this document, while it is as it was scanned.
     let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
     let chess_drafts = app.chess.draft_keys(view.id);
-    let mut chess_pick: Option<(usize, usize)> = None;
+    let mut chess_pick: Option<pdfcraft_engine::chess::DiagramAt> = None;
     // A double-click on a page not scanned for diagrams: the page, the point in user space and
     // whether it selected a word.
     let mut chess_board_at: Option<(usize, [f32; 2], bool)> = None;
@@ -3628,7 +3628,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
                 }
                 if resp.clicked() && picks && !consumed {
-                    chess_pick = Some((i, d));
+                    chess_pick = Some(pdfcraft_engine::chess::DiagramAt::new(i, d));
                 }
             }
             // On a page not scanned yet, a double-click scans it and puts the diagram there on the

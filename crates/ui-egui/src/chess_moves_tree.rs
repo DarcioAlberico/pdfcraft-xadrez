@@ -381,9 +381,14 @@ pub(crate) fn created_notice(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSta
         });
         state.created_variation = None;
     } else if make_main {
-        state.edit(|s| {
-            s.game.promote(node);
-            Some(ChessEdit::MakeMainLine)
+        state.edit(|s| match s.game.promote(node) {
+            Ok(()) => Some(ChessEdit::MakeMainLine),
+            // A line that would nest the old one too deep is left as it is, and said (plan
+            // A9-F5, A1-19: it was silent).
+            Err(_) => {
+                s.message = Some(tl!("Not done: variations would nest too deep.").to_owned());
+                None
+            }
         });
         state.created_variation = None;
     } else if undo {

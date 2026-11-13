@@ -3517,3 +3517,13 @@ the move's comment	Move comment	Komentář k tahu
 	Redraw in the PDF?	Překreslit v PDF?
 	Diagram {n}, open	Diagram č. {n}, otevřít
 	Choices made on this page not found in its reading (kept): {n}	Volby na této stránce, které se v jejím čtení nenašly (ponechány): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	dokument je zavřený
+	Diagram {n}, page {p}: correction forgotten	Diagram {n}, str. {p}: oprava zapomenuta
+	Forget the correction?	Zapomenout opravu?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Dosud nepotvrzené změny se zahodí také. PDF se nezmění.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Do PDF se nic nevykreslilo: opravu nebylo možné uložit ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	dříve uložená data nešla přečíst a nejprve se odkládají stranou; zkuste to za chvíli znovu
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Uložené opravy diagramů nešlo přečíst ({why}). Při příštím uložení se odloží stranou a od té doby se nové opravy ukládají.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Uložené PGN knih nešlo přečíst ({why}). Při příštím uložení se odloží stranou a od té doby se nové ukládají.

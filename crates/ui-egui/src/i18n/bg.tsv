@@ -3406,3 +3406,13 @@ the move's comment	Move comment	Коментар към хода
 	Redraw in the PDF?	Прерисуване в PDF?
 	Diagram {n}, open	Диаграма {n}, отваряне
 	Choices made on this page not found in its reading (kept): {n}	Избори в тази страница, които не са намерени в прочита ѝ (запазени): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	документът е затворен
+	Diagram {n}, page {p}: correction forgotten	Диаграма {n}, стр. {p}: корекцията е забравена
+	Forget the correction?	Да се забрави ли корекцията?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Непотвърдените още промени също се отхвърлят. PDF файлът не се променя.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Нищо не беше начертано в PDF: корекцията не можа да се запази ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	запазеното преди не можа да се прочете и първо се отделя настрана; опитайте отново след малко
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Запазените корекции на диаграми не можаха да се прочетат ({why}). При следващото запазване се отделят настрана, а новите корекции се пазят оттогава нататък.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Запазените PGN на книгите не можаха да се прочетат ({why}). При следващото запазване се отделят настрана, а новите се пазят оттогава нататък.

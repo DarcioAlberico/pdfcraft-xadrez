@@ -108,11 +108,17 @@ impl PdfCraftApp {
     /// Whether a registered command can run now. The engine judges the document (security,
     /// contents, undo history); view state it can't see is checked here.
     pub(crate) fn command_enabled(&self, spec: &CommandSpec) -> bool {
-        // Undo and Redo act on the chess game after a click or a change in the chess panels
+        // Undo and Redo act on the document's corrections right after one was kept or forgotten
+        // (plan A9-G10), and on the chess game after a click or a change in the chess panels
         // (D12), first: with nothing to undo there, they are off rather than reaching for the
         // document's history.
-        if self.chess.in_scope() && matches!(spec.id, "edit.undo" | "edit.redo") {
-            return self.chess.games.can_step(spec.id == "edit.undo");
+        if matches!(spec.id, "edit.undo" | "edit.redo") {
+            let undo = spec.id == "edit.undo";
+            match self.chess.undo_target(undo) {
+                crate::chess_history::UndoTarget::Corrections => return self.chess.fix_edit(undo).is_some(),
+                crate::chess_history::UndoTarget::Game => return self.chess.games.can_step(undo),
+                crate::chess_history::UndoTarget::Document => {}
+            }
         }
         // The chess board's rail tools: as their buttons are.
         if let Some(enabled) = crate::chess_tools::command_enabled(&self.chess, spec.id) {
@@ -139,18 +145,21 @@ impl PdfCraftApp {
             }
     }
 
-    /// Undo's or Redo's label while they act on the chess game ("Undo Play Nd5", translated);
-    /// `None` for any other command, or while they act on the document.
+    /// Undo's or Redo's label while they act on the chess game ("Undo Play Nd5", translated) or on
+    /// the document's corrections ("Undo Confirm correction", plan A9-G10); `None` for any other
+    /// command, or while they act on the document.
     pub(crate) fn chess_command_label(&self, spec: &CommandSpec) -> Option<String> {
         let undo = match spec.id {
             "edit.undo" => true,
             "edit.redo" => false,
             _ => return None,
         };
-        if !self.chess.in_scope() {
-            return None;
-        }
-        Some(self.chess.games.step_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
+        let step = match self.chess.undo_target(undo) {
+            crate::chess_history::UndoTarget::Corrections => self.chess.fix_edit(undo).map(|e| crate::chess_history::command_text(undo, &e)),
+            crate::chess_history::UndoTarget::Game => self.chess.games.step_text(undo),
+            crate::chess_history::UndoTarget::Document => return None,
+        };
+        Some(step.unwrap_or_else(|| crate::i18n::command_label(spec.label)))
     }
 
     /// Run a registered command by id. Returns `false` when the id is unknown or the command

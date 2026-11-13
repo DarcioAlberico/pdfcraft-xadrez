@@ -143,12 +143,15 @@ pub struct ChessExport {
     pub read: ChessDocument,
     /// Diagrams drawn (SVG boards or images).
     pub drawn: usize,
-    /// PGN: games with no moves added for positions.
+    /// PGN: games with no moves added for positions (with a reference too, plan A9-F4).
     pub position_games: Option<usize>,
     /// PGN: the diagrams that were to get a game of their own and did not, and why.
     pub positions_skipped: Vec<markdown::SkippedPosition>,
+    /// PGN: what writing left out of the games, by game in the order written (plan A9-F4).
+    pub pgn_warnings: Vec<pdfcraft_chessvision::doc::pgn::GameWarning>,
     /// PGN with [`ChessExportOptions::reference`]: what the book's PGN was given.
-    pub annotated: Option<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>,
+    /// Boxed: the export's result travels in the interface's job messages, which it would make large.
+    pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
 }
@@ -168,9 +171,16 @@ impl ChessExport {
 
 /// What page `index` (0-based) of `doc` is called (plan A9-T2a, R3-08): the label its
 /// `/PageLabels` prints, else its number from 1 ([`PageLabel`]). The exports say every page by
-/// this one rule; the interface's places that still count from the index come with step T2b.
+/// this one rule, and so does the interface everywhere it names a page (plan A9-T2b,
+/// [`page_label_of`]).
 pub fn page_label(doc: &crate::Document, index: u32) -> PageLabel {
-    PageLabel::new(usize::try_from(index).ok().and_then(|i| doc.info.pages.get(i)).map(|p| p.label.as_str()), index)
+    page_label_of(&doc.info, usize::try_from(index).unwrap_or(usize::MAX))
+}
+
+/// [`page_label`] of a document's `info`, page `index` (0-based; a page past `u32::MAX`, which no
+/// document has, as `u32::MAX`).
+pub fn page_label_of(info: &crate::DocInfo, index: usize) -> PageLabel {
+    PageLabel::new(info.pages.get(index).map(|p| p.label.as_str()), u32::try_from(index).unwrap_or(u32::MAX))
 }
 
 impl Session {
@@ -201,6 +211,7 @@ impl Session {
         let mut images = Vec::new();
         let mut position_games = None;
         let mut positions_skipped = Vec::new();
+        let mut pgn_warnings = Vec::new();
         let mut annotated = None;
         // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
         let read_diagrams = read.doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
@@ -247,14 +258,18 @@ impl Session {
                 };
                 drawn = 0;
                 if let Some(index) = &o.reference {
-                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.pgn_style);
+                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
                     let bytes = made.pgn.clone().into_bytes();
-                    annotated = Some(made);
+                    position_games = Some(made.positions);
+                    positions_skipped.clone_from(&made.skipped);
+                    pgn_warnings.clone_from(&made.warnings);
+                    annotated = Some(Box::new(made));
                     bytes
                 } else {
                     let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
                     position_games = Some(made.positions);
                     positions_skipped = made.skipped;
+                    pgn_warnings = made.warnings;
                     made.pgn.into_bytes()
                 }
             }
@@ -266,9 +281,9 @@ impl Session {
                         for block in &page.blocks {
                             let Block::Diagram(d) = block else { continue };
                             let Some(shown) = d.shown() else { continue };
-                            let png = pdfcraft_chess::fen::parse(shown.fen)
+                            let png = pdfcraft_chess::fen::Fen::parse(shown.fen)
                                 .map_err(|e| e.to_string())
-                                .and_then(|f| super::office::diagram_png(&f.placement, &o.pieces, &o.style, o.diagram_px));
+                                .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px));
                             match png {
                                 Ok(png) => {
                                     images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
@@ -314,6 +329,6 @@ impl Session {
                 }
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, annotated, notes })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes })
     }
 }

@@ -57,8 +57,8 @@ fn synthetic(app: &PdfCraftApp) -> ChessResults {
     let mut kinds = HashMap::new();
     for page in 0..PAGES {
         let kept = |kind, n: usize| crate::chess_ui::Kept { uid: format!("{page}-{n}"), kind, fen: START.to_owned() };
-        kinds.insert((page, 0), kept(Kind::Verified, 0));
-        kinds.insert((page, 1), kept(Kind::Corrected, 1));
+        kinds.insert(DiagramAt::new(page, 0), kept(Kind::Verified, 0));
+        kinds.insert(DiagramAt::new(page, 1), kept(Kind::Corrected, 1));
     }
     ChessResults {
         doc: id,
@@ -174,14 +174,14 @@ fn the_keys_walk_the_whole_list() {
     let mut h = harness(true);
     h.get_by_label("Diagram 1 · Verified").focus();
     h.run_steps(2);
-    assert_eq!(h.state().chess.shown_list().focused, Some((0, 0)));
+    assert_eq!(h.state().chess.shown_list().focused, Some(DiagramAt::new(0, 0)));
     key(&mut h, Key::ArrowDown);
     key(&mut h, Key::ArrowDown);
-    assert_eq!(h.state().chess.shown_list().focused, Some((0, 2)), "two rows down");
+    assert_eq!(h.state().chess.shown_list().focused, Some(DiagramAt::new(0, 2)), "two rows down");
     key(&mut h, Key::End);
-    assert_eq!(h.state().chess.shown_list().focused, Some((PAGES - 1, PER_PAGE - 1)), "the book's last diagram");
+    assert_eq!(h.state().chess.shown_list().focused, Some(DiagramAt::new(PAGES - 1, PER_PAGE - 1)), "the book's last diagram");
     key(&mut h, Key::Home);
-    assert_eq!(h.state().chess.shown_list().focused, Some((0, 0)));
+    assert_eq!(h.state().chess.shown_list().focused, Some(DiagramAt::new(0, 0)));
     // Tab goes to the row's ⋯, and Enter opens its menu.
     h.key_press(Key::Tab);
     h.run_steps(2);
@@ -218,9 +218,9 @@ fn a_diagram_the_books_pgn_has_leaves_the_review_queue() {
     let h = harness(false);
     let mut results = synthetic(h.state());
     let (queue, reviewed) = (results.review_queue(), results.reviewed());
-    assert!(queue.contains(&(0, 2)), "not read: to review");
-    results.confirmed.insert((0, 2));
-    assert!(!results.review_queue().contains(&(0, 2)));
+    assert!(queue.contains(&DiagramAt::new(0, 2)), "not read: to review");
+    results.confirmed.insert(DiagramAt::new(0, 2));
+    assert!(!results.review_queue().contains(&DiagramAt::new(0, 2)));
     assert_eq!(results.review_queue().len(), queue.len() - 1);
-    assert_eq!(results.reviewed(), (reviewed.0 + 1, reviewed.1));
+    assert_eq!(results.reviewed(), crate::chess_ui::Reviewed { checked: reviewed.checked + 1, of: reviewed.of });
 }

@@ -557,7 +557,18 @@ impl CorrectionFile {
     /// [`apply`]) as its next revision, else as a new entry, never as a second one. It records the
     /// page's fingerprint and its neighbours' as they are now. Returns its uid.
     pub fn set<F: PageFingerprints + ?Sized>(&mut self, new: NewCorrection, at: u64, fingerprints: &F) -> Result<String, CorrectionError> {
-        crate::chess::pdfcraft_chess::fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
+        self.replace(new, at, fingerprints).map(|(uid, _)| uid)
+    }
+
+    /// [`CorrectionFile::set`], and the live correction it replaced, as it was (`None`: it put in a
+    /// new one): what undoing it puts back ([`CorrectionFile::restore`], plan A9-G10).
+    pub fn replace<F: PageFingerprints + ?Sized>(
+        &mut self,
+        new: NewCorrection,
+        at: u64,
+        fingerprints: &F,
+    ) -> Result<(String, Option<Correction>), CorrectionError> {
+        crate::chess::pdfcraft_chess::fen::Fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
         if new.fen.len() > MAX_TEXT {
             return Err(CorrectionError::BadFen("too long".into()));
         }
@@ -576,6 +587,7 @@ impl CorrectionFile {
             });
         let current = winner(over);
         if let Some(e) = current.and_then(|i| self.entries.get_mut(i)) {
+            let before = e.clone();
             e.page = new.page;
             e.page_fp = page_fp;
             e.prev_fp = prev_fp;
@@ -589,7 +601,7 @@ impl CorrectionFile {
             if e.orig.is_none() {
                 e.orig = new.orig;
             }
-            return Ok(e.uid.clone());
+            return Ok((e.uid.clone(), Some(before)));
         }
         if self.entries.len() >= MAX_ENTRIES {
             return Err(CorrectionError::Full);
@@ -616,7 +628,51 @@ impl CorrectionFile {
             rev: 1,
             deleted: false,
         });
-        Ok(uid)
+        Ok((uid, None))
+    }
+
+    /// Live correction `uid` was drawn over its diagram on page `page` (Redraw in the PDF, plan
+    /// A9-G10), which changed the page: it records the page's fingerprint and its neighbours' as
+    /// they are now, as its next revision, so it follows the page as it is — never another page
+    /// that still has the content the page had (a copy of it). Whether there was such a correction.
+    pub fn follow_page<F: PageFingerprints + ?Sized>(&mut self, uid: &str, page: usize, at: u64, fingerprints: &F) -> Result<bool, CorrectionError> {
+        let page_fp = fingerprint_at(fingerprints, Some(page)).ok_or(CorrectionError::NoSuchPage(page))?;
+        let (prev_fp, next_fp) = (fingerprint_at(fingerprints, page.checked_sub(1)), fingerprint_at(fingerprints, page.checked_add(1)));
+        let Some(e) = self.entries.iter_mut().find(|e| e.uid == uid && !e.deleted) else { return Ok(false) };
+        e.page = page;
+        e.page_fp = page_fp;
+        e.prev_fp = prev_fp;
+        e.next_fp = next_fp;
+        e.page_count = fingerprints.count();
+        e.at = at;
+        e.rev = e.rev.saturating_add(1);
+        Ok(true)
+    }
+
+    /// Put correction `uid` back as `entry` was, at time `at` (`None`: no live correction, so a
+    /// live one is deleted): undoing or redoing a change of the user's (plan A9-G10). It is written
+    /// as the entry's **next** revision, past every revision this file or `entry` has seen, so a
+    /// merge with a copy that saw the change it undoes (a deletion's tombstone) keeps it: a merge
+    /// never undoes a deletion ([`CorrectionFile::merge`]), and putting a deleted correction back
+    /// is a new revision of it with `deleted` false, not its old one. Whether anything changed.
+    pub fn restore(&mut self, uid: &str, entry: Option<&Correction>, at: u64) -> Result<bool, CorrectionError> {
+        let Some(entry) = entry else { return Ok(self.delete(uid, at)) };
+        let seen = self.entries.iter().position(|e| e.uid == uid);
+        let rev = seen.and_then(|i| self.entries.get(i)).map_or(entry.rev, |e| e.rev.max(entry.rev)).saturating_add(1);
+        let back = Correction { uid: uid.to_owned(), at, rev, deleted: false, ..entry.clone() };
+        let full = self.entries.len() >= MAX_ENTRIES;
+        match seen.and_then(|i| self.entries.get_mut(i)) {
+            Some(e) if !e.deleted && Correction { at: e.at, rev: e.rev, ..back.clone() } == *e => Ok(false),
+            Some(e) => {
+                *e = back;
+                Ok(true)
+            }
+            None if full => Err(CorrectionError::Full),
+            None => {
+                self.entries.push(back);
+                Ok(true)
+            }
+        }
     }
 
     /// Entries of version 1 still on their page (its fingerprint where it was) take their
@@ -911,12 +967,12 @@ pub fn corrected_position(
     before: Option<&pdfcraft_chessvision::board::ReadPosition>,
 ) -> Option<pdfcraft_chessvision::board::ReadPosition> {
     use pdfcraft_chess::recognize::side::{SideSource, SideToMove};
-    let parsed = crate::chess::pdfcraft_chess::fen::parse(fen).ok()?;
-    let color = parsed.side_to_move.unwrap_or(pdfcraft_chess::placement::Color::White);
-    let legality = pdfcraft_chess::rules::check_position(&parsed.placement);
+    let parsed = crate::chess::pdfcraft_chess::fen::Fen::parse(fen).ok()?;
+    let color = parsed.side().unwrap_or(pdfcraft_chess::placement::Color::White);
+    let legality = pdfcraft_chess::rules::check_position(parsed.placement());
     let accepted = legality.allows(color);
     Some(pdfcraft_chessvision::board::ReadPosition {
-        placement: parsed.placement,
+        placement: *parsed.placement(),
         fen: fen.trim().to_owned(),
         legality,
         side: SideToMove { color, source: SideSource::Manual, conflicting: false },

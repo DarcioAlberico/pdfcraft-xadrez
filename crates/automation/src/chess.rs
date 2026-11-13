@@ -49,7 +49,9 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
 /// What the move list shows above and after the moves (plan HC10): each tag null when it says
-/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on.
+/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on;
+/// the result read is the game's, and what the board says at the end of the main line is beside
+/// it (`board_result`, plan A9-F5).
 fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Value {
     let h = game.header();
     json!({
@@ -62,6 +64,7 @@ fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Val
         "date": h.date,
         "round": h.round,
         "result": game.result(),
+        "board_result": game.board_result(),
     })
 }
 
@@ -380,7 +383,7 @@ impl Automation {
         let keep = a.opt_bool("keep_correction")?.unwrap_or(false);
         let given = match (a.opt_str("fen")?, a.opt_str("placement")?) {
             (Some(fen), None) => {
-                Some((fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement, Some(fen.trim().to_owned())))
+                Some((*fen::Fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement(), Some(fen.trim().to_owned())))
             }
             (None, Some(p)) => Some((fen::parse_placement(p).map_err(|e| ToolError::InvalidArgs(format!("placement: {e}")))?, None)),
             (None, None) => None,
@@ -400,7 +403,7 @@ impl Automation {
                     )
                 })?;
                 from_correction = Some(uid);
-                (fen::parse(&fen).map_err(|e| failed(format!("the kept correction: {e}")))?.placement, Some(fen))
+                (*fen::Fen::parse(&fen).map_err(|e| failed(format!("the kept correction: {e}")))?.placement(), Some(fen))
             }
         };
         if keep && full.is_none() {
@@ -774,9 +777,10 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,
+            "pgn_warnings": made.pgn_warnings.iter().map(|w| json!({ "game": w.game.saturating_add(1), "kind": w.warning.kind.name() })).collect::<Vec<_>>(),
             "positions_skipped": made.positions_skipped.iter().map(|s| json!({
-                "page": u64::from(s.at.page) + 1,
-                "diagram": s.at.diagram.saturating_add(1),
+                "page": s.at.page.saturating_add(1),
+                "diagram": s.at.index.saturating_add(1),
                 "reason": s.reason.name(),
             })).collect::<Vec<_>>(),
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,

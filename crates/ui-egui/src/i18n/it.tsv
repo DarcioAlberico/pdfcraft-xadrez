@@ -3655,3 +3655,13 @@ the move's comment	Move comment	Commento della mossa
 	Redraw in the PDF?	Ridisegnare nel PDF?
 	Diagram {n}, open	Diagramma {n}, apri
 	Choices made on this page not found in its reading (kept): {n}	Scelte fatte su questa pagina non trovate nella sua lettura (conservate): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	il documento è chiuso
+	Diagram {n}, page {p}: correction forgotten	Diagramma {n}, pag. {p}: correzione dimenticata
+	Forget the correction?	Dimenticare la correzione?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Anche le modifiche non ancora confermate vengono scartate. Il PDF non viene modificato.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Nel PDF non è stato disegnato nulla: impossibile salvare la correzione ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	quanto salvato prima non è leggibile e viene prima messo da parte; riprova tra un momento
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Impossibile leggere le correzioni dei diagrammi salvate ({why}). Vengono messe da parte al prossimo salvataggio, e da allora le nuove correzioni vengono conservate.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Impossibile leggere i PGN dei libri salvati ({why}). Vengono messi da parte al prossimo salvataggio, e da allora i nuovi vengono conservati.

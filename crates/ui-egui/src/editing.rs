@@ -51,7 +51,7 @@ impl PdfCraftApp {
         match self.session.apply(id, edit.clone()) {
             Ok(()) => {
                 // A change to the document puts Undo and Redo back on it (D12).
-                self.chess.leave_scope();
+                self.chess.leave_for_document();
                 let Some(doc) = self.session.get(id) else { return true };
                 let info = &doc.info;
                 let view = &mut self.views[i];
@@ -191,12 +191,22 @@ impl PdfCraftApp {
         }
     }
 
-    /// Undo the last change: to the chess game when the last action was in the chess panels
+    /// Undo the last change: to the shown document's corrections right after one was kept or
+    /// forgotten (plan A9-G10), to the chess game when the last action was in the chess panels
     /// (D12), to the Combine files list while its tab shows, else the document.
     pub fn undo(&mut self) {
-        if self.chess.in_scope() {
-            self.chess_history_step(true);
-            return;
+        match self.chess.undo_target(true) {
+            crate::chess_history::UndoTarget::Corrections => {
+                if let Some(id) = self.chess.shown {
+                    self.chess_fix_step(id, true);
+                }
+                return;
+            }
+            crate::chess_history::UndoTarget::Game => {
+                self.chess_history_step(true);
+                return;
+            }
+            crate::chess_history::UndoTarget::Document => {}
         }
         // While a polygon, cloud or run of connected lines is being drawn, Undo takes back its
         // last point instead of the last finished edit.
@@ -213,9 +223,18 @@ impl PdfCraftApp {
     }
 
     pub fn redo(&mut self) {
-        if self.chess.in_scope() {
-            self.chess_history_step(false);
-            return;
+        match self.chess.undo_target(false) {
+            crate::chess_history::UndoTarget::Corrections => {
+                if let Some(id) = self.chess.shown {
+                    self.chess_fix_step(id, false);
+                }
+                return;
+            }
+            crate::chess_history::UndoTarget::Game => {
+                self.chess_history_step(false);
+                return;
+            }
+            crate::chess_history::UndoTarget::Document => {}
         }
         if self.combine_showing() {
             self.combine_history_step(false);
@@ -243,7 +262,8 @@ impl PdfCraftApp {
         }
     }
 
-    fn history_step(&mut self, undo: bool) {
+    /// Undo (`undo`) or redo the active document's last change.
+    pub(crate) fn history_step(&mut self, undo: bool) {
         let Some((i, id)) = self.active_ids() else { return };
         let result = if undo { self.session.undo(id) } else { self.session.redo(id) };
         match result {

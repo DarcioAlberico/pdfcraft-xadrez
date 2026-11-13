@@ -3443,3 +3443,13 @@ the move's comment	Move comment	Commentaire du coup
 	Redraw in the PDF?	Redessiner dans le PDF ?
 	Diagram {n}, open	Diagramme {n}, ouvrir
 	Choices made on this page not found in its reading (kept): {n}	Choix faits sur cette page introuvables dans sa lecture (conservés) : {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	le document est fermé
+	Diagram {n}, page {p}: correction forgotten	Diagramme {n}, page {p} : correction oubliée
+	Forget the correction?	Oublier la correction ?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Les modifications pas encore confirmées sont aussi abandonnées. Le PDF n’est pas modifié.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Rien n’a été dessiné dans le PDF : la correction n’a pas pu être enregistrée ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	ce qui avait été enregistré n’a pas pu être lu et est d’abord mis de côté ; réessayez dans un instant
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Impossible de lire les corrections de diagrammes enregistrées ({why}). Elles sont mises de côté au prochain enregistrement, et les nouvelles corrections sont conservées dès lors.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Impossible de lire les PGN de livres enregistrés ({why}). Ils sont mis de côté au prochain enregistrement, et les nouveaux sont conservés dès lors.

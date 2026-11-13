@@ -71,8 +71,8 @@ use crate::theme::Tokens;
 /// Seconds after the last change before a collection is written.
 pub(crate) const DEBOUNCE_SECS: f64 = 2.0;
 
-/// Largest PGN file read.
-const MAX_PGN_FILE_BYTES: u64 = 32 << 20;
+/// Largest PGN file read: the one cap of every PGN read (plan A9-F4).
+const MAX_PGN_FILE_BYTES: u64 = pdfcraft_engine::chess::pdfcraft_chess::pgn::MAX_PGN_FILE_BYTES as u64;
 
 /// The id of the collection kept for when no document is open.
 const NO_DOCUMENT: &str = "no-document";
@@ -153,16 +153,18 @@ impl GameEntry {
     }
 
     /// The game's name in the list, `number` being its place (1-based): "White–Black" from its
-    /// details, else its event, else the diagram it came from, else "Game {number}".
-    pub fn name(&self, number: usize) -> String {
+    /// details, else its event, else the diagram it came from, its page said as the book numbers
+    /// it (`labels`: its document's page labels, by index; plan A9-T2b, R3-08), else
+    /// "Game {number}".
+    pub fn name(&self, number: usize, labels: &[String]) -> String {
         if let Some(name) = self.names().display() {
             return name;
         }
         match self.board.source {
-            Some(s) => crate::i18n::fmt(
-                tl!("Diagram {n}, p. {page}"),
-                &[("n", &(s.index.saturating_add(1)).to_string()), ("page", &(s.page.saturating_add(1)).to_string())],
-            ),
+            Some(s) => {
+                let page = pdfcraft_engine::chess::pdfcraft_chessvision::doc::PageLabel::of(labels, u32::try_from(s.page).unwrap_or(u32::MAX));
+                crate::i18n::fmt(tl!("Diagram {n}, p. {page}"), &[("n", &(s.index.saturating_add(1)).to_string()), ("page", &page.to_string())])
+            }
             None => crate::i18n::fmt(tl!("Game {n}"), &[("n", &number.to_string())]),
         }
     }
@@ -395,6 +397,11 @@ pub struct ChessCollection {
     autosave: Autosave,
     /// The games as they were before moves left them, kept with the games (plan A8 §7, V5).
     trash: crate::chess_trash::Trash,
+    /// Its document's page labels, by index, and the document state they are of (its edit
+    /// generation and page count): the names of the games opened from a diagram say its page as
+    /// the book numbers it ([`PdfCraftApp::sync_chess_docs`]; plan A9-T2b).
+    pub(crate) labels: std::sync::Arc<[String]>,
+    labels_of: (u64, usize),
 }
 
 impl Default for ChessCollection {
@@ -405,6 +412,12 @@ impl Default for ChessCollection {
 }
 
 impl ChessCollection {
+    /// The name of game `i` (from 0) in the list ([`GameEntry::name`]), its diagram's page said
+    /// as the book numbers it.
+    pub fn name_of(&self, i: usize) -> Option<String> {
+        self.get(i).map(|e| e.name(i.saturating_add(1), &self.labels))
+    }
+
     /// One blank game.
     fn new(keys: DocKeys, cid: String) -> ChessCollection {
         let mut c = ChessCollection {
@@ -414,6 +427,8 @@ impl ChessCollection {
             cid,
             autosave: Autosave::default(),
             trash: crate::chess_trash::Trash::default(),
+            labels: std::sync::Arc::from(Vec::new()),
+            labels_of: (0, 0),
         };
         c.settle();
         c
@@ -791,7 +806,7 @@ impl ChessCollection {
                 continue;
             }
             let removed = std::mem::take(&mut entry.board.removed);
-            let name = entry.name(index.saturating_add(1));
+            let name = entry.name(index.saturating_add(1), &self.labels);
             for (game, deleted) in removed {
                 self.trash.keep(&game, &name, deleted);
             }
@@ -897,7 +912,7 @@ impl ChessCollection {
         // The last place first, so each game keeps the place it had among the others.
         for &index in places.iter().rev() {
             left_blank = self.len() == 1;
-            let name = self.get(index).map(|e| e.name(index.saturating_add(1))).unwrap_or_default();
+            let name = self.get(index).map(|e| e.name(index.saturating_add(1), &self.labels)).unwrap_or_default();
             let Some(entry) = self.games.delete(index) else { continue };
             // An illegal position has no game to keep: it stays on the redo side only.
             if !entry.untouched()
@@ -1031,7 +1046,7 @@ pub struct ChessGames {
     /// Notices already given (said once).
     said: HashSet<String>,
     /// Notices for the user, shown at the next frame.
-    notes: Vec<String>,
+    pub(crate) notes: Vec<String>,
     /// The list's question or name editor open, and its keyboard focus.
     list: ListState,
     /// Collections the user left as they were, by id, with their fingerprint then: Quit or
@@ -1043,7 +1058,7 @@ pub struct ChessGames {
     cut_prompt: Option<(PgnGames, Vec<(String, String)>)>,
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
-    uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
+    uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Result<Vec<u8>, String>)>>>,
     /// Save PGN… starts the file with a byte order mark (Preferences; off by default, decision
     /// D18).
     pub pgn_bom: bool,
@@ -1173,6 +1188,13 @@ impl ChessGames {
             (Some(_), None) => true,
             (None, _) => false,
         }
+    }
+
+    /// When the step Undo (`undo`) or Redo would take in the chess scope was put on its side
+    /// ([`chess_history::next_seq`]): the list's or the game shown's, the newer.
+    pub(crate) fn step_seq(&self, undo: bool) -> Option<u64> {
+        let c = self.collection();
+        c.history.seq(undo).max(c.active().board.history.seq(undo))
     }
 
     /// What Undo (`undo`) or Redo would take back in the chess scope: a change to the list
@@ -1517,7 +1539,7 @@ fn newer_note(version: u32) -> String {
 fn restored_note(c: &ChessCollection, lost: usize) -> String {
     let mut note = if c.len() == 1 {
         let g = c.active();
-        crate::i18n::fmt(tl!("Chess game restored: {name}, moves: {n}"), &[("name", &g.name(1)), ("n", &g.moves().to_string())])
+        crate::i18n::fmt(tl!("Chess game restored: {name}, moves: {n}"), &[("name", &g.name(1, &c.labels)), ("n", &g.moves().to_string())])
     } else {
         crate::i18n::fmt(tl!("Chess games restored: {n}"), &[("n", &c.len().to_string())])
     };
@@ -2019,7 +2041,7 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
     let mut action = None;
     let (uid, len, active) = (e.uid, c.len(), i == c.active_index());
     let selected = list.sel.contains(c, uid);
-    let name = e.name(i.saturating_add(1));
+    let name = e.name(i.saturating_add(1), &c.labels);
     // The game shown, while other games are selected without it, in bold.
     let text = if active && !selected { egui::RichText::new(name.as_str()).strong() } else { egui::RichText::new(name.as_str()) };
     // The row's buttons show while the pointer is on the row (as the last frame left it) or the
@@ -2181,7 +2203,7 @@ fn pending(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollect
     let name = if many.len() > 1 {
         crate::i18n::fmt(tl!("{n} selected"), &[("n", &many.len().to_string())])
     } else {
-        c.get(i).map(|e| e.name(i.saturating_add(1))).unwrap_or_default()
+        c.get(i).map(|e| e.name(i.saturating_add(1), &c.labels)).unwrap_or_default()
     };
     let mut action = None;
     egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
@@ -2388,13 +2410,16 @@ impl PdfCraftApp {
                 storage.set_string(chess_autosave::STORAGE_BAD_KEY, bad);
             }
         }
-        // The diagram corrections, under their own key (plan A8, P3b2).
-        if let Some(value) = self.chess.corrections.storage_value() {
-            storage.set_string(crate::chess_corrections_ui::STORAGE_KEY, value);
+        // The diagram corrections, under their own key (plan A8, P3b2), and the books' PGNs under
+        // theirs: what the `Storage` holds now merged in first (another tab may have written it),
+        // and a value that couldn't be read kept aside, never written over (plan A9-I1b).
+        let current = storage.get_string(crate::chess_corrections_ui::STORAGE_KEY);
+        for (key, value) in self.chess.corrections.storage_values(current.as_deref(), |k| storage.get_string(k).is_some()) {
+            storage.set_string(&key, value);
         }
-        // The books' PGNs, under theirs.
-        if let Some(value) = self.chess.book_pgns.storage_value() {
-            storage.set_string(crate::chess_reference_ui::STORAGE_KEY, value);
+        let current = storage.get_string(crate::chess_reference_ui::STORAGE_KEY);
+        for (key, value) in self.chess.book_pgns.storage_values(current.as_deref(), |k| storage.get_string(k).is_some()) {
+            storage.set_string(&key, value);
         }
     }
 
@@ -2404,8 +2429,24 @@ impl PdfCraftApp {
         self.chess.games.autosave_to_storage(text.as_deref());
         let corrections = storage.and_then(|s| s.get_string(crate::chess_corrections_ui::STORAGE_KEY));
         self.chess.corrections.use_storage(corrections.as_deref());
+        if let Some(why) = self.chess.corrections.unreadable() {
+            let said = crate::i18n::fmt(
+                tl!(
+                    "Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on."
+                ),
+                &[("why", why)],
+            );
+            self.chess.games.notes.push(said);
+        }
         let book_pgns = storage.and_then(|s| s.get_string(crate::chess_reference_ui::STORAGE_KEY));
         self.chess.book_pgns.use_storage(book_pgns.as_deref());
+        if let Some(why) = self.chess.book_pgns.unreadable() {
+            let said = crate::i18n::fmt(
+                tl!("Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on."),
+                &[("why", why)],
+            );
+            self.chess.games.notes.push(said);
+        }
     }
 
     fn show_chess_notes(&mut self) {
@@ -2433,6 +2474,9 @@ impl PdfCraftApp {
         self.chess.shown = self.chess.games.current;
         let open: Vec<DocId> = self.views.iter().map(|v| v.id).collect();
         self.chess.docs.retain(|id, _| open.contains(id));
+        // A closed document's drafts go with it, however it was closed: none is asked about again,
+        // with nothing left to keep it in (plan A9-G10, finding A5-09).
+        self.chess.drafts.retain(|d| open.contains(&d.target.doc));
         for id in &open {
             self.chess.doc_mut(*id);
         }
@@ -2452,6 +2496,15 @@ impl PdfCraftApp {
             }
             if let Some((keys, protected)) = self.chess_doc_state(id) {
                 self.chess.games.attach(id, keys, protected);
+            }
+        }
+        // The page labels the games' names say, taken again when the document changed.
+        for (id, c) in &mut self.chess.games.docs {
+            let Some(doc) = self.session.get(*id) else { continue };
+            let state = (doc.edit_generation(), doc.info.pages.len());
+            if c.labels_of != state {
+                c.labels = doc.info.pages.iter().map(|p| p.label.clone()).collect();
+                c.labels_of = state;
             }
         }
     }
@@ -2701,13 +2754,14 @@ impl PdfCraftApp {
     /// selected in the list (named as every game is: "<document> games.pgn").
     fn save_chess_games_pgn(&mut self, which: PgnGames) {
         // Games read only up to an impossible move are written cut: said first (plan A9-G8, R1-02).
+        let labels = self.chess.games.collection().labels.clone();
         let cut: Vec<(String, String)> = self
             .chess
             .games
             .chosen(&which)
             .into_iter()
             .filter(|(_, e)| e.board.illegal.is_none())
-            .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1)), m)))
+            .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1), &labels), m)))
             .collect();
         if !cut.is_empty() {
             self.chess.games.cut_prompt = Some((which, cut));
@@ -2759,7 +2813,7 @@ impl PdfCraftApp {
             )
         } else {
             let c = self.chess.games.collection();
-            c.active().name(c.active_index().saturating_add(1))
+            c.active().name(c.active_index().saturating_add(1), &c.labels)
         };
         let name = format!("{}.pgn", file_stem(&stem));
         let bytes = pgn::encode(&text, self.chess.games.pgn_bom);
@@ -2815,10 +2869,10 @@ impl PdfCraftApp {
             wasm_bindgen_futures::spawn_local(async move {
                 let handles = rfd::AsyncFileDialog::new().add_filter("PGN", &["pgn", "txt"]).pick_files().await.unwrap_or_default();
                 for h in handles {
-                    let bytes = h.read().await;
-                    if let Ok(mut q) = uploads.lock() {
-                        q.push((h.file_name(), bytes));
-                    }
+                    // At most the cap, read as the models' picker reads (plan A9-I1b, R2-05).
+                    let cap = usize::try_from(MAX_PGN_FILE_BYTES).unwrap_or(usize::MAX);
+                    let bytes = crate::chess_models::read_picked(&h, cap).await;
+                    uploads.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push((h.file_name(), bytes));
                 }
                 if let Some(ctx) = ctx {
                     ctx.request_repaint();
@@ -2835,11 +2889,12 @@ impl PdfCraftApp {
             Err(poisoned) => std::mem::take(&mut *poisoned.into_inner()),
         };
         for (name, bytes) in files {
-            if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_PGN_FILE_BYTES {
-                self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", tl!("the file is too large"))]);
-                continue;
+            match bytes {
+                Ok(bytes) => {
+                    self.import_chess_pgn(&name, &bytes);
+                }
+                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
             }
-            self.import_chess_pgn(&name, &bytes);
         }
     }
 
@@ -3078,14 +3133,14 @@ mod tests {
         let mut e = GameEntry::new(board_with(&["e2e4"]));
         let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
         assert!(e.rename(&names).changed);
-        assert_eq!(e.name(1), "Werle–Jianu");
+        assert_eq!(e.name(1, &[]), "Werle–Jianu");
         assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() });
         assert_eq!(e.board.undo_label().as_deref(), Some("Edit game details"));
         assert!(!e.rename(&names).changed, "the same names change nothing");
         assert!(e.board.undo());
-        assert_eq!(e.name(1), "Game 1", "one step took all three back");
+        assert_eq!(e.name(1, &[]), "Game 1", "one step took all three back");
         assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }).changed);
-        assert_eq!(e.name(1), "Training", "named by its event without players");
+        assert_eq!(e.name(1, &[]), "Training", "named by its event without players");
         assert!(e.rename(&GameNames::default()).changed);
         assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
         // Site, Date and Round, from the list, with the names: one step for all of them.
@@ -3308,14 +3363,14 @@ mod tests {
     #[test]
     fn a_game_is_named_by_its_players_its_diagram_or_its_place() {
         let mut e = GameEntry::new(BoardState::default());
-        assert_eq!(e.name(3), "Game 3");
+        assert_eq!(e.name(3, &[]), "Game 3");
         e.board.source = Some(Source { doc: DocId(1), page: 16, index: 2 });
-        assert_eq!(e.name(3), "Diagram 3, p. 17");
+        assert_eq!(e.name(3, &[]), "Diagram 3, p. 17");
         e.board.game.set_tag("White", "?").unwrap();
-        assert_eq!(e.name(3), "Diagram 3, p. 17", "an unknown player is no name");
+        assert_eq!(e.name(3, &[]), "Diagram 3, p. 17", "an unknown player is no name");
         e.board.game.set_tag("White", "Werle").unwrap();
         e.board.game.set_tag("Black", "Jianu").unwrap();
-        assert_eq!(e.name(3), "Werle–Jianu");
+        assert_eq!(e.name(3, &[]), "Werle–Jianu");
         e.board.game.play_uci("e2e4").unwrap();
         e.board.game.play_uci("e7e5").unwrap();
         e.board.game.play_uci("g1f3").unwrap();

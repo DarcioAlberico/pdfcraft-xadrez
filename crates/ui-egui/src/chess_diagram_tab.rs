@@ -66,7 +66,8 @@ fn suggestion_row(ui: &mut egui::Ui, t: &Tokens, ed: &mut crate::chess_editor::D
     ui.label(
         RichText::new(crate::i18n::fmt(tl!("The book's PGN shows: {changes}"), &[("changes", &s.changes.join(", "))])).small().color(t.text_muted),
     );
-    let shown = ed.fen().split(' ').next() == s.fen.split(' ').next();
+    // The same pieces on the same squares (plan A9-T1b: a key, not a slice of the FEN text).
+    let shown = crate::chess_ui::same_pieces(&ed.fen(), &s.fen);
     if ui
         .add_enabled(!shown, egui::Button::new(tl!("Use the PGN's position")))
         .on_hover_text(tl!("Put the PGN's position on the board. It is kept only when you confirm it."))
@@ -85,6 +86,15 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     // board's keys and Undo back, as a click on the page does (plan A9-I18).
     if crate::chess_history::pressed_in(ui) {
         app.chess.leave_scope();
+    }
+    // Ctrl+Z and Ctrl+Shift+Z first, so what is drawn is what they leave (plan A9-G10).
+    let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
+    for &(key, m) in &tab_keys {
+        match crate::chess_diagram_keys::tab_action(key, m) {
+            Some(TabKey::Undo) => app.diagram_tab_step(true),
+            Some(TabKey::Redo) => app.diagram_tab_step(false),
+            _ => {}
+        }
     }
     let Some((_, id)) = app.active_ids() else {
         empty(ui, &t);
@@ -112,12 +122,11 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         results.confirmed(page, index),
     );
     let kept = results.kind(page, index).is_some();
-    let place = queue.iter().position(|q| *q == (page, index));
+    let place = queue.iter().position(|q| *q == pdfcraft_engine::chess::DiagramAt::new(page, index));
     let label = app.chess_page_label(page);
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
     let mut hint = !app.chess.diagram_hint_seen;
-    let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
     let board_keys = app.chess.diagram_keys.board.take();
     let suggestion = crate::chess_reference_ui::suggestion(app.chess.text_of(id), id, current, page, index);
     let Some(ed) = app.chess.editor.as_mut() else { return };
@@ -130,8 +139,6 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             Some(TabKey::ConfirmNext) => action = Some(EditorAction::Confirm { next: true }),
             Some(TabKey::Previous) if !queue.is_empty() => action = Some(EditorAction::Previous),
             Some(TabKey::Next) if !queue.is_empty() => action = Some(EditorAction::Next),
-            Some(TabKey::Undo) => ed.undo(),
-            Some(TabKey::Redo) => ed.redo(),
             Some(TabKey::BackToList) => back_to_list = true,
             _ => {}
         }
@@ -181,7 +188,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     ui.scope_builder(UiBuilder::new().max_rect(body_rect.shrink2(egui::vec2(8.0, 0.0))), |ui| {
         egui::ScrollArea::vertical().id_salt("chess-diagram-tab").auto_shrink([false, false]).show(ui, |ui| {
             // The review just finished (plan A8, P4).
-            if let Some((checked, of)) = review_done {
+            if let Some(crate::chess_ui::Reviewed { checked, of }) = review_done {
                 ui.horizontal(|ui| {
                     ui.add(crate::icons::image("badge-check", 14.0, t.success_text));
                     let done = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
@@ -462,14 +469,21 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
         if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
-        if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {
-            let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if ed.flipped { Color::Black } else { Color::White });
+        if legal {
+            let url =
+                pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&ed.position, if ed.flipped { Color::Black } else { Color::White });
             if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
                 action = Some(EditorAction::OpenLichess(url));
             }
         }
-        if kept && item(ui, true, tl!("Forget the correction")).on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
-            action = Some(EditorAction::Forget);
+        if kept {
+            // Last, apart, in the danger colour: it drops what the user kept (plan A9 §2.8.1).
+            ui.separator();
+            let danger = Tokens::get(ui.ctx()).danger_text;
+            let forget = widgets::menu_entry(ui, true, egui::Button::new(RichText::new(tl!("Forget the correction")).color(danger)));
+            if forget.on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
+                action = Some(EditorAction::Forget);
+            }
         }
     });
     action

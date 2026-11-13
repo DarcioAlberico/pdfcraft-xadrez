@@ -362,6 +362,38 @@ impl ChessPage {
     }
 }
 
+/// Where a diagram is (plan A9-T2b, R3-09): its page (0-based) and its place among the page's
+/// diagrams in reading order, from 0. The one address of a diagram: the games read (the diagrams
+/// a game shows), the PGN export, the alignment with the book's PGN, and in the app the Diagrams
+/// list, its Diagram tab, the marks on the page, the review queue and the corrections' marks, in
+/// place of a pair of numbers whose order a reader has to know. Ordered as the reading goes: page,
+/// then place. Written as `{"page", "diagram"}`, as before it was one type.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct DiagramAt {
+    pub page: usize,
+    #[serde(rename = "diagram")]
+    pub index: usize,
+}
+
+impl DiagramAt {
+    /// Diagram `index` of page `page`.
+    pub const fn new(page: usize, index: usize) -> DiagramAt {
+        DiagramAt { page, index }
+    }
+
+    /// Diagram `index` of the page of index `page` of a [`ChessDoc`] (whose page indices are
+    /// `u32`).
+    pub fn on(page: u32, index: usize) -> DiagramAt {
+        DiagramAt { page: usize::try_from(page).unwrap_or(usize::MAX), index }
+    }
+
+    /// Its page as a [`ChessDoc`]'s page index (`u32`; a page past it, which no document has, as
+    /// `u32::MAX`).
+    pub fn page_index(self) -> u32 {
+        u32::try_from(self.page).unwrap_or(u32::MAX)
+    }
+}
+
 /// Where a move of the text is (plan A9-T2a, R3-09): its page (0-based), its block on the page and
 /// its place among the block's inlines, both from 0. The one address of a move read: the
 /// alignment with the book's PGN ([`reference::MoveLink`]), the Text tab and the game read across
