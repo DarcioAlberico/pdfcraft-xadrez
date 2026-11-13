@@ -436,15 +436,24 @@ fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>,
 /// [`cleaned`]), and so are the words joined, so `bxc.3` is `bxc3`, `♕ xc.3` is `♕xc3` and
 /// `Qxel` is `Qxe1`; a move number split at a space is put back ([`split_number`]: `2 1 .fxe6`),
 /// and so is Black's move split from its number ([`split_ellipsis`]: `24. ..b xc5`).
-pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
+///
+/// Each word comes with what was printed when a misreading was read again in it (plan A9-L5,
+/// A2-10): the printed words, a space between those joined, when the word's characters are not
+/// theirs ([`printed_if_read_again`]). Joining words is no misreading.
+pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<(Vec<Cell>, Option<String>)> {
+    let printed: Vec<String> = words.iter().map(|w| w.iter().map(|c| c.ch).collect()).collect();
     let mut words: Vec<Vec<Cell>> = words.into_iter().map(|w| bullet_dots(&w).unwrap_or(w)).collect();
     misread_numbers(&mut words);
     let words: Vec<Vec<Cell>> = words.into_iter().map(|w| cleaned(w, lang)).collect();
-    let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
+    let mut out: Vec<(Vec<Cell>, Option<String>)> = Vec::with_capacity(words.len());
+    let read_again = |cells: Vec<Cell>, from: usize, n: usize| {
+        let was = printed_if_read_again(printed.get(from..from.saturating_add(n)).unwrap_or(&[]), &cells);
+        (cells, was)
+    };
     let mut i = 0;
     while let Some(word) = words.get(i) {
         if let Some((cells, n)) = split_number(&words, i, lang).or_else(|| split_ellipsis(&words, i, lang)) {
-            out.push(cells);
+            out.push(read_again(cells, i, n));
             i += n;
             continue;
         }
@@ -465,16 +474,41 @@ pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cel
         });
         match joined {
             Some((cells, n)) => {
-                out.push(cells);
+                out.push(read_again(cells, i, n.saturating_add(1)));
                 i += 1 + n;
             }
             None => {
-                out.push(word.clone());
+                out.push(read_again(word.clone(), i, 1));
                 i += 1;
             }
         }
     }
     out
+}
+
+/// The printed words `printed` (joined by a space) when `cells`, the word read from them, is not
+/// their characters: a misreading was read again in it ([`join_split_moves`]). `None` when it
+/// only joined them.
+fn printed_if_read_again(printed: &[String], cells: &[Cell]) -> Option<String> {
+    let now = cells.iter().map(|c| c.ch);
+    (!printed.iter().flat_map(|w| w.chars()).eq(now)).then(|| printed.join(" "))
+}
+
+/// The printed text of a word read again ([`join_split_moves`]) and the word as read, both
+/// without what they share before the move: wrapping punctuation and a move number read alike
+/// (`6.Rel` and `6.Re1` are `Rel` and `Re1`; `2S.Rae1` and `25.Rae1` stay whole).
+pub(crate) fn repair_texts(printed: &str, read: &[Cell]) -> (String, String) {
+    let was: Vec<char> = printed.chars().collect();
+    let now: Vec<char> = read.iter().map(|c| c.ch).collect();
+    let (p, q) = (parts(&was), parts(&now));
+    let text = |chars: &[char], r: Range<usize>| chars.get(r).unwrap_or(&[]).iter().collect::<String>();
+    let start = |p: &Parts| p.lead.saturating_add(p.number.map_or(0, |(_, _, n)| n));
+    let same_number = p.number.zip(q.number).is_some_and(|(a, b)| (a.0, a.1) == (b.0, b.1));
+    if same_number {
+        (text(&was, start(&p)..was.len()), text(&now, start(&q)..now.len()))
+    } else {
+        (text(&was, p.lead..was.len()), text(&now, q.lead..now.len()))
+    }
 }
 
 fn is_piece_move(m: &MoveParse) -> bool {
@@ -598,10 +632,27 @@ pub(crate) struct Token {
     bare: bool,
     /// Set in a bold font, most of it.
     bold: bool,
+    /// A move whose word was read again from a misreading: what was printed and what was read
+    /// ([`repair_texts`]).
+    repaired: Option<(String, String)>,
 }
 
 fn token(kind: Kind, cells: &[Cell]) -> Token {
-    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false, bold: bold_of(cells) }
+    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false, bold: bold_of(cells), repaired: None }
+}
+
+/// Mark the move of a word read again ([`join_split_moves`]) with what was printed, `printed`,
+/// and what was read, `word`. A word read again with no move in it gives its repair to the next
+/// word's move when it is only a move number or an ellipsis (`2S.` `Rae1`), returned as pending;
+/// in prose it is no move's.
+pub(crate) fn mark_repaired(tokens: &mut [Token], repair: Option<(String, String)>) -> Option<(String, String)> {
+    let repair = repair?;
+    if let Some(mv) = tokens.iter_mut().find(|t| matches!(t.kind, Kind::Move(_))) {
+        mv.repaired = Some(repair);
+        return None;
+    }
+    let numbering = !tokens.is_empty() && tokens.iter().all(|t| matches!(t.kind, Kind::Number { .. } | Kind::Ellipsis));
+    numbering.then_some(repair)
 }
 
 /// A word that is only a move number's digits (`19`).
@@ -761,7 +812,7 @@ pub(crate) fn assemble(words: Vec<Vec<Token>>, side: &mut Side) -> Option<ChessL
                 Kind::Move(san) => {
                     side.white_moved = side.white_next;
                     side.white_next = !side.white_next;
-                    ChessRun::Move { san, text: t.text }
+                    ChessRun::Move { san, text: t.text, repaired: t.repaired }
                 }
                 Kind::Nag(sym) => match nag_code(sym, side.white_moved) {
                     Some(code) => ChessRun::Nag(code),

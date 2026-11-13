@@ -63,8 +63,11 @@ pub const FORMAT_VERSION: u32 = 1;
 /// The version of the reading's segmentation (plan A9 §2.10): how a page is cut into blocks and
 /// inlines, which [`MoveAt`] addresses. Every change that moves a block or an inline raises it,
 /// so an address kept by an earlier reading (a decision on a move, plan A9-L1b) is known to be
-/// of another segmentation and is matched again rather than trusted.
-pub const READER_VERSION: u32 = 1;
+/// of another segmentation and is matched again rather than trusted. 2 (plan A9-L1a): the lines
+/// inside a diagram's box are a block of their own ([`BlockRole::DiagramText`]), never joined with
+/// lines outside it. 3 (plan A9-L3): paragraph lines go on by their geometry, across the layout's
+/// paragraph hints where the sentence goes on and apart within one at a gap.
+pub const READER_VERSION: u32 = 3;
 
 /// Largest JSON text [`ChessDoc::from_json`] reads.
 pub const MAX_JSON_BYTES: usize = 64 << 20;
@@ -162,6 +165,11 @@ pub enum ReviewFlag {
     /// A diagram stands between these moves, but the next move continues this game and is not
     /// legal from the diagram, so the game was carried on past it.
     ContinuedPastDiagram { page: u32, diagram: usize },
+    /// The move was played, but a mark printed on it says otherwise (plan A9-L5, R6-02): a capture
+    /// mark on a move that takes nothing (`capture`), a check mark on one that gives no check
+    /// (`check`), a mate mark on one that does not mate (`mate`). The cheapest sign that the
+    /// reading strayed from the book's position; a mark left out is no sign.
+    NotationMismatch { text: String, capture: bool, check: bool, mate: bool },
     /// The game reached [`games::MAX_GAME_NODES`] moves or [`games::MAX_VARIATION_DEPTH`]
     /// nested variations; the rest of the line was not added.
     GameTooLarge,
@@ -314,9 +322,51 @@ impl std::fmt::Display for PageLabel {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Block {
-    Heading { level: u8, inlines: Vec<Inline>, source_rect: Option<UserRect> },
-    Paragraph { inlines: Vec<Inline>, source_rect: Option<UserRect> },
+    Heading {
+        level: u8,
+        inlines: Vec<Inline>,
+        source_rect: Option<UserRect>,
+        /// What the block is to the book ([`BlockRole`]); the book's text when not written.
+        #[serde(default, skip_serializing_if = "BlockRole::is_content")]
+        role: BlockRole,
+    },
+    Paragraph {
+        inlines: Vec<Inline>,
+        source_rect: Option<UserRect>,
+        #[serde(default, skip_serializing_if = "BlockRole::is_content")]
+        role: BlockRole,
+    },
     Diagram(DiagramBlock),
+}
+
+/// What a text block is to the book (plan A9-L1, §2.6; A2-04, A2-06), decided from its page alone
+/// when the page is built or walked, so a page reads the same whatever was read before it. Only
+/// [`BlockRole::Content`] is the book's text; the others are the page's furniture, which the walk
+/// passes over (a game's header gives the next game its tags). A running head is not a role: it
+/// needs the pages before it. Written in the document's JSON as `"role"` (`"folio"`,
+/// `"game_header"`, `"diagram_text"`), not at all for content, so a document with none reads as
+/// before.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlockRole {
+    /// The book's text.
+    #[default]
+    Content,
+    /// The page's printed number: a bare number at the head or foot of the page.
+    Folio,
+    /// A game's header: its players' line, and its event's under it ([`games::Game`] takes them as
+    /// tags).
+    GameHeader,
+    /// Text whose lines lie inside a diagram's box: its coordinates, a caption set in it, the
+    /// glyphs of a diagram font the catalogue does not know.
+    DiagramText,
+}
+
+impl BlockRole {
+    /// Whether this is the book's text.
+    pub fn is_content(&self) -> bool {
+        *self == BlockRole::Content
+    }
 }
 
 impl Block {
@@ -332,6 +382,21 @@ impl Block {
         match self {
             Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } => inlines,
             Block::Diagram(_) => &[],
+        }
+    }
+
+    /// A text block's role ([`BlockRole`]); `None` for a diagram.
+    pub fn role(&self) -> Option<BlockRole> {
+        match self {
+            Block::Heading { role, .. } | Block::Paragraph { role, .. } => Some(*role),
+            Block::Diagram(_) => None,
+        }
+    }
+
+    /// Give a text block `role`; a diagram has none.
+    pub(crate) fn set_role(&mut self, to: BlockRole) {
+        if let Block::Heading { role, .. } | Block::Paragraph { role, .. } = self {
+            *role = to;
         }
     }
 }

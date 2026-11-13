@@ -443,7 +443,7 @@ fn row(
 
     // ⋯ while the row is pointed at, selected or focused, or its menu is open.
     let position = reading.and_then(BoardReading::position);
-    let fen = results.kinds.get(&key).map(|(_, f)| f.as_str()).or(position.map(|p| p.fen.as_str()));
+    let fen = results.kept_fen(key.0, key.1).or(position.map(|p| p.fen.as_str()));
     let mut action = None;
     let mut menu_open = false;
     let mut focused = focused;
