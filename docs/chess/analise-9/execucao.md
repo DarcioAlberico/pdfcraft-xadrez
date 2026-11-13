@@ -57,7 +57,7 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 
 | Passo | PR | Desvios e decisões |
 |---|---|---|
-| A9-L6a | (este PR) | `ChessPage.text_lang` (idioma do texto) ao lado de `lang` (das letras das peças), os dois `doc::LangTag` (tag BCP 47 conferida na entrada; uma tag inválida fica vazia, "não dito", nunca erro), escritos como texto: o JSON de antes lê igual. **Decisões:** (1) o idioma do livro é decidido uma vez por documento no motor (o `/Lang` do catálogo, senão o voto de palavras funcionais de todas as páginas lidas, `ProseTally`) e dado ao `DocBuilder`; sem ele (uma página lida só, os testes) cada página vota pela sua prosa; (2) sem nada que diga, as exportações caem nas letras das peças, como antes; (3) o vocabulário cobre nove dos 18 idiomas (en, pt, es, fr, de, it, nl, ru, pl): os outros caem no `/Lang` ou nas letras. |
+| A9-L6a | #300 | `ChessPage.text_lang` (idioma do texto) ao lado de `lang` (das letras das peças), os dois `doc::LangTag` (tag BCP 47 conferida na entrada; uma tag inválida fica vazia, "não dito", nunca erro), escritos como texto: o JSON de antes lê igual. **Decisões:** (1) o idioma do livro é decidido uma vez por documento no motor (o `/Lang` do catálogo, senão o voto de palavras funcionais de todas as páginas lidas, `ProseTally`) e dado ao `DocBuilder`; sem ele (uma página lida só, os testes) cada página vota pela sua prosa; (2) sem nada que diga, as exportações caem nas letras das peças, como antes; (3) o vocabulário cobre nove dos 18 idiomas (en, pt, es, fr, de, it, nl, ru, pl): os outros caem no `/Lang` ou nas letras. |
 
 ## Fora do plano, no mesmo período
 
