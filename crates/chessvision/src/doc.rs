@@ -147,6 +147,10 @@ pub enum ReviewFlag {
     UnknownChessFont { font: String },
     /// The text layer is not to be believed (read the page with OCR instead).
     PoorTextLayer { reason: String },
+    /// The page is printed in descriptive notation (`P-K4`, `N-KB3`, `P4R`; plan A9-L7, R6-07),
+    /// which the reader does not convert (decision D27): `words` of it, the first few as
+    /// `examples`. Its moves are prose here.
+    DescriptiveNotation { words: usize, examples: Vec<String> },
     // --- Games ---
     /// A move that is not legal where it stands. The line stops there.
     IllegalMove { text: String, near: Vec<String> },
@@ -178,6 +182,9 @@ pub enum ReviewFlag {
     /// A comment reached [`games::MAX_COMMENT_BYTES`]; the PGN comment is cut there (the text in
     /// the blocks is whole).
     CommentTruncated,
+    /// The document holds [`games::MAX_GAMES`] games: from this page on, no game starts, and its
+    /// moves stay unchecked (plan A9-L7, A2-07).
+    TooManyGames { max: usize },
     // --- The book's own PGN (plan "Carregar PGN do livro", R2) ---
     /// The reader could not play the move; the book's PGN plays it as `san` ([`reference::link`]).
     /// The reader's status is kept.
@@ -1046,11 +1053,45 @@ pub struct PageInput<'a> {
     pub ocr: bool,
 }
 
-/// Builds a [`ChessDoc`] page by page, carrying open games across page breaks.
+/// The pages a reading takes (plan A9-G7b, A2-16; glossary "Conjunto de páginas"): of a
+/// document's, in the book's order, each once. Every reading of a document's pages goes through
+/// it (the engine's scan, and so its reading and its exports), so pages asked for out of order
+/// are read in the book's, and a page asked for twice once: `pages: [2, 1]` had cut a game read
+/// backwards (92 valid moves to 72) and `[1, 1]` doubled its games and its HTML's ids.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PageSet(Vec<usize>);
+
+impl PageSet {
+    /// `pages` (from 0) of a document of `count` pages, in order, each once; none given: every
+    /// page. Fails, saying the first, for a page past the end.
+    pub fn new(pages: &[usize], count: usize) -> Result<PageSet, String> {
+        if let Some(p) = pages.iter().find(|p| **p >= count) {
+            return Err(format!("page {} is out of range: the document has {count} pages", p.saturating_add(1)));
+        }
+        if pages.is_empty() {
+            return Ok(PageSet((0..count).collect()));
+        }
+        let mut pages = pages.to_vec();
+        pages.sort_unstable();
+        pages.dedup();
+        Ok(PageSet(pages))
+    }
+
+    /// The pages, from 0, in order.
+    pub fn pages(&self) -> &[usize] {
+        &self.0
+    }
+}
+
+/// Builds a [`ChessDoc`] page by page, carrying open games across page breaks. A game goes on
+/// only onto the page after its own: a page added after a gap (or out of the book's order)
+/// starts with no game open and no diagram waiting (plan A9-G7b, A2-16).
 #[derive(Debug, Default)]
 pub struct DocBuilder {
     pages: Vec<ChessPage>,
     walker: games::Walker,
+    /// The index of the last page added.
+    last: Option<u32>,
     /// The last page added (its index) and the caption label it left for the page after it.
     carry: Option<(u32, u32)>,
     /// The offsets of the page numbers from the pages' indices seen so far, newest last.
@@ -1079,8 +1120,19 @@ impl DocBuilder {
         self.text_lang = tag;
     }
 
-    /// Add the next page. Pages are taken in the order added.
+    /// A page `index` is about to be added: after a gap, nothing goes on onto it.
+    fn next_page(&mut self, index: u32) {
+        if self.last.is_some_and(|last| last.checked_add(1) != Some(index)) {
+            self.walker.gap();
+            self.heads = build::RunningHeads::default();
+        }
+        self.last = Some(index);
+    }
+
+    /// Add the next page. Pages are taken in the order added; a game goes on onto it only from
+    /// the page before it ([`PageSet`]).
     pub fn add_page(&mut self, input: &PageInput<'_>) {
+        self.next_page(input.index);
         // A caption at the foot of a page is the next page's, not a later one's.
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(input.index)).map(|(_, n)| n);
         let (mut page, trailing, folios) = build::page(input, &mut self.walker, &mut self.heads, carried, &self.folios);
@@ -1103,6 +1155,7 @@ impl DocBuilder {
     /// the page's first diagram takes that number unless a caption of its own numbers it, as the
     /// whole-document reader gives it ([`DocBuilder::add_page`]).
     pub fn add_read_page(&mut self, mut page: ChessPage) {
+        self.next_page(page.index);
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(page.index)).map(|(_, n)| n);
         if let Some(Block::Diagram(first)) = page.blocks.iter_mut().find(|b| matches!(b, Block::Diagram(_)))
             && first.puzzle.is_none()
@@ -1140,6 +1193,9 @@ impl DocBuilder {
     pub fn finish(self) -> ChessDoc {
         let mut pages = self.pages;
         let done = self.walker.finish();
+        if let Some(page) = done.capped.and_then(|p| pages.iter_mut().find(|q| q.index == p)) {
+            page.review.push(ReviewFlag::TooManyGames { max: games::MAX_GAMES });
+        }
         for page in &mut pages {
             for block in &mut page.blocks {
                 match block {

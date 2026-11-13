@@ -1253,6 +1253,12 @@ pub(crate) fn page(
     }
     attach_reviews(input, &mut blocks, &mut review);
     walk(input.index, input.ocr, &mut blocks, walker, trailing, heads);
+    // A page of descriptive notation (plan A9-L7, R6-07): more of its words than moves read.
+    let descriptive = crate::chess_text::descriptive::descriptive_words(input.text);
+    let moves = blocks.iter().flat_map(Block::inlines).filter(|i| matches!(i, Inline::Move(_))).count();
+    if descriptive.words >= crate::chess_text::descriptive::MIN_DESCRIPTIVE_WORDS && descriptive.words > moves {
+        review.push(ReviewFlag::DescriptiveNotation { words: descriptive.words, examples: descriptive.examples });
+    }
     let page = ChessPage {
         index: input.index,
         lang: LangTag::of(input.text.lang.lang),
