@@ -3358,6 +3358,7 @@ castling	long	grand
 	Remove the book's PGN	Retirer le PGN du livre
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Le PGN du livre conservé pour ce document n'a pas pu être lu ({why}) ; il a été mis de côté sous le nom {name}.
 	The book's PGN couldn't be read: {e}	Le PGN du livre n'a pas pu être lu : {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Choix sur des coups en conflit désignant un coup absent de ce PGN : {n}. Ils sont conservés pour un PGN qui le contient.
 	{name} was not kept as the book's PGN: {e}	{name} n'a pas été conservé comme PGN du livre : {e}
 	no game in it	il ne contient aucune partie
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN du livre {name} : {games} parties, {moves} coups. Les pages que lit l'onglet Texte y sont reliées.

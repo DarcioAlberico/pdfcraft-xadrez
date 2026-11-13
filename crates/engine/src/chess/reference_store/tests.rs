@@ -1,5 +1,6 @@
 use super::*;
 use crate::chess::store::file_name;
+use pdfcraft_chessvision::doc::MoveAt;
 
 const PGN: &str = "[Event \"A\"]\n\n1. e4 e5 2. Nf3 *\n";
 const OTHER: &str = "[Event \"B\"]\n\n1. d4 d5 *\n";
@@ -96,8 +97,8 @@ fn the_folder_keeps_replaces_and_removes_a_documents_pgn() {
     assert!(!store.clear(&keys(), 10, 1).unwrap(), "nothing to remove, and the folder is not made");
     assert!(!dir.exists());
 
-    let (had, loaded) = store.set(&keys(), 10, kept(PGN)).unwrap();
-    assert!(!had);
+    let (had, loaded) = store.set(&keys(), 10, kept(PGN), any).unwrap();
+    assert!(!had.replaced);
     assert_eq!(loaded.pgn().map(|p| p.text.as_str()), Some(PGN));
     assert!(!dir.join("reference.lock").exists(), "no lock of the builds before taken: they never write this file");
     let again = store.load(&keys(), 10).unwrap();
@@ -105,8 +106,8 @@ fn the_folder_keeps_replaces_and_removes_a_documents_pgn() {
     assert_eq!(again.name, own_name(&keys()));
     assert!(dir.join(own_name(&keys())).is_file() && !dir.join(name_before(&keys())).exists(), "written under its own name only");
 
-    let (had, _) = store.set(&keys(), 10, kept_at(OTHER, 200)).unwrap();
-    assert!(had, "a PGN was kept before");
+    let (had, _) = store.set(&keys(), 10, kept_at(OTHER, 200), any).unwrap();
+    assert!(had.replaced, "a PGN was kept before");
     assert_eq!(store.load(&keys(), 10).unwrap().pgn().map(|p| p.text.as_str()), Some(OTHER));
     let other_doc = DocKeys { id0: None, path: Some("C:/books/Outro.pdf".into()), name: Some("Outro.pdf".into()), size: Some(9) };
     assert_eq!(store.load(&other_doc, 3).unwrap().pgn(), None, "a document finds only its own");
@@ -133,7 +134,7 @@ fn a_bad_file_is_reported_by_reading_and_set_aside_by_a_change_and_a_newer_one_i
     let (unread, why) = loaded.unreadable.unwrap();
     assert!(unread == name && why.contains("JSON"), "{why}");
     assert_eq!(folder(&dir), vec![(name.clone(), b"{ not json".to_vec())], "a load leaves the folder as it is");
-    let (_, changed) = store.set(&keys(), 10, kept(PGN)).unwrap();
+    let (_, changed) = store.set(&keys(), 10, kept(PGN), any).unwrap();
     assert_eq!(changed.set_aside.map(|(n, _)| n), Some(format!("{name}.bad")));
     assert_eq!(std::fs::read(dir.join(format!("{name}.bad"))).unwrap(), b"{ not json", "set aside, never deleted");
 
@@ -144,7 +145,7 @@ fn a_bad_file_is_reported_by_reading_and_set_aside_by_a_change_and_a_newer_one_i
     let loaded = store.load(&keys(), 10).unwrap();
     assert_eq!((loaded.read_only, loaded.newer), (true, Some(3)));
     assert_eq!(loaded.pgn().map(|p| p.text.as_str()), Some(PGN), "read all the same");
-    assert!(matches!(store.set(&keys(), 10, kept(OTHER)), Err(ReferenceStoreError::Newer(3))));
+    assert!(matches!(store.set(&keys(), 10, kept(OTHER), any), Err(ReferenceStoreError::Newer(3))));
     assert!(matches!(store.clear(&keys(), 10, 9), Err(ReferenceStoreError::Newer(3))));
     assert!(matches!(store.decide(&keys(), 10, decision(3, Choice::Pgn)), Err(ReferenceStoreError::Newer(3))));
     assert!(!store.rekey(&keys(), &saved_as(), 10).unwrap());
@@ -163,10 +164,10 @@ fn a_held_lock_refuses_a_change_and_writes_nothing() {
     let held = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("reference.flock")).unwrap();
     held.lock().unwrap();
     let store = DirStore::new(&dir);
-    assert!(matches!(store.set(&keys(), 10, kept(PGN)), Err(ReferenceStoreError::Busy)));
+    assert!(matches!(store.set(&keys(), 10, kept(PGN), any), Err(ReferenceStoreError::Busy)));
     assert_eq!(store.load(&keys(), 10).unwrap().pgn(), None);
     held.unlock().unwrap();
-    store.set(&keys(), 10, kept(PGN)).unwrap();
+    store.set(&keys(), 10, kept(PGN), any).unwrap();
     assert!(dir.join("reference.lock").exists(), "the old lock file is not this kind's any more, and left alone");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -177,7 +178,7 @@ fn a_saved_document_keeps_its_pgn_under_its_new_keys() {
     let store = DirStore::new(&dir);
     assert!(!store.rekey(&keys(), &saved_as(), 10).unwrap(), "no folder, nothing to move");
     assert!(!dir.exists());
-    store.set(&keys(), 10, kept(PGN)).unwrap();
+    store.set(&keys(), 10, kept(PGN), any).unwrap();
     assert!(store.rekey(&keys(), &saved_as(), 10).unwrap());
     let loaded = store.load(&saved_as(), 10).unwrap();
     assert_eq!(loaded.pgn().map(|p| p.text.as_str()), Some(PGN), "found by the document it records");
@@ -187,8 +188,13 @@ fn a_saved_document_keeps_its_pgn_under_its_new_keys() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn decision(inline: usize, choice: Choice) -> Decision {
-    Decision { page: 2, block: 1, inline, san: "Bb5".into(), san_read: None, choice, other: Map::new() }
+fn decision(inline: u32, choice: Choice) -> Decision {
+    Decision { at: MoveAt { page: 2, block: 1, inline }, san: "Bb5".into(), san_read: None, choice, pgn_san: None, other: Map::new() }
+}
+
+/// Every move counts as one the PGN has.
+fn any(_: &str) -> bool {
+    true
 }
 
 /// Plan A9-L0b (R3-01): a decision is for its move by the move's address and the SAN as read. A
@@ -199,7 +205,7 @@ fn decision(inline: usize, choice: Choice) -> Decision {
 #[test]
 fn a_decision_stays_on_its_move_by_the_san_read() {
     let at = pdfcraft_chessvision::doc::MoveAt { page: 0, block: 2, inline: 3 };
-    let d = Decision::new(at, "exd4".into(), "cxd4".into(), Choice::Book);
+    let d = Decision::new(at, "exd4".into(), "cxd4".into(), String::new(), Choice::Book);
     assert_eq!(d.san_read.as_deref(), Some("cxd4"));
     assert!(d.is_for(at, "exd4", "cxd4"), "as decided");
     assert!(d.is_for(at, "cxd4", "cxd4"), "walked again under the corrected diagram: the same printed move");
@@ -215,22 +221,22 @@ fn a_decision_stays_on_its_move_by_the_san_read() {
     // Deciding again on the same move replaces the choice, whatever the walk wrote since.
     let mut file = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN));
     file.decide(d.clone()).unwrap();
-    file.decide(Decision::new(at, "cxd4".into(), "cxd4".into(), Choice::Pgn)).unwrap();
+    file.decide(Decision::new(at, "cxd4".into(), "cxd4".into(), String::new(), Choice::Pgn)).unwrap();
     assert_eq!(file.decisions.iter().map(|d| d.choice).collect::<Vec<_>>(), [Choice::Pgn]);
-    let long = Decision::new(at, "exd4".into(), "x".repeat(MAX_SAN + 1), Choice::Book);
+    let long = Decision::new(at, "exd4".into(), "x".repeat(MAX_SAN + 1), String::new(), Choice::Book);
     assert!(matches!(file.decide(long), Err(ReferenceStoreError::NoMove)));
 }
 
 /// R6e: a decision on a move in conflict is kept with the PGN, in place of the one on the same
-/// move; it goes with a save as another file, and keeping another PGN drops it. Without a PGN, or
-/// naming no move, it is refused.
+/// move; it goes with a save as another file, and (decision D25, plan A9-G4) stays when another
+/// PGN is kept. Without a PGN, or naming no move, it is refused.
 #[test]
 fn decisions_are_kept_with_the_pgn_they_were_made_against() {
     let dir = temp_dir("decide");
     let store = DirStore::new(&dir);
     assert!(matches!(store.decide(&keys(), 10, decision(3, Choice::Pgn)), Err(ReferenceStoreError::NoPgn)), "no folder, no PGN");
     assert!(!dir.exists(), "and none made");
-    store.set(&keys(), 10, kept(PGN)).unwrap();
+    store.set(&keys(), 10, kept(PGN), any).unwrap();
     store.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap();
     store.decide(&keys(), 10, decision(5, Choice::Book)).unwrap();
     let file = store.decide(&keys(), 10, decision(3, Choice::Book)).unwrap().file;
@@ -241,14 +247,14 @@ fn decisions_are_kept_with_the_pgn_they_were_made_against() {
     assert!(matches!(store.decide(&keys(), 10, nameless), Err(ReferenceStoreError::NoMove)));
     assert!(store.rekey(&keys(), &saved_as(), 10).unwrap());
     assert_eq!(store.load(&saved_as(), 10).unwrap().file.decisions.len(), 2, "kept for the saved file");
-    store.set(&saved_as(), 10, kept_at(OTHER, 200)).unwrap();
-    assert!(store.load(&saved_as(), 10).unwrap().file.decisions.is_empty(), "another PGN, no decisions");
+    store.set(&saved_as(), 10, kept_at(OTHER, 200), any).unwrap();
+    assert_eq!(store.load(&saved_as(), 10).unwrap().file.decisions.len(), 2, "another PGN keeps them (D25)");
     // A file without decisions (as R5 wrote it) has none written.
     let bytes = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN)).to_bytes().unwrap();
     assert!(!String::from_utf8_lossy(&bytes).contains("decisions"));
     let memory = MemStore::new(4096);
     assert!(matches!(memory.decide(&keys(), 10, decision(3, Choice::Pgn)), Err(ReferenceStoreError::NoPgn)));
-    memory.set(&keys(), 10, kept(PGN)).unwrap();
+    memory.set(&keys(), 10, kept(PGN), any).unwrap();
     assert_eq!(memory.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap().file.decisions.len(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -297,7 +303,7 @@ fn the_name_before_is_read_and_merged_and_a_corrections_file_never_touched() {
     let store = DirStore::new(&dir);
     let l = store.load(&keys(), 10).unwrap();
     assert_eq!((l.pgn(), l.unreadable.clone()), (None, None), "not this kind's, so not unreadable either");
-    let (_, l) = store.set(&keys(), 10, kept_at(PGN, 200)).unwrap();
+    let (_, l) = store.set(&keys(), 10, kept_at(PGN, 200), any).unwrap();
     assert_eq!((l.name.clone(), l.set_aside.clone()), (own_name(&keys()), None));
     store.clear(&keys(), 10, 250).unwrap();
     assert_eq!(std::fs::read(dir.join(&before)).unwrap(), corrections_file.to_vec(), "never touched");
@@ -314,11 +320,11 @@ fn the_name_before_is_read_and_merged_and_a_corrections_file_never_touched() {
     let l = store.load(&keys(), 10).unwrap();
     assert_eq!((l.pgn().map(|p| p.text.as_str()), l.file.decisions.len()), (Some(OTHER), 1));
     // The same PGN kept here, decided on here: both sides' decisions; this side's on a move both decided.
-    store.set(&keys(), 10, kept_at(OTHER, 400)).unwrap();
+    store.set(&keys(), 10, kept_at(OTHER, 400), any).unwrap();
     store.decide(&keys(), 10, decision(1, Choice::Pgn)).unwrap();
     store.decide(&keys(), 10, decision(2, Choice::Pgn)).unwrap();
     let l = store.load(&keys(), 10).unwrap();
-    let mut got: Vec<(usize, Choice)> = l.file.decisions.iter().map(|d| (d.inline, d.choice)).collect();
+    let mut got: Vec<(u32, Choice)> = l.file.decisions.iter().map(|d| (d.at.inline, d.choice)).collect();
     got.sort_by_key(|(i, _)| *i);
     assert_eq!(got, vec![(1, Choice::Pgn), (2, Choice::Pgn)]);
     let bytes_before = std::fs::read(dir.join(&before)).unwrap();
@@ -354,30 +360,31 @@ fn fields_a_later_build_writes_are_kept() {
 /// Plan A9-F1 (A1-10): a Latin-1 book PGN kept by a build before F1 (read with U+FFFD for each
 /// accent) and the same file read now (decoded as Windows-1252) are the same PGN: the decisions
 /// made against it stay, and the text kept from then on has its accents. The same text kept
-/// again keeps them too; another PGN still drops them.
+/// again keeps them too, and so does another PGN (D25), which counts the one it lacks.
 #[test]
 fn the_same_pgn_kept_again_keeps_its_decisions_even_as_an_older_build_read_it() {
     let dir = temp_dir("same-pgn");
     let store = DirStore::new(&dir);
     let bytes = b"[White \"R\xe9ti\"]\n\n1. e4 e5 2. Nf3 *\n";
     let before_f1 = KeptPgn::new(Some("livro.pgn"), String::from_utf8_lossy(bytes).into_owned(), 1, 3, 100).unwrap();
-    store.set(&keys(), 10, before_f1).unwrap();
+    store.set(&keys(), 10, before_f1, any).unwrap();
     store.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap();
     let (text, encoding) = pdfcraft_chess::pgn::decode(bytes);
     assert_eq!(encoding, pdfcraft_chess::pgn::PgnEncoding::Windows1252);
     let now = KeptPgn::new(Some("livro.pgn"), text.clone(), 1, 3, 200).unwrap().read_from(bytes);
-    let (replaced, loaded) = store.set(&keys(), 10, now).unwrap();
-    assert!(replaced);
+    let (replaced, loaded) = store.set(&keys(), 10, now, any).unwrap();
+    assert_eq!((replaced.replaced, replaced.unmatched), (true, 0));
     let file = loaded.file;
     assert_eq!(file.decisions, vec![decision(3, Choice::Pgn)], "the same file, read as before F1");
     assert!(file.pgn.as_ref().unwrap().text.contains("Réti"));
     let on_disk = store.load(&keys(), 10).unwrap().file;
     assert_eq!((on_disk.decisions.len(), on_disk.pgn.map(|p| p.hash)), (1, Some(text_hash(&text))));
     // The same text again, then another PGN.
-    store.set(&keys(), 10, KeptPgn::new(Some("livro.pgn"), text, 1, 3, 300).unwrap()).unwrap();
+    store.set(&keys(), 10, KeptPgn::new(Some("livro.pgn"), text, 1, 3, 300).unwrap(), any).unwrap();
     assert_eq!(store.load(&keys(), 10).unwrap().file.decisions.len(), 1, "the same text");
-    store.set(&keys(), 10, kept_at(OTHER, 400)).unwrap();
-    assert!(store.load(&keys(), 10).unwrap().file.decisions.is_empty(), "another PGN");
+    let (kept, _) = store.set(&keys(), 10, kept_at(OTHER, 400), |_| false).unwrap();
+    assert_eq!((kept.replaced, kept.unmatched), (true, 1), "another PGN without its move");
+    assert_eq!(store.load(&keys(), 10).unwrap().file.decisions.len(), 1, "kept all the same");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -385,9 +392,9 @@ fn the_same_pgn_kept_again_keeps_its_decisions_even_as_an_older_build_read_it() 
 fn memory_keeps_within_its_budget_and_round_trips() {
     let store = MemStore::new(4096);
     assert!(matches!(store.load(&DocKeys::default(), 1), Err(ReferenceStoreError::NoKeys)));
-    store.set(&keys(), 10, kept(PGN)).unwrap();
+    store.set(&keys(), 10, kept(PGN), any).unwrap();
     let big = "1. e4 *\n".repeat(600);
-    assert!(matches!(store.set(&saved_as(), 3, kept(&big)), Err(ReferenceStoreError::OverBudget(4096))));
+    assert!(matches!(store.set(&saved_as(), 3, kept(&big), any), Err(ReferenceStoreError::OverBudget(4096))));
     assert_eq!(store.load(&saved_as(), 3).unwrap().pgn(), None, "nothing kept when refused");
 
     let again = MemStore::with_files(store.files(), 4096);
@@ -413,7 +420,14 @@ mod reference_v1;
 #[test]
 fn compat_a_version_1_build_never_finds_or_rewrites_a_version_2_file() {
     let mut file = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN));
-    file.decide(Decision::new(pdfcraft_chessvision::doc::MoveAt { page: 1, block: 0, inline: 2 }, "Nf3".into(), "Nf3".into(), Choice::Pgn)).unwrap();
+    file.decide(Decision::new(
+        pdfcraft_chessvision::doc::MoveAt { page: 1, block: 0, inline: 2 },
+        "Nf3".into(),
+        "Nf3".into(),
+        String::new(),
+        Choice::Pgn,
+    ))
+    .unwrap();
     let bytes = file.to_bytes().unwrap();
     assert_eq!(reference_v1::recorded(&bytes), None, "not found among a folder's files");
     assert!(matches!(reference_v1::ReferenceFile::read(&bytes), reference_v1::Read::Newer(2, Some(_))));
@@ -464,9 +478,9 @@ fn compat_a_version_1_build_never_finds_or_rewrites_a_version_2_file() {
         (Some("livro.pgn"), theirs.pgn.hash.as_str(), PGN.len(), 77, 1, 3, PGN)
     );
     let as_v1 = |d: &Decision| reference_v1::Decision {
-        page: d.page,
-        block: d.block,
-        inline: d.inline,
+        page: usize::try_from(d.at.page).unwrap(),
+        block: usize::try_from(d.at.block).unwrap(),
+        inline: usize::try_from(d.at.inline).unwrap(),
         san: d.san.clone(),
         san_read: d.san_read.clone(),
         choice: match d.choice {
@@ -509,7 +523,7 @@ fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
     let (s, id) = open(pdf);
     let (keys, pages) = s.get(id).map(|d| (d.doc_keys(), d.info.pages.len())).unwrap();
     let store = DirStore::new(&folder_dir);
-    store.set(&keys, pages, kept_at(PGN, 100)).unwrap();
+    store.set(&keys, pages, kept_at(PGN, 100), any).unwrap();
     let ours = folder(&folder_dir);
     let steps = serde_json::json!([
         { "tool": "doc_open", "args": { "path": "book.pdf" } },
@@ -536,4 +550,116 @@ fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
     // What it kept under the name before, later: seen here.
     assert_eq!(store.load(&keys, pages).unwrap().pgn().map(|p| p.text.as_str()), Some(OTHER));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+// ─── The PGN's move, the file's bytes, another PGN (plan A9-G4, decision D25) ──────────────────
+
+/// A9-G4 (A4-08, D25, R6-10): keeping another PGN used to drop every decision made against the
+/// one before. They stay; each knows the PGN's move it was made against (`pgn_san`), and those
+/// whose move the new PGN doesn't have are counted (they apply again only to a PGN that has it,
+/// since a choice is looked up only for a move in conflict with that same move). The same PGN
+/// kept again counts none.
+#[test]
+fn another_pgn_keeps_the_decisions_and_counts_those_it_lacks() {
+    let dir = temp_dir("d25");
+    let store = DirStore::new(&dir);
+    store.set(&keys(), 10, kept(PGN), any).unwrap();
+    let at = |inline| MoveAt { page: 0, block: 1, inline };
+    store.decide(&keys(), 10, Decision::new(at(1), "Nf3".into(), "Nf3".into(), "Nf3".into(), Choice::Pgn)).unwrap();
+    store.decide(&keys(), 10, Decision::new(at(2), "Bc4".into(), "Bc4".into(), "Bb5+".into(), Choice::Book)).unwrap();
+    // An older decision, made before the PGN's move was kept: it stands for its own SAN.
+    let mut older = decision(3, Choice::Book);
+    older.san = "Qh5".into();
+    store.decide(&keys(), 10, older).unwrap();
+    let file = store.load(&keys(), 10).unwrap().file;
+    assert_eq!(file.decisions.iter().map(|d| d.pgn_move()).collect::<Vec<_>>(), ["Nf3", "Bb5+", "Qh5"]);
+    // Another PGN that plays Nf3 and Bb5 (check marks set aside) but not Qh5.
+    let has = |san: &str| ["Nf3", "Bb5"].contains(&san.trim_end_matches('+'));
+    let (kept_other, loaded) = store.set(&keys(), 10, kept_at(OTHER, 200), has).unwrap();
+    assert_eq!((kept_other.replaced, kept_other.unmatched), (true, 1));
+    assert_eq!(loaded.file.decisions, file.decisions, "every decision kept");
+    // The same PGN again: nothing counted, whatever it has.
+    let (again, _) = store.set(&keys(), 10, kept_at(OTHER, 300), |_| false).unwrap();
+    assert_eq!(again.unmatched, 0);
+    // Written with the PGN's move beside the rest, the address as the three numbers it always was.
+    let json = serde_json::to_string(&file.decisions[1]).unwrap();
+    assert_eq!(json, r#"{"page":0,"block":1,"inline":2,"san":"Bc4","san_read":"Bc4","choice":"book","pgn_san":"Bb5+"}"#);
+    let too_long = Decision::new(at(4), "Nf3".into(), String::new(), "x".repeat(MAX_SAN + 1), Choice::Pgn);
+    assert!(matches!(store.decide(&keys(), 10, too_long), Err(ReferenceStoreError::NoMove)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G4: the same file is the same PGN by its bytes too (`bytes_hash`), so a reader that makes
+/// another text of it (a decoder changed again, as F1 did) keeps the decisions as the same PGN's;
+/// a PGN given as text, without bytes, is known by its text alone. The hash is kept in the file.
+#[test]
+fn the_same_files_bytes_are_the_same_pgn() {
+    let bytes = PGN.as_bytes();
+    let a = KeptPgn::new(Some("livro.pgn"), PGN.into(), 1, 3, 1).unwrap().read_from(bytes);
+    let read_otherwise = KeptPgn::new(Some("livro.pgn"), PGN.replace("Nf3", "Nf3 "), 1, 3, 2).unwrap().read_from(bytes);
+    assert_ne!(a.hash, read_otherwise.hash);
+    assert!(read_otherwise.is_same_as(&a), "the same bytes");
+    let as_text = KeptPgn::new(None, PGN.replace("Nf3", "Nf3 "), 1, 3, 3).unwrap();
+    assert!(!as_text.is_same_as(&a), "no bytes to tell");
+    assert_eq!(a.bytes_hash.as_deref(), Some(bytes_hash(bytes).as_str()));
+    let file = ReferenceFile::new(DocRecord::new(&keys(), 10), a.clone());
+    let Read::File(back) = ReferenceFile::read(&file.to_bytes().unwrap()) else { panic!("read back") };
+    assert_eq!(back.pgn.and_then(|p| p.bytes_hash), a.bytes_hash);
+    let mut decided = ReferenceFile::new(DocRecord::new(&keys(), 10), a);
+    decided.decide(decision(1, Choice::Pgn)).unwrap();
+    assert_eq!(decided.keep(read_otherwise, |_| false).unmatched, 0, "the same PGN: nothing counted");
+}
+
+/// A9-G4 (D25) in a merge: with another PGN on the other side, the later PGN wins and both sides'
+/// decisions are kept, the later side's where both decided on one move; a removal, the later,
+/// still takes them all away.
+#[test]
+fn a_merge_keeps_both_sides_decisions_across_pgns() {
+    let mut mine = ReferenceFile::new(DocRecord::new(&keys(), 10), kept_at(PGN, 100));
+    mine.decide(decision(1, Choice::Book)).unwrap();
+    mine.decide(decision(2, Choice::Book)).unwrap();
+    let mut theirs = ReferenceFile::new(DocRecord::new(&keys(), 10), kept_at(OTHER, 200));
+    theirs.decide(decision(2, Choice::Pgn)).unwrap();
+    let mut merged = mine.clone();
+    merged.merge(&theirs);
+    assert_eq!(merged.pgn.as_ref().map(|p| p.text.as_str()), Some(OTHER));
+    let mut got: Vec<(u32, Choice)> = merged.decisions.iter().map(|d| (d.at.inline, d.choice)).collect();
+    got.sort_by_key(|(i, _)| *i);
+    assert_eq!(got, [(1, Choice::Book), (2, Choice::Pgn)]);
+    let mut gone = theirs.clone();
+    gone.remove(300);
+    merged.merge(&gone);
+    assert_eq!((merged.pgn.is_none(), merged.decisions.len()), (true, 0));
+}
+
+#[allow(dead_code)]
+#[path = "../../../tests/compat/reference_v2.rs"]
+mod reference_v2;
+
+/// A9-G4, plan §2.10: version 2 as G3a wrote it (frozen in `reference_v2`) reads what this build
+/// writes as its own version, and writes back the PGN's move of each decision and the hash of the
+/// file's bytes it does not know, as the fields of a later build of its version; a decision it
+/// makes keeps the others' moves.
+#[test]
+fn compat_a_g3a_build_keeps_what_this_one_adds() {
+    let bytes = PGN.as_bytes();
+    let mut file = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN).read_from(bytes));
+    file.decide(Decision::new(MoveAt { page: 1, block: 0, inline: 2 }, "Nf3".into(), "Nf3".into(), "Nf3".into(), Choice::Pgn)).unwrap();
+    let reference_v2::Parsed::File { file: mut theirs, skipped: 0 } = reference_v2::ReferenceFile::parse(&file.to_bytes().unwrap()) else {
+        panic!("a G3a build reads it as its own version")
+    };
+    let made_there = reference_v2::Decision {
+        page: 3,
+        block: 0,
+        inline: 0,
+        san: "e4".into(),
+        san_read: None,
+        choice: reference_v2::Choice::Book,
+        other: Default::default(),
+    };
+    theirs.decide(made_there).unwrap();
+    let Parsed::File { file: back, skipped } = ReferenceFile::parse(&theirs.to_bytes().unwrap()) else { panic!("read back") };
+    assert_eq!(skipped, 0);
+    assert_eq!(back.pgn.and_then(|p| p.bytes_hash), Some(bytes_hash(bytes)), "the bytes' hash kept");
+    assert_eq!(back.decisions.iter().map(|d| d.pgn_san.as_deref()).collect::<Vec<_>>(), [Some("Nf3"), None], "the PGN's move kept");
 }

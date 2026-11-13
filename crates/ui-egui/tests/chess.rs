@@ -1080,6 +1080,51 @@ fn a_move_in_conflict_with_the_pgn_takes_the_users_choice() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan A9-G4 (decision D25, R6-10): a choice on a move in conflict keeps the PGN's move it was
+/// made against; loading another PGN keeps the choices (it used to drop them) and the notice says
+/// how many name a move the new PGN doesn't have; loading the first PGN again, the choice applies.
+#[test]
+fn another_books_pgn_keeps_the_choices_and_says_which_no_longer_match() {
+    let dir = corrections_dir("book-pgn-d25");
+    std::fs::create_dir_all(&dir).unwrap();
+    let store = dir.join("reference");
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 1...c5 2.Nf3"), store.clone());
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    right_click_contains(&mut h, "f3");
+    h.get_by_label("Use the PGN's move").click();
+    h.run_steps(3);
+    h.get_by_label_contains("1 in conflict (0 to review).");
+    let kept = |store: &std::path::Path| -> serde_json::Value {
+        let files = correction_files(store);
+        assert_eq!(files.len(), 1, "{files:?}");
+        serde_json::from_slice(&std::fs::read(store.join(&files[0])).unwrap()).unwrap()
+    };
+    let file = kept(&store);
+    assert_eq!((&file["decisions"][0]["pgn_san"], &file["decisions"][0]["choice"]), (&serde_json::json!("Nf3"), &serde_json::json!("pgn")), "{file}");
+    // Another PGN, which never plays Nf3.
+    h.state_mut().set_book_pgn(
+        id,
+        "other.pgn",
+        b"[Event \"B\"]
+
+1.d4 d5 *
+",
+    );
+    h.run_steps(4);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(said.contains("Choices on moves in conflict naming a move this PGN doesn't have: 1."), "{said}");
+    assert_eq!(kept(&store)["decisions"].as_array().map(Vec::len), Some(1), "kept");
+    // The first PGN again: nothing said, and the choice holds.
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(!said.contains("Choices on moves"), "{said}");
+    h.get_by_label_contains("1 in conflict (0 to review).");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Plan "Carregar PGN do livro", R6f: a PDF opened with a PGN of its name beside it gets the
 /// offer in the Chess panel. Not now is remembered with the settings, so the document opened
 /// again is not asked (the Text tab still offers it); Use keeps it as the book's PGN.
