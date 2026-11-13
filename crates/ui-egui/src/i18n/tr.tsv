@@ -3434,3 +3434,6 @@ castling	long	uzun
 	Larger text	Daha büyük metin
 diagram state	Read	Okundu
 the move's comment	Move comment	Hamlenin yorumu
+	Detecting in another book… page {d} of {t}	Başka bir kitapta algılanıyor… sayfa {d}/{t}
+	Redraw in the PDF?	PDF'de yeniden çizilsin mi?
+	Diagram {n}, open	Diyagram {n}, aç

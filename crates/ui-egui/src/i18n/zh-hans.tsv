@@ -3402,3 +3402,6 @@ castling	long	长
 	Larger text	放大文字
 diagram state	Read	已读取
 the move's comment	Move comment	此着法的评论
+	Detecting in another book… page {d} of {t}	正在另一本书中检测… 第 {d} 页，共 {t} 页
+	Redraw in the PDF?	在 PDF 中重绘？
+	Diagram {n}, open	棋图 {n}，打开

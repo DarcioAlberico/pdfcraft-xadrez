@@ -446,8 +446,8 @@ impl PdfCraftApp {
             decisions,
         });
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
-        self.chess.text = None;
-        self.refresh_chess_kinds();
+        self.chess.doc_mut(id).text = None;
+        self.refresh_chess_kinds(id);
         let mut note = crate::i18n::fmt(
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
             &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
@@ -539,8 +539,8 @@ impl PdfCraftApp {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = find_sibling_pgn(&keys);
                 self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None, decisions: Vec::new() });
-                self.chess.text = None;
-                self.refresh_chess_kinds();
+                self.chess.doc_mut(id).text = None;
+                self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.notify(said.to_string());
             }
@@ -632,7 +632,7 @@ impl PdfCraftApp {
             return;
         }
         let stamp = self.session.chess_stamp(id);
-        if self.chess.text.as_ref().is_some_and(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp) {
+        if self.chess.text_of(id).is_some_and(|t| t.page == page && Some(t.stamp) == stamp) {
             return;
         }
         self.read_chess_text(page, false);

@@ -3691,3 +3691,6 @@ castling	long	xa
 	Larger text	Chữ lớn hơn
 diagram state	Read	Đã đọc
 the move's comment	Move comment	Bình luận của nước đi
+	Detecting in another book… page {d} of {t}	Đang phát hiện trong sách khác… trang {d}/{t}
+	Redraw in the PDF?	Vẽ lại trong PDF?
+	Diagram {n}, open	Sơ đồ {n}, mở

@@ -3436,3 +3436,6 @@ castling	long	ұзын
 	Larger text	Үлкенірек мәтін
 diagram state	Read	Оқылды
 the move's comment	Move comment	Жүріс түсініктемесі
+	Detecting in another book… page {d} of {t}	Басқа кітапта анықталуда… бет {d}/{t}
+	Redraw in the PDF?	PDF ішінде қайта салу керек пе?
+	Diagram {n}, open	Диаграмма {n}, ашу

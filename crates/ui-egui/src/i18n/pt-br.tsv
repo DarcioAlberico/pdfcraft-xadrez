@@ -3455,3 +3455,6 @@ castling	long	longo
 	Larger text	Texto maior
 diagram state	Read	Lido
 the move's comment	Move comment	Comentário do lance
+	Detecting in another book… page {d} of {t}	Detectando em outro livro… pág. {d} de {t}
+	Redraw in the PDF?	Redesenhar no PDF?
+	Diagram {n}, open	Diagrama {n}, abrir
