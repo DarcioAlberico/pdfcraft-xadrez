@@ -3405,3 +3405,4 @@ the move's comment	Move comment	Коментар към хода
 	Detecting in another book… page {d} of {t}	Откриване в друга книга… страница {d} от {t}
 	Redraw in the PDF?	Прерисуване в PDF?
 	Diagram {n}, open	Диаграма {n}, отваряне
+	Choices made on this page not found in its reading (kept): {n}	Избори в тази страница, които не са намерени в прочита ѝ (запазени): {n}

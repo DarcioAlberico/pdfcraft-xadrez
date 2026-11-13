@@ -120,11 +120,18 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
     let _ = write!(s, "---\n\n# {}\n\n", esc(o.title));
     let start = s.len();
     // A chapter starts at each heading of the top level the book uses.
-    let top = doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Heading { level, .. } = b { Some(*level) } else { None }).min();
+    // The book's text only: its number, running heads and a diagram's own text are not (plan
+    // A9-L1b, A2-04).
+    let top = doc
+        .pages
+        .iter()
+        .flat_map(|p| p.book_blocks())
+        .filter_map(|(_, b)| if let Block::Heading { level, .. } = b { Some(*level) } else { None })
+        .min();
     for page in &doc.pages {
         let book_lang = page.text_language();
         let label = PageLabel::of(o.page_labels, page.index).to_string();
-        for block in &page.blocks {
+        for (_, block) in page.book_blocks() {
             match block {
                 Block::Heading { level, inlines, .. } => {
                     if Some(*level) == top && s.len() > start {

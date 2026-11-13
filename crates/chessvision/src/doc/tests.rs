@@ -1016,6 +1016,20 @@ fn a_running_head_does_not_end_the_game() {
     }
 }
 
+/// Two pages of an issue, `Issue 47` atop both at the same height, each with its number at its
+/// foot; a diagram on the first set in a font the catalogue does not know (its glyphs read as
+/// text inside its box), and a game across the page break.
+pub(super) fn issue_pages() -> ChessDoc {
+    let head = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 15.0, 300.0, 35.0) }];
+    let p0 = page_text(vec![line(20.0, "Issue 47"), line(150.0, "4*+*+p+*+5"), line(230.0, "3.Qh5 Nf6"), line(760.0, "15")]);
+    let p1 = page_text(vec![line(20.0, "Issue 47"), line(100.0, "4.Qxf7#"), line(760.0, "16")]);
+    let board = [reading(0, 60.0, SCHOLAR, true, false)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &board, &head, &[]));
+    b.add_page(&input(1, &p1, &[], &head, &[]));
+    b.finish()
+}
+
 /// The page's printed number, at its foot or its head, is no comment in the game the page break
 /// cuts (Chess Evolution 2014 read `{10}` into its games). A number with text below and above it
 /// stays one.
