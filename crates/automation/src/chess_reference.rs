@@ -143,9 +143,12 @@ impl Automation {
         let stopped = index.games().iter().filter(|g| g.stopped.is_some() || g.error.is_some()).count();
         let pgn = KeptPgn::new(name.as_deref(), text, index.games().len(), index.moves(), now()).map_err(failed)?.read_from(&bytes);
         let (keys, pages) = self.reference_keys(id)?;
-        let (replaced, loaded) = store.set(&keys, pages, pgn).map_err(failed)?;
+        let (kept, loaded) = store.set(&keys, pages, pgn, |san| index.has_move(san)).map_err(failed)?;
         let mut reply = loaded_reply(&loaded);
-        reply["replaced"] = json!(replaced);
+        reply["replaced"] = json!(kept.replaced);
+        // Decision D25 (plan A9-G4): the decisions outlive another PGN; those naming a move it
+        // does not have are counted.
+        reply["decisions_unmatched"] = json!(kept.unmatched);
         reply["stopped_games"] = json!(stopped);
         reply["encoding"] = json!(encoding.name());
         Ok(reply)

@@ -3357,6 +3357,7 @@ castling	long	hosszú
 	Remove the book's PGN	A könyv PGN-jének eltávolítása
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	A dokumentumhoz tárolt könyv-PGN nem olvasható ({why}); félretettük {name} néven.
 	The book's PGN couldn't be read: {e}	A könyv PGN-je nem olvasható: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Konfliktusos lépésekről hozott döntések, amelyek olyan lépést neveznek meg, amely ebben a PGN-ben nincs: {n}. Megmaradnak egy olyan PGN-hez, amelyben megvan.
 	{name} was not kept as the book's PGN: {e}	A(z) {name} nem lett a könyv PGN-jeként tárolva: {e}
 	no game in it	nincs benne egyetlen játszma sem
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	A könyv PGN-je ({name}): {games} játszma, {moves} lépés. A Szöveg lapon olvasott oldalak ehhez kapcsolódnak.

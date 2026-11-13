@@ -3360,6 +3360,7 @@ castling	long	ロング
 	Remove the book's PGN	本の PGN を削除
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	この文書に保存された本の PGN を読み込めませんでした ({why})。{name} として別に保存しました。
 	The book's PGN couldn't be read: {e}	本の PGN を読み込めませんでした: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	この PGN にない手を指す、競合する手についての選択: {n} 件。その手を含む PGN のために保持されます。
 	{name} was not kept as the book's PGN: {e}	{name} は本の PGN として保存されませんでした: {e}
 	no game in it	対局が含まれていません
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	本の PGN {name}: {games} 局、{moves} 手。テキスト タブで読むページはこれに関連付けられます。

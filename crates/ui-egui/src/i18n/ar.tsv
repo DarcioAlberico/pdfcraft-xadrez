@@ -3633,6 +3633,7 @@ castling	long	طويل
 	Remove the book's PGN	إزالة PGN الكتاب
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	تعذّرت قراءة PGN الكتاب المحفوظ لهذا المستند ({why})؛ وقد حُفظ جانبًا باسم {name}.
 	The book's PGN couldn't be read: {e}	تعذّرت قراءة PGN الكتاب: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	اختيارات على نقلات متعارضة تسمي نقلة لا يحتويها ملف PGN هذا: {n}. تُحفظ لملف PGN يحتويها.
 	{name} was not kept as the book's PGN: {e}	لم يُحفظ {name} بوصفه PGN الكتاب: {e}
 	no game in it	لا يحتوي على أي مباراة
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN الكتاب {name}: عدد المباريات {games}، عدد النقلات {moves}. تُربط به الصفحات التي يقرؤها تبويب النص.
