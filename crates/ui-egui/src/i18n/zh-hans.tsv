@@ -3323,6 +3323,7 @@ castling	long	长
 	Remove the book's PGN	移除本书的 PGN
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	无法读取为此文档保存的本书 PGN（{why}）；已另存为 {name}。
 	The book's PGN couldn't be read: {e}	无法读取本书的 PGN：{e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	对冲突着法所做、指向此 PGN 没有的着法的选择：{n} 项。它们会保留，供包含该着法的 PGN 使用。
 	{name} was not kept as the book's PGN: {e}	{name} 未保存为本书的 PGN：{e}
 	no game in it	其中没有任何对局
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	本书的 PGN {name}：{games} 局，{moves} 步。“文本”选项卡读取的页面会与它关联。
@@ -3402,3 +3403,6 @@ castling	long	长
 	Larger text	放大文字
 diagram state	Read	已读取
 the move's comment	Move comment	此着法的评论
+	Detecting in another book… page {d} of {t}	正在另一本书中检测… 第 {d} 页，共 {t} 页
+	Redraw in the PDF?	在 PDF 中重绘？
+	Diagram {n}, open	棋图 {n}，打开

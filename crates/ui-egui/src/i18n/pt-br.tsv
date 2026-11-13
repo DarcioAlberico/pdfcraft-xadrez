@@ -3376,6 +3376,7 @@ castling	long	longo
 	Remove the book's PGN	Remover PGN do livro
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	O PGN do livro guardado para este documento não pôde ser lido ({why}); ele foi guardado à parte como {name}.
 	The book's PGN couldn't be read: {e}	O PGN do livro não pôde ser lido: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Escolhas em lances em conflito que citam um lance que este PGN não tem: {n}. Elas ficam guardadas para um PGN que o tenha.
 	{name} was not kept as the book's PGN: {e}	{name} não foi guardado como PGN do livro: {e}
 	no game in it	não há nenhuma partida nele
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN do livro {name}: {games} partidas, {moves} lances. As páginas que a aba Texto lê são ligadas a ele.
@@ -3455,3 +3456,6 @@ castling	long	longo
 	Larger text	Texto maior
 diagram state	Read	Lido
 the move's comment	Move comment	Comentário do lance
+	Detecting in another book… page {d} of {t}	Detectando em outro livro… pág. {d} de {t}
+	Redraw in the PDF?	Redesenhar no PDF?
+	Diagram {n}, open	Diagrama {n}, abrir

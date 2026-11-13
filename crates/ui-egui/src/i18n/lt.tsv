@@ -3610,6 +3610,7 @@ castling	long	ilgoji
 	Remove the book's PGN	Pašalinti knygos PGN
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Šiam dokumentui saugoto knygos PGN nepavyko perskaityti ({why}); jis atidėtas kaip {name}.
 	The book's PGN couldn't be read: {e}	Knygos PGN nepavyko perskaityti: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Pasirinkimai dėl prieštaraujančių ėjimų, nurodantys ėjimą, kurio šiame PGN nėra: {n}. Jie išsaugomi PGN, kuriame jis yra.
 	{name} was not kept as the book's PGN: {e}	{name} nebuvo išsaugotas kaip knygos PGN: {e}
 	no game in it	jame nėra nė vienos partijos
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	Knygos PGN {name}: partijų {games}, ėjimų {moves}. Skirtuko Tekstas skaitomi puslapiai susiejami su juo.
@@ -3689,3 +3690,6 @@ castling	long	ilgoji
 	Larger text	Didesnis tekstas
 diagram state	Read	Nuskaityta
 the move's comment	Move comment	Ėjimo komentaras
+	Detecting in another book… page {d} of {t}	Aptinkama kitoje knygoje… {d} puslapis iš {t}
+	Redraw in the PDF?	Perpiešti PDF faile?
+	Diagram {n}, open	Diagrama {n}, atverti

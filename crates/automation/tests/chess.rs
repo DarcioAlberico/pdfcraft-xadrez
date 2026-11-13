@@ -3176,6 +3176,37 @@ fn protected_documents_keep_nothing_unasked() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+// ─── Plan A9, G4: the book's PGN kept again, the same or another ─────────────────────────────
+
+/// A9-G4 (A4-08, A5-08, D25): the same PGN kept again keeps the decisions made in the app, and
+/// another PGN keeps them too (it used to drop them all), saying how many name a move it doesn't
+/// have (`decisions_unmatched`).
+#[test]
+fn keeping_the_books_pgn_again_keeps_the_choices() {
+    let (base, root) = workdir("reference-again");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    // Another PGN: it plays Nf3 but never Bb5.
+    std::fs::write(root.join("other.pgn"), "[Event \"Other\"]\n\n1.e4 e5 2.Nf3 Nf6 *\n").unwrap();
+    let (mut a, doc) = opened(&root);
+    let set = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    // Two choices made in the app (no tool makes one), as it writes them.
+    let file = root.join(".pdfcraft/chess-reference").join(set["file"].as_str().unwrap());
+    let mut kept: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    kept["decisions"] = json!([
+        { "page": 0, "block": 1, "inline": 2, "san": "Nf3", "choice": "pgn", "pgn_san": "Nf3" },
+        { "page": 0, "block": 1, "inline": 5, "san": "Bb5", "choice": "book", "pgn_san": "Bb5" },
+    ]);
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+    let again = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    assert_eq!(again["decisions"].as_u64(), Some(2), "the same PGN: {again:#}");
+    let other = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "other.pgn" }));
+    assert_eq!((other["replaced"].as_bool(), other["name"].as_str()), (Some(true), Some("other.pgn")), "{other:#}");
+    assert_eq!(other["decisions"].as_u64(), Some(2), "another PGN keeps them: {other:#}");
+    assert_eq!((again["decisions_unmatched"].as_u64(), other["decisions_unmatched"].as_u64()), (Some(0), Some(1)), "{other:#}");
+    assert_eq!(ok(&mut a, "chess_reference_status", json!({ "doc": doc }))["decisions"], 2);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 // ─── Plan A9, G5a: one place for the stores (decision D17), migrated into ─────────────────────
 
 /// A9-G5a (A4-12, D17): the command line kept the stores in `.pdfcraft` of its working folder and

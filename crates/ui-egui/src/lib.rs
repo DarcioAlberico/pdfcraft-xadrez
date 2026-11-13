@@ -3484,6 +3484,7 @@ impl eframe::App for PdfCraftApp {
             chess_redraw::prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
+            widgets::settle_dialogs(&ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
@@ -3559,6 +3560,8 @@ impl eframe::App for PdfCraftApp {
         chess_redraw::prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
+        // A dialog no longer shown gives the keyboard back to where it was (plan A9-I11a).
+        widgets::settle_dialogs(&ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
         self.settle_chess_focus(&ctx);

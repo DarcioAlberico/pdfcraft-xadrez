@@ -117,6 +117,16 @@ pub(crate) fn summary(ui: &mut egui::Ui, t: &Tokens, diagrams: usize, to_review:
     action
 }
 
+/// A scan of another document runs (`done` of `total` pages): why Detect waits, said in the
+/// document shown, whose own list stays as it is (plan A9-I1a, §2.7).
+pub(crate) fn elsewhere(ui: &mut egui::Ui, t: &Tokens, done: usize, total: usize) {
+    let total = total.max(1);
+    let page = done.saturating_add(1).min(total);
+    let said = crate::i18n::fmt(tl!("Detecting in another book… page {d} of {t}"), &[("d", &page.to_string()), ("t", &total.to_string())]);
+    ui.add_space(2.0);
+    ui.add(egui::Label::new(RichText::new(said).small().color(t.text_muted)).wrap());
+}
+
 /// Before any scan: what detecting does.
 pub(crate) fn empty(ui: &mut egui::Ui, t: &Tokens) {
     ui.label(

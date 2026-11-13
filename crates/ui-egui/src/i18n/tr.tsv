@@ -3355,6 +3355,7 @@ castling	long	uzun
 	Remove the book's PGN	Kitabın PGN'ini kaldır
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Bu belge için saklanan kitap PGN'i okunamadı ({why}); {name} olarak kenara ayrıldı.
 	The book's PGN couldn't be read: {e}	Kitabın PGN'i okunamadı: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Bu PGN'de olmayan bir hamleyi gösteren, çakışan hamlelerdeki seçimler: {n}. Bu hamleyi içeren bir PGN için saklanır.
 	{name} was not kept as the book's PGN: {e}	{name} kitabın PGN'i olarak saklanmadı: {e}
 	no game in it	içinde hiç oyun yok
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	Kitabın PGN'i {name}: {games} oyun, {moves} hamle. Metin sekmesinin okuduğu sayfalar buna bağlanır.
@@ -3434,3 +3435,6 @@ castling	long	uzun
 	Larger text	Daha büyük metin
 diagram state	Read	Okundu
 the move's comment	Move comment	Hamlenin yorumu
+	Detecting in another book… page {d} of {t}	Başka bir kitapta algılanıyor… sayfa {d}/{t}
+	Redraw in the PDF?	PDF'de yeniden çizilsin mi?
+	Diagram {n}, open	Diyagram {n}, aç

@@ -3364,6 +3364,7 @@ castling	long	dolga
 	Remove the book's PGN	Odstrani PGN knjige
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN knjige, shranjenega za ta dokument, ni bilo mogoče prebrati ({why}); odložen je kot {name}.
 	The book's PGN couldn't be read: {e}	PGN knjige ni bilo mogoče prebrati: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Izbire pri potezah v sporu, ki navajajo potezo, ki je ta PGN nima: {n}. Ohranijo se za PGN, ki jo ima.
 	{name} was not kept as the book's PGN: {e}	{name} ni bil shranjen kot PGN knjige: {e}
 	no game in it	ne vsebuje nobene partije
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN knjige {name}: partij {games}, potez {moves}. Strani, ki jih bere zavihek Besedilo, se povežejo z njim.
@@ -3443,3 +3444,6 @@ castling	long	dolga
 	Larger text	Večje besedilo
 diagram state	Read	Prebrano
 the move's comment	Move comment	Komentar k potezi
+	Detecting in another book… page {d} of {t}	Zaznavanje v drugi knjigi … stran {d} od {t}
+	Redraw in the PDF?	Ponovno narisati v PDF?
+	Diagram {n}, open	Diagram {n}, odpri

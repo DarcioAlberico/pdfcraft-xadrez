@@ -3322,6 +3322,7 @@ castling	long	дълга
 	Remove the book's PGN	Премахване на PGN на книгата
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN на книгата, запазен за този документ, не можа да бъде прочетен ({why}); той е оставен настрана като {name}.
 	The book's PGN couldn't be read: {e}	PGN на книгата не можа да бъде прочетен: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Избори при ходове в конфликт, посочващи ход, който този PGN няма: {n}. Пазят се за PGN, който го има.
 	{name} was not kept as the book's PGN: {e}	{name} не е запазен като PGN на книгата: {e}
 	no game in it	в него няма нито една партия
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN на книгата {name}: партии – {games}, ходове – {moves}. Страниците, които раздел „Текст“ чете, се свързват с него.
@@ -3401,3 +3402,6 @@ castling	long	дълга
 	Larger text	По-голям текст
 diagram state	Read	Прочетена
 the move's comment	Move comment	Коментар към хода
+	Detecting in another book… page {d} of {t}	Откриване в друга книга… страница {d} от {t}
+	Redraw in the PDF?	Прерисуване в PDF?
+	Diagram {n}, open	Диаграма {n}, отваряне
