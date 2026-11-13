@@ -2174,6 +2174,13 @@ impl Automation {
         self.resolve_for(path, access, for_write)
     }
 
+    /// [`resolve`](Self::resolve) for a folder that is only read and may not be there yet (a
+    /// store a reading tool looks in, plan A9-G3a): read access is enough, and a missing one is
+    /// reported by whoever reads it.
+    pub(crate) fn resolve_to_read(&self, path: &str) -> Result<PathBuf> {
+        self.resolve_for(path, file_access::Access::Read, true)
+    }
+
     /// [`resolve`](Self::resolve) with the kind of access named, for the places where a file that
     /// is only read may still be missing (a path checked up front, whose absence is reported per
     /// file later). The automation roots, if any, get the last word.

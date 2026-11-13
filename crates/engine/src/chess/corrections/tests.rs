@@ -38,7 +38,7 @@ impl Put for CorrectionFile {
 }
 
 /// A PDF of `n` pages, each with its own content stream.
-fn pages_pdf(n: usize) -> Vec<u8> {
+pub(in crate::chess) fn pages_pdf(n: usize) -> Vec<u8> {
     let mut objs = vec!["<< /Type /Catalog /Pages 2 0 R >>".to_owned()];
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 3 + 2 * i)).collect();
     objs.push(format!("<< /Type /Pages /Kids [{}] /Count {n} >>", kids.join(" ")));
@@ -62,7 +62,7 @@ fn pages_pdf(n: usize) -> Vec<u8> {
     out
 }
 
-fn open(bytes: Vec<u8>) -> (Session, DocId) {
+pub(in crate::chess) fn open(bytes: Vec<u8>) -> (Session, DocId) {
     let mut s = Session::new();
     let id = s.open("book.pdf", None, Arc::new(bytes), None).unwrap();
     (s, id)
@@ -806,7 +806,7 @@ fn compat_a_version_1_build_never_rewrites_a_version_2_file() {
 
 /// [`pages_pdf`] with a file identifier, so its corrections file is named by it wherever it is
 /// opened from.
-fn with_id(pdf: Vec<u8>) -> Vec<u8> {
+pub(in crate::chess) fn with_id(pdf: Vec<u8>) -> Vec<u8> {
     let text = String::from_utf8(pdf).unwrap();
     let id = "<00112233445566778899aabbccddeeff>";
     text.replace("/Root 1 0 R >>", &format!("/Root 1 0 R /ID [{id} {id}] >>")).into_bytes()
@@ -1067,4 +1067,126 @@ fn assign_gives_each_diagram_one_correction_by_the_one_rule() {
     let reasons: Vec<(&str, &str)> = unmatched.iter().map(|u| (u.uid.as_str(), u.reason.as_str())).collect();
     let taken = format!("the diagram already has correction {by_fp}");
     assert_eq!(reasons, vec![(by_index.as_str(), taken.as_str()), (nowhere.as_str(), "no diagram on the page is where it was")]);
+}
+
+// ─── One writer at a time (plan A9-G3a, A4-16, A4-17) ─────────────────────────────────────────
+
+/// A9-G3a (A4-16): the lock file of the builds before was taken over as "stale" once it was 30
+/// seconds old, by whoever saw it so, with no ownership: a writer slowed down or suspended past
+/// that (here its lock file made to look so) had its lock removed under it, and the next writer
+/// changed the file at the same time, the change written last losing the other's. Under
+/// `corrections.flock`, held by the system for as long as the writer lives, the next one waits.
+#[test]
+fn two_writers_never_change_the_folder_at_once_past_a_stale_lock() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let dir = temp_dir("stale-lock");
+    std::fs::create_dir_all(&dir).unwrap();
+    let (inside, most) = (Arc::new(AtomicUsize::new(0)), Arc::new(AtomicUsize::new(0)));
+    let enter = {
+        let (inside, most) = (inside.clone(), most.clone());
+        move || {
+            let now = inside.fetch_add(1, Ordering::SeqCst) + 1;
+            most.fetch_max(now, Ordering::SeqCst);
+        }
+    };
+    let (go, started) = std::sync::mpsc::channel();
+    let first = {
+        let (dir, enter, inside) = (dir.clone(), enter.clone(), inside.clone());
+        std::thread::spawn(move || {
+            DirStore::new(&dir).update(&keys(), 10, |f| {
+                enter();
+                let old = std::time::SystemTime::now() - std::time::Duration::from_secs(120);
+                if let Ok(lock) = std::fs::File::options().write(true).open(dir.join("corrections.lock")) {
+                    lock.set_modified(old).unwrap();
+                }
+                go.send(()).unwrap();
+                std::thread::sleep(std::time::Duration::from_millis(400));
+                inside.fetch_sub(1, Ordering::SeqCst);
+                f.put(1, "fnv:a", [0.1, 0.1, 0.4, 0.4], KINGS, 1)
+            })
+        })
+    };
+    started.recv().unwrap();
+    DirStore::new(&dir)
+        .update(&keys(), 10, |f| {
+            enter();
+            inside.fetch_sub(1, Ordering::SeqCst);
+            f.put(2, "fnv:b", [0.1, 0.1, 0.4, 0.4], QUEEN, 2)
+        })
+        .unwrap();
+    first.join().unwrap().unwrap();
+    assert_eq!(most.load(Ordering::SeqCst), 1, "two writers changed the folder at once");
+    assert_eq!(DirStore::new(&dir).load(&keys(), 10).unwrap().file.live().count(), 2, "both changes kept");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G3a (A4-17): a staging file a writer that stopped left behind (`<hash>.corrections.json.tmp<n>`,
+/// more than an hour old) is removed by the next change, under the lock; a recent one, another
+/// kind's, and any other name in the folder (it may be a folder of the user's) are left.
+#[test]
+fn staging_files_left_behind_are_swept_and_nothing_else() {
+    let dir = temp_dir("sweep");
+    std::fs::create_dir_all(&dir).unwrap();
+    let own = own_name(&keys());
+    let hash = own.strip_suffix(".corrections.json").unwrap().to_owned();
+    let old = std::time::SystemTime::now() - std::time::Duration::from_secs(2 * 3600);
+    let names = [
+        (format!("{own}.tmp4242"), old, false),
+        (format!("{own}.tmp77"), std::time::SystemTime::now(), true),
+        (format!("{hash}.reference.json.tmp4242"), old, true),
+        (format!("{hash}.json.tmp4242"), old, true),
+        ("notes.corrections.json.tmp1".to_owned(), old, true),
+        (format!("{own}.tmp"), old, true),
+        (format!("{own}.tmp12x"), old, true),
+    ];
+    for (name, at, _) in &names {
+        let f = std::fs::File::create(dir.join(name)).unwrap();
+        f.set_modified(*at).unwrap();
+    }
+    DirStore::new(&dir).update(&keys(), 10, |f| f.put(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS, 1)).unwrap();
+    for (name, _, stays) in &names {
+        assert_eq!(dir.join(name).exists(), *stays, "{name}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G3a, plan §2.10: a build before `corrections.flock` (its protocol: `corrections.lock` made
+/// only when absent, then read, change, write) and this one change one file at once, 24 times
+/// each: no change is lost, since this build takes that lock too, inside its own.
+#[test]
+fn a_writer_of_the_builds_before_and_this_one_lose_nothing() {
+    let dir = temp_dir("two-protocols");
+    std::fs::create_dir_all(&dir).unwrap();
+    let name = own_name(&keys());
+    DirStore::new(&dir).update(&keys(), 10, |f| f.put(0, "fnv:a", [0.0, 0.0, 0.05, 0.05], KINGS, 1)).unwrap();
+    let before = {
+        let dir = dir.clone();
+        let name = name.clone();
+        std::thread::spawn(move || {
+            for i in 0..24u8 {
+                let lock = take_lock(dir.join("corrections.lock")).unwrap().expect("the lock is let go");
+                let Parsed::File { mut file, .. } = CorrectionFile::parse(&std::fs::read(dir.join(&name)).unwrap()) else { panic!("read") };
+                let y = 0.03 * f32::from(i);
+                file.put(1, "fnv:b", [0.0, y, 0.02, y + 0.02], QUEEN, 2).unwrap();
+                write_atomically(&dir.join(&name), &file.to_bytes().unwrap()).unwrap();
+                drop(lock);
+                // A build does other work between two changes: never take the lock back at once,
+                // which would starve the other writer's 15 ms tries (the test, not the stores).
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+        })
+    };
+    let now = {
+        let dir = dir.clone();
+        std::thread::spawn(move || {
+            for i in 0..24u8 {
+                let y = 0.03 * f32::from(i);
+                DirStore::new(&dir).update(&keys(), 10, |f| f.put(2, "fnv:c", [0.5, y, 0.52, y + 0.02], KINGS, 3)).unwrap();
+            }
+        })
+    };
+    before.join().unwrap();
+    now.join().unwrap();
+    assert_eq!(DirStore::new(&dir).load(&keys(), 10).unwrap().file.live().count(), 49);
+    let _ = std::fs::remove_dir_all(&dir);
 }

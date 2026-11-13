@@ -18,8 +18,19 @@
 //! - **Versions.** A file of a newer version is read for what this build can make out of it, and
 //!   never written ([`Loaded::read_only`]).
 //! - **Finding a document's file.** Its own name, else the first `.json` file by name (of at most
-//!   [`MAX_FILES`]) whose header is this kind's and records the document; only the header is
-//!   parsed.
+//!   [`MAX_FILES`]) named as this kind's or as every kind's before, whose header is this kind's
+//!   and records the document; only the header is parsed.
+//! - **One writer at a time** ([`DirBackend::lock`], plan A9-G3a): a change holds `<kind>.flock`
+//!   by the system's file lock, which a process that stops lets go of, so no lock is ever taken
+//!   for "stale" and no writer removes another's (A4-16). For a kind that builds before it can
+//!   write ([`StoreKind::OLD_LOCK`]) it also takes their lock, `<kind>.lock`, inside its own; a
+//!   folder whose file system has no locks (some network shares) falls back to that one alone
+//!   ([`Loaded::old_lock_only`]). Under the lock, the staging files of this kind a writer that
+//!   stopped left behind, more than an hour old, are removed: only names the store makes
+//!   (`<hash>.<kind>.json.tmp<n>`), never anything else in the folder.
+//! - **What may be kept** ([`persist_policy`]): nothing read from a document that does not allow
+//!   copying, and from an encrypted one only with the user's consent, since the stores keep it
+//!   unencrypted. Every writer asks before keeping (the stores do not see the document).
 
 use std::marker::PhantomData;
 
@@ -37,6 +48,10 @@ pub trait StoreKind {
     const FORMAT: &'static str;
     /// Largest file read or written.
     const MAX_FILE_BYTES: usize;
+    /// Whether builds from before `<kind>.flock` (plan A9-G3a) can write this kind's files: then a
+    /// change also takes their lock, `<kind>.lock`, inside its own (§2.10). Once the kind's format
+    /// is one those builds only read, it is not taken.
+    const OLD_LOCK: bool;
     /// A document's file.
     type File: Clone;
     /// What a change, and the store, can fail with.
@@ -98,15 +113,28 @@ pub struct Loaded<F> {
     pub unreadable: Option<(String, String)>,
     /// A change set a file aside under this name, and why.
     pub set_aside: Option<(String, String)>,
+    /// The folder has no file locks (some network shares): the change was held by the lock file
+    /// of builds before plan A9-G3a alone, which a writer that stops can leave behind.
+    pub old_lock_only: bool,
     /// The entries left out of the file named [`Loaded::name`] itself (not of the earlier name's,
     /// which is never written).
     own_skipped: usize,
 }
 
+/// What holds a store while it is changed.
+pub trait Held {
+    /// Whether only the lock of builds before plan A9-G3a holds it (the folder has no file locks).
+    fn old_lock_only(&self) -> bool {
+        false
+    }
+}
+
+impl Held for std::sync::MutexGuard<'_, ()> {}
+
 /// Where a store's files are.
 pub trait StoreBackend {
     /// What holds the store while it is changed.
-    type Guard<'a>: 'a
+    type Guard<'a>: 'a + Held
     where
         Self: 'a;
     /// The names of the store's `.json` files, sorted, at most `max`.
@@ -119,8 +147,9 @@ pub trait StoreBackend {
     /// Rename `name` aside, to `<name>.bad` (`.bad2`, … when taken). The new name.
     fn set_aside<E: StoreFailure>(&self, name: &str) -> Result<String, E>;
     /// Hold the store of kind `kind` against other writers ([`StoreFailure::busy`] when another
-    /// holds it all the while).
-    fn lock<E: StoreFailure>(&self, kind: &str) -> Result<Self::Guard<'_>, E>;
+    /// holds it all the while); with `old_lock`, against builds before plan A9-G3a too
+    /// ([`StoreKind::OLD_LOCK`]).
+    fn lock<E: StoreFailure>(&self, kind: &str, old_lock: bool) -> Result<Self::Guard<'_>, E>;
 }
 
 /// A document store of the kind `K` on the backend `B`.
@@ -154,6 +183,42 @@ fn header(bytes: &[u8]) -> Option<Header> {
     serde_json::from_slice(bytes).ok()
 }
 
+/// Whether `name` is named as a file of kind `K` (`<hash>.<kind>.json`) or as every kind's file
+/// was before plan A9-G3a (`<hash>.json`, the hash 32 hexadecimal digits).
+fn named_for<K: StoreKind>(name: &str) -> bool {
+    let Some(stem) = name.strip_suffix(".json") else { return false };
+    let hash = stem.strip_suffix(K::KIND).and_then(|s| s.strip_suffix('.')).unwrap_or(stem);
+    is_hash(hash)
+}
+
+/// 32 hexadecimal digits, as [`legacy_file_name`] names a document.
+fn is_hash(s: &str) -> bool {
+    s.len() == 32 && s.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// What may be kept of a document in the stores, which keep it unencrypted (plan A9 §2.3): the
+/// one rule every writer follows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Persist {
+    /// The document does not allow copying (Table 22, bit 5): nothing read from it is kept.
+    Never,
+    /// The document is encrypted: kept only once the user says so, for that document.
+    Ask,
+    /// Kept.
+    Yes,
+}
+
+/// What may be kept of `doc` ([`Persist`]).
+pub fn persist_policy(doc: &crate::Document) -> Persist {
+    if !doc.allows_copying() {
+        Persist::Never
+    } else if doc.info.encrypted {
+        Persist::Ask
+    } else {
+        Persist::Yes
+    }
+}
+
 impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
     /// The store on `backend`.
     pub fn on(backend: B) -> Self {
@@ -175,6 +240,7 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
             skipped: 0,
             unreadable: None,
             set_aside: None,
+            old_lock_only: false,
             own_skipped: 0,
         };
         match self.backend.read(&own, K::MAX_FILE_BYTES)? {
@@ -231,9 +297,13 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
     }
 
     /// The first `.json` file by name whose header is this kind's and records the document named
-    /// by `keys`, with its bytes.
+    /// by `keys`, with its bytes. Only files named as this kind's (`<hash>.<kind>.json`) or as every
+    /// kind's before (`<hash>.json`) are read: another kind's in the same folder never is.
     fn find(&self, keys: &DocKeys) -> Result<Option<(String, Vec<u8>)>, K::Error> {
         for name in self.backend.list(MAX_FILES)? {
+            if !named_for::<K>(&name) {
+                continue;
+            }
             let Some(bytes) = self.backend.read(&name, K::MAX_FILE_BYTES)? else { continue };
             let ours = header(&bytes).is_some_and(|h| h.format.as_deref() == Some(K::FORMAT) && h.doc.is_some_and(|d| d.matches(keys)));
             if ours {
@@ -257,14 +327,16 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
     where
         K::Error: From<E>,
     {
-        let _lock = self.backend.lock::<K::Error>(K::KIND)?;
+        let lock = self.backend.lock::<K::Error>(K::KIND, K::OLD_LOCK)?;
         let mut l = self.load(keys, pages)?;
+        l.old_lock_only = lock.old_lock_only();
         if let Some(version) = l.newer {
             return Err(K::Error::newer(version));
         }
         let out = change(&mut l.file).map_err(K::Error::from)?;
         K::set_doc(&mut l.file, DocRecord::new(keys, pages));
         self.write(&mut l)?;
+        drop(lock);
         Ok((out, l))
     }
 
@@ -281,7 +353,7 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
         if before.read_only || !K::holds_anything(&before.file) {
             return Ok(false);
         }
-        let _lock = self.backend.lock::<K::Error>(K::KIND)?;
+        let _lock = self.backend.lock::<K::Error>(K::KIND, K::OLD_LOCK)?;
         let mut l = self.load(old, pages)?;
         if l.read_only || !K::holds_anything(&l.file) {
             return Ok(false);
@@ -336,9 +408,73 @@ impl DirBackend {
     }
 }
 
+/// How long a change waits for another writer before it is refused as busy.
+#[cfg(not(target_arch = "wasm32"))]
+pub const LOCK_WAIT: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// A staging file older than this was left by a writer that stopped.
+#[cfg(not(target_arch = "wasm32"))]
+const STALE_STAGING: std::time::Duration = std::time::Duration::from_secs(3600);
+
+/// Most folder entries looked at for staging files left behind, per change.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_SWEPT: usize = 4096;
+
+/// A folder held for a change ([`DirBackend::lock`]): `<kind>.flock` locked by the system, and
+/// `<kind>.lock`, the lock of builds before, when taken. Dropping it lets go of both, the old one
+/// first.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct DirLock {
+    old: Option<super::corrections::Lock>,
+    /// `None`: the folder's file system has no locks, and `old` alone holds it.
+    file: Option<std::fs::File>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Held for DirLock {
+    fn old_lock_only(&self) -> bool {
+        self.file.is_none()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Drop for DirLock {
+    fn drop(&mut self) {
+        drop(self.old.take());
+        if let Some(file) = self.file.take() {
+            let _ = file.unlock();
+        }
+    }
+}
+
+/// Whether `name` is a staging file of the store's own of kind `kind`: `<hash>.<kind>.json.tmp<n>`
+/// ([`super::corrections::write_atomically`]'s name for `<hash>.<kind>.json`).
+#[cfg(not(target_arch = "wasm32"))]
+fn is_own_staging(name: &str, kind: &str) -> bool {
+    let Some((hash, rest)) = name.split_once('.') else { return false };
+    let Some(n) = rest.strip_prefix(kind).and_then(|r| r.strip_prefix(".json.tmp")) else { return false };
+    is_hash(hash) && !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl DirBackend {
+    /// Remove the staging files of kind `kind` a writer that stopped left in the folder, more than
+    /// an hour old ([`is_own_staging`]): never another name. Under the kind's lock.
+    fn sweep(&self, kind: &str) {
+        let Ok(entries) = std::fs::read_dir(&self.dir) else { return };
+        for e in entries.flatten().take(MAX_SWEPT) {
+            let own = e.file_name().to_str().is_some_and(|n| is_own_staging(n, kind));
+            let old = || e.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_STAGING);
+            if own && old() {
+                let _ = std::fs::remove_file(e.path());
+            }
+        }
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 impl StoreBackend for DirBackend {
-    type Guard<'a> = super::corrections::Lock;
+    type Guard<'a> = DirLock;
 
     /// A folder that isn't there has no files. The `.json` names are filtered before the cap, so
     /// set-aside copies, staging files and locks never take a place.
@@ -373,11 +509,34 @@ impl StoreBackend for DirBackend {
         Ok(bad)
     }
 
-    /// The lock file `<kind>.lock` of the folder, the one earlier builds take too, so a build of
-    /// either kind and age never writes beside another.
-    fn lock<E: StoreFailure>(&self, kind: &str) -> Result<Self::Guard<'_>, E> {
+    /// `<kind>.flock`, locked by the system for as long as the change lasts (a process that stops
+    /// lets go of it), waited for at most [`LOCK_WAIT`]; with `old_lock`, or where the file system
+    /// has no locks, `<kind>.lock` too, the lock file builds before plan A9-G3a take, inside it.
+    /// Then the kind's staging files left behind are swept ([`DirBackend::sweep`]).
+    fn lock<E: StoreFailure>(&self, kind: &str, old_lock: bool) -> Result<Self::Guard<'_>, E> {
         std::fs::create_dir_all(&self.dir)?;
-        super::corrections::take_lock(self.dir.join(format!("{kind}.lock")))?.ok_or_else(E::busy)
+        let path = self.dir.join(format!("{kind}.flock"));
+        let file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
+        let deadline = std::time::Instant::now().checked_add(LOCK_WAIT);
+        let file = loop {
+            match file.try_lock() {
+                Ok(()) => break Some(file),
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    if deadline.is_none_or(|d| std::time::Instant::now() >= d) {
+                        return Err(E::busy());
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(15));
+                }
+                Err(std::fs::TryLockError::Error(e)) if e.kind() == std::io::ErrorKind::Unsupported => break None,
+                Err(std::fs::TryLockError::Error(e)) => return Err(e.into()),
+            }
+        };
+        let mut held = DirLock { old: None, file };
+        if old_lock || held.file.is_none() {
+            held.old = Some(super::corrections::take_lock(self.dir.join(format!("{kind}.lock")))?.ok_or_else(E::busy)?);
+        }
+        self.sweep(kind);
+        Ok(held)
     }
 }
 
@@ -457,7 +616,7 @@ impl StoreBackend for MemBackend {
 
     /// One lock for every kind: the web build has one page writing. A lock poisoned by a panic
     /// elsewhere is taken as it is (it guards no data of its own).
-    fn lock<E: StoreFailure>(&self, _kind: &str) -> Result<Self::Guard<'_>, E> {
+    fn lock<E: StoreFailure>(&self, _kind: &str, _old_lock: bool) -> Result<Self::Guard<'_>, E> {
         Ok(self.writing.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
     }
 }
