@@ -3426,3 +3426,10 @@ the move's comment	Move comment	此着法的评论
 	The work stopped on an internal error.	工作因内部错误而停止。
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	在浏览器中，暂时无法导出超过 {n} 页的书或将其与 PGN 对齐：标签页会一直无响应直到完成。桌面版会在后台完成。
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	保留您在此受保护文档上的国际象棋工作吗？
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	“{name}”已加密。本应用会在这台电脑上以未加密形式保存每个文档的局面图更正、书的 PGN 和国际象棋对局，以便再次打开文档时恢复；字符样本则保存到为其选择的文件夹。
+	Not kept, they last only until the document is closed.	如果不保留，它们只会保留到文档关闭为止。
+	Keep them	保留
+	Don't keep	不保留
+	The book's PGN couldn't be saved: {e}	无法保存书的 PGN：{e}

@@ -1366,4 +1366,48 @@ mod tests {
             }
         }
     }
+
+    /// Plan A9-X3b: the names an export says in the book's language
+    /// (`pdfcraft_chess::spoken`) are this interface's own, copied from its catalogues: every copy
+    /// is its catalogue's translation, every English text is one the interface shows, and every
+    /// translation the catalogues have of those texts is copied, so the two cannot drift apart.
+    #[test]
+    fn the_exports_spoken_names_are_the_catalogues() {
+        use crate::chess_text_ui::status_label;
+        use crate::chess_widgets::DiagramState;
+        use pdfcraft_engine::chess::pdfcraft_chess::san::Lang as Book;
+        use pdfcraft_engine::chess::pdfcraft_chess::spoken;
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::MoveStatus;
+        use std::collections::BTreeSet;
+        let catalogue = |lang: Book| {
+            let code = if lang == Book::Pt { "pt-br" } else { lang.code() };
+            crate::i18n::Lang::from_code(code).unwrap_or_else(|| panic!("no catalogue for {lang:?}"))
+        };
+        let mut copies = 0;
+        for (english, lang, text) in spoken::copied() {
+            assert_eq!(crate::i18n::tr(catalogue(lang), english), text, "{english} in {lang:?}");
+            copies += 1;
+        }
+        let mut ours: BTreeSet<&str> = (0..=255u16).filter_map(nag_name).collect();
+        for color in [Color::White, Color::Black] {
+            for kind in crate::chess_editor::KINDS {
+                ours.insert(crate::chess_editor::piece_name(Piece { color, kind }));
+            }
+        }
+        ours.insert(DiagramState::Review.name());
+        for status in [MoveStatus::Illegal, MoveStatus::Ambiguous, MoveStatus::OutOfSequence, MoveStatus::NotReached, MoveStatus::Unchecked] {
+            ours.insert(status_label(status));
+        }
+        let theirs: BTreeSet<&str> = spoken::english().collect();
+        assert_eq!(ours, theirs, "the English texts are the interface's");
+        let copied: BTreeSet<(&str, &str)> = spoken::copied().map(|(e, l, _)| (e, l.code())).collect();
+        for lang in spoken::LANGS {
+            for english in &ours {
+                if crate::i18n::has(catalogue(lang), english) {
+                    assert!(copied.contains(&(*english, lang.code())), "{english} in {lang:?} is in its catalogue and not copied");
+                }
+            }
+        }
+        assert!(copies > 7 * 100, "{copies}");
+    }
 }

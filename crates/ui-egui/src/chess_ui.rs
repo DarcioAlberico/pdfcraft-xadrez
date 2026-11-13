@@ -55,6 +55,9 @@ pub struct DocChess {
     pub(crate) pgn_sibling: Option<std::path::PathBuf>,
     /// What Link the whole book found, for the session (R6d).
     pub(crate) book_link: Option<crate::chess_reference_ui::BookLink>,
+    /// The user's answer about keeping its chess, when it is encrypted and was asked (plan
+    /// A9-I1c, [`crate::chess_keep`]): for the session.
+    pub(crate) keep: Option<bool>,
 }
 
 /// Chess diagrams: each open document's view, and the running scan.
@@ -111,6 +114,9 @@ pub struct ChessState {
     /// The question before forgetting a correction with changes over it not confirmed yet, while
     /// it is asked (plan A9-G10).
     pub forget_prompt: bool,
+    /// The encrypted documents to ask about keeping their chess, the first asked now (plan
+    /// A9-I1c, [`crate::chess_keep`]).
+    pub(crate) keep_asking: Vec<DocId>,
     /// The question before exporting while diagrams are still to review (P9c).
     pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
     /// What the last export said, while it is shown (P9c).

@@ -3713,3 +3713,10 @@ the move's comment	Move comment	Ėjimo komentaras
 	The work stopped on an internal error.	Darbas sustojo dėl vidinės klaidos.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Naršyklėje knygos, ilgesnės nei {n} puslapių, dar negalima eksportuoti ar suderinti su PGN: kortelė iki pabaigos nustotų reaguoti. Darbalaukio programa tai daro fone.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Išsaugoti jūsų šachmatų darbą šiame apsaugotame dokumente?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	„{name}“ yra užšifruotas. Programa kiekvieno dokumento diagramų pataisas, knygos PGN ir šachmatų partijas laiko šiame kompiuteryje nešifruotas, kad jos sugrįžtų vėl atidarius dokumentą; ženklų pavyzdžiai keliauja į jiems pasirinktą aplanką.
+	Not kept, they last only until the document is closed.	Neišsaugoti jie išlieka tik iki dokumento uždarymo.
+	Keep them	Išsaugoti
+	Don't keep	Neišsaugoti
+	The book's PGN couldn't be saved: {e}	Nepavyko įrašyti knygos PGN: {e}

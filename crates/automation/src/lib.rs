@@ -857,6 +857,7 @@ impl Automation {
             "chess_pieces" => self.chess_pieces()?,
             "chess_pieces_import" => self.chess_pieces_import(&a)?,
             "chess_game" => self.chess_game(&a)?,
+            "chess_mate" => self.chess_mate(&a)?,
             "chess_pgn_edit" => self.chess_pgn_edit(&a)?,
             "chess_games" => self.chess_games(&a)?,
             "chess_glyph_sample" => self.chess_glyph_sample(&a)?,
