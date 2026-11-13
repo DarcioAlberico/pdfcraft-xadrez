@@ -234,7 +234,9 @@ impl Session {
                     creator: doc.info.author.clone(),
                     source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
                 };
-                super::epub::epub(&read.doc, &options, &meta)?
+                // A book with no `/PageLabels` is paged by the numbers it prints (plan A9-L1b).
+                let printed = PageLabel::with_folios(&labels, &read.doc);
+                super::epub::epub(&read.doc, &HtmlOptions { page_labels: &printed, ..options.clone() }, &meta)?
             }
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).

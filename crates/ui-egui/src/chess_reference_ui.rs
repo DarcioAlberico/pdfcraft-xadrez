@@ -21,8 +21,9 @@ use std::sync::Arc;
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::ChessPage;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
-use pdfcraft_engine::chess::reference_store::{Choice, Decision, Kept, KeptPgn, Loaded, MemStore, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{Choice, Decision, Decisions, Kept, KeptPgn, Loaded, MemStore, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
 
 use crate::PdfCraftApp;
@@ -84,13 +85,25 @@ impl Store {
         }
     }
 
-    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, ReferenceStoreError> {
+    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision, page: Option<&ChessPage>) -> Result<Loaded, ReferenceStoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.decide(keys, pages, decision),
+            Store::Folder(s) => s.decide(keys, pages, decision, page),
             Store::Memory { store, changed } => {
-                let out = store.decide(keys, pages, decision)?;
+                let out = store.decide(keys, pages, decision, page)?;
                 *changed = true;
+                Ok(out)
+            }
+        }
+    }
+
+    fn rematch(&mut self, keys: &DocKeys, pages: usize, page: &ChessPage) -> Result<Option<Loaded>, ReferenceStoreError> {
+        match self {
+            #[cfg(not(target_arch = "wasm32"))]
+            Store::Folder(s) => s.rematch(keys, pages, page),
+            Store::Memory { store, changed } => {
+                let out = store.rematch(keys, pages, page)?;
+                *changed |= out.is_some();
                 Ok(out)
             }
         }
@@ -178,14 +191,14 @@ pub struct BookPgnView {
     /// Link the whole book is running: pages read, of how many.
     pub progress: Option<(usize, usize)>,
     /// The user's decisions on moves in conflict with the PGN (R6e).
-    pub decisions: Vec<Decision>,
+    pub decisions: Decisions,
 }
 
 impl BookPgnView {
-    /// The user's choice for the move at `at` the walk wrote `san` and the reader read `san_read`,
-    /// when they made one ([`Decision::is_for`]).
-    pub fn choice(&self, at: MoveAt, san: &str, san_read: &str) -> Option<Choice> {
-        self.decisions.iter().find(|d| d.is_for(at, san, san_read)).map(|d| d.choice)
+    /// The user's choices on the moves of `page` as read now, and how many made on it were found
+    /// on none of them (plan A9-L1b, [`Decisions::on_page`]).
+    pub fn choices(&self, page: &ChessPage) -> pdfcraft_engine::chess::reference_store::OnPage {
+        self.decisions.on_page(page)
     }
 }
 
@@ -203,7 +216,7 @@ struct DocPgn {
     /// The whole book linked to it, when Link the whole book ran (R6d).
     link: Option<BookLink>,
     /// The user's decisions on moves in conflict with it (R6e).
-    decisions: Vec<Decision>,
+    decisions: Decisions,
 }
 
 /// The books' PGNs in the app.
@@ -321,7 +334,7 @@ impl PdfCraftApp {
         if self.chess.book_pgns.doc(id).is_none() {
             let doc = self.session.get(id)?;
             let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-            let (mut index, mut summary, mut decisions) = (None, None, Vec::new());
+            let (mut index, mut summary, mut decisions) = (None, None, Decisions::default());
             match self.chess.book_pgns.store.load(&keys, pages) {
                 Ok(loaded) => {
                     // Reading never renames (plan A9-G3a): a file that can't be read is said, and
@@ -329,7 +342,7 @@ impl PdfCraftApp {
                     if let Some((_, why)) = &loaded.unreadable {
                         self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
                     }
-                    decisions.clone_from(&loaded.file.decisions);
+                    decisions = Decisions::of(&loaded.file);
                     if let Some(pgn) = loaded.pgn() {
                         match ReferenceIndex::from_pgn(&pgn.text) {
                             Ok(i) => {
@@ -430,7 +443,7 @@ impl PdfCraftApp {
         let (decisions, unmatched) = match kept {
             Ok((kept, loaded)) => {
                 self.say_book_pgn_set_aside(&loaded);
-                (loaded.file.decisions, kept.unmatched)
+                (Decisions::of(&loaded.file), kept.unmatched)
             }
             Err(e) => return self.notify(refused(&e)),
         };
@@ -496,19 +509,26 @@ impl PdfCraftApp {
     }
 
     /// Keep the user's choice for the move at `at` printed `san`, in conflict with the active
-    /// document's book's PGN (R6e): the book's move stands, or the PGN's is the one to follow.
+    /// document's book's PGN (R6e): the book's move stands, or the PGN's is the one to follow. It
+    /// keeps the move's ordinal on the page the Text tab read, so a later reading finds it (plan
+    /// A9-L1b).
     pub(crate) fn decide_book_move(&mut self, at: MoveAt, san: String, san_read: String, choice: Choice) {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         // The PGN's move it is in conflict with, as the PGN writes it (plan A9-G4, R6-10).
         let pgn_san = self.conflict_pgn_move(id, at).unwrap_or_default();
-        let decision = Decision::new(at, san, san_read, pgn_san, choice);
-        match self.chess.book_pgns.store.decide(&keys, pages, decision) {
+        // The page as the Text tab read it: the move's ordinal there finds it in a later reading.
+        let page = self.chess.text_of(id).and_then(|t| t.chess.pages.iter().find(|p| p.index == at.page)).cloned();
+        let mut decision = Decision::new(at, san, san_read, pgn_san, choice);
+        if let Some(page) = &page {
+            decision = decision.placed_on(page);
+        }
+        match self.chess.book_pgns.store.decide(&keys, pages, decision, page.as_ref()) {
             Ok(loaded) => {
                 self.say_book_pgn_set_aside(&loaded);
                 if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
-                    d.decisions = loaded.file.decisions;
+                    d.decisions = Decisions::of(&loaded.file);
                 }
             }
             Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e.to_string())])),
@@ -529,6 +549,28 @@ impl PdfCraftApp {
         index.san(RefNode { game: r.game?, node: r.node? }).map(str::to_owned)
     }
 
+    /// The decisions made on `page` of document `id`, as the Text tab just read it, taken to their
+    /// moves there once and kept (plan A9-L1b): a reading that cuts the page into other blocks
+    /// moves its moves. Nothing is written when none moved.
+    pub(crate) fn rematch_book_decisions(&mut self, id: DocId, page: &ChessPage) {
+        let Some(d) = self.chess.book_pgns.docs.iter().find(|d| d.doc == id) else { return };
+        if !d.decisions.need_rematch(page) {
+            return;
+        }
+        let Some(doc) = self.session.get(id) else { return };
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        match self.chess.book_pgns.store.rematch(&keys, pages, page) {
+            Ok(Some(loaded)) => {
+                self.say_book_pgn_set_aside(&loaded);
+                if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
+                    d.decisions = Decisions::of(&loaded.file);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e.to_string())])),
+        }
+    }
+
     /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document.
     pub fn clear_book_pgn(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
@@ -538,7 +580,15 @@ impl PdfCraftApp {
             Ok(cleared) => {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = find_sibling_pgn(&keys);
-                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None, decisions: Vec::new() });
+                self.chess.book_pgns.docs.push(DocPgn {
+                    doc: id,
+                    keys,
+                    index: None,
+                    summary: None,
+                    sibling,
+                    link: None,
+                    decisions: Decisions::default(),
+                });
                 self.chess.doc_mut(id).text = None;
                 self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };

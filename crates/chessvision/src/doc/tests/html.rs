@@ -337,3 +337,81 @@ fn a_diagram_says_the_side_the_text_settled_and_not_one_assumed() {
     assert!(html.contains(">Diagram 1, page 1: side to move not given</title>"), "{html}");
     assert!(!html.contains("White to move"), "{html}");
 }
+
+/// Plan A9-L1b (A2-04, A2-06): the page's furniture is not the book's text. Chess Evolution's
+/// `Issue 47` atop every page of an issue was ten entries of its EPUB's contents and ten `##` of
+/// its Markdown, each page's number a paragraph of its own (`<p>15</p>`), and a diagram in a font
+/// the catalogue does not know a paragraph of glyphs. The HTML, its contents and the Markdown keep
+/// the head once, where the issue starts, and write neither the numbers nor the glyphs; the
+/// document keeps them all, with what each is.
+#[test]
+fn the_pages_furniture_is_not_exported() {
+    let doc = issue_pages();
+    assert_eq!(kinds(&doc.pages[0]), ["H:Issue 47", "D0", "P:4*+*+p+*+5", "P:3.Qh5 Nf6", "P:15"]);
+    assert_eq!(kinds(&doc.pages[1]), ["H:Issue 47", "P:4.Qxf7#", "P:16"]);
+    assert_eq!((doc.pages[0].running_heads.as_slice(), doc.pages[1].running_heads.as_slice()), (&[][..], &[0][..]));
+    assert!(doc.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)));
+    let pieces = PieceSet::geometric();
+    let html = write(&doc, &options(&pieces));
+    assert_eq!(html.matches("Issue 47").count(), 1, "{html}");
+    for furniture in ["<p>15</p>", "<p>16</p>", "4*+"] {
+        assert!(!html.contains(furniture), "{furniture}: {html}");
+    }
+    let toc = crate::doc::html::toc(&doc);
+    assert_eq!(toc.iter().map(|t| t.text.as_str()).collect::<Vec<_>>(), ["Issue 47"]);
+    assert!(html.contains(&format!("<h1 id=\"{}\">Issue 47</h1>", toc[0].id)), "the contents link to the heading written");
+    let md = crate::doc::markdown::write(
+        &doc,
+        &crate::doc::markdown::MarkdownOptions {
+            title: "Magazine",
+            figurines: Figurines::Letters(pdfcraft_chess::san::Lang::En),
+            diagrams: crate::doc::markdown::MarkdownDiagrams::Fen,
+            links: false,
+            link_text: "",
+            image_dir: "",
+            lang: "",
+            page_labels: &[],
+        },
+    );
+    assert_eq!(md.matches("Issue 47").count(), 1, "{md}");
+    assert!(md.contains("3.Qh5 Nf6") && md.contains("4.Qxf7#"), "{md}");
+    for furniture in ["\n15\n", "\n16\n", r"4\*+"] {
+        assert!(!md.contains(furniture), "{furniture:?}: {md}");
+    }
+    // The document keeps what it read, and says what each block is.
+    let json = doc.to_json().unwrap();
+    assert!(json.contains("\"running_heads\":[0]") && json.contains("\"role\":\"folio\""), "{json}");
+    assert_eq!(walk(&ChessDoc::from_json(&json).unwrap().pages, WalkRules::BOOK), doc, "walked again, the same");
+}
+
+/// Plan A9-L1b (§2.6): a book whose PDF says no page labels is paged by the numbers it prints,
+/// when they agree with the pages' order; a page between two of them that prints none (a
+/// chapter's first page) takes the number its place gives, and a stray number is not one.
+#[test]
+fn a_book_without_page_labels_is_paged_by_its_printed_numbers() {
+    let doc = issue_pages();
+    let own: Vec<String> = vec!["1".into(), "2".into()];
+    assert_eq!(PageLabel::with_folios(&own, &doc), ["15", "16"]);
+    // The document's own labels win.
+    let labelled: Vec<String> = vec!["i".into(), "ii".into()];
+    assert_eq!(PageLabel::with_folios(&labelled, &doc), labelled);
+    // Pages that print 15, nothing, 17, a stray 99, nothing: the numbers follow the pages from 15,
+    // the page between takes 16, and the pages past the last that follows keep their own.
+    let numbered = |folios: &[Option<&str>]| {
+        let mut b = DocBuilder::new();
+        for (i, folio) in folios.iter().enumerate() {
+            let mut lines = vec![line(100.0, "Some prose.")];
+            lines.extend(folio.map(|f| line(760.0, f)));
+            b.add_page(&input(i as u32, &page_text(lines), &[], &[], &[]));
+        }
+        b.finish()
+    };
+    let own = |n: usize| (1..=n).map(|i| i.to_string()).collect::<Vec<String>>();
+    let doc = numbered(&[Some("15"), None, Some("17"), Some("99"), None]);
+    let folios: Vec<Option<String>> = doc.pages.iter().map(ChessPage::folio).collect();
+    assert_eq!(folios, [Some("15".into()), None, Some("17".into()), Some("99".into()), None]);
+    assert_eq!(PageLabel::with_folios(&own(5), &doc), ["15", "16", "17", "4", "5"]);
+    // Two numbers that disagree, as many of each: neither is taken.
+    let doc = numbered(&[Some("15"), None, Some("99")]);
+    assert_eq!(PageLabel::with_folios(&own(3), &doc), own(3));
+}

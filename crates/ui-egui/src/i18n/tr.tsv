@@ -3438,3 +3438,4 @@ the move's comment	Move comment	Hamlenin yorumu
 	Detecting in another book… page {d} of {t}	Başka bir kitapta algılanıyor… sayfa {d}/{t}
 	Redraw in the PDF?	PDF'de yeniden çizilsin mi?
 	Diagram {n}, open	Diyagram {n}, aç
+	Choices made on this page not found in its reading (kept): {n}	Bu sayfada yapılıp okumasında bulunamayan seçimler (saklandı): {n}
