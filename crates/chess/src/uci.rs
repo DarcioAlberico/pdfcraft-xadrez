@@ -170,6 +170,8 @@ fn parse_info<'a>(words: impl Iterator<Item = &'a str>) -> Option<Info> {
                     (Some("mate"), Some(n)) => Some(Score::Mate(n)),
                     _ => None,
                 };
+                // The bound is this score's: exact unless a mark follows it.
+                info.bound = Bound::Exact;
                 match words.peek() {
                     Some(&"lowerbound") => {
                         info.bound = Bound::Lower;
@@ -364,5 +366,106 @@ mod tests {
         assert_eq!(Score::Mate(0).for_white(Color::Black).white_share(), 1.0);
         assert_eq!(Score::Mate(0).white_share(), 0.0, "for the side it is given for");
         assert_eq!((Score::Mate(0).text(), Score::Mated(Color::Black).text()), ("#".to_owned(), "#".to_owned()));
+    }
+
+    /// Plan A9-Q3b (found by `an_info_line_reads_back_its_fields`): a bound belongs to its score,
+    /// so a later score with no bound mark is exact, not the earlier one's bound.
+    #[test]
+    fn a_score_without_a_bound_mark_is_exact() {
+        let Message::Info(info) = parse("info score cp 10 lowerbound score cp 20") else { panic!() };
+        assert_eq!((info.score, info.bound), (Some(Score::Centipawns(20)), Bound::Exact));
+        let Message::Info(info) = parse("info score mate 3 upperbound depth 9") else { panic!() };
+        assert_eq!((info.score, info.bound, info.depth), (Some(Score::Mate(3)), Bound::Upper, Some(9)));
+    }
+
+    /// One `info` field as an engine writes it, and what it sets.
+    #[derive(Clone, Debug)]
+    enum Field {
+        Depth(u32),
+        SelDepth(u32),
+        MultiPv(u32),
+        Nodes(u64),
+        Nps(u64),
+        Time(u64),
+        Score(Score, Bound),
+        Pv(Vec<String>),
+        /// A key the protocol defines that this reader skips, with its value.
+        Other(&'static str, u32),
+    }
+
+    fn field() -> impl proptest::strategy::Strategy<Value = Field> {
+        use proptest::prelude::*;
+        let uci_move = "[a-h][1-8][a-h][1-8][qrbn]?";
+        let bound = prop_oneof![Just(Bound::Exact), Just(Bound::Lower), Just(Bound::Upper)];
+        let score = prop_oneof![any::<i32>().prop_map(Score::Centipawns), any::<i32>().prop_map(Score::Mate)];
+        prop_oneof![
+            any::<u32>().prop_map(Field::Depth),
+            any::<u32>().prop_map(Field::SelDepth),
+            (1..=MAX_MULTIPV).prop_map(Field::MultiPv),
+            any::<u64>().prop_map(Field::Nodes),
+            any::<u64>().prop_map(Field::Nps),
+            any::<u64>().prop_map(Field::Time),
+            (score, bound).prop_map(|(s, b)| Field::Score(s, b)),
+            proptest::collection::vec(uci_move, 0..80).prop_map(Field::Pv),
+            (proptest::sample::select(vec!["currmove", "currmovenumber", "hashfull", "tbhits", "cpuload", "sbhits"]), any::<u32>())
+                .prop_map(|(k, v)| Field::Other(k, v)),
+        ]
+    }
+
+    proptest::proptest! {
+        /// Plan A9-Q3b (A7-08): an `info` line of any fields in any order reads back to what they
+        /// say, the last of a key winning, the principal variation cut to [`MAX_PV`] moves and
+        /// keys the reader skips skipped with their value.
+        #[test]
+        fn an_info_line_reads_back_its_fields(fields in proptest::collection::vec(field(), 0..12)) {
+            let mut want = Info { multipv: 1, ..Info::default() };
+            let mut words: Vec<String> = vec!["info".into()];
+            for f in &fields {
+                match f {
+                    Field::Depth(n) => { want.depth = Some(*n); words.extend(["depth".into(), n.to_string()]); }
+                    Field::SelDepth(n) => { want.seldepth = Some(*n); words.extend(["seldepth".into(), n.to_string()]); }
+                    Field::MultiPv(n) => { want.multipv = *n; words.extend(["multipv".into(), n.to_string()]); }
+                    Field::Nodes(n) => { want.nodes = Some(*n); words.extend(["nodes".into(), n.to_string()]); }
+                    Field::Nps(n) => { want.nps = Some(*n); words.extend(["nps".into(), n.to_string()]); }
+                    Field::Time(n) => { want.time_ms = Some(*n); words.extend(["time".into(), n.to_string()]); }
+                    Field::Score(s, b) => {
+                        want.score = Some(*s);
+                        want.bound = *b;
+                        // An engine writes no `Mated`: it is a score turned for White.
+                        let (kind, n) = match s { Score::Centipawns(n) => ("cp", *n), Score::Mate(n) => ("mate", *n), Score::Mated(_) => ("mate", 0) };
+                        words.extend(["score".into(), kind.into(), n.to_string()]);
+                        match b {
+                            Bound::Lower => words.push("lowerbound".into()),
+                            Bound::Upper => words.push("upperbound".into()),
+                            Bound::Exact => {}
+                        }
+                    }
+                    Field::Pv(moves) => {
+                        want.pv = moves.iter().take(MAX_PV).cloned().collect();
+                        words.push("pv".into());
+                        words.extend(moves.iter().cloned());
+                    }
+                    Field::Other(k, v) => words.extend([(*k).to_owned(), v.to_string()]),
+                }
+            }
+            let line = words.join(" ");
+            if line.len() <= MAX_LINE_LEN {
+                proptest::prop_assert_eq!(parse(&line), Message::Info(want), "{}", line);
+            }
+        }
+
+        /// Any line: read or skipped, never a panic, and what is kept is bounded.
+        #[test]
+        fn any_engine_line_is_read_or_skipped(line in "(info|id name|bestmove)? ?[ -~]{0,200}") {
+            match parse(&line) {
+                Message::Info(info) => {
+                    proptest::prop_assert!((1..=MAX_MULTIPV).contains(&info.multipv));
+                    proptest::prop_assert!(info.pv.len() <= MAX_PV && info.pv.iter().all(|m| is_move(m)));
+                }
+                Message::Name(name) => proptest::prop_assert!(!name.is_empty() && name.chars().count() <= MAX_NAME_CHARS),
+                Message::BestMove(m) => proptest::prop_assert!(m.is_none_or(|m| is_move(&m))),
+                _ => {}
+            }
+        }
     }
 }
