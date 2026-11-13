@@ -50,6 +50,9 @@ pub struct Tokens {
     pub pasteboard: Color32,
     pub card: Color32,
     pub border: Color32,
+    /// The outline of a control whose edge is all that shows it (a check box, a radio button):
+    /// 3:1 or more on every surface, as WCAG 1.4.11 asks (plan A9-I11a, finding A6-17).
+    pub border_strong: Color32,
     pub divider: Color32,
     pub text: Color32,
     pub text_muted: Color32,
@@ -93,6 +96,7 @@ impl Tokens {
                 pasteboard: Color32::from_rgb(0xF1, 0xF1, 0xF3),
                 card: Color32::from_rgb(0xFF, 0xFF, 0xFF),
                 border: Color32::from_rgb(0xDA, 0xDA, 0xDE),
+                border_strong: Color32::from_rgb(0x84, 0x84, 0x8C),
                 divider: Color32::from_rgb(0xE8, 0xE8, 0xEB),
                 text: Color32::from_rgb(0x22, 0x22, 0x26),
                 text_muted: Color32::from_rgb(0x5E, 0x5E, 0x66),
@@ -127,6 +131,7 @@ impl Tokens {
                 pasteboard: Color32::from_rgb(0x19, 0x19, 0x1C),
                 card: Color32::from_rgb(0x2E, 0x2E, 0x33),
                 border: Color32::from_rgb(0x3C, 0x3C, 0x43),
+                border_strong: Color32::from_rgb(0x8A, 0x8A, 0x93),
                 divider: Color32::from_rgb(0x33, 0x33, 0x39),
                 text: Color32::from_rgb(0xEC, 0xEC, 0xEF),
                 text_muted: Color32::from_rgb(0xAE, 0xAE, 0xB6),
@@ -807,6 +812,21 @@ mod tests {
             for bg in [t.chrome, t.panel, t.card] {
                 let r = contrast(t.attention, bg);
                 assert!(r >= 3.0, "{kind:?} attention on {bg:?}: {r:.2}:1");
+            }
+        }
+    }
+
+    #[test]
+    /// Plan A9-I11a (WCAG 1.4.11, finding A6-17: an unchecked box's edge was 1.39:1): a control
+    /// shown by its outline alone, and the focus ring, read at 3:1 on every surface they sit on.
+    fn control_outlines_and_the_focus_ring_read_at_three_to_one() {
+        for kind in [ThemeKind::Light, ThemeKind::Dark] {
+            let t = Tokens::for_kind(kind);
+            for (name, fg) in [("border_strong", t.border_strong), ("accent (focus ring)", t.accent)] {
+                for bg in [t.chrome, t.panel, t.card, t.field, t.hover] {
+                    let r = contrast(fg, bg);
+                    assert!(r >= 3.0, "{kind:?} {name} on {bg:?}: {r:.2}:1, WCAG 1.4.11 needs 3:1");
+                }
             }
         }
     }

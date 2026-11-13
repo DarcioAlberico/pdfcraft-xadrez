@@ -308,7 +308,7 @@ fn origin_label(o: BookOrigin) -> &'static str {
 /// The Book origin choice.
 fn origin_menu(ui: &mut egui::Ui, origin: BookOrigin) -> Option<TextAction> {
     let mut action = None;
-    ui.label(tl!("Book origin"));
+    let named = ui.label(tl!("Book origin"));
     let mut chosen = origin;
     egui::ComboBox::from_id_salt("chess-book-origin")
         .selected_text(origin_label(origin))
@@ -318,6 +318,7 @@ fn origin_menu(ui: &mut egui::Ui, origin: BookOrigin) -> Option<TextAction> {
             }
         })
         .response
+        .labelled_by(named.id)
         .on_hover_text(tl!(
             "Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model)."
         ));
@@ -613,15 +614,19 @@ pub fn text_tab(
             }
             Block::Diagram(d) => {
                 ui.horizontal(|ui| {
+                    let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(d.number + 1).to_string())]);
                     if let Some((_, tex)) = x.boards.iter().find(|(i, _)| *i == bi) {
                         let r = ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)).sense(egui::Sense::click()));
+                        // The picture opens the diagram as its title does, and is named by it (plan
+                        // A9-I11a, WCAG 1.1.1 and 4.1.2).
+                        let named = crate::i18n::fmt(tl!("Diagram {n}, open"), &[("n", &(d.number + 1).to_string())]);
+                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &named));
                         if r.clicked() {
                             action = Some(TextAction::Diagram(page, d.number));
                         }
                     }
                     ui.vertical(|ui| {
-                        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(d.number + 1).to_string())]);
-                        if ui.link(title).clicked() {
+                        if ui.link(&title).clicked() {
                             action = Some(TextAction::Diagram(page, d.number));
                         }
                         match &d.reading {

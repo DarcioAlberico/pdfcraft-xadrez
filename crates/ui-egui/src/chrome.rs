@@ -862,10 +862,8 @@ fn view_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui, compact: bool) {
         }
     });
     ui.add_space(12.0);
-    if !compact {
-        ui.label(egui::RichText::new(tl!("Page")).font(theme::regular(12.0)).color(t.text_muted));
-    }
-    page_box(ui, &t, view, &labels);
+    let named = (!compact).then(|| ui.label(egui::RichText::new(tl!("Page")).font(theme::regular(12.0)).color(t.text_muted)).id);
+    page_box(ui, &t, view, &labels, named);
     if !compact {
         ui.label(egui::RichText::new(page_words(view, &labels, page_count)).font(theme::regular(12.0)).color(t.text_muted));
     }
@@ -913,7 +911,8 @@ fn zoom_field(ui: &mut egui::Ui, t: &Tokens, view: &mut DocView) {
 }
 
 /// The page box: the page's printed label (or its number), typed over to go to another page.
-fn page_box(ui: &mut egui::Ui, t: &Tokens, view: &mut DocView, labels: &[String]) {
+/// The page box; `named`: the visible label before it, which names it (plan A9-I11a, A6-11).
+fn page_box(ui: &mut egui::Ui, t: &Tokens, view: &mut DocView, labels: &[String], named: Option<egui::Id>) {
     let page_input_id = view.page_input_id();
     // Consume replacement selection once, including when the editor has lost focus.
     let reselect = std::mem::take(&mut view.page_input_reselect);
@@ -945,6 +944,14 @@ fn page_box(ui: &mut egui::Ui, t: &Tokens, view: &mut DocView, labels: &[String]
         .show(ui, |ui| ui.add(edit))
         .inner
         .on_hover_text(tip);
+    // Named for assistive technology: the box shows only the page it is on (plan A9-I11a, A6-11).
+    let r = match named {
+        Some(label) => r.labelled_by(label),
+        None => {
+            ui.ctx().accesskit_node_builder(r.id, |node| node.set_label(tl!("Page")));
+            r
+        }
+    };
     if r.lost_focus() {
         if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
             // A page label first (logical page numbers, as Acrobat), then a number.

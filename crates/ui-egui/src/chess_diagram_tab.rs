@@ -336,8 +336,9 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
         ed.position.side_to_move = Some(side);
     });
     ui.horizontal(|ui| {
-        row_label(ui, tl!("Move number:"));
+        let named = row_label(ui, tl!("Move number:"));
         ui.add(egui::DragValue::new(&mut ed.position.fullmove_number).range(1..=crate::chess_editor::MAX_MOVE_NUMBER).speed(0.2))
+            .labelled_by(named.id)
             .on_hover_text(tl!("The move the diagram stands at: 35 with Black to move is 35…"));
     });
     egui::CollapsingHeader::new(tl!("Details")).id_salt("chess-diagram-details").show(ui, |ui| {
@@ -360,10 +361,10 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
 }
 
 /// A row's label, as tall as the row's buttons, so its text is centred on theirs.
-fn row_label(ui: &mut egui::Ui, text: &str) {
+fn row_label(ui: &mut egui::Ui, text: &str) -> egui::Response {
     let font = egui::TextStyle::Body.resolve(ui.style());
     let width = widgets::text_width(ui, text, &font);
-    ui.add_sized(egui::vec2(width, ROW), egui::Label::new(text));
+    ui.add_sized(egui::vec2(width, ROW), egui::Label::new(text))
 }
 
 /// The height of a row of buttons in the tab, in points.

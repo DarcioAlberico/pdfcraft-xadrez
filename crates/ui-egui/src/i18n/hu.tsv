@@ -3437,3 +3437,5 @@ castling	long	hosszú
 diagram state	Read	Beolvasva
 the move's comment	Move comment	A lépés megjegyzése
 	Detecting in another book… page {d} of {t}	Felismerés egy másik könyvben… {d}. / {t} oldal
+	Redraw in the PDF?	Újrarajzolás a PDF-ben?
+	Diagram {n}, open	{n}. diagram, megnyitás

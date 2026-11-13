@@ -108,17 +108,18 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let leave = if p.then == AfterGames::Quit { tl!("Quit without saving") } else { tl!("Close without saving") };
     let t = crate::theme::Tokens::get(ctx);
     let mut answer = None;
-    let shown = crate::widgets::show_modal(ctx, "chess-games-prompt", |ui| {
+    let title = tl!("Chess games not saved");
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-games-prompt", title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(tl!("Chess games not saved"));
-        ui.add_space(6.0);
         ui.add(egui::Label::new(body).wrap());
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
         }
         ui.add_space(10.0);
         ui.horizontal_wrapped(|ui| {
-            if crate::widgets::pill_button(ui, tl!("Save all games as PGN…"), true).clicked() {
+            let save = crate::widgets::pill_button(ui, tl!("Save all games as PGN…"), true);
+            crate::widgets::dialog_focus(&save);
+            if save.clicked() {
                 answer = Some(GamesAnswer::SavePgn);
             }
             if crate::widgets::pill_button(ui, leave, false).clicked() {

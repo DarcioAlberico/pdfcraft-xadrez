@@ -1892,22 +1892,19 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
             cx.edit = Some(MoveEdit::Diagram(node));
             ui.close();
         }
-        if ui.button(tl!("Copy line with figurines")).clicked() {
+        let item = |ui: &mut egui::Ui, label: &str| crate::widgets::menu_entry(ui, true, egui::Button::new(label)).clicked();
+        if item(ui, tl!("Copy line with figurines")) {
             cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, true)));
-            ui.close();
         }
-        if ui.button(tl!("Copy line (letters)")).clicked() {
+        if item(ui, tl!("Copy line (letters)")) {
             cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, false)));
-            ui.close();
         }
         ui.separator();
-        if ui.button(tl!("Delete from this move")).clicked() {
+        if item(ui, tl!("Delete from this move")) {
             cx.edit = Some(MoveEdit::Delete(node));
-            ui.close();
         }
-        if ui.button(tl!("New game from this position")).clicked() {
+        if item(ui, tl!("New game from this position")) {
             crate::chess_collection::ask_new_game_from(ui.ctx(), node);
-            ui.close();
         }
     });
 }
@@ -2278,9 +2275,10 @@ fn move_number(ui: &mut egui::Ui, state: &mut BoardState, label: std::sync::Arc<
     const KEY: &str = "move number";
     let mut recorded = state.draft.as_ref().is_some_and(|d| d.key == KEY && d.recorded);
     let mut number = state.game.first_move_number();
-    ui.label(label);
+    let named = ui.label(label);
     let r = ui
         .add(egui::DragValue::new(&mut number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
+        .labelled_by(named.id)
         .on_hover_text(tl!("The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…"));
     if number != state.game.first_move_number() {
         recorded = state.type_in(recorded, ChessEdit::MoveNumber, |game| {

@@ -3440,3 +3440,5 @@ castling	long	ロング
 diagram state	Read	読み取り済み
 the move's comment	Move comment	手のコメント
 	Detecting in another book… page {d} of {t}	別の本で検出中… {t} ページ中 {d} ページ
+	Redraw in the PDF?	PDF に描き直しますか?
+	Diagram {n}, open	局面図 {n}、開く

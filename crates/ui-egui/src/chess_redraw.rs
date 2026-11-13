@@ -80,7 +80,8 @@ impl PdfCraftApp {
 pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let Some(p) = app.chess.redraw_prompt.as_mut() else { return };
     let mut answer = None;
-    let shown = crate::widgets::show_modal(ctx, "chess-redraw-prompt", |ui| {
+    let title = tl!("Redraw in the PDF?");
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-redraw-prompt", title, |ui| {
         ui.set_max_width(420.0);
         ui.label(tl!(
             "Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save."
@@ -92,7 +93,10 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
             if crate::widgets::pill_button(ui, tl!("Redraw"), true).clicked() {
                 answer = Some(true);
             }
-            if crate::widgets::pill_button(ui, tl!("Cancel"), false).clicked() {
+            // The first control that leaves the PDF as it is.
+            let cancel = crate::widgets::pill_button(ui, tl!("Cancel"), false);
+            crate::widgets::dialog_focus(&cancel);
+            if cancel.clicked() {
                 answer = Some(false);
             }
         });
