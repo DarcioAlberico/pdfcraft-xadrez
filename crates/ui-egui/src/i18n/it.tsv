@@ -3665,3 +3665,10 @@ the move's comment	Move comment	Commento della mossa
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	quanto salvato prima non è leggibile e viene prima messo da parte; riprova tra un momento
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Impossibile leggere le correzioni dei diagrammi salvate ({why}). Vengono messe da parte al prossimo salvataggio, e da allora le nuove correzioni vengono conservate.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Impossibile leggere i PGN dei libri salvati ({why}). Vengono messi da parte al prossimo salvataggio, e da allora i nuovi vengono conservati.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Ferma
+	Exporting the chess document: page {done} of {of}	Esportazione del documento scacchistico: pagina {done} di {of}
+	The export was stopped: nothing was written.	L’esportazione è stata fermata: non è stato scritto nulla.
+	Aligning was stopped: the book's link is as it was.	L’allineamento è stato fermato: il collegamento del libro resta com’era.
+	The work stopped on an internal error: {why}	Il lavoro si è fermato per un errore interno: {why}
+	The work stopped on an internal error.	Il lavoro si è fermato per un errore interno.

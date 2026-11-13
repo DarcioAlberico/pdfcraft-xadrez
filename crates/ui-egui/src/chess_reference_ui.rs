@@ -171,8 +171,8 @@ pub struct BookPgnView {
     /// The file name of the PGN beside the PDF, offered while none is kept.
     pub sibling: Option<String>,
     pub link: Option<BookLink>,
-    /// Link the whole book is running: pages read, of how many.
-    pub progress: Option<(usize, usize)>,
+    /// Align the book to the PGN is running for this document (its row, with Stop, says how far).
+    pub aligning: bool,
     /// The user's decisions on moves in conflict with the PGN (R6e).
     pub decisions: Decisions,
     /// The PGN beside the PDF, by its file name, when the panel offers it (R6f): the document
@@ -199,8 +199,6 @@ struct DocPgn {
 pub struct BookPgns {
     store: Store,
     docs: Vec<DocPgn>,
-    /// Link the whole book's pages read so far, and of how many (R6d).
-    pub(crate) progress: Option<(Arc<std::sync::atomic::AtomicUsize>, usize)>,
     /// The documents whose PGN beside them the user said Not now to, by the name their keys
     /// give their files (`corrections::file_name`): not offered again. Kept in the settings, at
     /// most [`MAX_DECLINED`] (R6f).
@@ -217,7 +215,6 @@ impl Default for BookPgns {
         BookPgns {
             store: UiStore::memory(WEB_BUDGET),
             docs: Vec::new(),
-            progress: None,
             declined: Vec::new(),
             told: Vec::new(),
             #[cfg(target_arch = "wasm32")]
@@ -323,7 +320,7 @@ impl PdfCraftApp {
     /// What the Chess panel and its Text tab show of document `id`'s book's PGN, as loaded.
     pub(crate) fn book_pgn_view(&self, id: DocId) -> BookPgnView {
         let pgns = &self.chess.book_pgns;
-        let progress = pgns.progress.as_ref().map(|(done, of)| (done.load(std::sync::atomic::Ordering::Relaxed), *of));
+        let aligning = self.chess.long.as_ref().is_some_and(|j| j.doc == id && matches!(j.kind, crate::chess_text_ui::JobKind::LinkBook { .. }));
         let kept = self.session.chess_book_pgn(id);
         let view = self.chess.doc(id);
         let sibling = view
@@ -338,7 +335,7 @@ impl PdfCraftApp {
             offer: sibling.clone().filter(|_| !declined),
             sibling,
             link: view.and_then(|v| v.book_link.clone()),
-            progress,
+            aligning,
             decisions: kept.map(|p| p.decisions.clone()).unwrap_or_default(),
         }
     }
@@ -642,7 +639,7 @@ impl PdfCraftApp {
             ));
         }
         let Some(page) = self.chess.editor.as_ref().filter(|e| e.doc == id).map(|e| e.page) else { return };
-        if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.job.is_some() || self.session.chess_book_pgn(id).is_none() {
+        if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.reading.is_some() || self.session.chess_book_pgn(id).is_none() {
             return;
         }
         let stamp = self.session.chess_stamp(id);
