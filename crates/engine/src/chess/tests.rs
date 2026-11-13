@@ -635,6 +635,32 @@ fn a_scans_stamp_matches_the_document_until_it_changes() {
     assert_eq!(s.chess_stamp(DocId(9999)), None);
 }
 
+/// Plan A9-I2 (finding R8-03): a job scanned a page at a time (the web, between frames) gives
+/// what it gives run at once, a page a step, and stopped after a page gives that page alone.
+#[test]
+fn a_job_scanned_a_page_at_a_time_finds_what_it_finds_at_once() {
+    let (mut s, id) = open(three_boards(400));
+    for _ in 0..2 {
+        s.apply(id, Edit::DuplicatePages { pages: vec![0], at: None }).unwrap();
+    }
+    let m = models(no_model().models_dir.as_deref());
+    let shape = |scan: &ChessScan| scan.pages.iter().map(|p| (p.page, p.diagrams.len())).collect::<Vec<_>>();
+    let whole = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run(&m, |_, _| true);
+    let mut steps = s.chess_scan_job(id, &[], &no_model(), true).unwrap().steps(&m);
+    assert_eq!((steps.done(), steps.total()), (0, 3));
+    let first = steps.step(&m).expect("the first page");
+    assert_eq!((first.page, steps.done()), (0, 1));
+    while steps.step(&m).is_some() {}
+    assert_eq!(steps.done(), 3);
+    let stepped = steps.finish();
+    assert_eq!(shape(&stepped), shape(&whole));
+    assert_eq!(shape(&stepped), [(0, 3), (1, 3), (2, 3)]);
+    assert!(s.store_chess_scan(&stepped), "kept as a scan run at once is");
+    let mut steps = s.chess_scan_job(id, &[], &no_model(), true).unwrap().steps(&m);
+    steps.step(&m);
+    assert_eq!(shape(&steps.finish()), [(0, 3)], "stopped after a page");
+}
+
 #[test]
 fn progress_can_stop_a_scan() {
     let (s, id) = open(three_boards(400));

@@ -691,34 +691,84 @@ impl ChessScanJob {
         self.run_inner(model, key, progress)
     }
 
-    fn run_inner(mut self, model: Option<&dyn SquareClassifier>, key: ModelKey, mut progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
+    fn run_inner(self, model: Option<&dyn SquareClassifier>, key: ModelKey, mut progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
+        let mut steps = self.steps_keyed(key);
+        while steps.done() < steps.total() {
+            if !progress(steps.done(), steps.total()) {
+                break;
+            }
+            steps.step_with(model);
+        }
+        progress(steps.total(), steps.total());
+        steps.finish()
+    }
+
+    /// This job a page at a time ([`ChessScanSteps::step`]), reading with `models`' piece model
+    /// (plan A9-I2, finding R8-03): the web has no threads, so a long scan runs there a few
+    /// pages a frame, within a time budget, and stops between two pages.
+    pub fn steps(self, models: &ChessModels) -> ChessScanSteps {
+        self.steps_keyed(ModelKey::of(models))
+    }
+
+    fn steps_keyed(mut self, key: ModelKey) -> ChessScanSteps {
         if self.read {
             self.params.model = Some(key);
         }
-        let config = RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() };
-        let mut renderer = PageRenderer::new(self.bytes.clone(), config);
+        let renderer = PageRenderer::new(self.bytes.clone(), self.render_config());
         let settings = self.settings.sanitized();
-        let total = self.inputs.len();
-        let mut pages = Vec::with_capacity(total);
-        for (done, input) in self.inputs.iter().enumerate() {
-            if !progress(done, total) {
-                break;
-            }
-            // A last-resort guard (AGENTS.md §4): the detectors and the reader return values for
-            // every input, but this is untrusted-document code, and one bad page must not take
-            // the scan down.
-            let scanned = catch_unwind(AssertUnwindSafe(|| scan_page(&mut renderer, input, &settings, self.read, model)));
-            let page = scanned.unwrap_or_else(|_| {
-                // The renderer's state is unknown after a panic: start a fresh one.
-                renderer =
-                    PageRenderer::new(self.bytes.clone(), RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() });
-                failed_page(input, "scanning the page failed unexpectedly")
-            });
-            pages.push(Arc::new(page));
-        }
-        progress(total, total);
-        let keys = self.inputs.iter().map(|i| (i.page, i.key)).collect();
-        ChessScan { doc: self.doc, params: self.params, pages, keys }
+        let pages = Vec::with_capacity(self.inputs.len());
+        ChessScanSteps { job: self, renderer, settings, pages }
+    }
+
+    fn render_config(&self) -> RenderConfig {
+        RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() }
+    }
+}
+
+/// A [`ChessScanJob`] scanned a page at a time ([`ChessScanJob::steps`]).
+pub struct ChessScanSteps {
+    job: ChessScanJob,
+    renderer: PageRenderer,
+    settings: ChessScanSettings,
+    pages: Vec<Arc<ChessPage>>,
+}
+
+impl ChessScanSteps {
+    /// Scan the next page with `models`' piece model, and give it; `None` once every page is.
+    pub fn step(&mut self, models: &ChessModels) -> Option<Arc<ChessPage>> {
+        self.step_with(models.pieces.loaded().map(|m| m as &dyn SquareClassifier))
+    }
+
+    fn step_with(&mut self, model: Option<&dyn SquareClassifier>) -> Option<Arc<ChessPage>> {
+        let input = self.job.inputs.get(self.pages.len())?;
+        // A last-resort guard (AGENTS.md §4): the detectors and the reader return values for
+        // every input, but this is untrusted-document code, and one bad page must not take the
+        // scan down.
+        let (renderer, settings, read) = (&mut self.renderer, &self.settings, self.job.read);
+        let scanned = catch_unwind(AssertUnwindSafe(|| scan_page(renderer, input, settings, read, model)));
+        let page = Arc::new(scanned.unwrap_or_else(|_| {
+            // The renderer's state is unknown after a panic: start a fresh one.
+            self.renderer = PageRenderer::new(self.job.bytes.clone(), self.job.render_config());
+            failed_page(input, "scanning the page failed unexpectedly")
+        }));
+        self.pages.push(page.clone());
+        Some(page)
+    }
+
+    /// Pages scanned so far.
+    pub fn done(&self) -> usize {
+        self.pages.len()
+    }
+
+    /// Pages it scans.
+    pub fn total(&self) -> usize {
+        self.job.inputs.len()
+    }
+
+    /// What it found, the pages scanned so far (all of them once [`Self::step`] gave `None`).
+    pub fn finish(self) -> ChessScan {
+        let keys = self.job.inputs.iter().map(|i| (i.page, i.key)).collect();
+        ChessScan { doc: self.job.doc, params: self.job.params, pages: self.pages, keys }
     }
 }
 

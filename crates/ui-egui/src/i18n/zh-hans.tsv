@@ -3424,3 +3424,5 @@ the move's comment	Move comment	此着法的评论
 	Aligning was stopped: the book's link is as it was.	对齐已停止：书的链接保持原样。
 	The work stopped on an internal error: {why}	工作因内部错误而停止：{why}
 	The work stopped on an internal error.	工作因内部错误而停止。
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	在浏览器中，暂时无法导出超过 {n} 页的书或将其与 PGN 对齐：标签页会一直无响应直到完成。桌面版会在后台完成。
