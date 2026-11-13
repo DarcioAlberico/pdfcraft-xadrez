@@ -292,8 +292,9 @@ fn write_line<'a>(
             _ => return,
         }
         let Some(node) = score.nodes.get(current) else { return };
-        if depth > 0
-            && current == start
+        // A variation's first move's comment before, and one printed after the variations of the
+        // move before (plan A9-L2); the line's own head leaves its comment to the caller.
+        if (depth > 0 || current != start)
             && let Some(text) = clean_comment(&node.comment_before)
         {
             out.push(FragmentItem::Comment { text, before: true });
