@@ -498,6 +498,9 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
     let results = h.state().chess.results().unwrap();
     assert!(Arc::ptr_eq(&results.pages[1], &other), "the other page is not read again");
     assert_eq!(results.kind(0, 1), Some(pdfcraft_engine::chess::corrections::Kind::Corrected), "kept as the correction");
+    // Kept before the drawing, it follows the page drawn over, not page 2, which still has the
+    // page's content as it was (plan A9-G10).
+    assert_eq!(results.kind(1, 1), None, "the copy of the page keeps its own diagram");
     let ed = h.state().chess.editor.as_ref().expect("the editor stays on the diagram");
     assert_eq!(((ed.page, ed.index), ed.fen(), ed.dirty()), ((0, 1), EDITED.to_string(), false), "nothing left to confirm");
     assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
@@ -4875,6 +4878,178 @@ fn detecting_again_asks_about_drafts() {
     h.run_steps(4);
     assert!(h.state().chess.drafts.is_empty());
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "then the scan ran");
+}
+
+// ─── Corrections undone and redone (plan A9-G10) ──────────────────────────────────────────────
+
+/// Write, in `dir`, the corrections file of a newer PdfCraft for the open document: this build
+/// only reads it, so every change to its corrections is refused.
+fn newer_corrections_file(h: &Harness<'static, PdfCraftApp>, dir: &std::path::Path) {
+    let keys = h.state().session.get(h.state().views[0].id).unwrap().doc_keys();
+    let name = pdfcraft_engine::chess::store::file_name(&keys, "corrections").unwrap();
+    std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(dir.join(name), br#"{"format":"pdfcraft-chess-corrections","version":99,"doc":{"pages":1},"entries":[]}"#).unwrap();
+}
+
+/// Save what the window shows as `name` in the folder `PDFCRAFT_CHESS_SHOTS` names, when it names
+/// one (to look at the result at 1366 × 768).
+fn shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join(name)).unwrap();
+    }
+}
+
+/// Plan A9-G10 (finding A6-04): Confirm is a step of the document's corrections. A notice says it
+/// with Undo; Edit ▸ Undo is on and takes it back to what was read, the board keeping the position
+/// as changes not confirmed, and Redo keeps it again. Forget with changes over it asks first; it
+/// is a step too, whose notice's Undo brings the correction back. Put back as a new revision, the
+/// correction stays through another instance's write (the store's `update`, under its lock), and
+/// the document finds it when opened again.
+#[test]
+fn confirming_and_forgetting_are_steps_that_undo_takes_back() {
+    let dir = corrections_dir("undo");
+    let (keys, fingerprints) = {
+        // The reference screen (plan A9 §0).
+        let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), Some(dir.clone()));
+        scan_and_edit_second(&mut h);
+        h.get_by_label("Confirm and next").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+        h.get_by_label("Undo: Diagram 2, page 1: Corrected");
+        shot(&mut h, "g10-corrected-undo.png");
+        assert!(h.state_mut().execute("edit.undo"), "Undo is on, for the correction");
+        h.run_steps(2);
+        assert_eq!(kind(&h, 1), None, "back to what was read");
+        assert!(h.state().notice.is_none(), "the notice went with its step");
+        let ed = h.state().chess.editor.as_ref().unwrap();
+        assert_eq!((ed.fen().as_str(), ed.dirty()), (EDITED, true), "the position stays, not confirmed");
+        assert!(h.state_mut().execute("edit.redo"));
+        h.run_steps(2);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+        assert!(!h.state().chess.editor.as_ref().unwrap().dirty(), "kept again");
+
+        // Forget, with a change over the correction: asked first; Cancel keeps both.
+        h.state_mut().chess.editor.as_mut().unwrap().position =
+            pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4k3/8/8/8/8/8/8/3QK3 w - - 0 1").unwrap();
+        h.run_steps(2);
+        let forget = |h: &mut Harness<'static, PdfCraftApp>| {
+            h.get_by_label("More actions").click();
+            h.run_steps(2);
+            h.get_by_label("Forget the correction").click();
+            h.run_steps(2);
+        };
+        forget(&mut h);
+        h.get_by_label("Forget the correction?");
+        shot(&mut h, "g10-forget-question.png");
+        h.get_by_label("Cancel").click();
+        h.run_steps(2);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+        assert!(h.state().chess.editor.as_ref().unwrap().dirty(), "the change is still there");
+        forget(&mut h);
+        h.get_all_by_label("Forget the correction").last().expect("the question's button").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 1), None, "forgotten");
+        h.get_by_label("Undo: Diagram 2, page 1: correction forgotten").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"), "back");
+        assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(EDITED), "and on the board");
+        let id = h.state().views[0].id;
+        let keys = h.state().session.get(id).unwrap().doc_keys();
+        (keys, h.state_mut().session.chess_fingerprints(id).unwrap().pages().to_vec())
+    };
+    // Another instance keeps a correction of diagram 1 through the store, under its lock.
+    use pdfcraft_engine::chess::corrections::{DirStore, Kind, NewCorrection, normalize};
+    let rect = normalize([60.0, 580.0, 220.0, 740.0], [0.0, 0.0, 600.0, 800.0]).unwrap();
+    let new = NewCorrection { page: 0, rect, orig: None, fen: START_FEN.into(), kind: Kind::Verified };
+    DirStore::new(&dir).update(&keys, 1, |f| f.set(new, 1, &fingerprints)).unwrap();
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_eq!((kind(&h, 0).as_deref(), kind(&h, 1).as_deref()), (Some("Verified"), Some("Corrected")), "both kept");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-G10 (finding A5-06): Ctrl+Z over the Diagram tab decides there, and never takes back
+/// the chess game, even in its scope: with nothing of the tab's to undo, the game keeps its move.
+/// Over a confirmed change, the newer goes first: the confirmation, then the change.
+#[test]
+fn ctrl_z_over_the_diagram_tab_never_takes_back_the_chess_game() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    // The read diagram opened, its board not taking the keyboard: the game's scope stays on.
+    h.state_mut().edit_chess_diagram(0, 0, true);
+    h.state_mut().chess.editor.as_mut().unwrap().focus = false;
+    h.run_steps(3);
+    assert!(h.state().chess.in_scope(), "the chess game's scope is on");
+    let tab = h.state().chess.diagram_tab_rect().expect("the Diagram tab is drawn");
+    h.hover_at(tab.center());
+    h.run_steps(1);
+    host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "the game keeps its move");
+    // A change, then a confirmation: Ctrl+Z takes back the confirmation, then the change.
+    h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(2);
+    assert!(h.state_mut().confirm_chess_diagram(false));
+    h.run_steps(2);
+    assert_eq!(kind(&h, 0).as_deref(), Some("Corrected"));
+    h.hover_at(tab.center());
+    host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
+    assert_eq!(kind(&h, 0), None, "the confirmation first");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(EDITED));
+    host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(START_FEN), "then the change");
+    host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "and never the game");
+}
+
+/// Plan A9-G10 (finding A5-09): Confirm correction, asked about a draft before quitting, with a
+/// store that only reads it (a newer PdfCraft's file) leaves the question open saying why, and
+/// says it every time it is tried; nothing quits in silence.
+#[test]
+fn a_correction_the_store_refuses_keeps_the_question_open_and_says_why() {
+    let dir = corrections_dir("refused");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    draft_second(&mut h);
+    newer_corrections_file(&h, &dir);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Q);
+    h.run_steps(2);
+    for attempt in 0..2 {
+        h.get_by_label("Keep the correction of diagram 2 (page 1)?");
+        h.state_mut().toast = None;
+        h.get_by_label("Confirm correction").click();
+        h.run_steps(3);
+        let failed = h.state().chess.draft_prompt.as_ref().and_then(|p| p.failed.clone());
+        assert!(failed.as_deref().is_some_and(|w| w.contains("newer PdfCraft")), "attempt {attempt}: the question stays, saying why: {failed:?}");
+        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.contains("couldn't be saved")), "attempt {attempt}: said each time");
+        let said = "The diagram corrections couldn't be saved: the corrections file was written by a newer PdfCraft";
+        assert_eq!(h.query_all_by_label_contains(said).count(), 2, "attempt {attempt}: in the question and in the notice");
+    }
+    assert_eq!(kind(&h, 1), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-G10: Redraw in the PDF keeps the correction before it draws. With a store that only
+/// reads it, the PDF is left as it is and the notice says why.
+#[test]
+fn redraw_keeps_the_correction_first_and_draws_nothing_when_it_cannot() {
+    let dir = corrections_dir("redraw-refused");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    scan_and_edit_second(&mut h);
+    newer_corrections_file(&h, &dir);
+    h.state_mut().chess.redraw_asked = true;
+    let before = generation(&h);
+    assert!(!h.state_mut().redraw_chess_now(), "not drawn");
+    h.run_steps(2);
+    assert_eq!(generation(&h), before, "the PDF is as it was");
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(said.starts_with("Nothing was drawn in the PDF: the correction couldn't be kept"), "{said}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// The tab's first-time hint shows until put away, and stays away (kept with the preferences).

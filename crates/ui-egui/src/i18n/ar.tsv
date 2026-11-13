@@ -3717,3 +3717,9 @@ the move's comment	Move comment	تعليق النقلة
 	Detecting in another book… page {d} of {t}	جارٍ الاكتشاف في كتاب آخر… الصفحة {d} من {t}
 	Redraw in the PDF?	إعادة الرسم في ملف PDF؟
 	Diagram {n}, open	المخطط {n}، فتح
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	المستند مغلق
+	Diagram {n}, page {p}: correction forgotten	المخطط {n}، الصفحة {p}: نُسي التصحيح
+	Forget the correction?	نسيان التصحيح؟
+	The changes not confirmed yet are discarded too. The PDF is not changed.	تُتجاهَل أيضًا التغييرات التي لم تُؤكَّد بعد. لا يتغيّر ملف PDF.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	لم يُرسَم شيء في ملف PDF: تعذّر حفظ التصحيح ({e}).

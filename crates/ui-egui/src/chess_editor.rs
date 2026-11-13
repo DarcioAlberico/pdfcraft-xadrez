@@ -68,9 +68,11 @@ pub struct DiagramEditor {
     /// The board takes the keyboard when it is next drawn: the editor just opened, or its
     /// position was confirmed.
     pub focus: bool,
-    /// The positions before each change, and those undone (Ctrl+Z and Ctrl+Shift+Z in the tab).
-    history: Vec<Position>,
-    future: Vec<Position>,
+    /// The positions before each change, and those undone (Ctrl+Z and Ctrl+Shift+Z in the tab),
+    /// each with when it was put on its side ([`crate::chess_history::next_seq`]): the tab's Undo
+    /// takes the newer of the editor's change and the document's correction (plan A9-G10).
+    history: Vec<(Position, u64)>,
+    future: Vec<(Position, u64)>,
     /// The position as the last [`DiagramEditor::track`] saw it.
     seen: Option<Position>,
     texture: Option<(String, TextureHandle)>,
@@ -173,16 +175,31 @@ impl DiagramEditor {
         };
         if seen != self.position {
             let number_only = |a: &Position, b: &Position| Position { fullmove_number: b.fullmove_number, ..a.clone() } == *b;
-            let again = number_only(&seen, &self.position) && self.history.last().is_some_and(|last| number_only(last, &seen));
-            if !again {
-                if self.history.len() >= MAX_HISTORY {
-                    self.history.remove(0);
+            let seq = crate::chess_history::next_seq();
+            match self.history.last_mut() {
+                // The step goes on, and is as new as its last change.
+                Some((last, at)) if number_only(&seen, &self.position) && number_only(last, &seen) => *at = seq,
+                _ => {
+                    if self.history.len() >= MAX_HISTORY {
+                        self.history.remove(0);
+                    }
+                    self.history.push((seen, seq));
                 }
-                self.history.push(seen);
             }
             self.future.clear();
         }
         self.seen = Some(self.position.clone());
+    }
+
+    /// The position shown now was put there by the app (a correction undone, forgotten or
+    /// restored), not by the user: it is no change of the editor's to undo.
+    pub fn settle(&mut self) {
+        self.seen = Some(self.position.clone());
+    }
+
+    /// When the change Undo (`undo`) or Redo would take was made or undone, if there is one.
+    pub fn seq(&self, undo: bool) -> Option<u64> {
+        if undo { self.history.last() } else { self.future.last() }.map(|(_, seq)| *seq)
     }
 
     /// Whether there is a change to undo, or one undone to redo.
@@ -195,16 +212,16 @@ impl DiagramEditor {
 
     /// Undo the last change (Ctrl+Z in the tab).
     pub fn undo(&mut self) {
-        if let Some(before) = self.history.pop() {
-            self.future.push(std::mem::replace(&mut self.position, before));
+        if let Some((before, _)) = self.history.pop() {
+            self.future.push((std::mem::replace(&mut self.position, before), crate::chess_history::next_seq()));
             self.seen = Some(self.position.clone());
         }
     }
 
     /// Redo the last change undone (Ctrl+Shift+Z in the tab).
     pub fn redo(&mut self) {
-        if let Some(after) = self.future.pop() {
-            self.history.push(std::mem::replace(&mut self.position, after));
+        if let Some((after, _)) = self.future.pop() {
+            self.history.push((std::mem::replace(&mut self.position, after), crate::chess_history::next_seq()));
             self.seen = Some(self.position.clone());
         }
     }
@@ -254,6 +271,22 @@ impl DiagramEditor {
         if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
             self.position = p;
             self.flipped = flipped;
+        }
+    }
+
+    /// The position it opens on when nothing is kept for its diagram: the reading, else an empty
+    /// board with White to move.
+    pub fn reading_fen(&self) -> String {
+        let read = self.original.as_deref().and_then(|f| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(f).ok());
+        read.unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) }).fen()
+    }
+
+    /// Show the position it opens on with nothing kept ([`Self::reading_fen`]), with nothing left
+    /// to confirm: its diagram's correction was forgotten.
+    pub fn show_reading(&mut self) {
+        self.start = self.reading_fen();
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&self.start) {
+            self.position = p;
         }
     }
 

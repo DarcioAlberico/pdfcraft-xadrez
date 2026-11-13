@@ -3405,3 +3405,9 @@ the move's comment	Move comment	Коментар към хода
 	Detecting in another book… page {d} of {t}	Откриване в друга книга… страница {d} от {t}
 	Redraw in the PDF?	Прерисуване в PDF?
 	Diagram {n}, open	Диаграма {n}, отваряне
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	документът е затворен
+	Diagram {n}, page {p}: correction forgotten	Диаграма {n}, стр. {p}: корекцията е забравена
+	Forget the correction?	Да се забрави ли корекцията?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Непотвърдените още промени също се отхвърлят. PDF файлът не се променя.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Нищо не беше начертано в PDF: корекцията не можа да се запази ({e}).

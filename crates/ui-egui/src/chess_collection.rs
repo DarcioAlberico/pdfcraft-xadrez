@@ -1175,6 +1175,13 @@ impl ChessGames {
         }
     }
 
+    /// When the step Undo (`undo`) or Redo would take in the chess scope was put on its side
+    /// ([`chess_history::next_seq`]): the list's or the game shown's, the newer.
+    pub(crate) fn step_seq(&self, undo: bool) -> Option<u64> {
+        let c = self.collection();
+        c.history.seq(undo).max(c.active().board.history.seq(undo))
+    }
+
     /// What Undo (`undo`) or Redo would take back in the chess scope: a change to the list
     /// of games, or a change to the game shown, whichever is the newer.
     pub(crate) fn step_edit(&self, undo: bool) -> Option<ChessEdit> {
@@ -2433,6 +2440,9 @@ impl PdfCraftApp {
         self.chess.shown = self.chess.games.current;
         let open: Vec<DocId> = self.views.iter().map(|v| v.id).collect();
         self.chess.docs.retain(|id, _| open.contains(id));
+        // A closed document's drafts go with it, however it was closed: none is asked about again,
+        // with nothing left to keep it in (plan A9-G10, finding A5-09).
+        self.chess.drafts.retain(|d| open.contains(&d.target.doc));
         for id in &open {
             self.chess.doc_mut(*id);
         }

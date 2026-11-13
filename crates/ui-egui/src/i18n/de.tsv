@@ -3443,3 +3443,9 @@ the move's comment	Move comment	Kommentar des Zugs
 	Detecting in another book… page {d} of {t}	Erkennen in einem anderen Buch… Seite {d} von {t}
 	Redraw in the PDF?	Im PDF neu zeichnen?
 	Diagram {n}, open	Diagramm {n}, öffnen
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	das Dokument ist geschlossen
+	Diagram {n}, page {p}: correction forgotten	Diagramm {n}, Seite {p}: Korrektur verworfen
+	Forget the correction?	Korrektur verwerfen?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Noch nicht bestätigte Änderungen werden ebenfalls verworfen. Das PDF bleibt unverändert.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Im PDF wurde nichts gezeichnet: Die Korrektur konnte nicht gespeichert werden ({e}).

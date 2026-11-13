@@ -47,6 +47,8 @@ pub struct DocChess {
     /// Where the PGN export takes its games from when the document keeps a book's PGN, for the
     /// session (plan "Carregar PGN do livro", R6b).
     pub pgn_source: crate::chess_export_ui::PgnSource,
+    /// The corrections kept and forgotten in it, as steps Undo and Redo take (plan A9-G10).
+    pub(crate) fixes: crate::chess_history::History<crate::chess_fixes::FixState>,
 }
 
 /// Chess diagrams: each open document's view, and the running scan.
@@ -100,6 +102,9 @@ pub struct ChessState {
     pub redraw_asked: bool,
     /// The first-time question before Redraw in the PDF, while it is asked.
     pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
+    /// The question before forgetting a correction with changes over it not confirmed yet, while
+    /// it is asked (plan A9-G10).
+    pub forget_prompt: bool,
     /// The question before exporting while diagrams are still to review (P9c).
     pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
     /// What the last export said, while it is shown (P9c).
@@ -160,6 +165,11 @@ pub struct ChessState {
     pub scope: bool,
     /// The game shown (its id) and its history's step count when the scope was last settled.
     pub(crate) scope_edits: (u64, u64),
+    /// The last action was a correction kept or forgotten, or one of theirs undone or redone:
+    /// Undo and Redo go to the shown document's corrections (plan A9-G10;
+    /// [`ChessState::undo_target`]) until a click on the page or in the chess board's panels, a
+    /// change to the document or the keyboard taken to the page.
+    pub(crate) fix_scope: bool,
     /// A widget outside the chess board's surfaces had the keyboard focus at the end of the last
     /// pass: the scope is off however it was settled (plan A9-I18).
     pub(crate) focus_out: bool,

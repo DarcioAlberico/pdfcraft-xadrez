@@ -3442,3 +3442,9 @@ the move's comment	Move comment	Commentaire du coup
 	Detecting in another book… page {d} of {t}	Détection dans un autre livre… page {d} sur {t}
 	Redraw in the PDF?	Redessiner dans le PDF ?
 	Diagram {n}, open	Diagramme {n}, ouvrir
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	le document est fermé
+	Diagram {n}, page {p}: correction forgotten	Diagramme {n}, page {p} : correction oubliée
+	Forget the correction?	Oublier la correction ?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Les modifications pas encore confirmées sont aussi abandonnées. Le PDF n’est pas modifié.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Rien n’a été dessiné dans le PDF : la correction n’a pas pu être enregistrée ({e}).

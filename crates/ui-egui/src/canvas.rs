@@ -2421,7 +2421,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // With the chess OCR area on (T9), a drag draws the area to read rather than selecting text.
     let chess_area = crate::chess_ocr_area::drawing(&app.chess);
     if crate::chess_history::pressed_in(ui) && !capture_armed {
-        app.chess.leave_scope();
+        app.chess.leave_for_document();
     }
     // Keyboard scrolling applies to this frame's page view only, never later.
     let key_scroll = std::mem::take(&mut app.views[index].key_scroll);

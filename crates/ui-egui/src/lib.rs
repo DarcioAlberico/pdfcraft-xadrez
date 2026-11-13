@@ -46,6 +46,7 @@ mod chess_drafts;
 mod chess_editor;
 mod chess_export_ui;
 mod chess_figurines;
+mod chess_fixes;
 mod chess_history;
 mod chess_keymap;
 mod chess_list;
@@ -132,6 +133,7 @@ mod icon_data;
 pub mod icons;
 pub mod last_session;
 pub mod motion;
+pub mod notice;
 mod page_selection_ui;
 mod pageboxes;
 mod palette;
@@ -644,6 +646,9 @@ pub struct PdfCraftApp {
     /// Folders pinned to Home, and what they held when last listed.
     pub pinned: folders_ui::PinnedFolders,
     pub toast: Option<(String, f64)>,
+    /// What the user just did, with a button that takes it back when it can be (plan A9 §2.8.1,
+    /// step G10): at the foot of the page area ([`notice`]).
+    pub notice: Option<notice::Notice>,
     /// Whether the macOS title bar is drawn by us (traffic lights over our tab strip).
     pub integrated_titlebar: bool,
     /// Set when the desktop leaves the window frame to the app (GNOME on Wayland): the tab strip
@@ -1016,6 +1021,7 @@ impl PdfCraftApp {
             open_prepare_gate: None,
             pinned: Default::default(),
             toast: None,
+            notice: None,
             integrated_titlebar: false,
             window_controls: None,
             system_title_bar: false,
@@ -3482,12 +3488,14 @@ impl eframe::App for PdfCraftApp {
             chess_unsaved::prompt(self, &ctx);
             chess_collection::cut_prompt(self, &ctx);
             chess_redraw::prompt(self, &ctx);
+            chess_fixes::forget_prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
             widgets::settle_dialogs(&ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
+            notice::show(self, &ctx);
             self.settle_chess_focus(&ctx);
             self.finish_render_frame(&ctx);
             return;
@@ -3558,12 +3566,15 @@ impl eframe::App for PdfCraftApp {
         chess_unsaved::prompt(self, &ctx);
         chess_collection::cut_prompt(self, &ctx);
         chess_redraw::prompt(self, &ctx);
+        chess_fixes::forget_prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
         // A dialog no longer shown gives the keyboard back to where it was (plan A9-I11a).
         widgets::settle_dialogs(&ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
+        // What the user just did, at the foot of the page area (plan A9-G10).
+        notice::show(self, &ctx);
         self.settle_chess_focus(&ctx);
         self.finish_render_frame(&ctx);
     }

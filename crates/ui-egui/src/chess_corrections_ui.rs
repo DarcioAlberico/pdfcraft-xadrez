@@ -27,9 +27,11 @@ use std::collections::HashMap;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
-    CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, PageBoxes, Status, StoreError, assign, normalize,
+    Correction, CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, PageBoxes, Status, StoreError, assign, normalize,
 };
 
+use crate::chess_fixes::FixState;
+use crate::chess_history::ChessEdit;
 use crate::chess_ui::Kept;
 
 use crate::PdfCraftApp;
@@ -68,7 +70,7 @@ impl Store {
 
     /// A change, after the document's entries are taken out of a file several books shared (plan
     /// A9-G1b).
-    fn update<R>(
+    pub(crate) fn update<R>(
         &mut self,
         keys: &DocKeys,
         fingerprints: &[String],
@@ -123,7 +125,7 @@ pub struct Corrections {
     pub(crate) store: Store,
     pub(crate) docs: Vec<DocCorrections>,
     /// Why the store could not be read or written, said once until it works again.
-    said: bool,
+    pub(crate) said: bool,
 }
 
 impl Corrections {
@@ -168,8 +170,16 @@ impl Corrections {
     }
 }
 
+/// A correction kept for a diagram ([`PdfCraftApp::store_chess_correction`]).
+pub(crate) struct Stored {
+    pub kind: Kind,
+    pub uid: String,
+    /// The live correction it replaced, as it was (`None`: a new one): what Undo puts back.
+    pub before: Option<Correction>,
+}
+
 /// Seconds since 1970, now.
-fn now() -> u64 {
+pub(crate) fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
@@ -178,7 +188,7 @@ impl PdfCraftApp {
     /// asked for; from then on the session holds them. Whether the document is open. With the
     /// page fingerprints, a file several books shared gives this book its own entries (plan
     /// A9-G1b).
-    fn load_chess_corrections(&mut self, id: DocId) -> bool {
+    pub(crate) fn load_chess_corrections(&mut self, id: DocId) -> bool {
         if self.session.get(id).is_none() {
             return false;
         }
@@ -225,7 +235,7 @@ impl PdfCraftApp {
 
     /// Say that a change set a file aside before writing (one that could not be read, or whose
     /// unreadable entries it dropped).
-    fn say_corrections_set_aside(&mut self, loaded: &Loaded) {
+    pub(crate) fn say_corrections_set_aside(&mut self, loaded: &Loaded) {
         if let Some((name, why)) = &loaded.set_aside {
             self.notify(crate::i18n::fmt(
                 tl!("Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}."),
@@ -311,42 +321,72 @@ impl PdfCraftApp {
     }
 
     /// Keep `fen` for diagram `target` without changing the PDF: Verified when it is the
-    /// reading, else Corrected, and say so. The kind kept, or `None` when it could not be.
-    pub(crate) fn keep_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
-        let kind = self.store_chess_correction(target, fen)?;
-        let state = crate::chess_widgets::DiagramState::of(None, Some(kind), false).name();
-        let label = self.chess_page_label(target.page);
-        let n = (target.index + 1).to_string();
-        self.notify(crate::i18n::fmt(tl!("Diagram {n}, page {p}: {state}"), &[("n", &n), ("p", &label), ("state", state)]));
-        Some(kind)
+    /// reading, else Corrected. It is one step of the document's corrections, which a notice says
+    /// with its Undo button (plan A9-G10). The kind kept, or why it could not be, said each time.
+    pub(crate) fn keep_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Result<Kind, String> {
+        let stored = match self.store_chess_correction(target, fen) {
+            Ok(stored) => stored,
+            Err(why) => {
+                self.say_corrections_not_kept(&why);
+                return Err(why);
+            }
+        };
+        let before = FixState { entries: vec![(stored.uid, stored.before)], diagram: Some((target.page, target.index)) };
+        let seq = self.record_chess_fix(target.doc, ChessEdit::ConfirmCorrection, before);
+        let state = crate::chess_widgets::DiagramState::of(None, Some(stored.kind), false).name();
+        let text = crate::i18n::fmt(
+            tl!("Diagram {n}, page {p}: {state}"),
+            &[("n", &(target.index + 1).to_string()), ("p", &self.chess_page_label(target.page)), ("state", state)],
+        );
+        let undo = seq.map(|seq| (tl!("Undo").to_string(), crate::notice::NoticeAction::UndoCorrection { doc: target.doc, seq }));
+        self.post_notice(text, undo);
+        Ok(stored.kind)
     }
 
-    /// [`Self::keep_chess_correction`] without a word, unless the store fails (which it says).
-    pub(crate) fn store_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
+    /// Keep `fen` for diagram `target`, without a word and without a step of its own: what was
+    /// kept, or why it could not be (the caller says it).
+    pub(crate) fn store_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Result<Stored, String> {
         let DiagramTarget { doc: id, page, index, rect, .. } = *target;
         let kind = if target.read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
+        let closed = || tl!("the document is closed").to_string();
         if !self.load_chess_corrections(id) {
-            return None;
+            return Err(closed());
         }
-        let fingerprints = self.session.chess_fingerprints(id)?;
-        let doc = self.session.get(id)?;
-        let keys = doc.doc_keys();
+        let fingerprints = self.session.chess_fingerprints(id).ok_or_else(closed)?;
+        let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        match self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.set(new, at, fingerprints.as_ref())) {
-            Ok((_, loaded)) => {
-                self.chess.corrections.said = false;
-                self.say_corrections_set_aside(&loaded);
-                self.chess_corrections_kept(id, keys, loaded.file);
-            }
-            Err(e) => {
-                self.say_corrections_failed(&e.to_string());
-                return None;
-            }
-        }
+        let ((uid, before), loaded) = self
+            .chess
+            .corrections
+            .store
+            .update(&keys, fingerprints.pages(), |f| f.replace(new, at, fingerprints.as_ref()))
+            .map_err(|e| e.to_string())?;
+        self.chess.corrections.said = false;
+        self.say_corrections_set_aside(&loaded);
+        self.chess_corrections_kept(id, keys, loaded.file);
         // A draft of it is confirmed too.
         self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
-        Some(kind)
+        Ok(Stored { kind, uid, before })
+    }
+
+    /// Correction `uid` of document `id`, drawn over its diagram on `page` (Redraw in the PDF),
+    /// follows the page as it is now ([`CorrectionFile::follow_page`]). Why not, when the store
+    /// refused.
+    pub(crate) fn follow_chess_correction(&mut self, id: DocId, uid: &str, page: usize) -> Result<(), String> {
+        let closed = || tl!("the document is closed").to_string();
+        let fingerprints = self.session.chess_fingerprints(id).ok_or_else(closed)?;
+        let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
+        let at = now();
+        let (_, loaded) = self
+            .chess
+            .corrections
+            .store
+            .update(&keys, fingerprints.pages(), |f| f.follow_page(uid, page, at, fingerprints.as_ref()))
+            .map_err(|e| e.to_string())?;
+        self.say_corrections_set_aside(&loaded);
+        self.chess_corrections_kept(id, keys, loaded.file);
+        Ok(())
     }
 
     /// Chess ▸ Mark the page as checked (plan A8, P2b): every diagram of `page` read with
@@ -361,6 +401,8 @@ impl PdfCraftApp {
             return 0;
         };
         let (mut done, mut left) = (0usize, 0usize);
+        // One step of the document's corrections for the whole page (plan A9-G10).
+        let mut step = FixState { entries: Vec::new(), diagram: None };
         for index in 0..p.diagrams.len() {
             let kind = self.chess.results_of(id).and_then(|r| r.kind(page, index));
             let state = Status::of(crate::chess_ui::ChessResults::reading(&p, index), kind);
@@ -372,12 +414,18 @@ impl PdfCraftApp {
             }
             let Some(target) = self.chess_diagram_target(id, page, index) else { continue };
             let Some(fen) = target.read.clone() else { continue };
-            if self.store_chess_correction(&target, fen).is_none() {
-                // The store said why; nothing more is tried.
-                return done;
+            match self.store_chess_correction(&target, fen) {
+                Ok(stored) => step.entries.push((stored.uid, stored.before)),
+                Err(why) => {
+                    // Said; nothing more is tried, and what was kept is one step still.
+                    self.say_corrections_not_kept(&why);
+                    self.record_chess_fix(id, ChessEdit::CheckPage, step);
+                    return done;
+                }
             }
             done = done.saturating_add(1);
         }
+        self.record_chess_fix(id, ChessEdit::CheckPage, step);
         let mut said = if done == 0 {
             crate::i18n::fmt(tl!("Nothing on page {p} is left that was read with confidence."), &[("p", &label)])
         } else {
@@ -399,7 +447,7 @@ impl PdfCraftApp {
         let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
         let Some(target) = self.chess_diagram_target(id, page, index) else { return false };
-        if self.keep_chess_correction(&target, fen.clone()).is_none() {
+        if self.keep_chess_correction(&target, fen.clone()).is_err() {
             return false;
         }
         // The editor's position is the one kept now: nothing left to confirm.
@@ -425,36 +473,57 @@ impl PdfCraftApp {
         true
     }
 
-    /// Forget the correction of the editor's diagram: it shows what was read again. Whether there
-    /// was one.
+    /// Forget the correction of the editor's diagram: it shows what was read again. With changes
+    /// over it not confirmed yet, asks first ([`crate::chess_fixes::forget_prompt`]), since they go
+    /// too. Whether it was forgotten.
     pub fn forget_chess_correction(&mut self) -> bool {
+        if self.chess.editor.as_ref().is_some_and(crate::chess_editor::DiagramEditor::dirty) {
+            self.chess.forget_prompt = true;
+            return false;
+        }
+        self.forget_chess_correction_now()
+    }
+
+    /// [`Self::forget_chess_correction`] without asking: one step of the document's corrections,
+    /// which a notice says with its Undo button (plan A9-G10). Whether there was one to forget; a
+    /// store that refused says why.
+    pub(crate) fn forget_chess_correction_now(&mut self) -> bool {
         let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (id, page, index) = (ed.doc, ed.page, ed.index);
         let Some(uid) = self.chess_correction_uid(id, page, index) else { return false };
         let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
         let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
         let at = now();
-        let gone = self
-            .chess
-            .corrections
-            .store
-            .update(&keys, &fingerprints, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
-        match gone {
-            Ok((_, loaded)) => {
+        let gone = self.chess.corrections.store.update(&keys, &fingerprints, |f| {
+            let before = f.live().find(|e| e.uid == uid).cloned();
+            if f.delete(&uid, at) { Ok(before) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) }
+        });
+        let before = match gone {
+            Ok((before, loaded)) => {
+                self.chess.corrections.said = false;
                 self.say_corrections_set_aside(&loaded);
                 self.chess_corrections_kept(id, keys, loaded.file);
+                before
             }
             Err(e) => {
-                self.say_corrections_failed(&e.to_string());
+                self.say_corrections_not_kept(&e.to_string());
                 return false;
             }
-        }
-        // The editor shows the reading again, with nothing left to confirm.
+        };
+        // The editor shows the reading again, with nothing left to confirm; that is no change of
+        // its own to undo.
         if let Some(ed) = self.chess.editor.as_mut() {
-            ed.reset();
-            ed.start = ed.fen();
+            ed.show_reading();
+            ed.settle();
         }
         self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
+        let seq = self.record_chess_fix(id, ChessEdit::ForgetCorrection, FixState { entries: vec![(uid, before)], diagram: Some((page, index)) });
+        let text = crate::i18n::fmt(
+            tl!("Diagram {n}, page {p}: correction forgotten"),
+            &[("n", &(index + 1).to_string()), ("p", &self.chess_page_label(page))],
+        );
+        let undo = seq.map(|seq| (tl!("Undo").to_string(), crate::notice::NoticeAction::UndoCorrection { doc: id, seq }));
+        self.post_notice(text, undo);
         true
     }
 
@@ -466,7 +535,7 @@ impl PdfCraftApp {
     }
 
     /// The store kept `file` for `id` under `keys`: the session holds it, and the marks follow.
-    fn chess_corrections_kept(&mut self, id: DocId, keys: DocKeys, file: CorrectionFile) {
+    pub(crate) fn chess_corrections_kept(&mut self, id: DocId, keys: DocKeys, file: CorrectionFile) {
         self.session.set_chess_corrections(id, Some(file));
         match self.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
             Some(d) => d.keys = keys,

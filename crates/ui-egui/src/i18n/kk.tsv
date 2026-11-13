@@ -3440,3 +3440,9 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Detecting in another book… page {d} of {t}	Басқа кітапта анықталуда… бет {d}/{t}
 	Redraw in the PDF?	PDF ішінде қайта салу керек пе?
 	Diagram {n}, open	Диаграмма {n}, ашу
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	құжат жабық
+	Diagram {n}, page {p}: correction forgotten	{n}-диаграмма, {p}-бет: түзету ұмытылды
+	Forget the correction?	Түзетуді ұмыту керек пе?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Әлі расталмаған өзгерістер де жойылады. PDF өзгермейді.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF-ке ештеңе салынбады: түзетуді сақтау мүмкін болмады ({e}).

@@ -109,6 +109,14 @@ pub enum ChessEdit {
     /// A game of the book, read in the Text tab, opened on the board as a new game (a step of the
     /// list).
     OpenBookGame,
+    /// A diagram's position kept as its correction (Confirm in the Diagram tab, or Confirm
+    /// correction asked about a draft): a step of the document's corrections (plan A9-G10).
+    ConfirmCorrection,
+    /// A diagram's correction forgotten (a step of the document's corrections).
+    ForgetCorrection,
+    /// The diagrams of a page read with confidence kept as checked (a step of the document's
+    /// corrections).
+    CheckPage,
 }
 
 impl ChessEdit {
@@ -148,6 +156,9 @@ impl ChessEdit {
             ChessEdit::NewGameFromHere => tl!("New game from this position").to_string(),
             ChessEdit::RestoreGame => tl!("Open as a new game").to_string(),
             ChessEdit::OpenBookGame => tl!("Open this game on the board").to_string(),
+            ChessEdit::ConfirmCorrection => tl!("Confirm correction").to_string(),
+            ChessEdit::ForgetCorrection => tl!("Forget the correction").to_string(),
+            ChessEdit::CheckPage => tl!("Mark the page as checked").to_string(),
         }
     }
 
@@ -300,6 +311,12 @@ impl<S> History<S> {
         self.past.back().map(|s| &s.edit)
     }
 
+    /// The state Undo (`undo`) or Redo would bring back, without taking the step: for a history
+    /// whose step is kept elsewhere first, and taken only once that worked (plan A9-G10).
+    pub(crate) fn peek(&self, undo: bool) -> Option<&S> {
+        if undo { self.past.back() } else { self.future.last() }.map(|s| &s.state)
+    }
+
     /// What Redo would redo.
     pub(crate) fn redo_edit(&self) -> Option<&ChessEdit> {
         self.future.last().map(|s| &s.edit)
@@ -398,13 +415,57 @@ impl ChessState {
     pub(crate) fn enter_scope(&mut self) {
         self.scope = true;
         self.scope_edits = self.games.scope_stamp();
+        self.fix_scope = false;
     }
 
-    /// Undo and Redo go to the document again.
+    /// Undo and Redo go to the document again, unless the last action was a correction kept or
+    /// forgotten ([`ChessState::fix_scope`]): a click in the Diagram tab, or the keyboard focus
+    /// there, keeps them on the corrections (plan A9-G10).
     pub(crate) fn leave_scope(&mut self) {
         self.scope = false;
         self.scope_edits = self.games.scope_stamp();
     }
+
+    /// Undo and Redo go to the document, whatever was done last in chess: a click on the page, a
+    /// change to the document, the keyboard taken to the page (plan A9-G10).
+    pub(crate) fn leave_for_document(&mut self) {
+        self.leave_scope();
+        self.fix_scope = false;
+    }
+
+    /// Where Undo (`undo`) or Redo goes (D12, plan A9-G10): to the shown document's corrections
+    /// when the last action was one kept or forgotten (or one of theirs undone or redone) and no
+    /// change to the chess game came after it; to the chess game in its scope ([`Self::in_scope`]);
+    /// else to the document. With the corrections in scope and nothing of theirs left to take, it
+    /// is off rather than reaching for the document's history, as the chess scope is.
+    pub(crate) fn undo_target(&self, undo: bool) -> UndoTarget {
+        let game = self.in_scope();
+        if self.fix_scope {
+            let fix = self.shown.and_then(|id| self.docs.get(&id)).and_then(|d| d.fixes.seq(undo));
+            let chess = if game { self.games.step_seq(undo) } else { None };
+            if !game || (fix.is_some() && fix > chess) {
+                return UndoTarget::Corrections;
+            }
+        }
+        if game { UndoTarget::Game } else { UndoTarget::Document }
+    }
+
+    /// What Undo (`undo`) or Redo would take back of the shown document's corrections.
+    pub(crate) fn fix_edit(&self, undo: bool) -> Option<ChessEdit> {
+        let fixes = &self.docs.get(&self.shown?)?.fixes;
+        if undo { fixes.undo_edit() } else { fixes.redo_edit() }.cloned()
+    }
+}
+
+/// Where Undo and Redo go ([`ChessState::undo_target`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum UndoTarget {
+    /// The document's corrections (plan A9-G10).
+    Corrections,
+    /// The chess game shown, or its list of games (D12).
+    Game,
+    /// The document.
+    Document,
 }
 
 /// Whether a pointer button went down this frame inside `ui`'s area, on `ui`'s own layer (not on

@@ -2,10 +2,11 @@
 //! diagram in the PDF, as one undo step.
 //!
 //! The first time, a question says what it does ("Redraw in the PDF draws the corrected position
-//! over the original…") with Redraw, Cancel and Don't show again. The position drawn is kept as
-//! the diagram's correction, so the list says Corrected (or Verified) whatever the page reads
-//! now, and the correction follows the page as it is after the redraw. Only that page is read
-//! again: the list keeps every other diagram ([`PdfCraftApp::carry_chess_results`]).
+//! over the original…") with Redraw, Cancel and Don't show again. The position is kept as the
+//! diagram's correction first, and only then drawn (plan A9-G10): a store that refuses it leaves
+//! the PDF as it is. So the list says Corrected (or Verified) whatever the page reads now, and the
+//! correction follows the page as it is after the redraw. Only that page is read again: the list
+//! keeps every other diagram ([`PdfCraftApp::carry_chess_results`]).
 
 use crate::PdfCraftApp;
 
@@ -40,14 +41,28 @@ impl PdfCraftApp {
         }
     }
 
-    /// Draw the editor's position over its diagram in the PDF (one undo step), keep it as the
-    /// diagram's correction and read that page again. Whether it was drawn.
+    /// Keep the editor's position as its diagram's correction, then draw it over the diagram in
+    /// the PDF (one undo step) and read that page again. Whether it was drawn.
+    ///
+    /// The correction is kept **before** the drawing (plan A9-G10): a store that refuses it (read
+    /// only, as a build before a newer format's opens it; held by another writer) leaves the PDF
+    /// as it is and says why, so a drawing never stands for a correction that was not kept. Once
+    /// drawn, the correction is kept again with the page as it is now, so it follows the page.
     pub fn redraw_chess_now(&mut self) -> bool {
         let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
         let Some(generation) = self.session.get(id).map(|d| d.edit_generation()) else { return false };
         // What a correction of it needs, taken before the page changes.
         let target = self.chess_diagram_target(id, page, index);
+        let kept = match target.as_ref().map(|t| self.store_chess_correction(t, fen.clone())) {
+            Some(Ok(stored)) => Some(stored.uid),
+            Some(Err(why)) => {
+                self.notify(crate::i18n::fmt(tl!("Nothing was drawn in the PDF: the correction couldn't be kept ({e})."), &[("e", &why)]));
+                return false;
+            }
+            None => None,
+        };
+        let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (placement, flipped) = (ed.position.placement, ed.flipped);
         let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
         let mut replacement = pdfcraft_engine::chess::DiagramReplacement::new(page, index, generation, placement);
@@ -57,12 +72,15 @@ impl PdfCraftApp {
         if !self.apply_edit(pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement))) {
             return false;
         }
-        // Kept with the page as it is now, so the correction follows it. A store that fails says
-        // so; the drawing stays.
-        if let Some(target) = target
-            && self.store_chess_correction(&target, fen.clone()).is_some()
-            && let Some(ed) = self.chess.editor.as_mut()
+        // The correction follows the page as it is now (by its uid: a copy of the page as it was,
+        // elsewhere in the document, never takes it). Should the store refuse now, the correction
+        // kept before the drawing still stands, and the refusal is said.
+        if let Some(uid) = kept
+            && let Err(why) = self.follow_chess_correction(id, &uid, page)
         {
+            self.say_corrections_not_kept(&why);
+        }
+        if let Some(ed) = self.chess.editor.as_mut() {
             // The position drawn is the one kept: nothing left to confirm.
             ed.start = fen;
         }

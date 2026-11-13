@@ -3406,3 +3406,9 @@ the move's comment	Move comment	此着法的评论
 	Detecting in another book… page {d} of {t}	正在另一本书中检测… 第 {d} 页，共 {t} 页
 	Redraw in the PDF?	在 PDF 中重绘？
 	Diagram {n}, open	棋图 {n}，打开
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	文档已关闭
+	Diagram {n}, page {p}: correction forgotten	棋图 {n}，第 {p} 页：已放弃更正
+	Forget the correction?	放弃更正？
+	The changes not confirmed yet are discarded too. The PDF is not changed.	尚未确认的更改也会被丢弃。PDF 不会改变。
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	未在 PDF 中绘制任何内容：无法保存更正（{e}）。

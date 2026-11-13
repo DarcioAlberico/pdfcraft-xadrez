@@ -774,7 +774,7 @@ fn take_f6(chess: &mut ChessState, ctx: &egui::Context, events: &mut Vec<Event>)
         }
     });
     chess.diagram_keys.focus_in_tab = false;
-    chess.leave_scope();
+    chess.leave_for_document();
 }
 
 /// Take the rail's keys (the scope's keys of the key map, Enter only while nothing has the focus,
