@@ -706,8 +706,6 @@ pub(crate) fn engine_assistant(app: &mut crate::PdfCraftApp, ctx: &egui::Context
     let title = tl!("No analysis engine installed");
     let shown = crate::widgets::show_titled_modal(ctx, "chess-engine-assistant", title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(title);
-        ui.add_space(6.0);
         ui.label(engine_help());
         ui.add_space(10.0);
         ui.horizontal_wrapped(|ui| {

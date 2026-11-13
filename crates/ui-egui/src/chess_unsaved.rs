@@ -111,8 +111,6 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let title = tl!("Chess games not saved");
     let shown = crate::widgets::show_titled_modal(ctx, "chess-games-prompt", title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(title);
-        ui.add_space(6.0);
         ui.add(egui::Label::new(body).wrap());
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));

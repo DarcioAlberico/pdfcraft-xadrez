@@ -3460,3 +3460,4 @@ castling	long	довга
 diagram state	Read	Прочитано
 the move's comment	Move comment	Коментар до ходу
 	Redraw in the PDF?	Перемалювати в PDF?
+	Diagram {n}, open	Діаграма {n}, відкрити

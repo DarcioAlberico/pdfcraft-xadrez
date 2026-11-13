@@ -3434,3 +3434,4 @@ castling	long	uzun
 diagram state	Read	Okundu
 the move's comment	Move comment	Hamlenin yorumu
 	Redraw in the PDF?	PDF'de yeniden çizilsin mi?
+	Diagram {n}, open	Diyagram {n}, aç

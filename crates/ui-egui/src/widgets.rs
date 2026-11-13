@@ -37,7 +37,8 @@ pub fn show_modal<R>(ctx: &egui::Context, id: &str, content: impl FnOnce(&mut eg
     show_dialog(ctx, id, None, content)
 }
 
-/// [`show_modal`] named `title`, the heading its content shows (plan A9-I11a, WCAG 4.1.2).
+/// [`show_modal`] under the heading `title`, which names it (plan A9-I11a, WCAG 4.1.2): the
+/// content follows the heading.
 pub fn show_titled_modal<R>(ctx: &egui::Context, id: &str, title: &str, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
     show_dialog(ctx, id, Some(title), content)
 }
@@ -51,12 +52,13 @@ fn show_dialog<R>(ctx: &egui::Context, id: &str, title: Option<&str>, content: i
     let stored = egui::Id::new(id);
     let opening = open_dialog(ctx, stored);
     modal(ctx, id).show(ctx, |ui| {
-        ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
-            node.set_role(egui::accesskit::Role::Dialog);
-            node.set_modal();
-            if let Some(title) = title {
-                node.set_label(title);
-            }
+        let dialog = ui.unique_id();
+        // Named by its heading (labelled by it, not a copy of its words, so a search by the title
+        // finds the dialog once).
+        let heading = title.map(|title| {
+            let heading = ui.heading(title);
+            ui.add_space(6.0);
+            heading.id
         });
         begin_dialog(ui);
         ui.ctx().data_mut(|d| d.insert_temp(focus_pending(), opening));
@@ -65,6 +67,14 @@ fn show_dialog<R>(ctx: &egui::Context, id: &str, title: Option<&str>, content: i
         // The frame's stroke sits outside this content rect; the stored card is the fill.
         let card = ui.min_rect().expand2(egui::vec2(f32::from(DIALOG_PAD_X), f32::from(DIALOG_PAD_Y)));
         ui.ctx().data_mut(|d| d.insert_temp(stored.with("card"), card));
+        ui.ctx().accesskit_node_builder(dialog, |node| {
+            node.set_role(egui::accesskit::Role::Dialog);
+            node.set_modal();
+            node.set_bounds(egui::accesskit::Rect { x0: card.min.x.into(), y0: card.min.y.into(), x1: card.max.x.into(), y1: card.max.y.into() });
+            if let Some(heading) = heading {
+                node.push_labelled_by(heading.accesskit_id());
+            }
+        });
         inner
     })
 }
@@ -123,8 +133,12 @@ pub fn settle_dialogs(ctx: &egui::Context) {
         open.0 = shown;
         gone.into_iter().filter_map(|(_, _, had)| had).collect()
     });
-    for had in closed {
+    for had in closed.into_iter().filter(|had| ctx.read_response(*had).is_some()) {
         ctx.memory_mut(|m| m.request_focus(had));
+        // The focus goes into this pass's AccessKit tree: its node must be there even when the
+        // control is no longer drawn (its document closed with the dialog), or the tree is
+        // invalid. egui drops a focus whose widget stays gone at the end of the next pass.
+        ctx.accesskit_node_builder(had, |_| {});
     }
 }
 

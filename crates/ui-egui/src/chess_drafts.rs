@@ -174,8 +174,6 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let title = crate::i18n::fmt(tl!("Keep the correction of diagram {n} (page {p})?"), &[("n", &n.to_string()), ("p", &label)]);
     let shown = crate::widgets::show_titled_modal(ctx, "chess-draft-prompt", &title, |ui| {
         ui.set_max_width(420.0);
-        ui.heading(&title);
-        ui.add_space(6.0);
         let what = if squares > 0 {
             crate::i18n::fmt(tl!("Squares changed: {n}. Not confirmed yet."), &[("n", &squares.to_string())])
         } else {

@@ -179,8 +179,6 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         let title = crate::i18n::fmt(tl!("Diagrams not checked yet: {n}"), &[("n", &n.to_string())]);
         let shown = crate::widgets::show_titled_modal(ctx, "chess-export-pending", &title, |ui| {
             ui.set_max_width(420.0);
-            ui.heading(&title);
-            ui.add_space(6.0);
             ui.label(tl!("They are exported as they were read, and a reading may be wrong. Review first opens the first of them."));
             ui.add_space(10.0);
             ui.horizontal(|ui| {
@@ -206,7 +204,6 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let (mut reveal, mut close) = (false, false);
     let shown = crate::widgets::show_titled_modal(ctx, "chess-export-done", &d.said, |ui| {
         ui.set_max_width(460.0);
-        ui.label(egui::RichText::new(&d.said).strong());
         if !d.notes.is_empty() {
             ui.add_space(6.0);
             egui::ScrollArea::vertical().max_height(180.0).show(ui, |ui| {

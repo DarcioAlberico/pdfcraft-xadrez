@@ -619,7 +619,8 @@ pub fn text_tab(
                         let r = ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)).sense(egui::Sense::click()));
                         // The picture opens the diagram as its title does, and is named by it (plan
                         // A9-I11a, WCAG 1.1.1 and 4.1.2).
-                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &title));
+                        let named = crate::i18n::fmt(tl!("Diagram {n}, open"), &[("n", &(d.number + 1).to_string())]);
+                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &named));
                         if r.clicked() {
                             action = Some(TextAction::Diagram(page, d.number));
                         }

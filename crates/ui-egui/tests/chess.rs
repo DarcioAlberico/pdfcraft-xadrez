@@ -4119,7 +4119,7 @@ fn every_focusable_control_has_a_name() {
     // The Chess panel (from its header's left edge) and the document bar under the tabs: the rest
     // of the window is not the chess panel's.
     let panel_left = h.get_by_label("Detect diagrams").rect().min.x - 16.0;
-    let bar = h.get_by(|n| n.label().as_deref() == Some("Page number")).rect().y_range();
+    let bar = h.get_by(|n| n.role() == egui::accesskit::Role::TextInput && n.label().as_deref() == Some("Page")).rect().y_range();
     let nameless = |h: &Harness<'static, PdfCraftApp>| -> Vec<String> {
         // A label's text is its name (a move of the Text tab).
         let named = |n: &egui_kittest::kittest::AccessKitNode<'_>| {

@@ -83,8 +83,6 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let title = tl!("Redraw in the PDF?");
     let shown = crate::widgets::show_titled_modal(ctx, "chess-redraw-prompt", title, |ui| {
         ui.set_max_width(420.0);
-        ui.heading(title);
-        ui.add_space(6.0);
         ui.label(tl!(
             "Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save."
         ));

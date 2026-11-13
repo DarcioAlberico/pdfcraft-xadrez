@@ -2941,8 +2941,6 @@ pub(crate) fn cut_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let title = crate::i18n::fmt(tl!("Games read only up to an impossible move: {n}"), &[("n", &n)]);
     let shown = crate::widgets::show_titled_modal(ctx, "chess-cut-prompt", &title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(&title);
-        ui.add_space(6.0);
         ui.label(tl!("The rest of each is written as a comment at the move where its reading stopped."));
         for line in &named {
             ui.add(egui::Label::new(egui::RichText::new(line).small().color(t.text_muted)).wrap());

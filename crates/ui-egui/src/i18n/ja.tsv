@@ -3440,3 +3440,4 @@ castling	long	ロング
 diagram state	Read	読み取り済み
 the move's comment	Move comment	手のコメント
 	Redraw in the PDF?	PDF に描き直しますか?
+	Diagram {n}, open	局面図 {n}、開く

@@ -3443,3 +3443,4 @@ castling	long	dolga
 diagram state	Read	Prebrano
 the move's comment	Move comment	Komentar k potezi
 	Redraw in the PDF?	Ponovno narisati v PDF?
+	Diagram {n}, open	Diagram {n}, odpri

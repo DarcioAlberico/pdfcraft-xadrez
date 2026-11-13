@@ -3351,3 +3351,4 @@ castling	long	длинная
 diagram state	Read	Прочитано
 the move's comment	Move comment	Комментарий к ходу
 	Redraw in the PDF?	Перерисовать в PDF?
+	Diagram {n}, open	Диаграмма {n}, открыть

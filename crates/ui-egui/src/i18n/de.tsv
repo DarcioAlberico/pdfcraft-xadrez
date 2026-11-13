@@ -3439,3 +3439,4 @@ castling	long	lang
 diagram state	Read	Gelesen
 the move's comment	Move comment	Kommentar des Zugs
 	Redraw in the PDF?	Im PDF neu zeichnen?
+	Diagram {n}, open	Diagramm {n}, öffnen

@@ -3455,3 +3455,4 @@ castling	long	longo
 diagram state	Read	Lido
 the move's comment	Move comment	Comentário do lance
 	Redraw in the PDF?	Redesenhar no PDF?
+	Diagram {n}, open	Diagrama {n}, abrir

@@ -3512,3 +3512,4 @@ castling	long	dlouhá
 diagram state	Read	Přečteno
 the move's comment	Move comment	Komentář k tahu
 	Redraw in the PDF?	Překreslit v PDF?
+	Diagram {n}, open	Diagram č. {n}, otevřít

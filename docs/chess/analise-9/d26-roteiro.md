@@ -34,7 +34,7 @@ Cada passo diz o que fazer só com o teclado e o que o NVDA deve dizer (o texto 
 
 | # | Onde | O NVDA diz |
 |---|---|---|
-| 3.1 | Barra do documento, Tab até a caixa da página | "Número da página, editar, 1" |
+| 3.1 | Barra do documento, Tab até a caixa da página | "Página, editar, 1" |
 | 3.2 | Aba Texto, Tab até a origem do livro | "Origem do livro, caixa de combinação, Automático (página a página)" |
 | 3.3 | Aba Diagrama, Tab até o número do lance | "Número do lance:, botão giratório, 1" |
 | 3.4 | Tabuleiro, Partida, campo do 1º lance | o rótulo do campo e o número |

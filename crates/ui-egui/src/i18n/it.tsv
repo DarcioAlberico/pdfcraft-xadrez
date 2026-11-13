@@ -3650,3 +3650,4 @@ castling	long	lungo
 diagram state	Read	Letto
 the move's comment	Move comment	Commento della mossa
 	Redraw in the PDF?	Ridisegnare nel PDF?
+	Diagram {n}, open	Diagramma {n}, apri

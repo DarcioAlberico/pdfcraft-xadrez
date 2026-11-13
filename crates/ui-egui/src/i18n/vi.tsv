@@ -3691,3 +3691,4 @@ castling	long	xa
 diagram state	Read	Đã đọc
 the move's comment	Move comment	Bình luận của nước đi
 	Redraw in the PDF?	Vẽ lại trong PDF?
+	Diagram {n}, open	Sơ đồ {n}, mở
