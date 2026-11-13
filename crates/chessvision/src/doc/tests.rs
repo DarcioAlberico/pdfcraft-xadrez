@@ -247,7 +247,7 @@ fn the_showcase_page_becomes_the_expected_doc() {
     );
     // The diagram: read, accepted, linked, nothing to review.
     let Block::Diagram(d) = &page.blocks[2] else { panic!() };
-    assert_eq!(d.reading.as_ref().map(|r| (r.fen.as_str(), r.accepted, r.legal)), Some((SCHOLAR, true, true)));
+    assert_eq!(d.reading.as_ref().map(|r| (r.fen.as_str(), r.accepted, r.legal())), Some((SCHOLAR, true, true)));
     assert!(d.lichess_url.as_deref().is_some_and(|u| u.starts_with("https://lichess.org/analysis/")));
     assert!(d.review.is_empty(), "{:?}", d.review);
     assert_eq!(d.source_rect, UserRect::new(user_box(40.0, 60.0, 190.0, 210.0)));

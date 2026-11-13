@@ -47,6 +47,7 @@ pub mod reference;
 #[cfg(test)]
 mod tests;
 
+use pdfcraft_chess::placement::Color;
 use pdfcraft_chess::rules::Legality;
 use pdfcraft_chess::san::Lang;
 use serde::{Deserialize, Serialize};
@@ -676,10 +677,13 @@ pub struct DiagramBlock {
     pub source: DiagramSource,
     /// The resolution the board was read at.
     pub dpi: f32,
-    /// The position, when the board could be read.
+    /// The position, when the board could be read: what was printed, as read, which what the
+    /// book's PGN or the text around the diagram says of it never rewrites (plan A9-L6b; the
+    /// position the diagram shows is [`DiagramBlock::shown`]).
     pub reading: Option<DiagramReading>,
-    /// The lichess analysis link: only for a position legal with its side to move and not
-    /// repaired ([`ReadPosition::lichess_url`]).
+    /// The lichess analysis link of the reading: only for a position legal with its side to move
+    /// and not repaired ([`ReadPosition::lichess_url`]). The link to give is
+    /// [`DiagramBlock::link`], of the position shown.
     pub lichess_url: Option<String>,
     /// The puzzle number its caption gives (`№185. Teichmann – Lasker`, above or below it): a
     /// solution that starts with that number, however far on, is played from this diagram.
@@ -690,23 +694,204 @@ pub struct DiagramBlock {
     /// The position of the book's PGN it shows or nearly shows ([`reference::link`], R3).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference: Option<Box<reference::DiagramReference>>,
+    /// What the walk settled of the position from the text around the diagram (a "position after"
+    /// caption, the number of the first move after it): the walk's, never the reading's, made
+    /// afresh by every walk ([`DocBuilder::finish`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub settled: Option<Settled>,
 }
 
-/// What was read from a diagram.
+/// Where a diagram's side to move comes from (plan A9-L6b, §2.6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SideSource {
+    /// Said: the page's words near the diagram, the board's own mark, a person.
+    Printed,
+    /// The move a "position after" caption names ([`MoveStatus::Caption`]).
+    Caption,
+    /// The number of the first move after the diagram (`23...`).
+    MoveNumber,
+    /// The position allows only one side to move.
+    Position,
+    /// Nothing said: White, assumed.
+    Assumed,
+}
+
+impl SideSource {
+    fn of(source: pdfcraft_chess::recognize::side::SideSource) -> SideSource {
+        use pdfcraft_chess::recognize::side::SideSource as S;
+        match source {
+            S::Default => SideSource::Assumed,
+            S::Legality => SideSource::Position,
+            S::MoveNumber => SideSource::MoveNumber,
+            S::CaptionAfter => SideSource::Caption,
+            _ => SideSource::Printed,
+        }
+    }
+}
+
+/// What the walk settled of a diagram's position ([`DiagramBlock::settled`]): the position its
+/// game starts from (side to move, castling, en passant, move number), and where its side to move
+/// came from.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Settled {
+    pub fen: String,
+    pub side: SideSource,
+}
+
+/// The position a diagram shows, all told ([`DiagramBlock::shown`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Shown<'a> {
+    /// A full FEN.
+    pub fen: &'a str,
+    /// Whether its side to move is known, not only assumed.
+    pub side_known: bool,
+    /// The book's PGN confirmed it.
+    pub confirmed: bool,
+}
+
+/// What was read from a diagram, each fact once (plan A9-L6b, §2.6; A1-14, R3-02, R5-05): the
+/// position (its side to move in the FEN), where that side came from, from which side the board is
+/// printed, and the gate's verdict; whether it is legal, and whether its side was assumed, follow
+/// from them. The JSON holds it as before, plus `side_source` and `orientation` ([`ReadingJson`]),
+/// so an earlier build reads it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(from = "ReadingJson", into = "ReadingJson")]
 pub struct DiagramReading {
     /// The full FEN as read (side to move as decided, castling inferred).
     pub fen: String,
-    /// Legal with its side to move.
-    pub legal: bool,
+    /// Where the side to move came from.
+    pub side_source: SideSource,
+    /// The side the board is printed from (Black: turned); `None` when nothing said.
+    pub orientation: Option<Color>,
     /// Passed the gate: may be exported without review.
     pub accepted: bool,
     /// The weakest square's confidence (1 for a font diagram).
     pub min_confidence: f32,
     /// The decoder changed squares to make it legal.
     pub repaired: bool,
-    /// Nothing said who is to move; White was assumed.
-    pub side_assumed: bool,
+}
+
+impl DiagramReading {
+    /// Legal with its side to move.
+    pub fn legal(&self) -> bool {
+        pdfcraft_chess::fen::parse(&self.fen)
+            .is_ok_and(|p| pdfcraft_chess::rules::check_position(&p.placement).allows(p.side_to_move.unwrap_or(Color::White)))
+    }
+
+    /// Nothing said who is to move: White was assumed.
+    pub fn side_assumed(&self) -> bool {
+        self.side_source == SideSource::Assumed
+    }
+}
+
+/// [`DiagramReading`] as the document's JSON holds it: as written before plan A9-L6b (`legal` and
+/// `side_assumed`, which an earlier build needs, written from the reading and read back only for a
+/// document written before), and `side_source` and `orientation`, which an earlier build leaves
+/// alone.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct ReadingJson {
+    fen: String,
+    #[serde(default)]
+    legal: bool,
+    accepted: bool,
+    min_confidence: f32,
+    repaired: bool,
+    #[serde(default)]
+    side_assumed: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    side_source: Option<SideSource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    orientation: Option<PrintedFrom>,
+}
+
+/// The side a board is printed from, in the JSON.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum PrintedFrom {
+    White,
+    Black,
+}
+
+impl From<ReadingJson> for DiagramReading {
+    fn from(j: ReadingJson) -> DiagramReading {
+        // A document written before says only whether the side was assumed.
+        let side_source = j.side_source.unwrap_or(if j.side_assumed { SideSource::Assumed } else { SideSource::Printed });
+        let orientation = j.orientation.map(|o| if o == PrintedFrom::Black { Color::Black } else { Color::White });
+        DiagramReading { fen: j.fen, side_source, orientation, accepted: j.accepted, min_confidence: finite(j.min_confidence), repaired: j.repaired }
+    }
+}
+
+impl From<DiagramReading> for ReadingJson {
+    fn from(r: DiagramReading) -> ReadingJson {
+        ReadingJson {
+            legal: r.legal(),
+            side_assumed: r.side_assumed(),
+            side_source: Some(r.side_source),
+            orientation: r.orientation.map(|c| if c == Color::Black { PrintedFrom::Black } else { PrintedFrom::White }),
+            fen: r.fen,
+            accepted: r.accepted,
+            min_confidence: finite(r.min_confidence),
+            repaired: r.repaired,
+        }
+    }
+}
+
+impl DiagramBlock {
+    /// The position the diagram shows, all told (plan A9-L6b): the one the book's PGN confirmed,
+    /// else the one the walk settled from the text around it, else the one read; a position a
+    /// person set is theirs, neither the PGN's nor the walk's. `None` when the board could not be
+    /// read.
+    pub fn shown(&self) -> Option<Shown<'_>> {
+        let reading = self.reading.as_ref()?;
+        if let Some(fen) = self.confirmed() {
+            return Some(Shown { fen, side_known: true, confirmed: true });
+        }
+        if let Some(s) = self.settled.as_ref().filter(|_| self.source != DiagramSource::User) {
+            return Some(Shown { fen: &s.fen, side_known: s.side != SideSource::Assumed, confirmed: false });
+        }
+        Some(Shown { fen: &reading.fen, side_known: !reading.side_assumed(), confirmed: false })
+    }
+
+    /// The position the book's PGN confirmed for the diagram ([`reference::link`]), unless a
+    /// person set the diagram's position, which no PGN changes.
+    pub fn confirmed(&self) -> Option<&str> {
+        let link = self.reference.as_deref().filter(|r| r.kind == reference::DiagramKind::Confirmed)?;
+        (self.source != DiagramSource::User && self.reading.is_some()).then_some(link.fen.as_str())
+    }
+
+    /// The review flags still open: a confirmation settles the side assumed, a side in conflict and
+    /// an illegal reading, which stay the reading's facts.
+    pub fn open_review(&self) -> impl Iterator<Item = &ReviewFlag> {
+        let confirmed = self.confirmed().is_some();
+        self.review
+            .iter()
+            .filter(move |f| !(confirmed && matches!(f, ReviewFlag::SideAssumed | ReviewFlag::Illegal { .. } | ReviewFlag::SideConflict)))
+    }
+
+    /// The side the board is printed from: the reading's; for a document written before it was
+    /// kept, the reading's link says it.
+    pub fn orientation(&self) -> Color {
+        let legacy = || self.lichess_url.as_deref().is_some_and(|u| u.ends_with("?color=black"));
+        match self.reading.as_ref().and_then(|r| r.orientation) {
+            Some(c) => c,
+            None if legacy() => Color::Black,
+            None => Color::White,
+        }
+    }
+
+    /// The lichess analysis link of the position the diagram shows ([`DiagramBlock::shown`]), from
+    /// the side it is printed from: the PGN's position always, the one the walk settled when the
+    /// reading has a link (legal and not repaired), else the reading's link.
+    pub fn link(&self) -> Option<String> {
+        let shown = self.shown()?;
+        let read = self.reading.as_ref().map(|r| r.fen.as_str());
+        if !shown.confirmed && (self.lichess_url.is_none() || Some(shown.fen) == read) {
+            return self.lichess_url.clone();
+        }
+        let position = pdfcraft_chess::fen::parse(shown.fen).ok()?;
+        Some(pdfcraft_chess::lichess::analysis_url(&position, self.orientation()))
+    }
 }
 
 impl DiagramBlock {
@@ -727,18 +912,20 @@ impl DiagramBlock {
             puzzle: None,
             reference: None,
             review: Vec::new(),
+            settled: None,
         };
         match &reading.outcome {
             Err(why) => block.review.push(ReviewFlag::Unreadable { reason: why.to_string() }),
             Ok(p) => {
                 let legal = p.legality.allows(p.side.color);
+                let black = p.orientation.is_some_and(|v| v.black_point_of_view);
                 block.reading = Some(DiagramReading {
                     fen: p.fen.clone(),
-                    legal,
+                    side_source: SideSource::of(p.side.source),
+                    orientation: p.orientation.map(|_| if black { Color::Black } else { Color::White }),
                     accepted: p.accepted,
                     min_confidence: finite(p.min_confidence),
                     repaired: p.repaired(),
-                    side_assumed: p.side.is_assumed(),
                 });
                 block.lichess_url = p.lichess_url();
                 block.review = position_flags(p, legal);
@@ -931,7 +1118,10 @@ impl DocBuilder {
                         }
                     }
                 }
-                Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
+                Block::Diagram(d) => {
+                    d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition));
+                    d.settled = None;
+                }
             }
         }
         build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing, &mut self.heads);
@@ -964,12 +1154,45 @@ impl DocBuilder {
                         if done.blocked.contains(&(page.index, d.number)) {
                             d.review.push(ReviewFlag::NoStartPosition);
                         }
+                        d.settled = settled(d, page.index, &done.games, &done.numbered);
                     }
                 }
             }
         }
         ChessDoc { format: FORMAT_VERSION, pages, games: done.games }
     }
+}
+
+/// What the walk settled of diagram `d` on page `page` (plan A9-L6b): the position the games that
+/// start from it start from, when it is not the reading's (move numbers aside: the first move's
+/// number or a "position after" caption gave the side to move, castling or en passant), and where
+/// its side came from; or, the reading's own position with its side only assumed, the games' when
+/// the first move after it is printed with a number that agrees (`1.e4` under the initial position; `numbered`,
+/// [`games::Done::numbered`]). `None` when no game starts from it, when they start from the
+/// reading's own position and say nothing of its side, or from two positions (a solution for each
+/// side to move).
+fn settled(d: &DiagramBlock, page: u32, games: &[Game], numbered: &[(u32, usize)]) -> Option<Settled> {
+    let reading = d.reading.as_ref()?;
+    let read = pdfcraft_chess::fen::Fen::parse(&reading.fen).ok()?;
+    let mut starts = games.iter().filter(|g| matches!(g.origin, GameOrigin::Diagram { page: p, diagram, .. } if p == page && diagram == d.number));
+    let first = starts.next()?;
+    let fen = first.score.start_fen.clone()?;
+    let start = pdfcraft_chess::fen::Fen::parse(&fen).ok()?;
+    let key = |g: &Game| g.score.start_fen.as_deref().and_then(|f| pdfcraft_chess::fen::Fen::parse(f).ok()).map(|f| f.full_key());
+    if starts.any(|g| key(g) != Some(start.full_key())) {
+        return None;
+    }
+    if start.full_key() == read.full_key() {
+        return (reading.side_assumed() && numbered.contains(&(page, d.number))).then_some(Settled { fen, side: SideSource::MoveNumber });
+    }
+    let side = if start.side() == read.side() {
+        reading.side_source
+    } else if first.flags.iter().any(|f| f.flag == ReviewFlag::SideFromMoveNumber) {
+        SideSource::MoveNumber
+    } else {
+        SideSource::Caption
+    };
+    Some(Settled { fen, side })
 }
 
 /// The puzzle label a page leaves at its foot for the next page's first diagram

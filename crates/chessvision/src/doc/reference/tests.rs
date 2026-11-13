@@ -2,7 +2,9 @@ use pdfcraft_chess::game::Game as PgnGame;
 use proptest::prelude::*;
 
 use super::*;
-use crate::doc::{BlockRole, ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, LangTag, MoveNumber, TextLayer};
+use crate::doc::{
+    BlockRole, ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, LangTag, MoveNumber, Shown, SideSource, TextLayer,
+};
 
 /// The FEN after `moves` from the initial position.
 pub(super) fn fen_after(moves: &[&str]) -> String {
@@ -57,16 +59,17 @@ pub(super) fn diagram(number: usize, fen: &str) -> Block {
         dpi: 0.0,
         reading: Some(DiagramReading {
             fen: format!("{placement} w - - 0 1"),
-            legal: true,
+            side_source: SideSource::Assumed,
+            orientation: None,
             accepted: true,
             min_confidence: 1.0,
             repaired: false,
-            side_assumed: true,
         }),
         lichess_url: None,
         puzzle: None,
         reference: None,
         review: Vec::new(),
+        settled: None,
     })
 }
 
@@ -268,7 +271,7 @@ fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
     let mut shown = diagram(0, &fen_after(&main));
     if let Block::Diagram(d) = &mut shown {
         let r = d.reading.as_mut().unwrap();
-        (r.fen, r.side_assumed) = (fen_after(&main), false);
+        (r.fen, r.side_source) = (fen_after(&main), SideSource::Printed);
     }
     let mut d = doc(vec![vec![para(played(&[], &main)), shown, para(after)]]);
     let linked = link(&mut d, &index);
@@ -352,7 +355,7 @@ fn link_confirms_the_diagrams_the_pgn_shows_and_suggests_the_near_ones() {
     }
     let mut white_to_move = diagram(3, &fen_after(&main));
     if let Block::Diagram(d) = &mut white_to_move {
-        d.reading.as_mut().unwrap().side_assumed = false;
+        d.reading.as_mut().unwrap().side_source = SideSource::Printed;
     }
     let two_pages_on = misread(0, &fen_after(&line), &[(15, '.')]);
     let pages = vec![
@@ -366,24 +369,18 @@ fn link_confirms_the_diagrams_the_pgn_shows_and_suggests_the_near_ones() {
     let linked = link(&mut d, &index);
     assert_eq!(linked.diagrams, DiagramCounts { confirmed: 1, suggested: 1 });
     let diagrams = diagrams_of(&d);
-    // Confirmed: the PGN's side to move, castling and number; the side no longer assumed.
+    // Confirmed: it shows the PGN's side to move, castling and number, the side known; the
+    // reading stays what was printed, its flags with it, settled by the confirmation (plan A9-L6b).
     let confirmed = diagrams[0];
     let pgn_fen = fen_after(&main);
-    assert_eq!(confirmed.reading.as_ref().map(|r| (r.fen.as_str(), r.side_assumed)), Some((pgn_fen.as_str(), false)));
-    assert!(confirmed.review.is_empty(), "{:?}", confirmed.review);
-    assert!(
-        confirmed.lichess_url.as_deref().is_some_and(|u| u.contains("%20b%20KQkq") && u.ends_with("?color=black")),
-        "{:?}",
-        confirmed.lichess_url
-    );
+    let read = diagrams_of(&original)[0];
+    assert_eq!((&confirmed.reading, &confirmed.review), (&read.reading, &read.review), "the reading is what was printed");
+    assert_eq!(confirmed.shown(), Some(Shown { fen: &pgn_fen, side_known: true, confirmed: true }));
+    assert_eq!(confirmed.open_review().count(), 0, "the side assumed is settled");
+    assert!(confirmed.link().is_some_and(|u| u.contains("%20b%20KQkq") && u.ends_with("?color=black")), "{:?}", confirmed.link());
     let r = confirmed.reference.as_ref().unwrap();
     assert_eq!((r.kind, r.game, r.node, r.fen.as_str()), (DiagramKind::Confirmed, 0, 5, pgn_fen.as_str()));
-    let read = diagrams_of(&original)[0];
-    assert_eq!(
-        r.before.as_ref().map(|b| (&b.reading, &b.review)),
-        Some((read.reading.as_ref().unwrap(), &read.review)),
-        "the reading as read is kept"
-    );
+    assert!(r.before.is_none(), "nothing to put back");
     // Suggested: the squares that differ, and the reading left alone.
     let suggested = diagrams[1];
     let r = suggested.reference.as_ref().unwrap();
@@ -401,7 +398,7 @@ fn link_confirms_the_diagrams_the_pgn_shows_and_suggests_the_near_ones() {
     link(&mut d, &index);
     assert_eq!(d, once);
     let json = d.to_json().unwrap();
-    assert!(json.contains("\"kind\":\"suggested\"") && json.contains("\"before\":{"), "{json}");
+    assert!(json.contains("\"kind\":\"suggested\"") && !json.contains("\"before\""), "{json}");
     assert_eq!(ChessDoc::from_json(&json).unwrap(), d);
     // Linked to a PGN that has none of it, every diagram is as read again.
     link(&mut d, &ReferenceIndex::from_pgn("1.c4 *").unwrap());
@@ -414,7 +411,7 @@ fn squares_are_named_in_reading_order() {
 }
 
 #[test]
-fn a_diagram_read_as_the_pgn_has_it_still_loses_the_side_assumed() {
+fn a_diagram_read_as_the_pgn_has_it_shows_its_side_known() {
     let index = ReferenceIndex::from_pgn("1.e4 e5 *").unwrap();
     let mut start = diagram(0, &fen_after(&[]));
     if let Block::Diagram(d) = &mut start {
@@ -422,8 +419,9 @@ fn a_diagram_read_as_the_pgn_has_it_still_loses_the_side_assumed() {
     }
     let mut d = doc(vec![vec![start]]);
     assert_eq!(link(&mut d, &index).diagrams.confirmed, 1);
-    let r = diagrams_of(&d)[0].reading.as_ref().unwrap();
-    assert_eq!((r.fen.as_str(), r.side_assumed), (fen_after(&[]).as_str(), false));
+    let shown = diagrams_of(&d)[0];
+    assert_eq!(shown.shown().map(|s| (s.fen, s.side_known)), Some((fen_after(&[]).as_str(), true)));
+    assert!(shown.reading.as_ref().unwrap().side_assumed(), "the reading still says what was printed");
 }
 
 /// Plan A9-T1a (R3-03): the list's "in the book's PGN" ([`ReferenceIndex::has_position`]) and
@@ -455,7 +453,7 @@ fn the_list_and_the_link_agree_on_what_is_the_same_position() {
         d.source = DiagramSource::Model;
         let reading = d.reading.as_mut().unwrap();
         reading.fen = fen.clone();
-        reading.side_assumed = side_assumed;
+        reading.side_source = if side_assumed { SideSource::Assumed } else { SideSource::Printed };
         let listed = index.has_position(&fen, side_assumed);
         let confirmed = confirm(d, &index, at);
         assert_eq!((listed, confirmed), (has, has), "{fen} (side assumed: {side_assumed}): listed, confirmed");
@@ -483,7 +481,10 @@ fn the_moves_after_a_confirmed_diagram_are_walked_again_from_it() {
     let linked = link(&mut doc, &index);
     assert_eq!(linked.diagrams.confirmed, 1);
     assert!(linked.walked_again);
-    assert!(diagrams_of(&doc)[0].reading.as_ref().unwrap().fen.contains(" b KQkq "), "the PGN's side to move");
+    // The diagram shows the PGN's side to move; its reading stays what was printed (plan A9-L6b).
+    let confirmed = diagrams_of(&doc)[0];
+    assert!(confirmed.shown().is_some_and(|s| s.fen.contains(" b KQkq ")), "the PGN's side to move");
+    assert!(confirmed.reading.as_ref().is_some_and(|r| r.fen.contains(" w ") && r.side_assumed()), "as printed");
     assert_eq!(read(&doc), [("Nc6".to_owned(), MoveStatus::Valid), ("Bb5".to_owned(), MoveStatus::Valid), ("a6".to_owned(), MoveStatus::Valid)]);
     assert_eq!(doc.games.len(), 1);
     assert_eq!(doc.games[0].score.mainline().len(), 3, "the game starts at the confirmed diagram");
@@ -549,7 +550,11 @@ proptest! {
                         prop_assert!((1..=MAX_SUGGESTED_SQUARES).contains(&r.changes.len()));
                         prop_assert_eq!(&after.reading, &before.reading, "a suggestion is never applied");
                     }
-                    Some(DiagramKind::Confirmed) => prop_assert!(after.reading.as_ref().is_some_and(|r| !r.side_assumed)),
+                    // The reading stays what was printed; the diagram shows the PGN's position.
+                    Some(DiagramKind::Confirmed) => {
+                        prop_assert_eq!(&after.reading, &before.reading);
+                        prop_assert!(after.shown().is_some_and(|s| s.confirmed && s.side_known) || after.source == DiagramSource::User);
+                    }
                     // Untouched by the link; the walk's own flag may follow a confirmed diagram.
                     None => {
                         let walk_flag = |d: &DiagramBlock| d.review.iter().filter(|f| !matches!(f, ReviewFlag::NoStartPosition)).cloned().collect::<Vec<_>>();
@@ -576,4 +581,24 @@ proptest! {
             }
         }
     }
+}
+
+/// Plan A9-L6b (R3-02, inverted): a diagram printed from Black's side keeps its side when the book's
+/// PGN confirms it, also when its reading had no link to say it (a reading not legal with the side
+/// assumed): the orientation is the reading's, not a suffix of its link. The reading stays what was
+/// printed; the link is the PGN's position.
+#[test]
+fn a_diagram_printed_from_blacks_side_keeps_it_when_confirmed() {
+    let index = ReferenceIndex::from_pgn("1.e4 e6 2.d4 d5 3.Nc3 *").unwrap();
+    let main = ["e4", "e6", "d4", "d5", "Nc3"];
+    let mut turned = diagram(0, &fen_after(&main));
+    if let Block::Diagram(d) = &mut turned {
+        d.reading.as_mut().unwrap().orientation = Some(pdfcraft_chess::placement::Color::Black);
+        d.lichess_url = None;
+    }
+    let mut d = doc(vec![vec![para(played(&[], &main)), turned]]);
+    assert_eq!(link(&mut d, &index).diagrams.confirmed, 1);
+    let shown = diagrams_of(&d)[0];
+    assert!(shown.reading.as_ref().is_some_and(|r| r.side_assumed() && r.fen.contains(" w ")), "{:?}", shown.reading);
+    assert!(shown.link().is_some_and(|u| u.contains("%20b%20") && u.ends_with("?color=black")), "{:?}", shown.link());
 }

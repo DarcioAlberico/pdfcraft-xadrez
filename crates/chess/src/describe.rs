@@ -19,29 +19,39 @@ struct Sides {
     black_to_move: &'static str,
     pawns: &'static str,
     not_read: &'static str,
+    /// The book did not say who is to move (plan A9-L6b, A1-14): the reader is not told White.
+    side_not_given: &'static str,
 }
 
 fn sides(lang: Lang) -> Sides {
-    let s = |white, black, white_to_move, black_to_move, pawns, not_read| Sides { white, black, white_to_move, black_to_move, pawns, not_read };
+    let s = |white, black, white_to_move, black_to_move, pawns, not_read, side_not_given| Sides {
+        white,
+        black,
+        white_to_move,
+        black_to_move,
+        pawns,
+        not_read,
+        side_not_given,
+    };
     match lang {
-        Lang::En => s("White", "Black", "White to move", "Black to move", "pawns", "not read"),
-        Lang::Pt => s("Brancas", "Pretas", "brancas jogam", "pretas jogam", "peões", "não lido"),
-        Lang::De => s("Weiß", "Schwarz", "Weiß am Zug", "Schwarz am Zug", "Bauern", "nicht gelesen"),
-        Lang::Es => s("Blancas", "Negras", "juegan las blancas", "juegan las negras", "peones", "no leído"),
-        Lang::Fr => s("Blancs", "Noirs", "les Blancs jouent", "les Noirs jouent", "pions", "non lu"),
-        Lang::It => s("Bianco", "Nero", "muove il Bianco", "muove il Nero", "pedoni", "non letto"),
-        Lang::Ru => s("Белые", "Чёрные", "ход белых", "ход чёрных", "пешки", "не распознана"),
-        Lang::Nl => s("Wit", "Zwart", "wit aan zet", "zwart aan zet", "pionnen", "niet gelezen"),
-        Lang::Pl => s("Białe", "Czarne", "ruch białych", "ruch czarnych", "pionki", "nieodczytany"),
-        Lang::Cs => s("Bílý", "Černý", "na tahu je bílý", "na tahu je černý", "pěšci", "nepřečtený"),
-        Lang::Hu => s("Világos", "Sötét", "világos lép", "sötét lép", "gyalogok", "nem olvasott"),
-        Lang::Da => s("Hvid", "Sort", "hvid i trækket", "sort i trækket", "bønder", "ikke læst"),
-        Lang::Sv => s("Vit", "Svart", "vit drar", "svart drar", "bönder", "inte läst"),
-        Lang::No => s("Hvit", "Svart", "hvit i trekket", "svart i trekket", "bønder", "ikke lest"),
-        Lang::Fi => s("Valkea", "Musta", "valkea siirtää", "musta siirtää", "sotilaat", "ei luettu"),
-        Lang::Ro => s("Albul", "Negrul", "mută albul", "mută negrul", "pioni", "necitit"),
-        Lang::Is => s("Hvítt", "Svart", "hvítur á leik", "svartur á leik", "peð", "ekki lesin"),
-        Lang::Ca => s("Blanques", "Negres", "juguen les blanques", "juguen les negres", "peons", "no llegit"),
+        Lang::En => s("White", "Black", "White to move", "Black to move", "pawns", "not read", "side to move not given"),
+        Lang::Pt => s("Brancas", "Pretas", "brancas jogam", "pretas jogam", "peões", "não lido", "lado não informado"),
+        Lang::De => s("Weiß", "Schwarz", "Weiß am Zug", "Schwarz am Zug", "Bauern", "nicht gelesen", "Zugrecht nicht angegeben"),
+        Lang::Es => s("Blancas", "Negras", "juegan las blancas", "juegan las negras", "peones", "no leído", "turno no indicado"),
+        Lang::Fr => s("Blancs", "Noirs", "les Blancs jouent", "les Noirs jouent", "pions", "non lu", "trait non indiqué"),
+        Lang::It => s("Bianco", "Nero", "muove il Bianco", "muove il Nero", "pedoni", "non letto", "tratto non indicato"),
+        Lang::Ru => s("Белые", "Чёрные", "ход белых", "ход чёрных", "пешки", "не распознана", "очерёдность хода не указана"),
+        Lang::Nl => s("Wit", "Zwart", "wit aan zet", "zwart aan zet", "pionnen", "niet gelezen", "wie aan zet is niet vermeld"),
+        Lang::Pl => s("Białe", "Czarne", "ruch białych", "ruch czarnych", "pionki", "nieodczytany", "strona na posunięciu nie podana"),
+        Lang::Cs => s("Bílý", "Černý", "na tahu je bílý", "na tahu je černý", "pěšci", "nepřečtený", "kdo je na tahu, neuvedeno"),
+        Lang::Hu => s("Világos", "Sötét", "világos lép", "sötét lép", "gyalogok", "nem olvasott", "a lépés joga nincs megadva"),
+        Lang::Da => s("Hvid", "Sort", "hvid i trækket", "sort i trækket", "bønder", "ikke læst", "trækket ikke angivet"),
+        Lang::Sv => s("Vit", "Svart", "vit drar", "svart drar", "bönder", "inte läst", "draget inte angivet"),
+        Lang::No => s("Hvit", "Svart", "hvit i trekket", "svart i trekket", "bønder", "ikke lest", "trekket ikke oppgitt"),
+        Lang::Fi => s("Valkea", "Musta", "valkea siirtää", "musta siirtää", "sotilaat", "ei luettu", "siirtovuoroa ei mainita"),
+        Lang::Ro => s("Albul", "Negrul", "mută albul", "mută negrul", "pioni", "necitit", "la mutare: nespecificat"),
+        Lang::Is => s("Hvítt", "Svart", "hvítur á leik", "svartur á leik", "peð", "ekki lesin", "ekki tilgreint hver á leik"),
+        Lang::Ca => s("Blanques", "Negres", "juguen les blanques", "juguen les negres", "peons", "no llegit", "torn no indicat"),
     }
 }
 
@@ -65,6 +75,13 @@ pub fn title(number: usize, page: &str, side: Option<Color>, lang: Lang) -> Stri
         Some(Color::Black) => format!("{}: {}", name(number, page, lang), s.black_to_move),
         None => name(number, page, lang),
     }
+}
+
+/// `Diagram 1, page 17: side to move not given`: a diagram whose side to move the book did not
+/// say and nothing else settled (plan A9-L6b, A1-14): the reader is not told White, which was only
+/// assumed.
+pub fn title_side_not_given(number: usize, page: &str, lang: Lang) -> String {
+    format!("{}: {}", name(number, page, lang), sides(lang).side_not_given)
 }
 
 /// Each side's pieces, the king first and the pawns last, each kind's squares from a1 to h8:
@@ -107,6 +124,22 @@ pub fn describe(number: usize, page: &str, fen: &str, lang: Lang) -> String {
         Ok(p) => {
             let list = pieces(&p.placement, lang);
             let head = title(number, page, p.side_to_move, lang);
+            if list.is_empty() { format!("{head}.") } else { format!("{head}. {list}") }
+        }
+        Err(_) => format!("{}.", name(number, page, lang)),
+    }
+}
+
+/// [`describe`] of a diagram whose side to move may be only assumed: when `side_known` is false,
+/// the title says it was not given ([`title_side_not_given`]) instead of `White to move`.
+pub fn describe_side(number: usize, page: &str, fen: &str, side_known: bool, lang: Lang) -> String {
+    if side_known {
+        return describe(number, page, fen, lang);
+    }
+    match fen::parse(fen) {
+        Ok(p) => {
+            let list = pieces(&p.placement, lang);
+            let head = title_side_not_given(number, page, lang);
             if list.is_empty() { format!("{head}.") } else { format!("{head}. {list}") }
         }
         Err(_) => format!("{}.", name(number, page, lang)),

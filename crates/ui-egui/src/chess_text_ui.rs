@@ -629,9 +629,10 @@ pub fn text_tab(
                         if ui.link(&title).clicked() {
                             action = Some(TextAction::Diagram(page, d.number));
                         }
-                        match &d.reading {
-                            Some(r) => {
-                                ui.add(egui::Label::new(egui::RichText::new(&r.fen).monospace().small()).wrap());
+                        // The position it shows: the PGN's, the one the text settled, the one read.
+                        match d.shown() {
+                            Some(shown) => {
+                                ui.add(egui::Label::new(egui::RichText::new(shown.fen).monospace().small()).wrap());
                             }
                             None => {
                                 ui.label(egui::RichText::new(tl!("Not read")).small().color(t.text_muted));
@@ -662,7 +663,7 @@ fn boards(ctx: &egui::Context, chess: &ChessDoc, pieces: &pdfcraft_engine::chess
         .enumerate()
         .filter_map(|(i, b)| {
             let Block::Diagram(d) = b else { return None };
-            let fen = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&d.reading.as_ref()?.fen).ok()?;
+            let fen = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(d.shown()?.fen).ok()?;
             let (w, h, rgba) = pdfcraft_engine::chess::office::diagram_rgba(&fen.placement, pieces, &style, 192).ok()?;
             let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
             (rgba.len() == w.checked_mul(h)?.checked_mul(4)?).then_some(())?;

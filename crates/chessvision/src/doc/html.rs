@@ -333,23 +333,28 @@ pub fn plain_text_with(inlines: &[Inline], figurines: Figurines) -> String {
 /// One diagram as a `<figure>`; its board's pieces are `<use>`s of the document's symbols, and
 /// `used` gains them.
 fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &mut UsedPieces) -> String {
-    let review = if d.review.is_empty() && d.reading.as_ref().is_some_and(|r| r.accepted) { "" } else { " review" };
+    let review = if d.open_review().next().is_none() && d.reading.as_ref().is_some_and(|r| r.accepted) { "" } else { " review" };
     let number = d.number.saturating_add(1);
     let id = format!("p{}-d{number}", u64::from(page.index) + 1);
     // Said in the book's language, with the number printed on the page (plan A8 P9b).
     let lang = page.text_language();
     let page_label = page_label(o, page.index);
     let label = page_label.to_string();
-    let Some(reading) = &d.reading else {
+    // The position it shows, all told: the PGN's, the one the text settled, the one read.
+    let Some(shown) = d.shown() else {
         return format!(
             "<figure class=\"diagram unread review\" id=\"{id}\"><figcaption>{}</figcaption></figure>\n",
             esc(&describe::not_read(number, &label, lang))
         );
     };
-    let fen = esc(&reading.fen);
-    let body = match (o.diagrams, pdfcraft_chess::fen::parse(&reading.fen)) {
+    let fen = esc(shown.fen);
+    let body = match (o.diagrams, pdfcraft_chess::fen::parse(shown.fen)) {
         (DiagramMode::Svg, Ok(parsed)) => {
-            let title = describe::title(number, &label, parsed.side_to_move, lang);
+            let title = if shown.side_known {
+                describe::title(number, &label, parsed.side_to_move, lang)
+            } else {
+                describe::title_side_not_given(number, &label, lang)
+            };
             board_described(&parsed.placement, o.pieces, &o.style, used, &id, &title, &describe::pieces(&parsed.placement, lang))
         }
         _ => format!("<code>{fen}</code>"),
@@ -366,9 +371,9 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     };
     let mut caption = format!("<figcaption>{}", esc(&origin.comment()));
     if o.links
-        && let Some(url) = d.lichess_url.as_deref().filter(|u| safe_url(u))
+        && let Some(url) = d.link().filter(|u| safe_url(u))
     {
-        let _ = write!(caption, " · <a href=\"{}\">{}</a>", esc(url), esc(o.link_text));
+        let _ = write!(caption, " · <a href=\"{}\">{}</a>", esc(&url), esc(o.link_text));
     }
     caption.push_str("</figcaption>");
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
