@@ -467,12 +467,14 @@ impl Lexer<'_> {
     }
 }
 
-/// One line being read: the last move in it, and a comment waiting for its first move.
+/// One line being read: the last move in it, and a comment waiting for its first move, or, after
+/// a variation closed (`after_close`), for its next move (as the walker reads it, plan A9-L2).
 #[derive(Default)]
 struct PLine {
     cursor: Option<usize>,
     last: Option<usize>,
     pending: String,
+    after_close: bool,
 }
 
 /// A game being read.
@@ -492,7 +494,12 @@ impl Reading {
     fn comment_target(&mut self) -> &mut String {
         let depth = self.lines.len().saturating_sub(1);
         let last = self.lines.last().and_then(|l| l.last);
+        let after_close = self.lines.last().is_some_and(|l| l.after_close);
         match last {
+            Some(_) if after_close => match self.lines.last_mut() {
+                Some(line) => &mut line.pending,
+                None => &mut self.score.comment,
+            },
             Some(n) if n < self.score.nodes.len() => match self.score.nodes.get_mut(n) {
                 Some(node) => &mut node.comment,
                 None => &mut self.score.comment,
@@ -506,11 +513,29 @@ impl Reading {
     }
 
     fn close_variation(&mut self) {
-        if let Some(line) = self.lines.pop()
-            && !line.pending.is_empty()
-        {
-            append_comment(self.comment_target(), &format!("({})", line.pending));
+        if let Some(mut line) = self.lines.pop() {
+            if line.last.is_some() {
+                self.flush(&mut line);
+            } else if !line.pending.is_empty() {
+                append_comment(self.comment_target(), &format!("({})", line.pending));
+            }
         }
+        if let Some(parent) = self.lines.last_mut() {
+            parent.after_close = parent.last.is_some();
+        }
+    }
+
+    /// A comment after `line`'s variations with no move after it: its last move's.
+    fn flush(&mut self, line: &mut PLine) {
+        if line.pending.is_empty() {
+            return;
+        }
+        let text = std::mem::take(&mut line.pending);
+        line.after_close = false;
+        match line.last.and_then(|n| self.score.nodes.get_mut(n)) {
+            Some(node) => append_comment(&mut node.comment, &text),
+            None => append_comment(&mut self.score.comment, &text),
+        };
     }
 }
 
@@ -570,7 +595,7 @@ pub fn parse(text: &str) -> Result<Vec<GameScore>, PgnError> {
                 }
                 let last = game.lines.last().and_then(|l| l.last).ok_or(PgnError::Syntax { line, what: "a variation before any move".to_owned() })?;
                 let cursor = game.score.nodes.get(last).and_then(|n| n.parent);
-                game.lines.push(PLine { cursor, last: None, pending: String::new() });
+                game.lines.push(PLine { cursor, ..PLine::default() });
             }
             Token::Close => {
                 game.movetext = true;
@@ -608,6 +633,9 @@ fn push_game(games: &mut Vec<GameScore>, game: Option<GameScore>) -> Result<(), 
 fn finish(mut game: Reading, line: usize) -> Result<GameScore, PgnError> {
     if game.lines.len() > 1 {
         return Err(PgnError::Syntax { line, what: "a variation is not closed".to_owned() });
+    }
+    if let Some(mut main) = game.lines.pop() {
+        game.flush(&mut main);
     }
     if let Some(r) = game.result_tag {
         game.score.result = r;
@@ -651,10 +679,15 @@ fn play(game: &mut Reading, sym: &str, line: usize, index: usize) -> Result<(), 
     };
     if let Some(l) = game.lines.last_mut() {
         let pending = std::mem::take(&mut l.pending);
+        let own = std::mem::take(&mut l.after_close);
         l.cursor = Some(node);
         l.last = Some(node);
         if !pending.is_empty() {
-            game.score.comment_before(node, &pending);
+            if own {
+                game.score.put_before(node, &pending);
+            } else {
+                game.score.comment_before(node, &pending);
+            }
         }
     }
     if let Some(n) = game.score.nodes.get_mut(node) {
