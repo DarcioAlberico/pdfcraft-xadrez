@@ -3454,3 +3454,7 @@ the move's comment	Move comment	Komentar k potezi
 	Forget the correction?	Pozabim popravek?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Tudi še nepotrjene spremembe se zavržejo. PDF se ne spremeni.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	V PDF ni bilo nič narisano: popravka ni bilo mogoče shraniti ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	prej shranjenega ni bilo mogoče prebrati, zato se najprej odloži; poskusite znova čez trenutek
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Shranjenih popravkov diagramov ni bilo mogoče prebrati ({why}). Ob naslednjem shranjevanju se odložijo, od takrat pa se novi popravki shranjujejo.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Shranjenih PGN knjig ni bilo mogoče prebrati ({why}). Ob naslednjem shranjevanju se odložijo, od takrat pa se novi shranjujejo.

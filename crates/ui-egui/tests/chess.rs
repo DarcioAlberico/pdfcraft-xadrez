@@ -4140,6 +4140,59 @@ fn each_document_keeps_its_own_diagrams_and_cipher() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan A9-I1b (§2.7): each open document's book PGN lives in the engine's session, with its
+/// decisions: keeping B's never takes A's, the Text tab of A still reads A's, and closing B
+/// forgets B's. The app keeps no PGN of its own.
+#[test]
+fn each_documents_book_pgn_lives_in_the_session() {
+    let dir = corrections_dir("pgn-session");
+    let mut h = book_pgn_harness("a.pdf", None, chapter(), dir.clone());
+    let a = h.state().views[0].id;
+    h.state_mut().set_book_pgn(a, "a.pgn", RUY_PGN.as_bytes());
+    h.state_mut().open_bytes("b.pdf", None, chapter_with("1.d4 d5 2.c4")).unwrap();
+    h.run_steps(3);
+    let b = h.state().views[1].id;
+    h.state_mut().set_book_pgn(b, "b.pgn", b"[Event \"B\"]\n\n1. d4 d5 2. c4 *\n");
+    let name = |h: &Harness<'static, PdfCraftApp>, id| h.state().session.chess_book_pgn(id).and_then(|p| p.name.clone());
+    assert_eq!(name(&h, a).as_deref(), Some("a.pgn"), "A's PGN stays after B's was kept");
+    assert_eq!(name(&h, b).as_deref(), Some("b.pgn"));
+    h.state_mut().active = Some(0);
+    h.run_steps(2);
+    h.state_mut().read_chess_text(0, false);
+    h.run_steps(4);
+    assert!(!linked_moves(&h).is_empty(), "A's page reads linked to A's PGN");
+    h.state_mut().request_close_tab(1);
+    h.run_steps(3);
+    assert_eq!(h.state().views.len(), 1);
+    assert_eq!(name(&h, b), None, "closing B forgets its PGN");
+    assert_eq!(name(&h, a).as_deref(), Some("a.pgn"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I1b (finding A4-15): the web's stored corrections that can't be read are never written
+/// over. Until they are kept aside, at the next save, a confirmation is refused and said; the save
+/// keeps the value under `…-v1.bad`; from then on the corrections are kept.
+#[test]
+fn unreadable_stored_corrections_are_kept_aside_never_written_over() {
+    const KEY: &str = "pdfcraft-chess-corrections-v1";
+    let mut h = harness();
+    h.state_mut().chess.corrections.use_storage(Some("{trunc"));
+    scan_and_edit_second(&mut h);
+    assert!(!h.state_mut().confirm_chess_diagram(false), "not kept while the value is not kept aside");
+    h.run_steps(2);
+    assert_eq!(kind(&h, 1), None);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(said.contains("couldn't be saved"), "{said}");
+    let saved = h.state_mut().chess.corrections.storage_values(Some("{trunc"), |_| false);
+    assert_eq!(saved.first(), Some(&(format!("{KEY}.bad"), "{trunc".to_owned())), "kept aside first: {saved:?}");
+    assert!(saved.iter().all(|(k, v)| k != KEY || v != "{trunc"), "{saved:?}");
+    assert!(h.state_mut().confirm_chess_diagram(false), "kept once the value is kept aside");
+    h.run_steps(2);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    let saved = h.state_mut().chess.corrections.storage_values(None, |_| false);
+    assert!(saved.iter().any(|(k, v)| k == KEY && v.contains("pdfcraft-chess-corrections")), "{saved:?}");
+}
+
 /// Plan A9-I11a (A6-10, §2.8.1, WCAG 4.1.2 and 2.4.3): a chess question is a modal dialog named
 /// by its title. It opens with the keyboard on its first control that changes nothing (Review
 /// first, not Export anyway), Esc closes it, and the keyboard goes back to the control that had it.

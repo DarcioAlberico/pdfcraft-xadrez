@@ -798,6 +798,8 @@ struct OpenDoc<'a> {
     page: usize,
     /// The diagram editor is drawn in the Diagrams tab ([`PdfCraftApp::chess_editor_in_panel`]).
     editor_here: bool,
+    /// What the Chess panel shows of its book's PGN (plan A9-I1b: the session holds it).
+    pgn: crate::chess_reference_ui::BookPgnView,
 }
 
 /// What the window's contents asked for, done once they are drawn.
@@ -826,10 +828,13 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
     let editor_here = app.chess_editor_in_panel();
+    // What the chess panel shows of the book's PGN, which the session holds (plan A9-I1b).
+    let mut pgn = app.active_ids().map(|(_, id)| app.book_pgn_view(id));
     let open = app.active_ids().and_then(|(vi, id)| {
         let page = app.views.get(vi)?.current;
         let doc = app.session.get(id)?;
-        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), origin: app.session.chess_origin(id), page, editor_here })
+        let pgn = pgn.take().unwrap_or_default();
+        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), origin: app.session.chess_origin(id), page, editor_here, pgn })
     });
     let mut tab = app.chess_window.tab;
     let mut asked = Asked::default();
@@ -992,7 +997,7 @@ fn side_tab(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessSta
             ui.label(egui::RichText::new(tl!("Open a document first")).color(t.text_muted));
             return;
         };
-        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.origin, d.page, d.editor_here);
+        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.origin, d.page, d.editor_here, &d.pgn);
     });
 }
 

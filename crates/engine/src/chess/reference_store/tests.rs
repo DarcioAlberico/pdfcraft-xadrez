@@ -562,7 +562,8 @@ fn memory_keeps_within_its_budget_and_round_trips() {
     assert!(again.clear(&saved_as(), 10, 500).unwrap());
     assert_eq!(again.load(&saved_as(), 10).unwrap().pgn(), None);
     assert!(!again.clear(&saved_as(), 10, 600).unwrap());
-    assert!(MemStore::with_files(store.files(), 10).files().is_empty(), "a file over the budget is left out");
+    // Over the budget when taken in: kept, never left out (plan A9-I1b, A4-15).
+    assert_eq!(MemStore::with_files(store.files(), 10).files(), store.files(), "a file over the budget is kept");
 }
 
 // ─── Builds of version 1 (plan A9 §2.10) ───────────────────────────────────────────────────────

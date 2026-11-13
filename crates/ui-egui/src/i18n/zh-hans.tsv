@@ -3413,3 +3413,7 @@ the move's comment	Move comment	此着法的评论
 	Forget the correction?	放弃更正？
 	The changes not confirmed yet are discarded too. The PDF is not changed.	尚未确认的更改也会被丢弃。PDF 不会改变。
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	未在 PDF 中绘制任何内容：无法保存更正（{e}）。
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	之前保存的内容无法读取，将先另行保存；请稍后再试
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	无法读取已保存的棋图更正（{why}）。它们会在下次保存时另行保存，此后新的更正会被保存。
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	无法读取已保存的书籍 PGN（{why}）。它们会在下次保存时另行保存，此后新的 PGN 会被保存。

@@ -1031,7 +1031,7 @@ pub struct ChessGames {
     /// Notices already given (said once).
     said: HashSet<String>,
     /// Notices for the user, shown at the next frame.
-    notes: Vec<String>,
+    pub(crate) notes: Vec<String>,
     /// The list's question or name editor open, and its keyboard focus.
     list: ListState,
     /// Collections the user left as they were, by id, with their fingerprint then: Quit or
@@ -1043,7 +1043,7 @@ pub struct ChessGames {
     cut_prompt: Option<(PgnGames, Vec<(String, String)>)>,
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
-    uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
+    uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Result<Vec<u8>, String>)>>>,
     /// Save PGN… starts the file with a byte order mark (Preferences; off by default, decision
     /// D18).
     pub pgn_bom: bool,
@@ -2395,13 +2395,16 @@ impl PdfCraftApp {
                 storage.set_string(chess_autosave::STORAGE_BAD_KEY, bad);
             }
         }
-        // The diagram corrections, under their own key (plan A8, P3b2).
-        if let Some(value) = self.chess.corrections.storage_value() {
-            storage.set_string(crate::chess_corrections_ui::STORAGE_KEY, value);
+        // The diagram corrections, under their own key (plan A8, P3b2), and the books' PGNs under
+        // theirs: what the `Storage` holds now merged in first (another tab may have written it),
+        // and a value that couldn't be read kept aside, never written over (plan A9-I1b).
+        let current = storage.get_string(crate::chess_corrections_ui::STORAGE_KEY);
+        for (key, value) in self.chess.corrections.storage_values(current.as_deref(), |k| storage.get_string(k).is_some()) {
+            storage.set_string(&key, value);
         }
-        // The books' PGNs, under theirs.
-        if let Some(value) = self.chess.book_pgns.storage_value() {
-            storage.set_string(crate::chess_reference_ui::STORAGE_KEY, value);
+        let current = storage.get_string(crate::chess_reference_ui::STORAGE_KEY);
+        for (key, value) in self.chess.book_pgns.storage_values(current.as_deref(), |k| storage.get_string(k).is_some()) {
+            storage.set_string(&key, value);
         }
     }
 
@@ -2411,8 +2414,24 @@ impl PdfCraftApp {
         self.chess.games.autosave_to_storage(text.as_deref());
         let corrections = storage.and_then(|s| s.get_string(crate::chess_corrections_ui::STORAGE_KEY));
         self.chess.corrections.use_storage(corrections.as_deref());
+        if let Some(why) = self.chess.corrections.unreadable() {
+            let said = crate::i18n::fmt(
+                tl!(
+                    "Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on."
+                ),
+                &[("why", why)],
+            );
+            self.chess.games.notes.push(said);
+        }
         let book_pgns = storage.and_then(|s| s.get_string(crate::chess_reference_ui::STORAGE_KEY));
         self.chess.book_pgns.use_storage(book_pgns.as_deref());
+        if let Some(why) = self.chess.book_pgns.unreadable() {
+            let said = crate::i18n::fmt(
+                tl!("Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on."),
+                &[("why", why)],
+            );
+            self.chess.games.notes.push(said);
+        }
     }
 
     fn show_chess_notes(&mut self) {
@@ -2825,10 +2844,10 @@ impl PdfCraftApp {
             wasm_bindgen_futures::spawn_local(async move {
                 let handles = rfd::AsyncFileDialog::new().add_filter("PGN", &["pgn", "txt"]).pick_files().await.unwrap_or_default();
                 for h in handles {
-                    let bytes = h.read().await;
-                    if let Ok(mut q) = uploads.lock() {
-                        q.push((h.file_name(), bytes));
-                    }
+                    // At most the cap, read as the models' picker reads (plan A9-I1b, R2-05).
+                    let cap = usize::try_from(MAX_PGN_FILE_BYTES).unwrap_or(usize::MAX);
+                    let bytes = crate::chess_models::read_picked(&h, cap).await;
+                    uploads.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push((h.file_name(), bytes));
                 }
                 if let Some(ctx) = ctx {
                     ctx.request_repaint();
@@ -2845,11 +2864,12 @@ impl PdfCraftApp {
             Err(poisoned) => std::mem::take(&mut *poisoned.into_inner()),
         };
         for (name, bytes) in files {
-            if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_PGN_FILE_BYTES {
-                self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", tl!("the file is too large"))]);
-                continue;
+            match bytes {
+                Ok(bytes) => {
+                    self.import_chess_pgn(&name, &bytes);
+                }
+                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
             }
-            self.import_chess_pgn(&name, &bytes);
         }
     }
 

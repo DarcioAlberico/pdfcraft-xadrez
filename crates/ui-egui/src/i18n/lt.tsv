@@ -3700,3 +3700,7 @@ the move's comment	Move comment	Ėjimo komentaras
 	Forget the correction?	Pamiršti pataisymą?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Dar nepatvirtinti pakeitimai taip pat atmetami. PDF nekeičiamas.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF faile nieko nenupiešta: nepavyko įrašyti pataisymo ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	anksčiau įrašytų duomenų nepavyko perskaityti, todėl jie pirmiausia atidedami; po akimirkos bandykite dar kartą
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Nepavyko perskaityti įrašytų diagramų pataisymų ({why}). Kito įrašymo metu jie atidedami, o nuo tada nauji pataisymai išsaugomi.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Nepavyko perskaityti įrašytų knygų PGN ({why}). Kito įrašymo metu jie atidedami, o nuo tada nauji išsaugomi.

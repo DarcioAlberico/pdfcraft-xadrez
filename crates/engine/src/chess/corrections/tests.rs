@@ -635,7 +635,12 @@ fn the_memory_store_keeps_files_within_its_budget() {
     });
     assert!(matches!(many, Err(StoreError::Correction(CorrectionError::OverBudget(600)))), "{many:?}");
     assert_eq!(small.files(), before);
-    assert!(MemStore::with_files(store.files(), 10).files().is_empty(), "a file past the budget is not taken in");
+    // Past the budget when taken in (a budget that shrank, another tab's files): kept, never left
+    // out to be gone at the next save (plan A9-I1b, A4-15); a change that grows it is refused.
+    let tight = MemStore::with_files(store.files(), 10);
+    assert_eq!(tight.files(), store.files(), "a file past the budget is kept");
+    assert!(tight.update(&keys(), 10, |f| f.put(3, "fnv:d", [0.1, 0.2, 0.5, 0.6], KINGS, 3)).is_err());
+    assert_eq!(tight.files(), store.files());
     // A file that can't be read is reported by a load, and set aside by a change, never dropped.
     let name = own_name(&keys());
     let broken = MemStore::with_files([(name.clone(), b"{broken".to_vec())], 4096);

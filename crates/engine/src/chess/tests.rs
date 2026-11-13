@@ -738,6 +738,43 @@ fn each_document_keeps_its_own_cipher_and_origin() {
     assert_eq!(s.chess_origin(b), BookOrigin::Digital);
 }
 
+/// Plan A9-I1b (§2.7): each open document's book PGN lives in the session, beside its cipher and
+/// origin. Giving one book its PGN never takes it from another; closing a document forgets its
+/// own, and nothing is kept for a document that is not open.
+#[test]
+fn each_document_keeps_its_own_book_pgn() {
+    use crate::chess::reference_store::{self, Choice, Decision};
+    use crate::chess::span::MoveAt;
+    use pdfcraft_chessvision::doc::reference::ReferenceIndex;
+    let mut s = Session::new();
+    let bytes = pdf(&font_board(60.0, 60.0, MERIDA_START), "ChessMerida", None, "");
+    let a = s.open("a.pdf", None, Arc::new(bytes.clone()), None).unwrap();
+    let b = s.open("b.pdf", None, Arc::new(bytes), None).unwrap();
+    let index = |pgn: &str| Arc::new(ReferenceIndex::from_pgn(pgn).unwrap());
+    let decision = Decision::new(MoveAt { page: 0, block: 0, inline: 0 }, "e4".into(), "e4".into(), "e4".into(), Choice::Pgn);
+    s.set_chess_book_pgn(
+        a,
+        Some(BookPgn {
+            name: Some("a.pgn".into()),
+            index: index("1. e4 e5 *"),
+            decisions: reference_store::Decisions { reader_version: 0, list: vec![decision] },
+        }),
+    );
+    s.set_chess_book_pgn(
+        b,
+        Some(BookPgn { name: Some("b.pgn".into()), index: index("1. d4 d5 *"), decisions: reference_store::Decisions::default() }),
+    );
+    let kept = s.chess_book_pgn(a).expect("A's PGN, after B's");
+    assert_eq!((kept.name.as_deref(), kept.decisions.list.len(), kept.index.games().len()), (Some("a.pgn"), 1, 1));
+    s.set_chess_book_pgn(b, None);
+    assert!(s.chess_book_pgn(b).is_none(), "B keeps none now");
+    assert!(s.chess_book_pgn(a).is_some(), "and A still its own");
+    s.close(a);
+    assert!(s.chess_book_pgn(a).is_none(), "closing forgets it");
+    s.set_chess_book_pgn(a, Some(BookPgn { name: None, index: index("1. c4 *"), decisions: reference_store::Decisions::default() }));
+    assert!(s.chess_book_pgn(a).is_none(), "nothing kept for a document that is not open");
+}
+
 mod capture;
 mod document;
 mod epub;

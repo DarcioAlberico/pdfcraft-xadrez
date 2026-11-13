@@ -3447,3 +3447,7 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Forget the correction?	Түзетуді ұмыту керек пе?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Әлі расталмаған өзгерістер де жойылады. PDF өзгермейді.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF-ке ештеңе салынбады: түзетуді сақтау мүмкін болмады ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	бұрын сақталғанды оқу мүмкін болмады, алдымен ол бөлек сақталады; сәлден соң қайталап көріңіз
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Сақталған диаграмма түзетулерін оқу мүмкін болмады ({why}). Олар келесі сақтауда бөлек сақталады, содан кейін жаңа түзетулер сақталады.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Кітаптардың сақталған PGN файлдарын оқу мүмкін болмады ({why}). Олар келесі сақтауда бөлек сақталады, содан кейін жаңалары сақталады.

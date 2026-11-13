@@ -325,26 +325,7 @@ impl PdfCraftApp {
             let picked = dialog.pick_files().await.unwrap_or_default();
             let mut files = Vec::new();
             for file in picked {
-                let name = file.file_name();
-                // Read the Blob directly, so a refused read is an error (rfd's read helper
-                // unwraps it), and never one larger than the cap.
-                let size = file.inner().size();
-                let bytes = if size.is_nan() || size > MAX_PICKED_FILE_BYTES as f64 {
-                    Err(format!("{} MB at most", MAX_PICKED_FILE_BYTES >> 20))
-                } else {
-                    match wasm_bindgen_futures::JsFuture::from(file.inner().array_buffer()).await {
-                        Ok(buffer) => {
-                            let array = js_sys::Uint8Array::new(&buffer);
-                            if array.length() as usize > MAX_PICKED_FILE_BYTES {
-                                Err(format!("{} MB at most", MAX_PICKED_FILE_BYTES >> 20))
-                            } else {
-                                Ok(array.to_vec())
-                            }
-                        }
-                        Err(error) => Err(format!("{error:?}")),
-                    }
-                };
-                files.push((name, bytes));
+                files.push((file.file_name(), read_picked(&file, MAX_PICKED_FILE_BYTES).await));
             }
             if !files.is_empty() {
                 *inbox.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(files);
@@ -364,6 +345,25 @@ impl PdfCraftApp {
             self.install_chess_model_files(files);
         }
     }
+}
+
+/// The web: the bytes of a file the user picked, at most `cap` (plan A9-I1b, finding R2-05; the
+/// way the models' picker always read them). Its size is looked at first, so a larger file is
+/// never read; its `Blob` is read directly, so a read the browser refuses is an error to say, not
+/// a panic in rfd's read helper or a wait for ever.
+#[cfg(target_arch = "wasm32")]
+pub(crate) async fn read_picked(file: &rfd::FileHandle, cap: usize) -> Result<Vec<u8>, String> {
+    let too_large = || tl!("the file is too large").to_string();
+    let size = file.inner().size();
+    if !size.is_finite() || size < 0.0 || size > cap as f64 {
+        return Err(too_large());
+    }
+    let buffer = wasm_bindgen_futures::JsFuture::from(file.inner().array_buffer()).await.map_err(|error| format!("{error:?}"))?;
+    let array = js_sys::Uint8Array::new(&buffer);
+    if usize::try_from(array.length()).map_or(true, |n| n > cap) {
+        return Err(too_large());
+    }
+    Ok(array.to_vec())
 }
 
 #[cfg(test)]

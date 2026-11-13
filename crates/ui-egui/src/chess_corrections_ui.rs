@@ -7,7 +7,9 @@
 //! (`MemStore`). Until either is set (tests, a session without recovery) they live in memory for
 //! the session. The format and the rules are the engine's (`pdfcraft_engine::chess::corrections`):
 //! one file per document, found by its keys, each correction by its page's fingerprint and the
-//! diagram's box.
+//! diagram's box. Where they are kept is one type for every kind of store
+//! ([`crate::chess_store_ui::UiStore`], plan A9-I1b): on the web a value that can't be read is
+//! kept aside, never written over, and another tab's changes are merged in before writing.
 //!
 //! **What uses them.** Each document's corrections are given to the session as soon as its scan
 //! results are kept ([`PdfCraftApp::refresh_chess_kinds`]), so the Text tab, the exports and the
@@ -27,11 +29,13 @@ use std::collections::HashMap;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
-    Correction, CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, PageBoxes, Status, StoreError, assign, normalize,
+    Correction, CorrectionError, CorrectionFile, Corrections as CorrectionsKind, Kind, Loaded, NewCorrection, Original, PageBoxes, Status,
+    StoreError, assign, normalize,
 };
 
 use crate::chess_fixes::FixState;
 use crate::chess_history::ChessEdit;
+use crate::chess_store_ui::{UiStore, in_store};
 use crate::chess_ui::Kept;
 
 use crate::PdfCraftApp;
@@ -43,60 +47,36 @@ pub const STORAGE_KEY: &str = "pdfcraft-chess-corrections-v1";
 pub const WEB_BUDGET: usize = 1 << 20;
 
 /// Where the corrections are kept.
-pub(crate) enum Store {
-    #[cfg(not(target_arch = "wasm32"))]
-    Folder(pdfcraft_engine::chess::corrections::DirStore),
-    /// The web build's `Storage` value (`saved`: whether it changed since eframe last took it),
-    /// or the session's memory until a store is set.
-    Memory { store: MemStore, changed: bool },
-}
+pub(crate) type Store = UiStore<CorrectionsKind>;
 
-impl Default for Store {
-    fn default() -> Self {
-        Store::Memory { store: MemStore::new(WEB_BUDGET), changed: false }
-    }
-}
-
-impl Store {
+impl UiStore<CorrectionsKind> {
     /// The document's corrections, with its own entries of a file several books shared (plan
     /// A9-G1b; `fingerprints`: its pages').
     fn load(&self, keys: &DocKeys, fingerprints: &[String]) -> Result<Loaded, StoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.load_with(keys, fingerprints).map(|(l, _)| l),
-            Store::Memory { store, .. } => store.load_with(keys, fingerprints).map(|(l, _)| l),
-        }
+        in_store!(&self.place, s => s.load_with(keys, fingerprints).map(|(l, _)| l))
     }
 
     /// A change, after the document's entries are taken out of a file several books shared (plan
-    /// A9-G1b).
+    /// A9-G1b). Why not, in words that follow "couldn't be saved:".
     pub(crate) fn update<R>(
         &mut self,
         keys: &DocKeys,
         fingerprints: &[String],
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
-    ) -> Result<(R, Loaded), StoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l)),
-            Store::Memory { store, changed } => {
-                let (r, l, _) = store.update_with(keys, fingerprints, change)?;
-                *changed = true;
-                Ok((r, l))
-            }
-        }
+    ) -> Result<(R, Loaded), String> {
+        self.writable()?;
+        let out = in_store!(&self.place, s => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l))).map_err(|e| e.to_string())?;
+        self.wrote();
+        Ok(out)
     }
 
-    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError> {
-        match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.rekey(old, new, pages),
-            Store::Memory { store, changed } => {
-                let moved = store.rekey(old, new, pages)?;
-                *changed |= moved;
-                Ok(moved)
-            }
+    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
+        self.writable()?;
+        let moved = in_store!(&self.place, s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
+        if moved {
+            self.wrote();
         }
+        Ok(moved)
     }
 }
 
@@ -120,7 +100,6 @@ pub(crate) struct DocCorrections {
 }
 
 /// The corrections in the app.
-#[derive(Default)]
 pub struct Corrections {
     pub(crate) store: Store,
     pub(crate) docs: Vec<DocCorrections>,
@@ -128,41 +107,39 @@ pub struct Corrections {
     pub(crate) said: bool,
 }
 
+impl Default for Corrections {
+    fn default() -> Self {
+        Corrections { store: UiStore::memory(WEB_BUDGET), docs: Vec::new(), said: false }
+    }
+}
+
 impl Corrections {
     /// Keep the corrections in `dir` (the desktop; tests pass their own folder). Corrections
     /// loaded from memory before are read again from there.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn use_folder(&mut self, dir: std::path::PathBuf) {
-        self.store = Store::Folder(pdfcraft_engine::chess::corrections::DirStore::new(dir));
+        self.store = UiStore::folder(dir, WEB_BUDGET);
         self.docs.clear();
     }
 
     /// Keep the corrections in the web's `Storage` value `text` (what it holds now: the files by
-    /// name, as [`Self::storage_value`] wrote them). A value that can't be read starts empty.
+    /// name, as [`Self::storage_values`] wrote them). A value that can't be read is kept aside at
+    /// the next save, never written over, and nothing is kept until then (plan A9-I1b).
     pub fn use_storage(&mut self, text: Option<&str>) {
-        let files: Vec<(String, Vec<u8>)> = text
-            .and_then(|t| serde_json::from_str::<Vec<(String, String)>>(t).ok())
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(name, body)| (name, body.into_bytes()))
-            .collect();
-        self.store = Store::Memory { store: MemStore::with_files(files, WEB_BUDGET), changed: false };
+        self.store = UiStore::storage(STORAGE_KEY, WEB_BUDGET, text);
         self.docs.clear();
     }
 
-    /// The web's `Storage` value, when the corrections changed since it was last taken.
-    pub fn storage_value(&mut self) -> Option<String> {
-        let (store, changed) = match &mut self.store {
-            Store::Memory { store, changed } => (store, changed),
-            #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(_) => return None,
-        };
-        if !std::mem::take(changed) {
-            return None;
-        }
-        let files: Vec<(String, String)> =
-            store.files().into_iter().filter_map(|(name, bytes)| String::from_utf8(bytes).ok().map(|b| (name, b))).collect();
-        serde_json::to_string(&files).ok()
+    /// The web's `Storage` values to save ([`UiStore::storage_values`]): `current` is what the
+    /// `Storage` holds under [`STORAGE_KEY`] now, merged in; `taken` says which keys are.
+    pub fn storage_values(&mut self, current: Option<&str>, taken: impl Fn(&str) -> bool) -> Vec<(String, String)> {
+        self.store.storage_values(current, taken)
+    }
+
+    /// Why the corrections the web's `Storage` held could not be read, while they are not kept
+    /// aside yet.
+    pub fn unreadable(&self) -> Option<&str> {
+        self.store.unreadable()
     }
 
     fn doc(&self, id: DocId) -> Option<&DocCorrections> {
@@ -356,12 +333,8 @@ impl PdfCraftApp {
         let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        let ((uid, before), loaded) = self
-            .chess
-            .corrections
-            .store
-            .update(&keys, fingerprints.pages(), |f| f.replace(new, at, fingerprints.as_ref()))
-            .map_err(|e| e.to_string())?;
+        let ((uid, before), loaded) =
+            self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.replace(new, at, fingerprints.as_ref()))?;
         self.chess.corrections.said = false;
         self.say_corrections_set_aside(&loaded);
         self.chess_corrections_kept(id, keys, loaded.file);
@@ -378,12 +351,8 @@ impl PdfCraftApp {
         let fingerprints = self.session.chess_fingerprints(id).ok_or_else(closed)?;
         let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
         let at = now();
-        let (_, loaded) = self
-            .chess
-            .corrections
-            .store
-            .update(&keys, fingerprints.pages(), |f| f.follow_page(uid, page, at, fingerprints.as_ref()))
-            .map_err(|e| e.to_string())?;
+        let (_, loaded) =
+            self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.follow_page(uid, page, at, fingerprints.as_ref()))?;
         self.say_corrections_set_aside(&loaded);
         self.chess_corrections_kept(id, keys, loaded.file);
         Ok(())
@@ -506,7 +475,7 @@ impl PdfCraftApp {
                 before
             }
             Err(e) => {
-                self.say_corrections_not_kept(&e.to_string());
+                self.say_corrections_not_kept(&e);
                 return false;
             }
         };
@@ -556,7 +525,7 @@ impl PdfCraftApp {
                     d.keys = keys;
                 }
             }
-            Err(e) => self.say_corrections_failed(&e.to_string()),
+            Err(e) => self.say_corrections_failed(&e),
         }
     }
 

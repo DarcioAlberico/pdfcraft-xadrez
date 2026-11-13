@@ -126,7 +126,7 @@ impl PdfCraftApp {
             }
             Ok(FixState { entries, diagram: target.diagram })
         });
-        let (before, loaded) = written.map_err(|e| e.to_string())?;
+        let (before, loaded) = written?;
         self.chess.corrections.said = false;
         self.say_corrections_set_aside(&loaded);
         self.chess_corrections_kept(id, keys, loaded.file);

@@ -3466,3 +3466,7 @@ the move's comment	Move comment	Comentário do lance
 	Forget the correction?	Esquecer a correção?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	As alterações ainda não confirmadas também são descartadas. O PDF não é alterado.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Nada foi desenhado no PDF: não foi possível guardar a correção ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	o que foi guardado antes não pôde ser lido e é posto de lado primeiro; tente de novo daqui a pouco
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Não foi possível ler as correções de diagramas guardadas ({why}). Elas são postas de lado no próximo salvamento, e as correções novas são guardadas a partir daí.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Não foi possível ler os PGN de livros guardados ({why}). Eles são postos de lado no próximo salvamento, e os novos são guardados a partir daí.

@@ -3724,3 +3724,7 @@ the move's comment	Move comment	تعليق النقلة
 	Forget the correction?	نسيان التصحيح؟
 	The changes not confirmed yet are discarded too. The PDF is not changed.	تُتجاهَل أيضًا التغييرات التي لم تُؤكَّد بعد. لا يتغيّر ملف PDF.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	لم يُرسَم شيء في ملف PDF: تعذّر حفظ التصحيح ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	تعذّرت قراءة ما حُفظ من قبل، ويُحفظ جانبًا أولًا؛ حاول مرة أخرى بعد قليل
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	تعذّرت قراءة تصحيحات المخططات المحفوظة ({why}). تُحفظ جانبًا عند الحفظ التالي، وتُحفظ التصحيحات الجديدة بعد ذلك.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	تعذّرت قراءة ملفات PGN المحفوظة للكتب ({why}). تُحفظ جانبًا عند الحفظ التالي، وتُحفظ الملفات الجديدة بعد ذلك.

@@ -3661,3 +3661,7 @@ the move's comment	Move comment	Commento della mossa
 	Forget the correction?	Dimenticare la correzione?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Anche le modifiche non ancora confermate vengono scartate. Il PDF non viene modificato.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Nel PDF non è stato disegnato nulla: impossibile salvare la correzione ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	quanto salvato prima non è leggibile e viene prima messo da parte; riprova tra un momento
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Impossibile leggere le correzioni dei diagrammi salvate ({why}). Vengono messe da parte al prossimo salvataggio, e da allora le nuove correzioni vengono conservate.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Impossibile leggere i PGN dei libri salvati ({why}). Vengono messi da parte al prossimo salvataggio, e da allora i nuovi vengono conservati.

@@ -3450,3 +3450,7 @@ the move's comment	Move comment	Kommentar des Zugs
 	Forget the correction?	Korrektur verwerfen?
 	The changes not confirmed yet are discarded too. The PDF is not changed.	Noch nicht bestätigte Änderungen werden ebenfalls verworfen. Das PDF bleibt unverändert.
 	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Im PDF wurde nichts gezeichnet: Die Korrektur konnte nicht gespeichert werden ({e}).
+# Plan A9-I1b: the web stores kept aside when they cannot be read, never written over.
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	das zuvor Gespeicherte war nicht lesbar und wird zuerst beiseitegelegt; versuchen Sie es gleich noch einmal
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Gespeicherte Diagrammkorrekturen waren nicht lesbar ({why}). Beim nächsten Speichern werden sie beiseitegelegt; danach werden neue Korrekturen gespeichert.
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Gespeicherte PGNs der Bücher waren nicht lesbar ({why}). Beim nächsten Speichern werden sie beiseitegelegt; danach werden neue gespeichert.
