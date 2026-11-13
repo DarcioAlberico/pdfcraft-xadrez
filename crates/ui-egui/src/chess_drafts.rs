@@ -6,7 +6,10 @@
 //! Closing the document, quitting, exporting the book or detecting the diagrams again with drafts
 //! asks about each one first ("Keep the correction of diagram 1 (page 17)?"): Confirm correction
 //! keeps it as Confirm does, Discard changes drops it, Keep editing stops there and opens it. The
-//! PDF is never changed.
+//! PDF is never changed. A correction the store refuses (read only, held by another writer)
+//! leaves the question open, saying why in it and in a notice, each time (plan A9-G10, finding
+//! A5-09): nothing waiting goes on, and nothing goes on in silence. A closed document's drafts go
+//! with it ([`PdfCraftApp::sync_chess_docs`]).
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::export::ChessFormat;
@@ -43,6 +46,8 @@ pub enum AfterDrafts {
 pub struct DraftPrompt {
     pub(crate) draft: Draft,
     pub then: AfterDrafts,
+    /// Why Confirm correction could not keep it, the last time it was tried (plan A9-G10).
+    pub failed: Option<String>,
 }
 
 /// An answer to the question.
@@ -86,7 +91,7 @@ impl PdfCraftApp {
         let first = self.chess.drafts.iter().find(|d| doc.is_none_or(|id| d.target.doc == id)).cloned();
         match first {
             Some(draft) => {
-                self.chess.draft_prompt = Some(DraftPrompt { draft, then });
+                self.chess.draft_prompt = Some(DraftPrompt { draft, then, failed: None });
                 true
             }
             None => false,
@@ -96,13 +101,15 @@ impl PdfCraftApp {
     /// Answer the question about the draft asked about: then the next draft is asked about, and
     /// once none is left, what waited runs. Keep editing stops there and opens the diagram.
     pub fn answer_chess_draft(&mut self, answer: DraftAnswer) {
-        let Some(DraftPrompt { draft, then }) = self.chess.draft_prompt.take() else { return };
+        let Some(DraftPrompt { draft, then, .. }) = self.chess.draft_prompt.take() else { return };
         let key = (draft.target.doc, draft.target.page, draft.target.index);
         let editing = self.chess.editor.as_ref().is_some_and(|e| (e.doc, e.page, e.index) == key);
         match answer {
             DraftAnswer::Confirm => {
-                if self.keep_chess_correction(&draft.target, draft.fen.clone()).is_none() {
-                    // Not kept (the store failed, and said why): the draft stays, nothing goes on.
+                if let Err(why) = self.keep_chess_correction(&draft.target, draft.fen.clone()) {
+                    // Not kept (and said): the draft stays and the question with it, saying why;
+                    // nothing waiting goes on (finding A5-09).
+                    self.chess.draft_prompt = Some(DraftPrompt { draft, then, failed: Some(why) });
                     return;
                 }
                 if editing && let Some(ed) = self.chess.editor.as_mut() {
@@ -180,6 +187,18 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
             tl!("The position changed. Not confirmed yet.").to_string()
         };
         ui.label(what);
+        // Why Confirm correction could not keep it, the last time (plan A9-G10).
+        if let Some(why) = &p.failed {
+            let t = crate::theme::Tokens::get(ui.ctx());
+            ui.add_space(6.0);
+            egui::Frame::NONE.fill(t.danger_soft).corner_radius(egui::CornerRadius::same(t.radius)).inner_margin(6).show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.add(crate::icons::image("circle-x", 14.0, t.danger_text));
+                    let said = crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]);
+                    ui.add(egui::Label::new(egui::RichText::new(said).color(t.danger_text)).wrap());
+                });
+            });
+        }
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             let confirm = crate::widgets::pill_button(ui, tl!("Confirm correction"), true);

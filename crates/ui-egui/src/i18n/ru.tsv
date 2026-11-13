@@ -3356,3 +3356,9 @@ the move's comment	Move comment	Комментарий к ходу
 	Redraw in the PDF?	Перерисовать в PDF?
 	Diagram {n}, open	Диаграмма {n}, открыть
 	Choices made on this page not found in its reading (kept): {n}	Выборы на этой странице, не найденные в её прочтении (сохранены): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	документ закрыт
+	Diagram {n}, page {p}: correction forgotten	Диаграмма {n}, стр. {p}: исправление забыто
+	Forget the correction?	Забыть исправление?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Ещё не подтверждённые изменения тоже будут отброшены. PDF не изменится.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	В PDF ничего не нарисовано: не удалось сохранить исправление ({e}).

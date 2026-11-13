@@ -9,8 +9,10 @@
 //!
 //! The tab's own keys work while the keyboard is in the tab or the pointer is over it: Ctrl+Enter
 //! confirms and goes on, Page Up and Page Down walk the review queue, Ctrl+Z and Ctrl+Shift+Z undo
-//! and redo the editor's changes (the document's Undo when the editor has none), and Esc gives the
-//! keyboard back to the diagram's row in the Diagrams list, discarding nothing.
+//! and redo the editor's change or the document's correction kept or forgotten, the newer, else
+//! the document's change — never the chess game's (plan A9-G10, finding A5-06;
+//! [`crate::PdfCraftApp::diagram_tab_step`]) — and Esc gives the keyboard back to the diagram's row
+//! in the Diagrams list, discarding nothing.
 //!
 //! The keys leave the frame's input in `raw_input_hook` ([`take_keys`]), before egui moves the
 //! focus on the arrows and before the app's shortcuts (the tools' letters, Space for the Hand,
@@ -66,12 +68,13 @@ pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mu
     let tab = keys.tab.take();
     keys.board = None;
     keys.tab_keys.clear();
-    let Some(ed) = chess.editor.as_ref().filter(|_| free) else { return };
+    if chess.editor.is_none() || !free {
+        return;
+    }
     let board = [board_id(true), board_id(false)].into_iter().find(|id| ctx.memory(|m| m.has_focus(*id)));
     let pointer = tab.zip(ctx.pointer_hover_pos()).is_some_and(|(r, p)| r.contains(p));
     let focus_in = tab.is_some() && keys.focus_in_tab;
     let in_tab = focus_in || pointer;
-    let (undo, redo) = (ed.can_undo(), ed.can_redo());
     let mut on_board = Vec::new();
     let mut on_tab = Vec::new();
     events.retain(|event| {
@@ -82,7 +85,7 @@ pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mu
             }
             return false;
         }
-        if in_tab && tab_key(*key, *modifiers, TabState { undo, redo, queue, focus_in }) {
+        if in_tab && tab_key(*key, *modifiers, TabState { queue, focus_in }) {
             if on_tab.len() < MAX_KEYS {
                 on_tab.push((*key, *modifiers));
             }
@@ -108,24 +111,20 @@ fn board_key(key: Key, m: Modifiers) -> bool {
 /// What decides whether the tab takes a key.
 #[derive(Clone, Copy, Default)]
 struct TabState {
-    /// The editor has a change to undo, or one undone to redo.
-    undo: bool,
-    redo: bool,
     /// There are diagrams to review.
     queue: bool,
     /// The keyboard is in the tab (not only the pointer over it).
     focus_in: bool,
 }
 
-/// Whether the tab takes `key` pressed with `m`. Ctrl+Z and Ctrl+Shift+Z only while the editor
-/// has something to undo or redo, else they are the document's; Page Up and Page Down only with
-/// diagrams to review; Esc only while the keyboard is in the tab, not for the pointer over it.
+/// Whether the tab takes `key` pressed with `m`. Ctrl+Z and Ctrl+Shift+Z always: the tab decides
+/// where they go, so they never reach the chess game's history through the app's Undo (finding
+/// A5-06); Page Up and Page Down only with diagrams to review; Esc only while the keyboard is in
+/// the tab, not for the pointer over it.
 fn tab_key(key: Key, m: Modifiers, s: TabState) -> bool {
     tab_action(key, m).is_some_and(|action| match action {
-        TabKey::ConfirmNext => true,
+        TabKey::ConfirmNext | TabKey::Undo | TabKey::Redo => true,
         TabKey::Previous | TabKey::Next => s.queue,
-        TabKey::Undo => s.undo,
-        TabKey::Redo => s.redo,
         TabKey::BackToList => s.focus_in,
     })
 }
@@ -157,8 +156,9 @@ impl TabKey {
 }
 
 /// The tab's keys (plan A8, P3c): Ctrl+Enter confirms and goes on, Page Up and Page Down walk the
-/// diagrams to review, Ctrl+Z and Ctrl+Shift+Z undo and redo the editor's changes, Esc gives the
-/// keyboard back to the list. The chess key map lists them (plan A9-I18).
+/// diagrams to review, Ctrl+Z and Ctrl+Shift+Z undo and redo the editor's changes and the
+/// document's corrections (plan A9-G10), Esc gives the keyboard back to the list. The chess key
+/// map lists them (plan A9-I18).
 pub(crate) const TAB_KEYS: [(ChessKey, TabKey); 6] = [
     (ChessKey::command(Key::Enter), TabKey::ConfirmNext),
     (ChessKey::plain(Key::PageUp), TabKey::Previous),
@@ -326,9 +326,10 @@ mod tests {
         assert!(!board_key(Key::ArrowLeft, Modifiers::ALT));
         assert!(!board_key(Key::Enter, Modifiers::COMMAND));
         assert!(!board_key(Key::Tab, Modifiers::NONE), "Tab moves the focus on");
-        let all = TabState { undo: true, redo: true, queue: true, focus_in: true };
-        assert!(!tab_key(Key::Z, Modifiers::COMMAND, TabState { undo: false, ..all }), "nothing to undo: the document's Undo");
-        assert!(tab_key(Key::Z, Modifiers::COMMAND | Modifiers::SHIFT, TabState { undo: false, ..all }));
+        let all = TabState { queue: true, focus_in: true };
+        let none = TabState { queue: false, focus_in: false };
+        assert!(tab_key(Key::Z, Modifiers::COMMAND, none), "the tab decides where Undo goes (A5-06)");
+        assert!(tab_key(Key::Z, Modifiers::COMMAND | Modifiers::SHIFT, none));
         assert!(!tab_key(Key::Escape, Modifiers::NONE, TabState { focus_in: false, ..all }), "Esc only with the keyboard in the tab");
         assert!(!tab_key(Key::PageDown, Modifiers::NONE, TabState { queue: false, ..all }), "no queue: the page's Page Down");
     }

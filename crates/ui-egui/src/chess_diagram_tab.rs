@@ -86,6 +86,15 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if crate::chess_history::pressed_in(ui) {
         app.chess.leave_scope();
     }
+    // Ctrl+Z and Ctrl+Shift+Z first, so what is drawn is what they leave (plan A9-G10).
+    let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
+    for &(key, m) in &tab_keys {
+        match crate::chess_diagram_keys::tab_action(key, m) {
+            Some(TabKey::Undo) => app.diagram_tab_step(true),
+            Some(TabKey::Redo) => app.diagram_tab_step(false),
+            _ => {}
+        }
+    }
     let Some((_, id)) = app.active_ids() else {
         empty(ui, &t);
         return;
@@ -117,7 +126,6 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
     let mut hint = !app.chess.diagram_hint_seen;
-    let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
     let board_keys = app.chess.diagram_keys.board.take();
     let suggestion = crate::chess_reference_ui::suggestion(app.chess.text_of(id), id, current, page, index);
     let Some(ed) = app.chess.editor.as_mut() else { return };
@@ -130,8 +138,6 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             Some(TabKey::ConfirmNext) => action = Some(EditorAction::Confirm { next: true }),
             Some(TabKey::Previous) if !queue.is_empty() => action = Some(EditorAction::Previous),
             Some(TabKey::Next) if !queue.is_empty() => action = Some(EditorAction::Next),
-            Some(TabKey::Undo) => ed.undo(),
-            Some(TabKey::Redo) => ed.redo(),
             Some(TabKey::BackToList) => back_to_list = true,
             _ => {}
         }
@@ -468,8 +474,14 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
                 action = Some(EditorAction::OpenLichess(url));
             }
         }
-        if kept && item(ui, true, tl!("Forget the correction")).on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
-            action = Some(EditorAction::Forget);
+        if kept {
+            // Last, apart, in the danger colour: it drops what the user kept (plan A9 §2.8.1).
+            ui.separator();
+            let danger = Tokens::get(ui.ctx()).danger_text;
+            let forget = widgets::menu_entry(ui, true, egui::Button::new(RichText::new(tl!("Forget the correction")).color(danger)));
+            if forget.on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
+                action = Some(EditorAction::Forget);
+            }
         }
     });
     action

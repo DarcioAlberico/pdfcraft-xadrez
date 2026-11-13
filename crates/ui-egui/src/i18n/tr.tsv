@@ -3439,3 +3439,9 @@ the move's comment	Move comment	Hamlenin yorumu
 	Redraw in the PDF?	PDF'de yeniden çizilsin mi?
 	Diagram {n}, open	Diyagram {n}, aç
 	Choices made on this page not found in its reading (kept): {n}	Bu sayfada yapılıp okumasında bulunamayan seçimler (saklandı): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	belge kapalı
+	Diagram {n}, page {p}: correction forgotten	Diyagram {n}, sayfa {p}: düzeltme unutuldu
+	Forget the correction?	Düzeltme unutulsun mu?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Henüz onaylanmamış değişiklikler de atılır. PDF değişmez.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF’e hiçbir şey çizilmedi: düzeltme kaydedilemedi ({e}).

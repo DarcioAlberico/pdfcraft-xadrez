@@ -3694,3 +3694,9 @@ the move's comment	Move comment	Ėjimo komentaras
 	Redraw in the PDF?	Perpiešti PDF faile?
 	Diagram {n}, open	Diagrama {n}, atverti
 	Choices made on this page not found in its reading (kept): {n}	Šiame puslapyje padaryti pasirinkimai, nerasti jo skaityme (išsaugoti): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	dokumentas uždarytas
+	Diagram {n}, page {p}: correction forgotten	Diagrama {n}, {p} psl.: pataisymas pamirštas
+	Forget the correction?	Pamiršti pataisymą?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Dar nepatvirtinti pakeitimai taip pat atmetami. PDF nekeičiamas.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF faile nieko nenupiešta: nepavyko įrašyti pataisymo ({e}).

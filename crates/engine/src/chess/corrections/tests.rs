@@ -144,6 +144,43 @@ fn merges_take_the_higher_revision_and_never_bring_a_deletion_back() {
     assert_eq!(gone.live().count(), 1);
 }
 
+/// Plan A9-G10: undoing a deletion writes the correction back as its next revision, past the
+/// tombstone's, so a copy that saw the deletion (another instance, the file of the name before)
+/// keeps it live merged in either way; a confirmation that replaced a correction puts the old one
+/// back the same way when undone, and one that put a new correction in deletes it.
+#[test]
+fn a_correction_put_back_is_its_next_revision_and_outlives_its_tombstone() {
+    const R: [f32; 4] = [0.1, 0.1, 0.4, 0.4];
+    let mut f = CorrectionFile::new(DocRecord::default());
+    let uid = f.put(0, "fnv:a", R, KINGS, 1).unwrap();
+    let before = f.entries[0].clone();
+    assert!(f.delete(&uid, 2));
+    let tombstone = f.clone();
+    assert_eq!(f.restore(&uid, Some(&before), 3), Ok(true));
+    let back: Vec<_> = f.live().map(|e| (e.uid.as_str(), e.fen.as_str(), e.rev, e.at)).collect();
+    assert_eq!(back, vec![(uid.as_str(), KINGS, 3, 3)], "a new revision, past the tombstone's");
+    let mut theirs = tombstone.clone();
+    theirs.merge(&f);
+    assert_eq!(theirs.live().count(), 1, "the copy that saw the deletion takes it back");
+    f.merge(&tombstone);
+    assert_eq!(f.live().count(), 1, "and never deletes it again");
+    assert_eq!(f.restore(&uid, Some(&before), 4), Ok(false), "already as it was: no revision");
+    // A confirmation over it, undone: the old position back, as a newer revision.
+    let (same, replaced) = f.replace(new(0, R, QUEEN), 5, &book_with(0, "fnv:a")).unwrap();
+    assert_eq!((same.as_str(), replaced.as_ref().map(|e| e.fen.as_str())), (uid.as_str(), Some(KINGS)));
+    assert_eq!(f.restore(&uid, replaced.as_ref(), 6), Ok(true));
+    assert_eq!(f.live().map(|e| (e.fen.as_str(), e.rev)).collect::<Vec<_>>(), vec![(KINGS, 5)]);
+    // A confirmation that put a new correction in, undone: deleted.
+    let (other, none) = f.replace(new(1, R, QUEEN), 7, &book_with(1, "fnv:b")).unwrap();
+    assert!(none.is_none());
+    assert_eq!(f.restore(&other, None, 8), Ok(true));
+    assert_eq!(f.live().map(|e| e.uid.as_str()).collect::<Vec<_>>(), vec![uid.as_str()]);
+    // A correction no longer in the file comes back as an entry of its own.
+    let mut empty = CorrectionFile::new(DocRecord::default());
+    assert_eq!(empty.restore(&uid, Some(&before), 9), Ok(true));
+    assert_eq!(empty.live().map(|e| e.rev).collect::<Vec<_>>(), vec![2]);
+}
+
 #[test]
 fn diagrams_are_found_by_fingerprint_and_overlap() {
     let mut f = CorrectionFile::new(DocRecord::default());

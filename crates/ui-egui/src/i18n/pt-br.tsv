@@ -3460,3 +3460,9 @@ the move's comment	Move comment	Comentário do lance
 	Redraw in the PDF?	Redesenhar no PDF?
 	Diagram {n}, open	Diagrama {n}, abrir
 	Choices made on this page not found in its reading (kept): {n}	Escolhas feitas nesta página não encontradas na sua leitura (guardadas): {n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	o documento está fechado
+	Diagram {n}, page {p}: correction forgotten	Diagrama {n}, pág. {p}: correção esquecida
+	Forget the correction?	Esquecer a correção?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	As alterações ainda não confirmadas também são descartadas. O PDF não é alterado.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Nada foi desenhado no PDF: não foi possível guardar a correção ({e}).

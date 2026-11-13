@@ -3445,3 +3445,9 @@ the move's comment	Move comment	手のコメント
 	Redraw in the PDF?	PDF に描き直しますか?
 	Diagram {n}, open	局面図 {n}、開く
 	Choices made on this page not found in its reading (kept): {n}	このページで行った選択のうち、読み取り結果に見つからないもの（保持）：{n}
+# Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
+	the document is closed	文書は閉じられています
+	Diagram {n}, page {p}: correction forgotten	局面図 {n}、{p} ページ: 修正を取り消しました
+	Forget the correction?	修正を取り消しますか?
+	The changes not confirmed yet are discarded too. The PDF is not changed.	まだ確定していない変更も破棄されます。PDF は変更されません。
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF には何も描画されませんでした: 修正を保存できませんでした ({e})。
