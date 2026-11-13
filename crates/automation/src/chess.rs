@@ -36,7 +36,7 @@ type CipherOut = (String, std::path::PathBuf);
 /// `ocr`: when chess OCR reads a page instead of its text layer (default auto: when the layer is
 /// poor or missing, or another program's invisible OCR over a scan). The general OCR reads the
 /// prose when its models are installed.
-fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
+pub(crate) fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
     let mode = match a.opt_str("ocr")? {
         None | Some("auto") => OcrMode::Auto,
         Some("off") => OcrMode::Off,
@@ -831,7 +831,7 @@ impl Automation {
 
     /// `cipher_in`: a book cipher saved by an earlier run (JSON), to start from; `cipher_out`:
     /// where to save the cipher these pages taught. Both confined to the root.
-    fn cipher_args(&self, a: &Args) -> Result<(Option<BookCipher>, Option<CipherOut>)> {
+    pub(crate) fn cipher_args(&self, a: &Args) -> Result<(Option<BookCipher>, Option<CipherOut>)> {
         let seed = match a.opt_str("cipher_in")? {
             None => None,
             Some(p) => {
@@ -849,7 +849,7 @@ impl Automation {
 
     /// The files this call reads besides the document (the book's PGN, a saved cipher), resolved:
     /// an output may not be one of them unless the call says `overwrite` (plan A9, G7a).
-    fn input_paths(&self, a: &Args) -> Result<Vec<std::path::PathBuf>> {
+    pub(crate) fn input_paths(&self, a: &Args) -> Result<Vec<std::path::PathBuf>> {
         ["reference_pgn", "cipher_in"].into_iter().filter_map(|key| a.opt_str(key).transpose()).map(|p| self.resolve(p?, false)).collect()
     }
 
@@ -1153,7 +1153,7 @@ pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result
 }
 
 /// The `reference` field of `chess_document`'s reply. Pages and games count from 1.
-fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &reference::Linked) -> Value {
+pub(crate) fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &reference::Linked) -> Value {
     let games = index.games();
     let name = |g: usize| games.get(g).map(|g| g.name.as_str()).unwrap_or_default();
     let a = &linked.alignment;

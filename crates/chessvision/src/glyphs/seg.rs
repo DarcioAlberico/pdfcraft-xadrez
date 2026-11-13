@@ -111,7 +111,7 @@ impl Bin {
 }
 
 /// A box in pixels, end-exclusive.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Bx {
     pub x0: i64,
     pub y0: i64,
