@@ -290,3 +290,40 @@ fn an_undrawn_diagram_is_noted_by_the_page_its_caption_names() {
     assert_eq!(crate::chess::export::page_label(s.get(id).unwrap(), 0).to_string(), "1");
     assert_eq!(crate::chess::export::page_label(s.get(id).unwrap(), 0).printed, None);
 }
+
+/// Plan A9-X3b (R5-06): Word and RTF print a sign's name after it, in the book's language where
+/// the interface names it, else in English in a run that says so; the move marks (`!`, `?`) are
+/// not named.
+#[test]
+fn a_sign_is_followed_by_its_name() {
+    use pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, LangTag};
+    let (mut s, id) = open(super::document::chapter());
+    let mut doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+    let para = doc
+        .pages
+        .iter_mut()
+        .flat_map(|p| p.blocks.iter_mut())
+        .find_map(|b| match b {
+            Block::Paragraph { inlines, .. } if inlines.iter().any(|i| matches!(i, Inline::Move(_))) => Some(inlines),
+            _ => None,
+        })
+        .unwrap();
+    para.push(Inline::Nag { code: 1, source_rect: None, review: Vec::new() });
+    para.push(Inline::Nag { code: 16, source_rect: None, review: Vec::new() });
+    let pieces = PieceSet::geometric();
+    let flow_in = |doc: &ChessDoc| {
+        let (flow, _) = to_flow(doc, &options(&pieces), &mut Vec::new());
+        flow.blocks.iter().flat_map(|b| if let FlowBlock::Para(r) = b { r.clone() } else { Vec::new() }).collect::<Vec<Run>>()
+    };
+    for page in &mut doc.pages {
+        page.text_lang = LangTag::parse("pt");
+    }
+    let runs = flow_in(&doc);
+    assert!(text_of(&runs).contains("!± (As brancas estão claramente melhor)"), "{}", text_of(&runs));
+    for page in &mut doc.pages {
+        page.text_lang = LangTag::parse("nl");
+    }
+    let runs = flow_in(&doc);
+    let named = runs.iter().find(|r| r.text == " (White is clearly better)").unwrap_or_else(|| panic!("{runs:?}"));
+    assert_eq!(named.lang.as_deref(), Some("en"));
+}

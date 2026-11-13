@@ -22,6 +22,7 @@ use pdfcraft_chess::describe;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::placement::Placement;
+use pdfcraft_chess::san::Lang;
 use pdfcraft_chess::svg::to_svg;
 use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
 use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline, PageLabel};
@@ -129,21 +130,22 @@ fn family(font: Option<&TextFont>) -> Option<String> {
 }
 
 /// A paragraph's inlines as runs: moves and glyphs skipped by spelling checks, in the user's
-/// fonts where the HTML export sets them in those fonts.
-fn runs(inlines: &[Inline], o: &OfficeOptions<'_>) -> Vec<Run> {
+/// fonts where the HTML export sets them in those fonts, a sign's name after it in `lang` (or in
+/// English, said so).
+fn runs(inlines: &[Inline], o: &OfficeOptions<'_>, lang: Lang) -> Vec<Run> {
     let (figurines, signs) = (family(o.text_font), family(o.sign_font));
     // A font with no name cannot be named: its runs keep the document's font.
     let role = o.text_font.filter(|_| figurines.is_some()).map(|f| f.role);
-    spans(inlines, o.figurines, role, signs.is_some())
+    spans(inlines, o.figurines, role, signs.is_some(), lang)
         .into_iter()
-        .map(|Span { text, chess, font, link }| Run {
+        .map(|Span { text, chess, font, link, lang }| Run {
             text,
             font: match font {
                 Some(SpanFont::Figurines) => figurines.clone(),
                 Some(SpanFont::Signs) => signs.clone(),
                 None => None,
             },
-            lang: None,
+            lang: lang.map(str::to_owned),
             no_proof: chess,
             link,
         })
@@ -164,8 +166,8 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
         // A9-L1b, A2-04).
         for (_, block) in page.book_blocks() {
             match block {
-                DocBlock::Heading { level, inlines, .. } => blocks.push(FlowBlock::Heading { level: *level, runs: runs(inlines, o) }),
-                DocBlock::Paragraph { inlines, .. } => blocks.push(FlowBlock::Para(runs(inlines, o))),
+                DocBlock::Heading { level, inlines, .. } => blocks.push(FlowBlock::Heading { level: *level, runs: runs(inlines, o, lang) }),
+                DocBlock::Paragraph { inlines, .. } => blocks.push(FlowBlock::Para(runs(inlines, o, lang))),
                 DocBlock::Diagram(d) => {
                     let number = d.number.saturating_add(1);
                     // The position it shows, all told (plan A9-L6b).

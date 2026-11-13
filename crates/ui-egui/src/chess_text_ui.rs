@@ -343,7 +343,7 @@ fn status_colour(s: MoveStatus, t: &Tokens) -> Color32 {
     }
 }
 
-fn status_label(s: MoveStatus) -> &'static str {
+pub(crate) fn status_label(s: MoveStatus) -> &'static str {
     match s {
         MoveStatus::Valid => tl!("Valid move"),
         MoveStatus::Illegal => tl!("Illegal move"),

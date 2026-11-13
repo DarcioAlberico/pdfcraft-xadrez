@@ -26,6 +26,7 @@ pub mod recognize;
 pub mod repair;
 pub mod rules;
 pub mod san;
+pub mod spoken;
 pub mod stipulation;
 pub mod svg;
 pub mod texture;
