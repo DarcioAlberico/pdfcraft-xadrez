@@ -15,7 +15,6 @@
 //! moves the focus by itself), and Enter or Space opens it.
 
 use egui::{Align, Event, Id, Key, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
-use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
 use pdfcraft_engine::chess::{ChessPage, DiagramAt};
 use pdfcraft_render::DocInfo;
 
@@ -448,9 +447,11 @@ fn row(
         crate::chess_widgets::draft_dot(ui.painter(), icon, t);
     }
 
-    // ⋯ while the row is pointed at, selected or focused, or its menu is open.
-    let position = reading.and_then(BoardReading::position);
-    let fen = results.kept_fen(key.page, key.index).or(position.map(|p| p.fen.as_str()));
+    // ⋯ while the row is pointed at, selected or focused, or its menu is open. The position the
+    // diagram shows: its correction, else its reading (plan A9-I4, finding A5-05).
+    let position = results.effective(page, index);
+    let position = position.as_deref();
+    let fen = position.map(|p| p.fen.as_str());
     let mut action = None;
     let mut menu_open = false;
     let mut focused = focused;

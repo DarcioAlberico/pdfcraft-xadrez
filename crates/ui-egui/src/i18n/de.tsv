@@ -3470,3 +3470,14 @@ the move's comment	Move comment	Kommentar des Zugs
 	Keep them	Aufbewahren
 	Don't keep	Nicht aufbewahren
 	The book's PGN couldn't be saved: {e}	Die PGN des Buchs konnte nicht gespeichert werden: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Diagramm {n} wurde auf Seite {p} nicht gefunden.
+	Mate in {n}: {key}! (unique)	Matt in {n}: {key}! (einzig)
+	Mate in {n}: {key}! (not proved the only key)	Matt in {n}: {key}! (nicht als einziger Schlüssel bewiesen)
+	Mate in {n}: no key found within the search budget	Matt in {n}: im Suchbudget kein Schlüssel gefunden
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Matt in {n}: keins gefunden; bester Versuch {best}, widerlegt durch {reply}
+	Mate in {n}: none found	Matt in {n}: keins gefunden
+	Mate in {n}: {keys} ({k} keys)	Matt in {n}: {keys} ({k} Schlüssel)
+	mates in {m}	setzt in {m} matt
+	supposes castling is allowed	setzt voraus, dass Rochade erlaubt ist
+	Mate in {n}: both sides mate, so who moves stays assumed	Matt in {n}: Beide Seiten setzen matt, daher bleibt, wer am Zug ist, angenommen

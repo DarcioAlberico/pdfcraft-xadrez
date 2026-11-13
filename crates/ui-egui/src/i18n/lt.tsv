@@ -3720,3 +3720,14 @@ the move's comment	Move comment	Ėjimo komentaras
 	Keep them	Išsaugoti
 	Don't keep	Neišsaugoti
 	The book's PGN couldn't be saved: {e}	Nepavyko įrašyti knygos PGN: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	{p} puslapyje {n} diagrama nerasta.
+	Mate in {n}: {key}! (unique)	Matas per {n}: {key}! (vienintelis)
+	Mate in {n}: {key}! (not proved the only key)	Matas per {n}: {key}! (neįrodyta, kad tai vienintelis raktas)
+	Mate in {n}: no key found within the search budget	Matas per {n}: per paieškos ribą raktas nerastas
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Matas per {n}: nerasta; geriausias bandymas {best}, paneigtas {reply}
+	Mate in {n}: none found	Matas per {n}: nerasta
+	Mate in {n}: {keys} ({k} keys)	Matas per {n}: {keys} (raktų: {k})
+	mates in {m}	matuoja per {m}
+	supposes castling is allowed	laikoma, kad rokiruotė leidžiama
+	Mate in {n}: both sides mate, so who moves stays assumed	Matas per {n}: matuoja abi pusės, todėl kieno ėjimas lieka spėjamas

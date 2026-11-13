@@ -123,11 +123,10 @@ impl PdfCraftApp {
                     ed.show_kept(&draft.start);
                 }
             }
+            // Its document comes to the front, and its page is scanned first when its list doesn't
+            // hold it (plan A9-I4, finding A5-09).
             DraftAnswer::KeepEditing => {
-                if let Some(i) = self.views.iter().position(|v| v.id == draft.target.doc) {
-                    self.active = Some(i);
-                }
-                self.edit_chess_diagram(draft.target.page, draft.target.index, true);
+                self.pick_after_scan(draft.target.doc, pdfcraft_engine::chess::DiagramAt::new(draft.target.page, draft.target.index));
                 return;
             }
         }
