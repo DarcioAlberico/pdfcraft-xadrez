@@ -3543,3 +3543,14 @@ the move's comment	Move comment	Komentář k tahu
 	Keep them	Uchovat
 	Don't keep	Neuchovávat
 	The book's PGN couldn't be saved: {e}	PGN knihy se nepodařilo uložit: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Diagram {n} nebyl na stránce {p} nalezen.
+	Mate in {n}: {key}! (unique)	Mat {n}. tahem: {key}! (jediný)
+	Mate in {n}: {key}! (not proved the only key)	Mat {n}. tahem: {key}! (není prokázáno, že jde o jediný klíč)
+	Mate in {n}: no key found within the search budget	Mat {n}. tahem: v rámci limitu hledání nebyl nalezen klíč
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mat {n}. tahem: nenalezen; nejlepší pokus {best}, vyvrácený {reply}
+	Mate in {n}: none found	Mat {n}. tahem: nenalezen
+	Mate in {n}: {keys} ({k} keys)	Mat {n}. tahem: {keys} (klíčů: {k})
+	mates in {m}	matuje {m}. tahem
+	supposes castling is allowed	předpokládá, že rošáda je povolena
+	Mate in {n}: both sides mate, so who moves stays assumed	Mat {n}. tahem: matují obě strany, proto zůstává, kdo je na tahu, jen předpokládáno

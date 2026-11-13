@@ -225,31 +225,7 @@ fn boards(cells: &[Cell]) -> Vec<Board> {
         if used.get(start).copied().unwrap_or(true) {
             continue;
         }
-        // Collect eight lines one square apart, starting here, sharing a left edge.
-        let Some(first) = lines.get(start) else { continue };
-        let left = first.first().map_or(0.0, |c| c.cx);
-        let mut chosen = vec![start];
-        let mut y = first.first().map_or(0.0, |c| c.cy);
-        for (i, line) in lines.iter().enumerate().skip(start + 1) {
-            if chosen.len() == 8 {
-                break;
-            }
-            if used.get(i).copied().unwrap_or(true) {
-                continue;
-            }
-            let Some(c0) = line.first() else { continue };
-            let step = c0.cy - y;
-            // Loose on purpose: the first line may lack its leftmost glyph. `read_block` checks
-            // the grid exactly once the eight lines are known.
-            let reach = 7.0 * square + square * COLUMN_TOLERANCE;
-            let aligned = line.iter().all(|c| c.cx >= left - reach && c.cx <= left + reach);
-            if (step - square).abs() <= square * ROW_STEP_TOLERANCE && aligned {
-                chosen.push(i);
-                y = c0.cy;
-            } else if step > square * (1.0 + ROW_STEP_TOLERANCE) {
-                break;
-            }
-        }
+        let chosen = board_rows(&lines, &used, start, square);
         if chosen.len() != 8 {
             continue;
         }
@@ -267,6 +243,80 @@ fn boards(cells: &[Cell]) -> Vec<Board> {
         }
     }
     boards
+}
+
+/// The lines (indexes into `lines`, sorted by height) of a board whose top row is
+/// `lines[start]`: up to eight lines one square apart, each under the one before, not `used`, all
+/// within a board's reach of the first line's left edge.
+///
+/// The lines too close below the last row to be the next one are passed over by a binary search
+/// (plan A9-V7, A3-08: they were walked one by one, and many runs on one baseline made the search
+/// quadratic, 17 s for 200,000 glyphs), and a line's alignment is looked at only when its step
+/// fits.
+fn board_rows(lines: &[Vec<Cell>], used: &[bool], start: usize, square: f32) -> Vec<usize> {
+    let Some(first) = lines.get(start).and_then(|l| l.first()) else { return Vec::new() };
+    let left = first.cx;
+    let mut chosen = vec![start];
+    let mut y = first.cy;
+    // Loose on purpose: the first line may lack its leftmost glyph. `read_block` checks the grid
+    // exactly once the eight lines are known.
+    let reach = 7.0 * square + square * COLUMN_TOLERANCE;
+    // Too close below `y`: neither the next row nor past it. The lines are sorted by height, so
+    // these come first.
+    let too_close = |line: &Vec<Cell>, y: f32| {
+        line.first().is_some_and(|c0| {
+            let step = c0.cy - y;
+            step < square && (step - square).abs() > square * ROW_STEP_TOLERANCE
+        })
+    };
+    let mut i = start + 1;
+    while chosen.len() < 8 {
+        i += lines.get(i..).map_or(0, |rest| rest.partition_point(|line| too_close(line, y)));
+        let Some(line) = lines.get(i) else { break };
+        if !used.get(i).copied().unwrap_or(true)
+            && let Some(c0) = line.first()
+        {
+            let step = c0.cy - y;
+            if (step - square).abs() <= square * ROW_STEP_TOLERANCE {
+                if line.iter().all(|c| c.cx >= left - reach && c.cx <= left + reach) {
+                    chosen.push(i);
+                    y = c0.cy;
+                }
+            } else if step > square * (1.0 + ROW_STEP_TOLERANCE) {
+                break;
+            }
+        }
+        i += 1;
+    }
+    chosen
+}
+
+/// [`board_rows`] before plan A9-V7, every line after the start walked: its reference.
+#[cfg(test)]
+fn board_rows_one_by_one(lines: &[Vec<Cell>], used: &[bool], start: usize, square: f32) -> Vec<usize> {
+    let Some(first) = lines.get(start) else { return Vec::new() };
+    let left = first.first().map_or(0.0, |c| c.cx);
+    let mut chosen = vec![start];
+    let mut y = first.first().map_or(0.0, |c| c.cy);
+    for (i, line) in lines.iter().enumerate().skip(start + 1) {
+        if chosen.len() == 8 {
+            break;
+        }
+        if used.get(i).copied().unwrap_or(true) {
+            continue;
+        }
+        let Some(c0) = line.first() else { continue };
+        let step = c0.cy - y;
+        let reach = 7.0 * square + square * COLUMN_TOLERANCE;
+        let aligned = line.iter().all(|c| c.cx >= left - reach && c.cx <= left + reach);
+        if (step - square).abs() <= square * ROW_STEP_TOLERANCE && aligned {
+            chosen.push(i);
+            y = c0.cy;
+        } else if step > square * (1.0 + ROW_STEP_TOLERANCE) {
+            break;
+        }
+    }
+    chosen
 }
 
 /// Read eight rows of cells on a grid whose first column centre is `x0`.
@@ -317,6 +367,62 @@ fn read_block(rows: &[&Vec<Cell>], x0: f32, top: f32, square: f32) -> Option<Boa
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(256))]
+
+        /// Plan A9-V7 (A3-08): the binary search finds the rows walking every line found, on
+        /// lines anywhere (on one baseline, one square apart, too close, too far), some used.
+        #[test]
+        fn board_rows_are_those_a_walk_finds(
+            raw in proptest::collection::vec((0u32..40, 0.0f32..400.0, 1usize..9), 1..60),
+            used in proptest::collection::vec(any::<bool>(), 60),
+            square in 5.0f32..30.0,
+        ) {
+            // Heights on a coarse grid of quarter squares, so steps of a square and of nothing
+            // come up often.
+            let mut lines: Vec<Vec<Cell>> = raw
+                .iter()
+                .map(|&(row, x, n)| {
+                    let cy = row as f32 * square / 4.0;
+                    (0..n).map(|k| Cell { cx: x + k as f32 * square, cy, w: square, h: square, piece: None, square: None }).collect()
+                })
+                .collect();
+            lines.sort_by(|a, b| a[0].cy.total_cmp(&b[0].cy));
+            let used = &used[..lines.len()];
+            for start in 0..lines.len() {
+                prop_assert_eq!(board_rows(&lines, used, start, square), board_rows_one_by_one(&lines, used, start, square));
+            }
+        }
+    }
+
+    /// Plan A9-V7 (A3-08, probe c03): 200,000 empty-square glyphs in runs of four on one
+    /// baseline, the most a page is read for, are looked through in under a second in release
+    /// (17 s before). `cargo test --release -p pdfcraft-chessvision --lib perf_font_boards -- --ignored`.
+    #[test]
+    #[ignore = "a timing, in release"]
+    fn perf_font_boards_on_one_baseline() {
+        let mut glyphs = Vec::with_capacity(MAX_GLYPHS);
+        for g in 0..MAX_GLYPHS / 4 {
+            for k in 0..4 {
+                let x = (g * 120 + k * 20) as f32;
+                glyphs.push(FontGlyph {
+                    font: "ABCDEF+ChessMerida".into(),
+                    code: Some('+' as u32),
+                    text: "+".into(),
+                    rect: ViewRect::new(x, 100.0, x + 20.0, 120.0),
+                });
+            }
+        }
+        let t = std::time::Instant::now();
+        let found = candidates(&glyphs, &page(), Options::default());
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        println!("PERF font_boards_200k {ms:.0}");
+        assert!(found.is_empty());
+        assert!(ms < 1000.0, "{ms:.0} ms");
+    }
     use pdfcraft_chess::fen::format_placement;
     use pdfcraft_geom::{PageRect, Rotation};
 

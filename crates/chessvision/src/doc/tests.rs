@@ -9,6 +9,7 @@ use proptest::prelude::*;
 
 mod board;
 mod compat;
+mod errata;
 mod fragment;
 mod html;
 mod markdown;
