@@ -24,6 +24,11 @@
 //! the reader could not play and the PGN placed is shown as read from the PGN, a move the PGN has
 //! elsewhere as in conflict. Saving records it under the saved file's keys
 //! ([`PdfCraftApp::rekey_book_pgn`]).
+//!
+//! **A protected document** (plan A9-I1c, [`crate::chess_keep`]): an encrypted document's PGN and
+//! decisions are written only once the user says so, asked once; until then, after a no, and
+//! always for a document that doesn't allow copying, they are changed in memory only
+//! ([`PdfCraftApp::book_pgn_place`]) and the session keeps working with them.
 
 use std::sync::Arc;
 
@@ -34,6 +39,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::doc::ChessPage;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
 use pdfcraft_engine::chess::reference_store::{Choice, Decision, Decisions, Kept, KeptPgn, Loaded, Reference, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
+use pdfcraft_engine::chess::store::StoreKind;
 
 use crate::PdfCraftApp;
 use crate::chess_store_ui::{UiStore, in_store};
@@ -55,51 +61,79 @@ impl UiStore<Reference> {
         in_store!(&self.place, s => s.load(keys, pages))
     }
 
-    /// The writes say why not in words that follow "was not kept as the book's PGN:".
-    fn set(&mut self, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), String> {
-        self.writable()?;
-        let out = in_store!(&self.place, s => s.set(keys, pages, pgn, has_move)).map_err(|e| e.to_string())?;
-        self.wrote();
+    /// The writes go to the store when `write`, else to memory only (plan A9-I1c,
+    /// [`PdfCraftApp::book_pgn_place`]); they say why not in words that follow "was not kept as the
+    /// book's PGN:".
+    fn set(&mut self, write: bool, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), String> {
+        if write {
+            self.writable()?;
+        }
+        let out = in_store!(self.at(write), s => s.set(keys, pages, pgn, has_move)).map_err(|e| e.to_string())?;
+        if write {
+            self.wrote();
+        }
         Ok(out)
     }
 
-    fn clear(&mut self, keys: &DocKeys, pages: usize) -> Result<bool, String> {
-        self.writable()?;
-        let cleared = in_store!(&self.place, s => s.clear(keys, pages, now())).map_err(|e| e.to_string())?;
-        if cleared {
+    fn clear(&mut self, write: bool, keys: &DocKeys, pages: usize) -> Result<bool, String> {
+        if write {
+            self.writable()?;
+        }
+        let cleared = in_store!(self.at(write), s => s.clear(keys, pages, now())).map_err(|e| e.to_string())?;
+        if cleared && write {
             self.wrote();
         }
         Ok(cleared)
     }
 
-    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision, page: Option<&ChessPage>) -> Result<Loaded, String> {
-        self.writable()?;
-        let out = in_store!(&self.place, s => s.decide(keys, pages, decision, page)).map_err(|e| e.to_string())?;
-        self.wrote();
+    fn decide(&mut self, write: bool, keys: &DocKeys, pages: usize, decision: Decision, page: Option<&ChessPage>) -> Result<Loaded, String> {
+        if write {
+            self.writable()?;
+        }
+        let out = in_store!(self.at(write), s => s.decide(keys, pages, decision, page)).map_err(|e| e.to_string())?;
+        if write {
+            self.wrote();
+        }
         Ok(out)
     }
 
     /// The decisions made on `page` taken to its moves as read now (plan A9-L1b); nothing is
     /// written when none moved, nor while what was saved before is still to be kept aside (the
     /// next reading tries again).
-    fn rematch(&mut self, keys: &DocKeys, pages: usize, page: &ChessPage) -> Result<Option<Loaded>, String> {
-        if self.writable().is_err() {
+    fn rematch(&mut self, write: bool, keys: &DocKeys, pages: usize, page: &ChessPage) -> Result<Option<Loaded>, String> {
+        if write && self.writable().is_err() {
             return Ok(None);
         }
-        let out = in_store!(&self.place, s => s.rematch(keys, pages, page)).map_err(|e| e.to_string())?;
-        if out.is_some() {
+        let out = in_store!(self.at(write), s => s.rematch(keys, pages, page)).map_err(|e| e.to_string())?;
+        if out.is_some() && write {
             self.wrote();
         }
         Ok(out)
     }
 
-    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
-        self.writable()?;
-        let moved = in_store!(&self.place, s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
-        if moved {
+    fn rekey(&mut self, write: bool, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
+        if write {
+            self.writable()?;
+        }
+        let moved = in_store!(self.at(write), s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
+        if moved && write {
             self.wrote();
         }
         Ok(moved)
+    }
+
+    /// The document's PGN and decisions changed in memory while they could not be written, merged
+    /// into the store now that they may be (plan A9-I1c): what the store keeps then.
+    fn release(&mut self, keys: &DocKeys, pages: usize) -> Result<Loaded, String> {
+        let held = in_store!(self.at(false), s => s.load(keys, pages)).map_err(|e| e.to_string())?;
+        self.writable()?;
+        let (_, loaded) = in_store!(&self.place, s => s.update(keys, pages, |f| {
+            Reference::merge(f, &held.file);
+            Ok::<(), ReferenceStoreError>(())
+        }))
+        .map_err(|e| e.to_string())?;
+        self.wrote();
+        Ok(loaded)
     }
 }
 
@@ -193,6 +227,8 @@ impl BookPgnView {
 struct DocPgn {
     doc: DocId,
     keys: DocKeys,
+    /// It is changed in the store's memory, not written (plan A9-I1c).
+    held: bool,
 }
 
 /// The books' PGNs in the app.
@@ -295,8 +331,52 @@ impl PdfCraftApp {
         let sibling = if kept.is_none() { find_sibling_pgn(&keys) } else { None };
         self.chess.doc_mut(id).pgn_sibling = sibling;
         self.session.set_chess_book_pgn(id, kept);
-        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held: false });
         true
+    }
+
+    /// Where document `id`'s PGN and decisions are changed (plan A9-I1c, [`crate::chess_keep`]):
+    /// in the store while they may be written; else in the store's memory, never saved, which
+    /// starts from what the store holds of them. Held in memory, they are merged into the store
+    /// once they may be written, and stay held while that fails (said). Whether a change goes to
+    /// the store; why not when even the memory refused.
+    pub(crate) fn book_pgn_place(&mut self, id: DocId) -> Result<bool, String> {
+        let write = self.chess_may_write(id);
+        if !self.book_pgn_for(id) {
+            return Ok(write);
+        }
+        let Some(d) = self.chess.book_pgns.doc(id) else { return Ok(write) };
+        let (keys, held) = (d.keys.clone(), d.held);
+        let pages = self.session.get(id).map_or(0, |d| d.info.pages.len());
+        let set_held = |app: &mut Self, held: bool| {
+            if let Some(d) = app.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
+                d.held = held;
+            }
+        };
+        match (write, held) {
+            (true, true) => match self.chess.book_pgns.store.release(&keys, pages) {
+                Ok(loaded) => {
+                    set_held(self, false);
+                    self.say_book_pgn_set_aside(&loaded);
+                    Ok(true)
+                }
+                Err(e) => {
+                    self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
+                    Ok(false)
+                }
+            },
+            (false, false) => {
+                // What the store holds now, else nothing.
+                let file = match self.chess.book_pgns.store.load(&keys, pages) {
+                    Ok(loaded) => loaded.file,
+                    Err(_) => <Reference as StoreKind>::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, pages)),
+                };
+                self.chess.book_pgns.store.hold(&keys, pages, file)?;
+                set_held(self, true);
+                Ok(false)
+            }
+            _ => Ok(write),
+        }
     }
 
     /// Document `id`'s PGN, indexed, when it keeps one.
@@ -403,9 +483,10 @@ impl PdfCraftApp {
             Err(e) => return self.notify(refused(&e)),
         };
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
-        let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now())
-            .map_err(|e| e.to_string())
-            .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes), |san| index.has_move(san)));
+        let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now()).map_err(|e| e.to_string()).and_then(|pgn| {
+            let write = self.book_pgn_place(id)?;
+            self.chess.book_pgns.store.set(write, &keys, pages, pgn.read_from(bytes), |san| index.has_move(san))
+        });
         // The decisions stay, with the same PGN (plan A9-F1) and with another (decision D25, plan
         // A9-G4); those naming a move the new one doesn't have are said.
         let (decisions, unmatched) = match kept {
@@ -415,8 +496,9 @@ impl PdfCraftApp {
             }
             Err(e) => return self.notify(refused(&e)),
         };
+        let held = self.chess.book_pgns.doc(id).is_some_and(|d| d.held);
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
-        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held });
         self.session.set_chess_book_pgn(id, Some(BookPgn { name: Some(name.to_owned()), index: Arc::new(index), decisions }));
         // It keeps one now: nothing beside it to offer (Remove the book's PGN looks again), and the
         // whole book is linked to another PGN no more.
@@ -489,7 +571,8 @@ impl PdfCraftApp {
         if let Some(page) = &page {
             decision = decision.placed_on(page);
         }
-        match self.chess.book_pgns.store.decide(&keys, pages, decision, page.as_ref()) {
+        let decided = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.decide(write, &keys, pages, decision, page.as_ref()));
+        match decided {
             Ok(loaded) => {
                 self.say_book_pgn_set_aside(&loaded);
                 if let Some(kept) = self.session.chess_book_pgn(id) {
@@ -525,7 +608,8 @@ impl PdfCraftApp {
         }
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        match self.chess.book_pgns.store.rematch(&keys, pages, page) {
+        let rematched = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.rematch(write, &keys, pages, page));
+        match rematched {
             Ok(Some(loaded)) => {
                 self.say_book_pgn_set_aside(&loaded);
                 let pgn = BookPgn { decisions: Decisions::of(&loaded.file), ..BookPgn::clone(&kept) };
@@ -541,11 +625,13 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        match self.chess.book_pgns.store.clear(&keys, pages) {
+        let cleared = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.clear(write, &keys, pages));
+        match cleared {
             Ok(cleared) => {
+                let held = self.chess.book_pgns.doc(id).is_some_and(|d| d.held);
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = find_sibling_pgn(&keys);
-                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys });
+                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held });
                 self.session.set_chess_book_pgn(id, None);
                 let view = self.chess.doc_mut(id);
                 view.pgn_sibling = sibling;
@@ -575,8 +661,9 @@ impl PdfCraftApp {
     pub(crate) fn rekey_book_pgn(&mut self, id: DocId) {
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let Some(old) = self.chess.book_pgns.doc(id).map(|d| d.keys.clone()).filter(|k| *k != keys) else { return };
-        match self.chess.book_pgns.store.rekey(&old, &keys, pages) {
+        let Some((old, held)) = self.chess.book_pgns.doc(id).map(|d| (d.keys.clone(), d.held)).filter(|(k, _)| *k != keys) else { return };
+        // Held in memory: it moves there, still not written (plan A9-I1c).
+        match self.chess.book_pgns.store.rekey(!held, &old, &keys, pages) {
             Ok(_) => {
                 if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
                     d.keys = keys;

@@ -39,8 +39,9 @@
 //!   ([`DocKeys`]), and found again by them when the document is opened. Saving the document can
 //!   change its keys (a first `/ID`, a new size or path), so the collection takes the new ones
 //!   right after every save ([`PdfCraftApp::rekey_chess_games`]). A protected document's games
-//!   (encrypted, or copying not allowed) are written only once the user allows it, asked once
-//!   per document and session.
+//!   follow the one rule for what is kept of it ([`crate::chess_keep`], plan A9-I1c): an
+//!   encrypted one's are written only once the user says so, asked once per document with its
+//!   corrections and book's PGN; a document's that doesn't allow copying, never.
 //! - **PGN files.** Save PGN… writes the game shown, Export… (Save all games as PGN…) the whole
 //!   collection in list order, to a file the user chooses (a download on the web); Open PGN… adds
 //!   every game of a file.
@@ -64,6 +65,7 @@ use crate::PdfCraftApp;
 use crate::chess_autosave::{self, Blocked, Store};
 use crate::chess_board_ui::{BoardState, Source};
 use crate::chess_history::{self, ChessEdit};
+use crate::chess_keep::Keeping;
 use crate::chess_trash::Trashed;
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
@@ -241,8 +243,10 @@ struct Autosave {
     stored: bool,
     /// Why the last write did not happen.
     blocked: Option<Blocked>,
-    /// The document is encrypted or does not allow copying: ask before writing.
-    protected: bool,
+    /// Whether its games may be written: the document's rule and the user's answer (plan A9-I1c).
+    keeping: Keeping,
+    /// A write waits for the user's answer: the app asks.
+    ask: bool,
 }
 
 /// A change to the list of games that Undo takes back (wave 10, U2): a game deleted, moved or
@@ -1041,8 +1045,6 @@ pub struct ChessGames {
     current: Option<DocId>,
     /// Where collections are written.
     store: Store,
-    /// The user's answer, by collection, to "Save chess games for this protected document?".
-    consent: HashMap<String, bool>,
     /// Notices already given (said once).
     said: HashSet<String>,
     /// Notices for the user, shown at the next frame.
@@ -1355,7 +1357,7 @@ impl ChessGames {
 
     /// Give document `id` (named by `keys`) its collection: one kept from earlier this session,
     /// else the one stored for it, else a blank one (or the one made before its keys were known).
-    fn attach(&mut self, id: DocId, keys: DocKeys, protected: bool) {
+    fn attach(&mut self, id: DocId, keys: DocKeys, keeping: Keeping) {
         let pending = self.docs.remove(&id);
         let blank = pending.as_ref().is_none_or(|c| !c.has_content());
         let mut restored = None;
@@ -1391,15 +1393,31 @@ impl ChessGames {
             (None, None) => ChessCollection::new(keys.clone(), new_cid()),
         };
         c.keys = keys;
-        c.autosave.protected = protected;
+        c.autosave.keeping = keeping;
         self.docs.insert(id, c);
+    }
+
+    /// Whether document `id`'s games may be written now (plan A9-I1c); once they may, the games
+    /// that waited are written at the next autosave.
+    pub(crate) fn keep_games(&mut self, id: DocId, keeping: Keeping) {
+        if let Some(c) = self.docs.get_mut(&id) {
+            if keeping == Keeping::Yes && c.autosave.keeping != Keeping::Yes {
+                c.autosave.force = true;
+            }
+            c.autosave.keeping = keeping;
+        }
+    }
+
+    /// The documents whose games wait for the user's answer before they are written, taken.
+    pub(crate) fn take_asks(&mut self) -> Vec<DocId> {
+        self.docs.iter_mut().filter_map(|(id, c)| std::mem::take(&mut c.autosave.ask).then_some(*id)).collect()
     }
 
     /// Document `id` was closed: its games are written now, or kept in memory when they can't be.
     fn detach(&mut self, id: DocId) {
         let Some(mut c) = self.docs.remove(&id) else { return };
         c.trash_removed();
-        let mut w = Writer { store: &mut self.store, consent: &self.consent, said: &mut self.said, notes: &mut self.notes };
+        let mut w = Writer { store: &mut self.store, said: &mut self.said, notes: &mut self.notes };
         w.tick(&mut c, None);
         if c.has_content() && !c.in_store() {
             self.closed.push(c);
@@ -1409,8 +1427,8 @@ impl ChessGames {
     /// Write the collections changed `DEBOUNCE_SECS` ago or more (all changed ones when `now` is
     /// `None`).
     fn autosave(&mut self, now: Option<f64>) {
-        let ChessGames { docs, none, closed, store, consent, said, notes, .. } = self;
-        let mut w = Writer { store, consent, said, notes };
+        let ChessGames { docs, none, closed, store, said, notes, .. } = self;
+        let mut w = Writer { store, said, notes };
         for c in docs.values_mut().chain(std::iter::once(none)) {
             c.trash_removed();
             w.tick(c, now);
@@ -1426,7 +1444,6 @@ impl ChessGames {
 /// Writes collections to the store, telling the user once why one wasn't.
 struct Writer<'a> {
     store: &'a mut Store,
-    consent: &'a HashMap<String, bool>,
     said: &'a mut HashSet<String>,
     notes: &'a mut Vec<String>,
 }
@@ -1472,19 +1489,17 @@ impl Writer<'_> {
             c.autosave.saved = fp;
             return true;
         }
-        if c.autosave.protected {
-            match self.consent.get(&c.cid) {
-                Some(true) => {}
-                Some(false) => {
-                    c.autosave.saved = fp;
-                    return false;
-                }
-                None => {
-                    self.say(format!("ask {}", c.cid), || {
-                        tl!("This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.").to_string()
-                    });
-                    return false;
-                }
+        match c.autosave.keeping {
+            Keeping::Yes => {}
+            // Not kept this session (plan A9-I1c): copying not allowed, or the user said no.
+            Keeping::No => {
+                c.autosave.saved = fp;
+                return false;
+            }
+            // The user is asked first, once per document.
+            Keeping::Ask => {
+                c.autosave.ask = true;
+                return false;
             }
         }
         let keys = ChessGames::store_keys(c);
@@ -1584,8 +1599,6 @@ pub enum GamesAction {
     Open,
     Save,
     SaveAll,
-    /// The answer to "Save chess games for this protected document?".
-    Consent(bool),
     /// Name game `n` (its White, Black and Event tags).
     Rename(usize, GameNames),
     /// A copy of game `n`, after it.
@@ -1932,7 +1945,7 @@ fn row_menu(ui: &mut egui::Ui, targets: &[usize], len: usize) -> Option<RowChoic
 /// The games of the document shown: the list, what can be done with them, and why they aren't
 /// autosaved when they aren't.
 pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) -> Option<GamesAction> {
-    let ChessGames { docs, none, current, store, consent, list, .. } = games;
+    let ChessGames { docs, none, current, list, .. } = games;
     let c: &ChessCollection = current.and_then(|id| docs.get(&id)).unwrap_or(none);
     // A question about a game that is gone (deleted, or another document shown) is dropped.
     if list.renaming.as_ref().is_some_and(|r| c.position(r.uid).is_none()) {
@@ -1951,22 +1964,6 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
         header = header.open(Some(true));
     }
     header.show(ui, |ui| {
-        if c.autosave.protected && store.is_on() && c.has_content() && !consent.contains_key(&c.cid) {
-            ui.label(egui::RichText::new(tl!("Save chess games for this protected document?")).small().strong());
-            ui.label(
-                egui::RichText::new(tl!("They are kept in the app's own folder, unencrypted, so they come back when the document is opened again."))
-                    .small()
-                    .color(t.text_muted),
-            );
-            ui.horizontal(|ui| {
-                if ui.small_button(tl!("Save them")).clicked() {
-                    action = Some(GamesAction::Consent(true));
-                }
-                if ui.small_button(tl!("Don't save")).clicked() {
-                    action = Some(GamesAction::Consent(false));
-                }
-            });
-        }
         let why = c.autosave.blocked.as_ref().map(blocked_text);
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
@@ -2384,6 +2381,7 @@ impl PdfCraftApp {
             self.chess_games_action(GamesAction::NewFrom(Some(node)));
         }
         self.chess.games.autosave(Some(now));
+        self.ask_chess_games_keep();
         self.book_pgn_tick();
         #[cfg(target_arch = "wasm32")]
         self.take_chess_uploads();
@@ -2396,7 +2394,16 @@ impl PdfCraftApp {
     pub fn flush_chess_games(&mut self) {
         self.sync_chess_docs();
         self.chess.games.autosave(None);
+        self.ask_chess_games_keep();
         self.show_chess_notes();
+    }
+
+    /// The documents whose games wait for the user's answer before they are written: asked
+    /// about (plan A9-I1c, once per document).
+    fn ask_chess_games_keep(&mut self) {
+        for id in self.chess.games.take_asks() {
+            self.chess.ask_keep(id);
+        }
     }
 
     /// [`Self::flush_chess_games`], then hand the web's value to eframe's `Storage`.
@@ -2456,15 +2463,9 @@ impl PdfCraftApp {
         }
     }
 
-    /// The keys document `id` has now, and whether it is protected.
-    fn chess_doc_state(&self, id: DocId) -> Option<(DocKeys, bool)> {
-        Some((self.session.get(id)?.doc_keys(), self.chess_doc_protected(id)?))
-    }
-
-    /// Whether document `id` is protected: encrypted, or copying not allowed. Its games are
-    /// written only if the user allows it (the rule recovery follows for its snapshots).
-    fn chess_doc_protected(&self, id: DocId) -> Option<bool> {
-        self.session.get(id).map(|doc| doc.info.encrypted || !doc.allows_copying())
+    /// The keys document `id` has now, and whether its games may be written (plan A9-I1c).
+    fn chess_doc_state(&self, id: DocId) -> Option<(DocKeys, Keeping)> {
+        Some((self.session.get(id)?.doc_keys(), self.chess_keeping(id)))
     }
 
     /// Match the collections and the chess views to the open documents: the one shown, new ones
@@ -2487,15 +2488,13 @@ impl PdfCraftApp {
         for id in open {
             let known = self.chess.games.docs.get(&id).is_some_and(|c| !c.keys.is_empty());
             if known {
-                // Unlocking or a new permission can change this.
-                let protected = self.chess_doc_protected(id);
-                if let (Some(p), Some(c)) = (protected, self.chess.games.docs.get_mut(&id)) {
-                    c.autosave.protected = p;
-                }
+                // Unlocking, a new permission or the user's answer can change this.
+                let keeping = self.chess_keeping(id);
+                self.chess.games.keep_games(id, keeping);
                 continue;
             }
-            if let Some((keys, protected)) = self.chess_doc_state(id) {
-                self.chess.games.attach(id, keys, protected);
+            if let Some((keys, keeping)) = self.chess_doc_state(id) {
+                self.chess.games.attach(id, keys, keeping);
             }
         }
         // The page labels the games' names say, taken again when the document changed.
@@ -2512,19 +2511,20 @@ impl PdfCraftApp {
     /// Document `id` was saved: its collection takes the document's keys now (a first `/ID`, a
     /// new size or path) and is written under them at once, so the next open finds it.
     pub(crate) fn rekey_chess_games(&mut self, id: DocId) {
-        let Some((keys, protected)) = self.chess_doc_state(id) else { return };
+        let Some((keys, keeping)) = self.chess_doc_state(id) else { return };
         let games = &mut self.chess.games;
         let Some(c) = games.docs.get_mut(&id) else { return };
         if c.keys == keys {
             return;
         }
         c.keys = keys;
-        c.autosave.protected = protected;
-        let ChessGames { docs, store, consent, said, notes, .. } = games;
-        let mut w = Writer { store, consent, said, notes };
+        c.autosave.keeping = keeping;
+        let ChessGames { docs, store, said, notes, .. } = games;
+        let mut w = Writer { store, said, notes };
         if let Some(c) = docs.get_mut(&id) {
             w.write(c);
         }
+        self.ask_chess_games_keep();
         self.show_chess_notes();
     }
 
@@ -2683,16 +2683,6 @@ impl PdfCraftApp {
             GamesAction::Open => self.open_chess_pgn(),
             GamesAction::Save => self.save_chess_games_pgn(PgnGames::Shown),
             GamesAction::SaveAll => self.save_chess_games_pgn(PgnGames::All),
-            GamesAction::Consent(yes) => {
-                let games = &mut self.chess.games;
-                let cid = games.collection().cid.clone();
-                games.consent.insert(cid, yes);
-                if yes {
-                    games.collection_mut().autosave.force = true;
-                    games.autosave(None);
-                    self.show_chess_notes();
-                }
-            }
         }
     }
 

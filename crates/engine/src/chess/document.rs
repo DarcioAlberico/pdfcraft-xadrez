@@ -575,6 +575,8 @@ impl Session {
                                 ocr_frames = read.frames;
                                 ocr_larger = read.larger;
                                 ocr_bolder = read.bolder;
+                                // What the reading left out, said with the page (plan A9-V2).
+                                notes.extend(read.notes.into_iter().map(|n| (page.page, n)));
                                 ocr_text = read.text;
                                 text = &ocr_text;
                             }

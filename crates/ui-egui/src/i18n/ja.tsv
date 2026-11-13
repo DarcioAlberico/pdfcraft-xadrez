@@ -3464,3 +3464,10 @@ the move's comment	Move comment	手のコメント
 	The work stopped on an internal error.	内部エラーにより処理が停止しました。
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	ブラウザーでは、{n} ページを超える本の書き出しや PGN への合わせ込みはまだできません。終わるまでタブが応答しなくなるためです。デスクトップ版はバックグラウンドで行います。
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	この保護された文書でのチェスの作業を保存しますか?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	「{name}」は暗号化されています。このアプリは、各文書の図の修正、本の PGN、チェスの対局を暗号化せずにこのコンピューターに保存し、文書を再び開いたときに戻せるようにします。文字のサンプルはそのために選んだフォルダーに保存されます。
+	Not kept, they last only until the document is closed.	保存しない場合、文書を閉じるまでしか残りません。
+	Keep them	保存する
+	Don't keep	保存しない
+	The book's PGN couldn't be saved: {e}	本の PGN を保存できませんでした: {e}

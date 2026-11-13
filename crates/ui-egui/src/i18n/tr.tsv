@@ -3458,3 +3458,10 @@ the move's comment	Move comment	Hamlenin yorumu
 	The work stopped on an internal error.	İş bir iç hata nedeniyle durdu.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Tarayıcıda {n} sayfadan uzun bir kitap henüz dışa aktarılamaz veya PGN ile hizalanamaz: sekme sonuna kadar yanıt vermez olurdu. Masaüstü uygulaması bunu arka planda yapar.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Bu korumalı belgedeki satranç çalışmanız saklansın mı?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	“{name}” şifreli. Uygulama her belgenin diyagram düzeltmelerini, kitabın PGN’sini ve satranç oyunlarını bu bilgisayarda şifresiz saklar; böylece belge yeniden açıldığında geri gelirler. Karakter örnekleri onlar için seçilen klasöre gider.
+	Not kept, they last only until the document is closed.	Saklanmazlarsa yalnızca belge kapatılana kadar kalırlar.
+	Keep them	Sakla
+	Don't keep	Saklama
+	The book's PGN couldn't be saved: {e}	Kitabın PGN’si kaydedilemedi: {e}

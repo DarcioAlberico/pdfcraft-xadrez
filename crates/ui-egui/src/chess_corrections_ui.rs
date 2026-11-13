@@ -11,6 +11,11 @@
 //! ([`crate::chess_store_ui::UiStore`], plan A9-I1b): on the web a value that can't be read is
 //! kept aside, never written over, and another tab's changes are merged in before writing.
 //!
+//! **A protected document** (plan A9-I1c, [`crate::chess_keep`]): an encrypted document's
+//! corrections are written only once the user says so, asked once; until then, after a no, and
+//! always for a document that doesn't allow copying, they are changed in memory only
+//! ([`PdfCraftApp::chess_corrections_place`]) and the session keeps working with them.
+//!
 //! **What uses them.** Each document's corrections are given to the session as soon as its scan
 //! results are kept ([`PdfCraftApp::refresh_chess_kinds`]), so the Text tab, the exports and the
 //! lichess links read the corrected positions (P3a3); the Diagrams list and the marks on the page
@@ -57,26 +62,46 @@ impl UiStore<CorrectionsKind> {
     }
 
     /// A change, after the document's entries are taken out of a file several books shared (plan
-    /// A9-G1b). Why not, in words that follow "couldn't be saved:".
+    /// A9-G1b): written when `write`, else made in memory only (plan A9-I1c,
+    /// [`PdfCraftApp::chess_corrections_place`]). Why not, in words that follow "couldn't be
+    /// saved:".
     pub(crate) fn update<R>(
         &mut self,
+        write: bool,
         keys: &DocKeys,
         fingerprints: &[String],
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
     ) -> Result<(R, Loaded), String> {
-        self.writable()?;
-        let out = in_store!(&self.place, s => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l))).map_err(|e| e.to_string())?;
-        self.wrote();
+        if write {
+            self.writable()?;
+        }
+        let out = in_store!(self.at(write), s => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l))).map_err(|e| e.to_string())?;
+        if write {
+            self.wrote();
+        }
         Ok(out)
     }
 
-    fn rekey(&mut self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
-        self.writable()?;
-        let moved = in_store!(&self.place, s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
-        if moved {
+    fn rekey(&mut self, write: bool, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
+        if write {
+            self.writable()?;
+        }
+        let moved = in_store!(self.at(write), s => s.rekey(old, new, pages)).map_err(|e| e.to_string())?;
+        if moved && write {
             self.wrote();
         }
         Ok(moved)
+    }
+
+    /// The document's corrections changed in memory while they could not be written, merged into
+    /// the store now that they may be (plan A9-I1c): what the store keeps then.
+    fn release(&mut self, keys: &DocKeys, fingerprints: &[String]) -> Result<Loaded, String> {
+        let (held, _) = in_store!(self.at(false), s => s.load_with(keys, fingerprints)).map_err(|e| e.to_string())?;
+        self.update(true, keys, fingerprints, |f| {
+            f.merge(&held.file);
+            Ok(())
+        })
+        .map(|(_, loaded)| loaded)
     }
 }
 
@@ -97,6 +122,8 @@ pub(crate) struct DocCorrections {
     pub doc: DocId,
     /// The keys they were loaded under: a save that changes them moves the corrections along.
     pub keys: DocKeys,
+    /// They are changed in the store's memory, not written (plan A9-I1c).
+    pub held: bool,
 }
 
 /// The corrections in the app.
@@ -187,8 +214,53 @@ impl PdfCraftApp {
             }
         };
         self.session.set_chess_corrections(id, Some(file));
-        self.chess.corrections.docs.push(DocCorrections { doc: id, keys });
+        self.chess.corrections.docs.push(DocCorrections { doc: id, keys, held: false });
         true
+    }
+
+    /// Where document `id`'s corrections are changed (plan A9-I1c, [`crate::chess_keep`]): in the
+    /// store while they may be written; else in the store's memory, never saved, which starts from
+    /// what the store holds of them. Corrections held in memory are merged into the store once they
+    /// may be written, and stay held while that fails (said). Whether a change goes to the store;
+    /// why not when even the memory refused.
+    pub(crate) fn chess_corrections_place(&mut self, id: DocId) -> Result<bool, String> {
+        let write = self.chess_may_write(id);
+        let Some(d) = self.chess.corrections.docs.iter().find(|d| d.doc == id) else { return Ok(write) };
+        let (keys, held) = (d.keys.clone(), d.held);
+        let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
+        let set_held = |app: &mut Self, held: bool| {
+            if let Some(d) = app.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
+                d.held = held;
+            }
+        };
+        match (write, held) {
+            (true, true) => match self.chess.corrections.store.release(&keys, &fingerprints) {
+                Ok(loaded) => {
+                    set_held(self, false);
+                    self.chess.corrections.said = false;
+                    self.say_corrections_set_aside(&loaded);
+                    self.chess_corrections_kept(id, keys, loaded.file);
+                    Ok(true)
+                }
+                Err(why) => {
+                    self.say_corrections_not_kept(&why);
+                    Ok(false)
+                }
+            },
+            (false, false) => {
+                // What the store holds now, else what the session holds.
+                let file = match self.chess.corrections.store.load(&keys, &fingerprints) {
+                    Ok(loaded) => loaded.file,
+                    Err(_) => {
+                        self.session.chess_corrections(id).map_or_else(|| CorrectionFile::new(Default::default()), |f| CorrectionFile::clone(&f))
+                    }
+                };
+                self.chess.corrections.store.hold(&keys, fingerprints.len(), file)?;
+                set_held(self, true);
+                Ok(false)
+            }
+            _ => Ok(write),
+        }
     }
 
     /// Document `id`'s corrections, for a reading made in a session of its own (the Text tab's
@@ -335,8 +407,9 @@ impl PdfCraftApp {
         let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
+        let write = self.chess_corrections_place(id)?;
         let ((uid, before), loaded) =
-            self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.replace(new, at, fingerprints.as_ref()))?;
+            self.chess.corrections.store.update(write, &keys, fingerprints.pages(), |f| f.replace(new, at, fingerprints.as_ref()))?;
         self.chess.corrections.said = false;
         self.say_corrections_set_aside(&loaded);
         self.chess_corrections_kept(id, keys, loaded.file);
@@ -353,8 +426,9 @@ impl PdfCraftApp {
         let fingerprints = self.session.chess_fingerprints(id).ok_or_else(closed)?;
         let keys = self.session.get(id).ok_or_else(closed)?.doc_keys();
         let at = now();
+        let write = self.chess_corrections_place(id)?;
         let (_, loaded) =
-            self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.follow_page(uid, page, at, fingerprints.as_ref()))?;
+            self.chess.corrections.store.update(write, &keys, fingerprints.pages(), |f| f.follow_page(uid, page, at, fingerprints.as_ref()))?;
         self.say_corrections_set_aside(&loaded);
         self.chess_corrections_kept(id, keys, loaded.file);
         Ok(())
@@ -466,9 +540,11 @@ impl PdfCraftApp {
         let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
         let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
         let at = now();
-        let gone = self.chess.corrections.store.update(&keys, &fingerprints, |f| {
-            let before = f.live().find(|e| e.uid == uid).cloned();
-            if f.delete(&uid, at) { Ok(before) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) }
+        let gone = self.chess_corrections_place(id).and_then(|write| {
+            self.chess.corrections.store.update(write, &keys, &fingerprints, |f| {
+                let before = f.live().find(|e| e.uid == uid).cloned();
+                if f.delete(&uid, at) { Ok(before) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) }
+            })
         });
         let before = match gone {
             Ok((before, loaded)) => {
@@ -515,7 +591,7 @@ impl PdfCraftApp {
         self.session.set_chess_corrections(id, Some(file));
         match self.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
             Some(d) => d.keys = keys,
-            None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys }),
+            None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys, held: false }),
         }
         self.refresh_chess_kinds(id);
     }
@@ -525,8 +601,9 @@ impl PdfCraftApp {
     pub(crate) fn rekey_chess_corrections(&mut self, id: DocId) {
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let Some(old) = self.chess.corrections.doc(id).map(|d| d.keys.clone()).filter(|k| *k != keys) else { return };
-        match self.chess.corrections.store.rekey(&old, &keys, pages) {
+        let Some((old, held)) = self.chess.corrections.doc(id).map(|d| (d.keys.clone(), d.held)).filter(|(k, _)| *k != keys) else { return };
+        // Held in memory: they move there, still not written (plan A9-I1c).
+        match self.chess.corrections.store.rekey(!held, &old, &keys, pages) {
             Ok(_) => {
                 if let Some(d) = self.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
                     d.keys = keys;
