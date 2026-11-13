@@ -938,4 +938,50 @@ mod tests {
         assert_eq!(anchors[1][0], (10.0, 50.0));
         assert_eq!(anchors[2][2], (110.0, 135.0));
     }
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(48))]
+
+        /// Plan A9-Q3b (A7-08): any raster, blocks of ink and noise over a board or not, at any
+        /// DPI and through a shrink: candidates or none, never a panic, each box finite and
+        /// ordered (inside the page where a pixel is a point), best score first.
+        #[test]
+        fn any_raster_gives_candidates_inside_the_page(
+            width in 1u32..160,
+            height in 1u32..160,
+            blocks in proptest::collection::vec((0u32..160, 0u32..160, 1u32..120, 1u32..120, proptest::prelude::any::<u8>()), 0..12),
+            noise in proptest::collection::vec((0usize..25_600, proptest::prelude::any::<u8>()), 0..400),
+            board in proptest::option::of((20.0f64..140.0, 20.0f64..140.0, 40.0f64..150.0, 0.0f64..4.0, -20.0f64..20.0)),
+            dpi in proptest::prop_oneof![proptest::prelude::Just(72.0f32), 1.0f32..400.0, proptest::prelude::Just(f32::NAN), proptest::prelude::Just(0.0f32)],
+            max_pixels in proptest::prop_oneof![proptest::prelude::Just(MAX_PAGE_PIXELS), 1usize..4_000],
+        ) {
+            let mut page = Canvas::new(width, height);
+            if let Some((cx, cy, side, frame, degrees)) = board {
+                page.board(cx, cy, side, frame, degrees);
+            }
+            for (x, y, w, h, v) in blocks {
+                page.fill(x, y, x.saturating_add(w), y.saturating_add(h), v);
+            }
+            for (at, v) in noise {
+                if let Some(px) = page.data.get_mut(at) {
+                    *px = v;
+                }
+            }
+            let geometry = PageGeometry::new(PageRect { x0: 0.0, y0: 0.0, x1: width as f32, y1: height as f32 }, Rotation::R0).unwrap();
+            let found = candidates_capped(&page.image(), &geometry, dpi, max_pixels);
+            if !(dpi.is_finite() && dpi > 0.0) {
+                proptest::prop_assert!(found.is_empty());
+            }
+            for c in &found {
+                let b = c.bbox_user;
+                proptest::prop_assert!([b.x0, b.y0, b.x1, b.y1].iter().all(|v| v.is_finite()), "{:?}", b);
+                proptest::prop_assert!(b.x0 <= b.x1 && b.y0 <= b.y1, "{:?}", b);
+                // At 72 DPI a pixel is a point: the raster is the page.
+                if dpi == 72.0 {
+                    proptest::prop_assert!(b.x0 >= -1.0 && b.y0 >= -1.0 && b.x1 <= width as f32 + 1.0 && b.y1 <= height as f32 + 1.0, "{:?}", b);
+                }
+                proptest::prop_assert!(c.score.is_finite());
+            }
+            proptest::prop_assert!(found.windows(2).all(|w| w[0].score >= w[1].score));
+        }
+    }
 }

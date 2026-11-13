@@ -5,7 +5,7 @@
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chessvision::doc::html::{DiagramMode, Figurines, HtmlOptions};
-use pdfcraft_chessvision::doc::{ChessDoc, ChessPage, TextLayer};
+use pdfcraft_chessvision::doc::{Block, BlockRole, ChessDoc, ChessPage, Inline, TextLayer};
 
 use super::*;
 use crate::chess::epub::{
@@ -318,7 +318,7 @@ fn the_book_says_how_it_can_be_read_and_where_each_page_is() {
     }
     // Asked for, the highlight is there; nothing is said of an author or a source not given.
     let checked = entries(&doc, &options(&pieces), &meta()).unwrap();
-    assert!(file(&checked, "OEBPS/styles.css").contains(".review{background:#fff3c4}"));
+    assert!(file(&checked, "OEBPS/styles.css").contains(".review{background:#fff3c4;"));
     assert!(!file(&checked, "OEBPS/content.opf").contains("dc:creator") && !file(&checked, "OEBPS/content.opf").contains("dc:source"));
     // The identifier from the PDF's /ID.
     assert_eq!(identifier_from_id(&[0xab; 16]), format!("urn:pdfcraft:chess:id:{}", "ab".repeat(16)));
@@ -435,4 +435,96 @@ fn a_figurine_font_by_letters_and_the_sign_font_travel_as_two_files() {
         assert!(text.contains("href=\"styles.css\""), "{}", p.name);
         roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
     }
+}
+
+/// Plan A9-X3 (R5-06): each page is titled with the book and the page as the book numbers it (in
+/// the page's language), so a reader going from page to page hears where it is; every page was
+/// titled with the book alone.
+#[test]
+fn each_page_is_titled_with_the_book_and_its_page() {
+    let pieces = PieceSet::geometric();
+    let doc = chapter_doc();
+    let files = entries(&doc, &options(&pieces), &meta()).unwrap();
+    assert!(file(&files, "OEBPS/page-00001.xhtml").contains("<title>Chess &amp; &lt;Book&gt; — Page 1</title>"));
+    let labels: Vec<String> = doc.pages.iter().map(|p| format!("x{}", p.index)).collect();
+    let files = entries(&doc, &HtmlOptions { page_labels: &labels, title: "", ..options(&pieces) }, &meta()).unwrap();
+    assert!(file(&files, "OEBPS/page-00001.xhtml").contains("<title>Page x0</title>"));
+}
+
+/// The chess document of `chapter_doc` with its heading a chapter, then two sections under it, a
+/// second chapter, and a sub-section of the second chapter that has no section.
+fn chapters_doc() -> ChessDoc {
+    let mut doc = chapter_doc();
+    for b in &mut doc.pages[0].blocks {
+        if let Block::Heading { level, .. } = b {
+            *level = 1;
+        }
+    }
+    for (level, text) in [(2u8, "Section 1.1"), (2, "Section 1.2"), (1, "Chapter 2"), (3, "Deep")] {
+        let inlines = vec![Inline::Text { text: text.into(), source_rect: None, review: Vec::new() }];
+        doc.pages[0].blocks.push(Block::Heading { level, inlines, source_rect: None, role: BlockRole::Content });
+    }
+    doc
+}
+
+/// Plan A9-X3 (R5-06): the table of contents nests each heading under the nearest one before it
+/// of a higher level, so a reader moves by chapter and by section; it was flat.
+#[test]
+fn the_table_of_contents_nests_sections_under_their_chapters() {
+    let pieces = PieceSet::geometric();
+    let files = entries(&chapters_doc(), &options(&pieces), &meta()).unwrap();
+    assert_xml_well_formed(&files);
+    let nav = file(&files, "OEBPS/nav.xhtml");
+    let tree = roxmltree::Document::parse_with_options(nav, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
+    let toc = tree.descendants().find(|n| n.attribute(("http://www.idpf.org/2007/ops", "type")) == Some("toc")).unwrap();
+    // The heading each entry is under (its item's parent item), none for a top entry.
+    let under = |text: &str| -> Option<String> {
+        let a = toc.descendants().find(|n| n.has_tag_name("a") && n.text() == Some(text)).unwrap_or_else(|| panic!("no {text} in {nav}"));
+        let parent = a.ancestors().filter(|n| n.has_tag_name("li")).nth(1)?;
+        parent.children().find(|n| n.has_tag_name("a")).and_then(|n| n.text()).map(str::to_owned)
+    };
+    assert_eq!(
+        ["Chapter 1", "Section 1.1", "Section 1.2", "Chapter 2", "Deep"].map(under),
+        [None, Some("Chapter 1".to_owned()), Some("Chapter 1".to_owned()), None, Some("Chapter 2".to_owned())],
+        "{nav}"
+    );
+    // Every item holds its link first, and a list only after it.
+    for li in toc.descendants().filter(|n| n.has_tag_name("li")) {
+        let kids: Vec<&str> = li.children().filter(|n| n.is_element()).map(|n| n.tag_name().name()).collect();
+        assert!(kids == ["a"] || kids == ["a", "ol"], "{kids:?}\n{nav}");
+    }
+}
+
+/// Plan A9-X3 (R5-06): the package's summary of how the book can be read is counted from the book
+/// ([`accessibility_summary`]), and said to be English in a book in another language; it claimed
+/// a side to move for every diagram and the printed numbers for every page.
+#[test]
+fn the_summary_says_what_the_book_holds() {
+    let pieces = PieceSet::geometric();
+    let doc = chapter_doc();
+    let opf = |o: &HtmlOptions<'_>, m: &EpubMeta| file(&entries(&doc, o, m).unwrap(), "OEBPS/content.opf").to_owned();
+    let summary = pdfcraft_chessvision::doc::html::accessibility_summary(&doc, &options(&pieces));
+    assert!(summary.contains("Page numbers count the pages of the PDF"), "{summary}");
+    let written = opf(&options(&pieces), &meta());
+    let escaped = pdfcraft_chessvision::doc::html::escape(&summary);
+    assert!(written.contains(&format!("<meta property=\"schema:accessibilitySummary\">{escaped}</meta>")), "{written}");
+    let labels: Vec<String> = doc.pages.iter().map(|p| format!("x{}", p.index)).collect();
+    let o = HtmlOptions { page_labels: &labels, ..options(&pieces) };
+    let text = opf(&o, &EpubMeta { lang: "pt-BR".into(), ..meta() });
+    assert!(text.contains("<meta property=\"schema:accessibilitySummary\" xml:lang=\"en\">The moves are text."), "{text}");
+    assert!(text.contains("Page numbers are the ones the book prints.</meta>"), "{text}");
+}
+
+/// Plan A9-X3 (R5-06): an author named as none (`Unknown`, `Anonymous`, `?`) is not named; a real
+/// one is.
+#[test]
+fn an_author_named_unknown_is_left_out() {
+    let pieces = PieceSet::geometric();
+    let doc = chapter_doc();
+    for none in [" Unknown ", "anonymous", "?", "N/A"] {
+        let files = entries(&doc, &options(&pieces), &EpubMeta { creator: Some(none.into()), ..meta() }).unwrap();
+        assert!(!file(&files, "OEBPS/content.opf").contains("dc:creator"), "{none}");
+    }
+    let files = entries(&doc, &options(&pieces), &EpubMeta { creator: Some("Unknown Soldier".into()), ..meta() }).unwrap();
+    assert!(file(&files, "OEBPS/content.opf").contains("<dc:creator>Unknown Soldier</dc:creator>"));
 }
