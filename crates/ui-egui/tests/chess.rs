@@ -870,12 +870,17 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
     let mut h = book_pgn_harness("saved copy.pdf", Some(out.to_string_lossy().into_owned()), bytes, store.clone());
     h.get_by_label("Book's PGN: book.pgn (1 games)");
     assert_eq!(linked_moves(&h)[5].1.as_deref(), Some("Recovered"));
-    // Removed: the page is read again without it, and the store keeps nothing.
+    // Removed: the page is read again without it, and the store keeps no PGN. Its file stays,
+    // saying when the PGN was removed, so an earlier build's copy does not bring it back (plan
+    // A9-G3a).
     h.get_by_label("Remove the book's PGN").click();
     h.run_steps(4);
     h.get_by_label("Load the book's PGN…");
     assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "{:?}", linked_moves(&h));
-    assert!(correction_files(&store).is_empty());
+    let files = correction_files(&store);
+    assert!(files.len() == 1 && files[0].ends_with(".reference.json"), "{files:?}");
+    let kept: serde_json::Value = serde_json::from_slice(&std::fs::read(store.join(&files[0])).unwrap()).unwrap();
+    assert!(kept.get("pgn").is_none() && kept["removed"].is_u64(), "{kept}");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -4044,6 +4049,41 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     h.run_steps(3);
     assert_eq!(kind(&h, 1), None);
     assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-G2b (R3-06, R8-04): the marks are the engine's one rule, the rule the exports apply,
+/// taken from the session's copy of the corrections. Here the first diagram's box is laid over the
+/// second's, as two detectors' boxes of one board would be if they were not merged: a correction
+/// of the second overlaps both. The exports give it the second diagram only, and only that one is
+/// marked Corrected. Before, the app asked `find` of each diagram, and both were.
+#[test]
+fn a_correction_marks_the_one_diagram_the_exports_give_it() {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::coords::PageRect;
+    let dir = corrections_dir("one-rule");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    scan_and_edit_second(&mut h);
+    {
+        let results = h.state_mut().chess.results.as_mut().unwrap();
+        let mut page = (*results.pages[0]).clone();
+        let second = page.diagrams[1].candidate.bbox_user;
+        let over = PageRect::new(second.x0 + 8.0, second.y0, second.x1 + 8.0, second.y1);
+        page.diagrams[0].candidate.bbox_user = over;
+        if let Some(first) = page.readings.as_mut().and_then(|r| r.get_mut(0)) {
+            first.bbox_user = over;
+        }
+        results.pages[0] = Arc::new(page);
+    }
+    h.get_by_label("Confirm and next").click();
+    h.run_steps(3);
+    let id = h.state().active_ids().unwrap().1;
+    let fingerprints = h.state_mut().session.chess_fingerprints(id).unwrap();
+    let file = h.state().session.chess_corrections(id).expect("the session holds the correction");
+    let pages = h.state().chess.results.as_ref().unwrap().pages.clone();
+    let applied = pdfcraft_engine::chess::corrections::apply(&pages, &file, fingerprints.as_ref()).applied;
+    assert_eq!(applied.iter().map(|a| (a.page, a.index)).collect::<Vec<_>>(), vec![(0, 1)], "the exports correct the second diagram");
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    assert_eq!(kind(&h, 0), None, "the first diagram keeps its reading: the correction is not its own");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

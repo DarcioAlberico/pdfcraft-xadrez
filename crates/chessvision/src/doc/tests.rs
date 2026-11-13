@@ -8,6 +8,7 @@ use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
 mod board;
+mod compat;
 mod fragment;
 mod html;
 mod markdown;
@@ -503,11 +504,91 @@ fn a_game_goes_on_past_a_diagram_of_its_own_position() {
         assert_eq!(doc.games[0].score.mainline().len(), 5);
         assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid));
         assert_eq!(doc.games[0].flags.iter().any(|f| f.flag == ReviewFlag::ContinuedPastDiagram { page: 1, diagram: 0 }), flagged);
-        assert!(!pgn::write_game(&doc.games[0].score).contains("Black to play"), "the caption goes to neither game");
+        // The words between the diagram and the move are the game's, where they stand (plan A9-L2).
+        let pgn = pgn::write_game(&doc.games[0].score);
+        assert!(pgn.contains("2. Nf3 {Black to play.} 2... Nc6"), "{pgn}");
         // The game remembers the diagram that reprints its position, not the other (plan A8 P8b).
         let shown = if flagged { Vec::new() } else { vec![crate::doc::games::DiagramAt { page: 1, diagram: 0 }] };
         assert_eq!(doc.games[0].shown, shown, "{fen}");
     }
+}
+
+/// The PGN of a game, its whitespace collapsed.
+fn one_line_pgn(game: &Game) -> String {
+    pgn::write_game(&game.score).split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Plan A9-L2 (A2-01): what is printed between a diagram and the move that settles it reaches the
+/// PGN and the board. A game that goes on past a diagram reprinting its position takes the words
+/// where they stand (A2's E1); a game that starts from the diagram takes them as its first
+/// comment, a "position after" caption's cue left to the diagram; and a sign there is kept too.
+#[test]
+fn the_text_between_a_diagram_and_its_move_reaches_the_game() {
+    let after = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+    let text = page_text(vec![line(20.0, "1.e4 e5 2.Nf3 Nc6"), line(230.0, "This knight jump is the key idea. 3.Bb5 a6 4.Ba4 Nf6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, after, true, false)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = one_line_pgn(game);
+    assert!(pgn.contains("2. Nf3 Nc6 {This knight jump is the key idea.} 3. Bb5 a6"), "{pgn}");
+    // A game from the diagram: its first comment, in the PGN and on the board.
+    let text = page_text(vec![line(230.0, "White to play wins at once. 3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.score.comment, "White to play wins at once.");
+    assert!(one_line_pgn(game).contains("{White to play wins at once.} 3. Qh5 Nf6 4. Qxf7#"), "{}", one_line_pgn(game));
+    let board = crate::doc::games::to_game(&game.score).unwrap();
+    assert_eq!(board.game.comment(0), "White to play wins at once.");
+    // A caption's cue is the diagram's; the words around it are the game's.
+    let fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "A sharp line. Position after: 2...Nc6"), line(250.0, "Black is lost. 3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0])[0].1, MoveStatus::Caption);
+    assert_eq!(doc.games[0].score.comment, "A sharp line. Black is lost.");
+    // A sign before the first move stays, as the comment's glyph.
+    let text = page_text(vec![line(230.0, "± 3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    assert_eq!(doc.games[0].score.comment, nag::shown(nag::by_glyph("±").unwrap().code));
+    // The PGN reads back as the game.
+    let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
+    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+}
+
+/// Plan A9-L2 (A2-01): a bracket printed after a diagram set inside a variation closes that
+/// variation, so the main line's next move is the main line's (no `ImpliedClose`, no move
+/// played inside the variation).
+#[test]
+fn a_bracket_after_a_diagram_closes_its_variation() {
+    let castled = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4";
+    let text = page_text(vec![line(20.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 ( 3...Nf6 4.O-O"), line(230.0, "Berlin wall. ) 4.Ba4 Nf6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, castled, true, false)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert!(!game.flags.iter().any(|f| matches!(f.flag, ReviewFlag::ImpliedClose { .. })), "{:?}", game.flags);
+    let pgn = one_line_pgn(game);
+    assert!(pgn.contains("3. Bb5 a6 (3... Nf6 4. O-O {Berlin wall.}) 4. Ba4 Nf6"), "{pgn}");
+}
+
+/// Plan A9-L2 (A2-02, the walker's part): text after a move's variations is the next move's
+/// comment before, written after the variations and read back there, and on the board; with no
+/// move after it, the last move's comment.
+#[test]
+fn text_after_a_moves_variations_comes_before_the_next_move() {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 ) Better is the knight. Nc6 3.Bb5")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = one_line_pgn(game);
+    assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) {Better is the knight.} 2... Nc6 3. Bb5"), "{pgn}");
+    let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
+    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    // On the board it is that move's comment before.
+    let board = crate::doc::games::to_game(&game.score).unwrap();
+    let nc6 = game.score.mainline()[3];
+    assert_eq!(board.game.comment_before(board.node(nc6).unwrap()), "Better is the knight.");
+    // With no move after it, it stays on the last move.
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 ) The end.")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(one_line_pgn(&doc.games[0]).contains("2. Nf3 {The end.} (2. Bc4 Nf6)"), "{}", one_line_pgn(&doc.games[0]));
 }
 
 /// A diagram set inside a variation, of the position the variation reached, keeps the game and
@@ -579,8 +660,8 @@ fn bold_moves_are_the_main_line_when_analysis_comes_first() {
     assert_eq!(mainline(&doc), ["Qh5", "Nf6", "Qxf7#"]);
     assert_eq!(doc.games.len(), 1);
     // The analysis is still there, as variations, and the bold flag is kept on the moves.
-    let pgn = pgn::write_game(&doc.games[0].score).split_whitespace().collect::<Vec<_>>().join(" ");
-    assert!(pgn.contains("3. Qh5 (3. Qf3 Nf6 4. Qb3") && pgn.contains("(3... g6 4. Qf3 Nf6 ) 4. Qxf7#"), "{pgn}");
+    let pgn = one_line_pgn(&doc.games[0]).replace(" )", ")");
+    assert!(pgn.contains("3. Qh5 (3. Qf3 Nf6 4. Qb3") && pgn.contains("(3... g6 4. Qf3 Nf6) 4. Qxf7#"), "{pgn}");
     let bold: Vec<bool> =
         doc.pages[0].blocks.iter().flat_map(|b| b.inlines()).filter_map(|i| if let Inline::Move(m) = i { Some(m.bold) } else { None }).collect();
     assert_eq!(bold, [false, false, false, true, true, false, false, false, true]);
@@ -952,6 +1033,87 @@ fn a_page_number_is_no_comment() {
     let pgn = pgn::write_game(&game.score);
     assert!(pgn.contains("{1999}"), "{pgn}");
     assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
+}
+
+/// Plan A9-L3 (A2-05): the layout's hint says whether a line is a heading's or a paragraph's, and
+/// the geometry whether a paragraph goes on. The layout cut Harikrishna's paragraphs mid-sentence
+/// where a line's type or weight changed (`…even nicer to have a` | `knight on the kingside…`, 4 pt
+/// apart): one paragraph now. Within one hint, lines a blank line apart are two paragraphs; two
+/// hints with no gap between them stay two where the first ends its sentence.
+#[test]
+fn the_geometry_decides_where_a_paragraph_goes_on() {
+    let hint = |top: f32, bottom: f32| BlockHint { kind: HintKind::Paragraph, rect: user_box(30.0, top, 400.0, bottom) };
+    let paragraphs = |lines: Vec<ChessLine>, hints: &[BlockHint]| kinds(&build_page(&input(0, &page_text(lines), &[], hints, &[])).pages[0]);
+    // Two hints, 4 pt apart, mid-sentence: one paragraph.
+    let cut = [hint(98.0, 113.0), hint(115.0, 130.0)];
+    assert_eq!(
+        paragraphs(vec![line(100.0, "but it is even nicer to have a"), line(116.0, "knight on the kingside here")], &cut),
+        ["P:but it is even nicer to have a knight on the kingside here"]
+    );
+    // The same, the sentence ended: two.
+    assert_eq!(
+        paragraphs(vec![line(100.0, "It is even nicer."), line(116.0, "Knights love outposts.")], &cut),
+        ["P:It is even nicer.", "P:Knights love outposts."]
+    );
+    // One hint over two lines a blank line apart: two.
+    assert_eq!(
+        paragraphs(vec![line(100.0, "The first paragraph"), line(124.0, "the second one")], &[hint(98.0, 140.0)]),
+        ["P:The first paragraph", "P:the second one"]
+    );
+}
+
+/// Plan A9-L1a (A2-06): the lines inside a diagram's box are its text, whatever their font and
+/// hint: a diagram set in a font the catalogue does not know (its glyphs extracted as `4*+*+p+`)
+/// was read as a heading under the layout's hint, which ended the game and left the diagram's
+/// moves with no position. They are a paragraph of [`BlockRole::DiagramText`] now, never joined
+/// with the lines outside the box, and the walk passes over them.
+#[test]
+fn a_diagrams_own_text_is_no_heading_and_ends_no_game() {
+    let text = page_text(vec![line(150.0, "4*+*+p+*+5"), line(165.0, "3+*+*+*+*4"), line(230.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 145.0, 200.0, 180.0) }];
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &hints, &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(kinds(&doc.pages[0]), ["D0", "P:4*+*+p+*+5 3+*+*+*+*4", "P:3.Qh5 Nf6 4.Qxf7#"]);
+    let roles: Vec<Option<BlockRole>> = doc.pages[0].blocks.iter().map(Block::role).collect();
+    assert_eq!(roles, [None, Some(BlockRole::DiagramText), Some(BlockRole::Content)]);
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert!(!pgn::write_game(&game.score).contains("4*+"), "the diagram's text is no comment");
+}
+
+/// Plan A9-L1a (A2-04): a text block's role, decided from its page alone, is in the document's
+/// JSON: the page's number (`folio`), a game's header (`game_header`: the players' line and the
+/// event's), a diagram's text (`diagram_text`); the book's text has none written. Walking the page
+/// again from its JSON gives the same roles, and a page read before roles were kept (none in its
+/// JSON) gets the page's own ones when walked again, so it walks as it did.
+#[test]
+fn a_blocks_role_is_kept_and_walking_again_gives_it_back() {
+    let doc = compat::page_with_roles();
+    let roles: Vec<Option<BlockRole>> = doc.pages[0].blocks.iter().map(Block::role).collect();
+    use BlockRole::*;
+    assert_eq!(
+        roles,
+        [Some(Content), None, Some(DiagramText), Some(GameHeader), Some(GameHeader), Some(Content), Some(Folio)],
+        "{:?}",
+        kinds(&doc.pages[0])
+    );
+    let json = doc.to_json().unwrap();
+    for role in ["\"role\":\"folio\"", "\"role\":\"game_header\"", "\"role\":\"diagram_text\""] {
+        assert!(json.contains(role), "{role}");
+    }
+    assert!(!json.contains("\"role\":\"content\""));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    // Walked again from its JSON: the same document.
+    let again = walk(&ChessDoc::from_json(&json).unwrap().pages, WalkRules::BOOK);
+    assert_eq!(again, doc);
+    // Without its roles (an earlier build's JSON): the page's own roles come back, but the
+    // diagram's text, which only the lines' grouping knows.
+    let old = json.replace(",\"role\":\"folio\"", "").replace(",\"role\":\"game_header\"", "").replace(",\"role\":\"diagram_text\"", "");
+    let again = walk(&ChessDoc::from_json(&old).unwrap().pages, WalkRules::BOOK);
+    let roles: Vec<Option<BlockRole>> = again.pages[0].blocks.iter().map(Block::role).collect();
+    assert_eq!(roles, [Some(Content), None, Some(Content), Some(GameHeader), Some(GameHeader), Some(Content), Some(Folio)]);
+    assert_eq!(again.games, doc.games);
 }
 
 /// A word a hyphen cut at a line's end is one word in the document's text and in the game's
@@ -1656,6 +1818,13 @@ fn deep_brackets_and_long_comments_are_bounded() {
     assert!(doc.games.iter().any(|g| g.flags.iter().any(|f| f.flag == ReviewFlag::CommentTruncated)));
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
     assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    // Text held after a diagram has the comments' cap (plan A9-L2): kept up to it, and said.
+    let long = format!("{} 3.Qh5 Nf6", "word ".repeat(14_000));
+    let doc = build_page(&input(0, &page_text(vec![line(230.0, &long)]), &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert!(game.score.comment.len() <= games::MAX_COMMENT_BYTES && game.score.comment.len() > games::MAX_COMMENT_BYTES - 10);
+    assert!(game.flags.iter().any(|f| f.flag == ReviewFlag::CommentTruncated), "{:?}", game.flags);
+    assert_eq!(game.score.mainline().len(), 2);
 }
 
 /// Tokens a generated page is made of.
@@ -2283,7 +2452,7 @@ fn the_reading_is_kept_and_an_older_document_walks_as_before() {
     let old = ChessDoc::from_json(&old.to_string()).unwrap();
     let again = walk(&old.pages, WalkRules::BOOK);
     assert_eq!(walked(&again), walked(&doc), "walked from its SAN `exd4` and its flag, as before");
-    assert_eq!(READER_VERSION, 1);
+    assert_eq!(READER_VERSION, 3, "plan A9-L3: paragraphs go on by their geometry");
 }
 
 proptest! {

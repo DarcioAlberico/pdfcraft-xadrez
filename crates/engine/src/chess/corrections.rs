@@ -32,7 +32,8 @@
 //! `….bad` only by a change, never deleted. Files are kept through the document store of plan A9
 //! §2.3 ([`super::store::DocStore`], kind [`Corrections`]): `<hash>.corrections.json` in a folder
 //! ([`DirStore`], desktop and command line: read, changed and written under the folder's
-//! `corrections.lock`, through a staging file renamed over it) or in memory ([`MemStore`], the web
+//! `corrections.flock`, and `corrections.lock` for the builds before it, through a staging file
+//! renamed over it) or in memory ([`MemStore`], the web
 //! build, within a byte budget of its own). The file earlier builds wrote, `<hash>.json`, is still
 //! read and merged in, never written.
 
@@ -1072,6 +1073,9 @@ impl super::store::StoreKind for Corrections {
     const KIND: &'static str = "corrections";
     const FORMAT: &'static str = FORMAT;
     const MAX_FILE_BYTES: usize = MAX_FILE_BYTES;
+    /// Builds of version 2 before plan A9-G3a find `<hash>.corrections.json` by the document it
+    /// records and change it under `corrections.lock`.
+    const OLD_LOCK: bool = true;
     type File = CorrectionFile;
     type Error = StoreError;
 
@@ -1160,13 +1164,17 @@ impl Drop for Lock {
 }
 
 /// Take the lock file `path` of a folder: made only when absent, and one left by a process that
-/// stopped is taken over after [`STALE_LOCK`]. `None` when another holds it all the while.
+/// stopped is taken over after [`STALE_LOCK`]. `None` when another holds it all the while. On
+/// Windows a lock file another writer is letting go of can refuse to be made for a moment (it is
+/// still being deleted): that is waited for like a held one, and only said if it lasts.
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn take_lock(path: std::path::PathBuf) -> std::io::Result<Option<Lock>> {
+    let mut denied = None;
     for _ in 0..200 {
         match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(_) => return Ok(Some(Lock { path })),
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                denied = None;
                 let stale =
                     std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_LOCK);
                 if stale {
@@ -1175,10 +1183,14 @@ pub(super) fn take_lock(path: std::path::PathBuf) -> std::io::Result<Option<Lock
                     std::thread::sleep(std::time::Duration::from_millis(15));
                 }
             }
+            Err(e) if cfg!(windows) && e.kind() == std::io::ErrorKind::PermissionDenied => {
+                denied = Some(e);
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
             Err(e) => return Err(e),
         }
     }
-    Ok(None)
+    denied.map_or(Ok(None), Err)
 }
 
 /// Read a file of at most `max` bytes (a larger one reads as that many and one more, so it is
@@ -1430,4 +1442,4 @@ mod disk {
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
