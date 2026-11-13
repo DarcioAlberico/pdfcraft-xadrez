@@ -3737,3 +3737,14 @@ the move's comment	Move comment	تعليق النقلة
 	The work stopped on an internal error.	توقف العمل بسبب خطأ داخلي.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	في المتصفح، لا يمكن بعدُ تصدير كتاب يزيد على {n} صفحة أو مواءمته مع PGN: ستتوقف علامة التبويب عن الاستجابة حتى النهاية. تطبيق سطح المكتب يفعل ذلك في الخلفية.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	لم يُعثر على المخطط {n} في الصفحة {p}.
+	Mate in {n}: {key}! (unique)	كش مات في {n}: {key}! (وحيدة)
+	Mate in {n}: {key}! (not proved the only key)	كش مات في {n}: {key}! (لم يثبت أنها الحل الوحيد)
+	Mate in {n}: no key found within the search budget	كش مات في {n}: لم يُعثر على حل ضمن حدود البحث
+	Mate in {n}: none found; best try {best}, refuted by {reply}	كش مات في {n}: لا يوجد؛ أفضل محاولة {best}، تدحضها {reply}
+	Mate in {n}: none found	كش مات في {n}: لا يوجد
+	Mate in {n}: {keys} ({k} keys)	كش مات في {n}: {keys} ({k} حلول)
+	mates in {m}	يُميت في {m}
+	supposes castling is allowed	يفترض أن التبييت مسموح
+	Mate in {n}: both sides mate, so who moves stays assumed	كش مات في {n}: كلا الطرفين يُميت، لذا يبقى صاحب الدور مفترضًا

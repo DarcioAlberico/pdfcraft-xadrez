@@ -3462,3 +3462,14 @@ the move's comment	Move comment	Commentaire du coup
 	The work stopped on an internal error.	Le travail s’est arrêté sur une erreur interne.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Dans le navigateur, un livre de plus de {n} pages ne peut pas encore être exporté ni aligné sur son PGN : l’onglet cesserait de répondre jusqu’à la fin. L’application de bureau le fait en arrière-plan.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Le diagramme {n} est introuvable à la page {p}.
+	Mate in {n}: {key}! (unique)	Mat en {n} : {key} ! (unique)
+	Mate in {n}: {key}! (not proved the only key)	Mat en {n} : {key} ! (non prouvée comme seule clé)
+	Mate in {n}: no key found within the search budget	Mat en {n} : aucune clé trouvée dans la limite de recherche
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mat en {n} : aucun ; meilleur essai {best}, réfuté par {reply}
+	Mate in {n}: none found	Mat en {n} : aucun
+	Mate in {n}: {keys} ({k} keys)	Mat en {n} : {keys} ({k} clés)
+	mates in {m}	mate en {m}
+	supposes castling is allowed	suppose le roque permis
+	Mate in {n}: both sides mate, so who moves stays assumed	Mat en {n} : les deux camps matent, donc le trait reste supposé

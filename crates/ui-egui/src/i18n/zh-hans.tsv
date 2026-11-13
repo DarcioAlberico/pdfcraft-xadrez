@@ -3426,3 +3426,14 @@ the move's comment	Move comment	此着法的评论
 	The work stopped on an internal error.	工作因内部错误而停止。
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	在浏览器中，暂时无法导出超过 {n} 页的书或将其与 PGN 对齐：标签页会一直无响应直到完成。桌面版会在后台完成。
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	在第 {p} 页未找到局面图 {n}。
+	Mate in {n}: {key}! (unique)	{n} 步杀：{key}!（唯一）
+	Mate in {n}: {key}! (not proved the only key)	{n} 步杀：{key}!（未证明是唯一的关键着）
+	Mate in {n}: no key found within the search budget	{n} 步杀：在搜索上限内未找到关键着
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} 步杀：无；最佳尝试 {best}，被 {reply} 驳倒
+	Mate in {n}: none found	{n} 步杀：无
+	Mate in {n}: {keys} ({k} keys)	{n} 步杀：{keys}（{k} 个关键着）
+	mates in {m}	{m} 步即杀
+	supposes castling is allowed	假定允许王车易位
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} 步杀：双方都能将杀，因此轮到谁走仍是假定的

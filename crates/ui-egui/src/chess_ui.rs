@@ -10,13 +10,14 @@
 //! diagrams are: they leave the pages, the panel says so, and the next scan starts afresh.
 //! Nothing here changes the document.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use egui::{Color32, CornerRadius, Pos2, Stroke};
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::corrections::Kind;
-use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
+use pdfcraft_engine::chess::corrections::{Kind, corrected_position};
+use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosition, Unreadable};
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role};
 use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ChessScanSteps, DiagramAt, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
@@ -76,6 +77,8 @@ pub struct ChessState {
     /// A double-click on a page not scanned yet: the diagram there goes onto the board once the
     /// page is scanned ([`PdfCraftApp::chess_board_at_tick`]).
     pub board_at: Option<BoardAt>,
+    /// A diagram to open in the editor once its page's scan is in ([`PickAfterScan`]).
+    pub pick_after_scan: Option<PickAfterScan>,
     /// A diagram put on the board before the Text tab read its page: the page is read, and the
     /// moves under the diagram give the game its side to move and move number if nothing was
     /// done on it meanwhile ([`PdfCraftApp::chess_board_text_tick`]).
@@ -315,6 +318,18 @@ pub struct BoardAt {
     pub started: bool,
 }
 
+/// A diagram to open in the editor once its page's scan is in (plan A9-I4, findings A5-04, A5-09):
+/// "Diagram N" of the Text tab, whose page may not be the one in view, and Keep editing a draft of
+/// another document. It waits for its page's scan as a double-click on the page does
+/// ([`BoardAt`]), and goes when its document is no longer the one shown.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PickAfterScan {
+    pub doc: DocId,
+    pub at: DiagramAt,
+    /// The scan of its page was started for it.
+    pub started: bool,
+}
+
 /// A diagram put on the board (diagram `index` of `page` of `doc`, its game started from `fen`)
 /// whose page the Text tab had not read.
 #[derive(Clone, Debug, PartialEq)]
@@ -453,6 +468,19 @@ impl ChessResults {
     /// The reading of diagram `index` on `page`, when it was read.
     pub(crate) fn reading(page: &ChessPage, index: usize) -> Option<&BoardReading> {
         page.readings.as_ref()?.iter().find(|r| r.index == index)
+    }
+
+    /// The position diagram `index` of `page` shows (plan A9-I4, finding A5-05): the correction
+    /// the engine's one rule gave it (`corrections::assign`, kept in [`ChessResults::kinds`]) as the
+    /// engine reads a correction ([`corrected_position`]), else the reading's. The one place the
+    /// list's row, its menu, the board and the lichess link take it from: a diagram not read but
+    /// corrected has one, and a corrected diagram links to its correction.
+    pub(crate) fn effective<'a>(&'a self, page: &'a ChessPage, index: usize) -> Option<Cow<'a, ReadPosition>> {
+        let read = Self::reading(page, index).and_then(BoardReading::position);
+        match self.kept_fen(page.page, index).and_then(|fen| corrected_position(fen, read)) {
+            Some(kept) => Some(Cow::Owned(kept)),
+            None => read.map(Cow::Borrowed),
+        }
     }
 
     /// Diagram `index` on `page` (0-based): its box in user space and its FEN when read.
@@ -1080,6 +1108,7 @@ impl PdfCraftApp {
     pub(crate) fn poll_chess(&mut self) {
         self.poll_chess_scan();
         self.chess_board_at_tick();
+        self.chess_pick_after_scan_tick();
         self.chess_board_text_tick();
     }
 
@@ -1263,6 +1292,56 @@ impl PdfCraftApp {
         self.start_chess_scan_pages(at.doc, vec![at.page], true, false);
     }
 
+    /// Open diagram `at` of document `doc` in the editor (plan A9-I4): its document comes to the
+    /// front, and when the list doesn't hold the diagram's page yet, that page is scanned first
+    /// and the diagram opens once the scan is in ([`PickAfterScan`]).
+    pub(crate) fn pick_after_scan(&mut self, doc: DocId, at: DiagramAt) {
+        if let Some(i) = self.views.iter().position(|v| v.id == doc) {
+            self.active = Some(i);
+        }
+        self.chess.shown = Some(doc);
+        self.chess.pick_after_scan = Some(PickAfterScan { doc, at, started: false });
+        self.chess_pick_after_scan_tick();
+    }
+
+    /// Every poll: the diagram waiting for its page's scan ([`PickAfterScan`]) opens once the list
+    /// holds its page, the page scanned for it when no scan is running. Dropped when its document
+    /// is no longer the one shown, or when the scan ended without the page (stopped, or the
+    /// document changed meanwhile).
+    pub(crate) fn chess_pick_after_scan_tick(&mut self) {
+        let Some(mut want) = self.chess.pick_after_scan else { return };
+        if self.active_ids().map(|(_, id)| id) != Some(want.doc) {
+            self.chess.pick_after_scan = None;
+            return;
+        }
+        let stamp = self.session.chess_stamp(want.doc);
+        let scanned = shown(&self.chess, want.doc, stamp).filter(|r| r.pages.iter().any(|p| p.page == want.at.page));
+        if let Some(results) = scanned {
+            let there = results.diagram(want.at.page, want.at.index).is_some();
+            self.chess.pick_after_scan = None;
+            if there {
+                self.edit_chess_diagram(want.at.page, want.at.index, true);
+                self.show_chess_tab(crate::chess_text_ui::ChessTab::Diagrams);
+            } else {
+                let (n, p) = (want.at.index.saturating_add(1).to_string(), self.page_label_in(want.doc, want.at.page));
+                self.notify(crate::i18n::fmt(tl!("Diagram {n} wasn't found on page {p}."), &[("n", &n), ("p", &p)]));
+            }
+            return;
+        }
+        if self.chess.run.is_some() {
+            return;
+        }
+        if want.started {
+            self.chess.pick_after_scan = None;
+            return;
+        }
+        want.started = true;
+        self.chess.pick_after_scan = Some(want);
+        // A scan that does not start (copying not allowed, said) leaves no run: the next tick
+        // drops the request.
+        self.start_chess_scan_pages(want.doc, vec![want.at.page], false, false);
+    }
+
     /// Add one batch to the results. Returns `false` when the document changed since the batch
     /// was made: its boxes describe a state that is gone, and it is dropped.
     fn keep_chess_scan(&mut self, scan: ChessScan, model: Option<ModelNote>) -> bool {
@@ -1389,9 +1468,11 @@ impl PdfCraftApp {
         }
     }
 
-    /// Review now: open the first diagram to review.
+    /// Review now: open the first diagram to review, the list's chip back on All, so the tab walks
+    /// the diagrams to review (plan A9-I4, finding A5-17).
     pub(crate) fn review_chess_now(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
+        self.chess.doc_mut(id).list.filter = None;
         if let Some(DiagramAt { page, index }) = self.chess.results_of(id).and_then(|r| r.review_queue().first().copied()) {
             self.edit_chess_diagram(page, index, true);
         }
@@ -1609,10 +1690,10 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return false };
         let source = crate::chess_board_ui::Source { doc: id, page, index };
         let edited = self.chess.editor.as_ref().filter(|e| (e.doc, e.page, e.index) == (id, page, index)).map(|e| (e.fen(), e.flipped));
+        // The position the diagram shows: its correction, else its reading (plan A9-I4).
         let read = || {
             let results = self.chess.results_of(id)?;
-            let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index))?;
-            let pos = reading.position()?;
+            let pos = results.effective(results.pages.iter().find(|p| p.page == page)?, index)?;
             Some((pos.fen.clone(), pos.orientation.is_some_and(|o| o.black_point_of_view)))
         };
         // The editor is open on the diagram picked, changed or not: changed, its position is the
@@ -2045,5 +2126,78 @@ mod view_tests {
         });
         h.run();
         h.get_by_label("Detecting in another book… page 306 of 748");
+    }
+}
+
+#[cfg(test)]
+mod pick_tests {
+    use super::*;
+
+    /// A ten-page book whose fifth page has the start position set in the Chess Merida font, read
+    /// without a model.
+    fn book() -> Vec<u8> {
+        const ROWS: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
+        let mut content = String::from("BT /F1 20 Tf 60 724 Td ");
+        for (i, line) in ROWS.iter().enumerate() {
+            if i > 0 {
+                content.push_str("0 -20 Td ");
+            }
+            content.push_str(&format!("({line}) Tj "));
+        }
+        content.push_str("ET\n");
+        let widths = vec!["1000"; 95].join(" ");
+        let objs = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+            format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+            format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+        ];
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objs.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+        let mut s = pdfcraft_engine::Session::new();
+        let id = s.open("book.pdf", None, Arc::new(out), None).expect("the book opens");
+        for at in [0, 0, 0, 0, 5, 5, 5, 5, 5] {
+            s.apply(id, pdfcraft_engine::Edit::InsertBlankPage { at, width: 600.0, height: 800.0 }).expect("a blank page");
+        }
+        s.save_bytes(id).expect("saved").to_vec()
+    }
+
+    /// Plan A9-I4 (finding A5-04): "Diagram N" of the Text tab opens the diagram of the page the
+    /// text is of, whatever page is in view: that page is scanned (it used to scan the page in
+    /// view) on a worker, and the editor opens once the scan is in (it used to pick the diagram
+    /// before, which did nothing).
+    #[test]
+    fn a_diagram_of_the_text_opens_on_the_texts_page_not_the_views() {
+        let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+        pdfcraft_engine::chess::install_models(Some(none));
+        let mut app = PdfCraftApp::new();
+        app.open_bytes("book.pdf", None, book()).expect("opens");
+        app.active = Some(0);
+        let id = app.views[0].id;
+        // The text of page 5 was read; the view is on page 9.
+        app.views[0].go_to_page(8);
+        app.run_inline = false;
+        app.chess_text_action(crate::chess_text_ui::TextAction::Diagram(DiagramAt::new(4, 0)));
+        for _ in 0..500 {
+            app.poll_chess();
+            if app.chess.editor.is_some() && app.chess.run.is_none() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let ed = app.chess.editor.as_ref().expect("the editor opened");
+        assert_eq!((ed.doc, ed.page, ed.index), (id, 4, 0));
+        assert!(app.chess.results_of(id).is_some_and(|r| r.diagram(4, 0).is_some()), "the text's page was scanned");
     }
 }

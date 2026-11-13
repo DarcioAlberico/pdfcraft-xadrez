@@ -3603,3 +3603,14 @@ the move's comment	Move comment	Comentario de la jugada
 	The work stopped on an internal error.	El trabajo se detuvo por un error interno.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	En el navegador, aún no se puede exportar ni alinear con el PGN un libro de más de {n} páginas: la pestaña dejaría de responder hasta el final. La aplicación de escritorio lo hace en segundo plano.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	No se encontró el diagrama {n} en la página {p}.
+	Mate in {n}: {key}! (unique)	Mate en {n}: {key}! (única)
+	Mate in {n}: {key}! (not proved the only key)	Mate en {n}: {key}! (no se probó que sea la única clave)
+	Mate in {n}: no key found within the search budget	Mate en {n}: no se encontró clave dentro del límite de búsqueda
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mate en {n}: no hay; mejor intento {best}, refutado por {reply}
+	Mate in {n}: none found	Mate en {n}: no hay
+	Mate in {n}: {keys} ({k} keys)	Mate en {n}: {keys} ({k} claves)
+	mates in {m}	da mate en {m}
+	supposes castling is allowed	supone que el enroque está permitido
+	Mate in {n}: both sides mate, so who moves stays assumed	Mate en {n}: ambos bandos dan mate, así que quién juega sigue supuesto

@@ -3425,3 +3425,14 @@ the move's comment	Move comment	Коментар към хода
 	The work stopped on an internal error.	Работата спря поради вътрешна грешка.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	В браузъра книга с повече от {n} страници все още не може да се експортира или подравни с PGN: разделът би спрял да отговаря до края. Настолното приложение го прави във фонов режим.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Диаграма {n} не беше намерена на страница {p}.
+	Mate in {n}: {key}! (unique)	Мат в {n}: {key}! (единствен)
+	Mate in {n}: {key}! (not proved the only key)	Мат в {n}: {key}! (не е доказано, че е единственият ключ)
+	Mate in {n}: no key found within the search budget	Мат в {n}: не е намерен ключ в рамките на търсенето
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Мат в {n}: не е намерен; най-добър опит {best}, опроверган с {reply}
+	Mate in {n}: none found	Мат в {n}: не е намерен
+	Mate in {n}: {keys} ({k} keys)	Мат в {n}: {keys} ({k} ключа)
+	mates in {m}	матира в {m}
+	supposes castling is allowed	предполага, че рокадата е разрешена
+	Mate in {n}: both sides mate, so who moves stays assumed	Мат в {n}: и двете страни матират, затова кой е на ход остава предположено

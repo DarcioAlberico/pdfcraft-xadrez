@@ -3484,3 +3484,14 @@ the move's comment	Move comment	Коментар до ходу
 	The work stopped on an internal error.	Роботу зупинено через внутрішню помилку.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	У браузері книгу понад {n} сторінок поки що не можна експортувати чи зіставити з PGN: вкладка перестала б відповідати до самого кінця. Настільний застосунок робить це у фоні.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Діаграму {n} не знайдено на сторінці {p}.
+	Mate in {n}: {key}! (unique)	Мат у {n} ходи: {key}! (єдиний)
+	Mate in {n}: {key}! (not proved the only key)	Мат у {n} ходи: {key}! (не доведено, що ключ єдиний)
+	Mate in {n}: no key found within the search budget	Мат у {n} ходи: у межах пошуку ключ не знайдено
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Мат у {n} ходи: не знайдено; найкраща спроба {best}, спростування {reply}
+	Mate in {n}: none found	Мат у {n} ходи: не знайдено
+	Mate in {n}: {keys} ({k} keys)	Мат у {n} ходи: {keys} (ключів: {k})
+	mates in {m}	матує у {m} ходи
+	supposes castling is allowed	припускає, що рокіровка дозволена
+	Mate in {n}: both sides mate, so who moves stays assumed	Мат у {n} ходи: матують обидві сторони, тож черга ходу лишається припущеною

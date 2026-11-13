@@ -3464,3 +3464,14 @@ the move's comment	Move comment	手のコメント
 	The work stopped on an internal error.	内部エラーにより処理が停止しました。
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	ブラウザーでは、{n} ページを超える本の書き出しや PGN への合わせ込みはまだできません。終わるまでタブが応答しなくなるためです。デスクトップ版はバックグラウンドで行います。
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	{p} ページに図 {n} は見つかりませんでした。
+	Mate in {n}: {key}! (unique)	{n} 手詰め: {key}! (唯一)
+	Mate in {n}: {key}! (not proved the only key)	{n} 手詰め: {key}! (唯一の鍵とは証明されていません)
+	Mate in {n}: no key found within the search budget	{n} 手詰め: 探索の上限内で鍵は見つかりませんでした
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} 手詰め: 見つかりません。最善の試み {best}、{reply} で反駁されます
+	Mate in {n}: none found	{n} 手詰め: 見つかりません
+	Mate in {n}: {keys} ({k} keys)	{n} 手詰め: {keys} (鍵 {k} 個)
+	mates in {m}	{m} 手で詰み
+	supposes castling is allowed	キャスリングが許されると仮定
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} 手詰め: 双方とも詰ませるため、手番は仮定のままです

@@ -3674,3 +3674,14 @@ the move's comment	Move comment	Commento della mossa
 	The work stopped on an internal error.	Il lavoro si è fermato per un errore interno.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Nel browser non è ancora possibile esportare o allineare al PGN un libro di più di {n} pagine: la scheda smetterebbe di rispondere fino alla fine. L’app desktop lo fa in background.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Il diagramma {n} non è stato trovato a pagina {p}.
+	Mate in {n}: {key}! (unique)	Matto in {n}: {key}! (unica)
+	Mate in {n}: {key}! (not proved the only key)	Matto in {n}: {key}! (non provata come unica chiave)
+	Mate in {n}: no key found within the search budget	Matto in {n}: nessuna chiave trovata entro il limite di ricerca
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Matto in {n}: nessuno; miglior tentativo {best}, confutato da {reply}
+	Mate in {n}: none found	Matto in {n}: nessuno
+	Mate in {n}: {keys} ({k} keys)	Matto in {n}: {keys} ({k} chiavi)
+	mates in {m}	dà matto in {m}
+	supposes castling is allowed	suppone che l’arrocco sia consentito
+	Mate in {n}: both sides mate, so who moves stays assumed	Matto in {n}: entrambi i lati danno matto, quindi chi muove resta supposto

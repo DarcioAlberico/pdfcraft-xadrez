@@ -3715,3 +3715,14 @@ the move's comment	Move comment	Bình luận của nước đi
 	The work stopped on an internal error.	Công việc đã dừng do lỗi nội bộ.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Trong trình duyệt, chưa thể xuất hoặc căn theo PGN một cuốn sách dài hơn {n} trang: thẻ sẽ ngừng phản hồi cho đến khi xong. Ứng dụng máy tính làm việc này ở chế độ nền.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Không tìm thấy sơ đồ {n} trên trang {p}.
+	Mate in {n}: {key}! (unique)	Chiếu hết sau {n} nước: {key}! (duy nhất)
+	Mate in {n}: {key}! (not proved the only key)	Chiếu hết sau {n} nước: {key}! (chưa chứng minh là nước then chốt duy nhất)
+	Mate in {n}: no key found within the search budget	Chiếu hết sau {n} nước: không tìm thấy nước then chốt trong giới hạn tìm kiếm
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Chiếu hết sau {n} nước: không có; thử tốt nhất {best}, bị bác bỏ bởi {reply}
+	Mate in {n}: none found	Chiếu hết sau {n} nước: không có
+	Mate in {n}: {keys} ({k} keys)	Chiếu hết sau {n} nước: {keys} ({k} nước then chốt)
+	mates in {m}	chiếu hết sau {m} nước
+	supposes castling is allowed	giả định được phép nhập thành
+	Mate in {n}: both sides mate, so who moves stays assumed	Chiếu hết sau {n} nước: cả hai bên đều chiếu hết, nên bên đi vẫn là giả định

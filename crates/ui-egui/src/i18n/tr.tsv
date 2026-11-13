@@ -3458,3 +3458,14 @@ the move's comment	Move comment	Hamlenin yorumu
 	The work stopped on an internal error.	İş bir iç hata nedeniyle durdu.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Tarayıcıda {n} sayfadan uzun bir kitap henüz dışa aktarılamaz veya PGN ile hizalanamaz: sekme sonuna kadar yanıt vermez olurdu. Masaüstü uygulaması bunu arka planda yapar.
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	{p}. sayfada {n}. diyagram bulunamadı.
+	Mate in {n}: {key}! (unique)	{n} hamlede mat: {key}! (tek)
+	Mate in {n}: {key}! (not proved the only key)	{n} hamlede mat: {key}! (tek anahtar olduğu kanıtlanmadı)
+	Mate in {n}: no key found within the search budget	{n} hamlede mat: arama sınırı içinde anahtar bulunamadı
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} hamlede mat: bulunamadı; en iyi deneme {best}, {reply} ile çürütülüyor
+	Mate in {n}: none found	{n} hamlede mat: bulunamadı
+	Mate in {n}: {keys} ({k} keys)	{n} hamlede mat: {keys} ({k} anahtar)
+	mates in {m}	{m} hamlede mat eder
+	supposes castling is allowed	rok yapmanın serbest olduğunu varsayar
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} hamlede mat: iki taraf da mat ediyor, bu yüzden hamle sırası varsayılmış kalıyor
