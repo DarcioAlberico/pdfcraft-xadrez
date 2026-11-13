@@ -4104,7 +4104,7 @@ fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let to_review = h.state().chess.results.as_ref().map_or(0, |r| r.review_queue().len());
+    let to_review = h.state().chess.results().map_or(0, |r| r.review_queue().len());
     assert!(to_review > 0, "the drawn board is to review");
     h.get_by_label("Export book…").focus();
     h.run_steps(2);
