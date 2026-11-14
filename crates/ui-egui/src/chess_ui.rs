@@ -168,6 +168,9 @@ pub struct ChessState {
     /// master-detail): opened from the list, Review now or the Text tab, closed by "‹ Diagrams"
     /// and Esc. The editor itself ([`ChessState::editor`]) stays while it is closed.
     pub diagram_open: bool,
+    /// The Diagram tab shows the page's own picture of the diagram in its board's square
+    /// (Original), else the board as read (plan A9-I0, finding A6-14; Alt+O switches).
+    pub diagram_original: bool,
     /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
     /// is [`ChessState::board`]).
     pub study: crate::chess_study_ui::StudyState,
@@ -222,6 +225,9 @@ pub struct ChessState {
     /// What was asked of the Move list, done at the start of the next frame, when the layout is
     /// not being drawn (`docking::drain_moves`).
     pub(crate) moves_request: Option<crate::docking::MovesRequest>,
+    /// What the Board tab's moves region shows: the moves, or in their place the game's details,
+    /// the document's games or the FEN and PGN fields (plan A9-I0b).
+    pub(crate) board_view: crate::chess_board_tab::MovesView,
 }
 
 impl ChessState {
@@ -823,7 +829,9 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     // beside the Chess column, else the board (plan A9-I0a).
     let whole = ui.max_rect();
     let two = budget.columns() == 2 && whole.width() >= 2.0 * crate::chess_budget::COLUMN - 1.0;
-    let opened = app.chess_detail_shown(id);
+    // A diagram opened is edited where its list is: in the chess window while that is out (plan
+    // A9-I0c, finding R4-12: it opened in the main window).
+    let opened = app.chess_detail_shown(id) && !in_window;
     let detail = app.chess.tab == ChessTab::Diagrams && opened && !two;
     let board_beside = two && !opened && !in_window;
     let second = if two { Some(egui::Rect::from_min_max(egui::pos2(whole.max.x - whole.width() / 2.0, whole.min.y), whole.max)) } else { None };
@@ -1562,9 +1570,14 @@ impl PdfCraftApp {
                 ed.focus = true;
             }
             self.chess.diagram_open = true;
-            self.chess.tab = crate::chess_text_ui::ChessTab::Diagrams;
-            if self.right != Some(crate::RightPanel::Chess) {
-                self.choose_right_panel(Some(crate::RightPanel::Chess));
+            if self.chess_window_detached() {
+                // In the chess window's Diagrams tab, the list's place (plan A9-I0c).
+                self.show_chess_tab(crate::chess_text_ui::ChessTab::Diagrams);
+            } else {
+                self.chess.tab = crate::chess_text_ui::ChessTab::Diagrams;
+                if self.right != Some(crate::RightPanel::Chess) {
+                    self.choose_right_panel(Some(crate::RightPanel::Chess));
+                }
             }
         }
     }
@@ -1588,9 +1601,10 @@ impl PdfCraftApp {
     }
 
     /// Whether the Chess column shows the open document's diagram editor, in the Diagrams list's
-    /// place (plan A9-I0a).
+    /// place (plan A9-I0a); while the chess window is out, the window shows it (plan A9-I0c).
     pub fn chess_diagram_shown(&self) -> bool {
         self.chess_column_shown()
+            && !self.chess_window.in_window()
             && self.chess.tab == crate::chess_text_ui::ChessTab::Diagrams
             && self.active_ids().is_some_and(|(_, id)| self.chess_detail_shown(id))
     }
@@ -2079,7 +2093,9 @@ impl PdfCraftApp {
     }
 }
 
-/// The chess board panel, in the docking workspace or beside the page in Read mode.
+/// The chess board panel: the Chess column's Board tab (docked, and in Read mode), the rail on
+/// its left edge and the board in fixed regions in the rest (plan A9-I0b,
+/// [`crate::chess_board_tab`]): nothing of it scrolls but its moves.
 pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     // A click anywhere in the panel puts Undo and Redo on the game (D12), and so does the
@@ -2090,42 +2106,24 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     app.chess.mark_surface(ui);
     let pieces = app.chess.role_pieces(Role::Board);
     let source_label = board_source_label(app);
-    // The column's Board tab names it (plan A9-I0a).
-    let named = false;
-    let mut action = None;
-    let mut games = None;
-    let mut paste = None;
-    // The PGN tool rail on the left edge, at the full height and outside the scroll area; the
-    // column draws the frame.
+    let mut asked = crate::chess_board_tab::Asked::default();
+    // The PGN tool rail on the left edge, at the full height; the column draws the frame.
     egui::Frame::NONE.show(ui, |ui| {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 12, bottom: 8 }).show(ui, |ui| {
-                // Captures from the clipboard (T7a) and the layer of captured text (T7b), above the board.
-                paste = crate::chess_capture::panel_row(ui, chess);
-                // The notation takes the height the scroll area shows and the rest leaves.
-                let viewport = ui.available_height();
-                egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
-                    (action, games) = crate::chess_board_ui::panel_body(
-                        ui,
-                        &t,
-                        chess,
-                        &pieces,
-                        source_label,
-                        crate::chess_board_ui::Sizing::DOCKED,
-                        viewport,
-                        named,
-                    );
-                });
+            egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 4, bottom: 6 }).show(ui, |ui| {
+                let rect = ui.available_rect_before_wrap();
+                asked = crate::chess_board_tab::column(ui, &t, chess, &pieces, source_label.as_deref(), crate::chess_board_ui::Sizing::DOCKED, rect);
             });
         });
     });
-    if let Some(a) = action {
+    if let Some(a) = asked.board {
         app.chess_board_action(a);
     }
-    if let Some(a) = games {
+    if let Some(a) = asked.games {
         app.chess_games_action(a);
     }
-    if let Some(mode) = paste {
+    // Paste as ▸ in the rail's Capture popup (T7a).
+    if let Some(mode) = app.chess.capture.take_paste() {
         app.chess_paste_as(mode, crate::chess_capture::clipboard_text());
     }
 }

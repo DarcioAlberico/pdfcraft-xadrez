@@ -495,7 +495,7 @@ fn the_notice_undoes_the_capture_and_the_new_moves_are_marked() {
 }
 
 /// The layer of captured text underlines, on the page, each move captured from it, and only
-/// while it is on.
+/// while it is on (the switch in the rail's Capture popup).
 #[test]
 fn the_captured_text_layer_underlines_each_captured_move() {
     let mut h = harness();
@@ -506,6 +506,10 @@ fn the_captured_text_layer_underlines_each_captured_move() {
     select(&mut h, "18.Nd5!", "20.Raxe1");
     assert_eq!(capture_toast(&h), "Line from the start · moves: 17");
     assert!(h.state().chess.capture.drawn.is_empty(), "off by default");
+    // The switch is in the Capture tool's popup on the rail (plan A9-I0b; it was over the board).
+    h.get_by_label("Capture (automatic) (X)").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Paste as");
     h.get_by_label("Underline captured text on the page").click();
     h.run_steps(3);
     let drawn = h.state().chess.capture.drawn.clone();

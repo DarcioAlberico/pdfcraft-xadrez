@@ -3527,3 +3527,16 @@ the move's comment	Move comment	Hamlenin yorumu
 	The board is in the column beside.	Tahta yandaki sütunda.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Satranç yer işaretleri ekle
+	More board actions	Diğer tahta eylemleri
+	Back to the moves	Hamlelere dön
+	Back to the moves (Esc)	Hamlelere dön (Esc)
+	Game	Oyun
+	The game starts at move:	Oyun şu hamleden başlar:
+	Comment	Yorum
+	The comments of the move shown, under the moves	Gösterilen hamlenin yorumları, hamlelerin altında
+	Edit the FEN and the PGN	FEN ve PGN'yi düzenle
+	More continuations: {moves}	Diğer devamlar: {moves}
+	Diagram shown	Gösterilen diyagram
+	Alt+O switches between the board as read and the page's own picture.	Alt+O, okunduğu hâliyle tahta ile sayfanın kendi görüntüsü arasında geçiş yapar.
+	Original diagram, page {p}, diagram {n}	Özgün diyagram, sayfa {p}, diyagram {n}
+	The page's picture of this diagram shows once its page is drawn.	Bu diyagramın sayfa görüntüsü, sayfası çizildiğinde görünür.

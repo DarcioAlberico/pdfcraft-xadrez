@@ -3672,3 +3672,16 @@ the move's comment	Move comment	Comentario de la jugada
 	The board is in the column beside.	El tablero está en la columna de al lado.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Añadir marcadores de ajedrez
+	More board actions	Más acciones del tablero
+	Back to the moves	Volver a las jugadas
+	Back to the moves (Esc)	Volver a las jugadas (Esc)
+	Game	Partida
+	The game starts at move:	La partida empieza en la jugada:
+	Comment	Comentario
+	The comments of the move shown, under the moves	Los comentarios de la jugada mostrada, bajo las jugadas
+	Edit the FEN and the PGN	Editar el FEN y el PGN
+	More continuations: {moves}	Más continuaciones: {moves}
+	Diagram shown	Diagrama mostrado
+	Alt+O switches between the board as read and the page's own picture.	Alt+O alterna entre el tablero tal como se leyó y la imagen de la propia página.
+	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
+	The page's picture of this diagram shows once its page is drawn.	La imagen de la página de este diagrama aparece en cuanto se dibuja su página.
