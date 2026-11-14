@@ -3444,3 +3444,12 @@ the move's comment	Move comment	Комментарий к ходу
 	The board is in the column beside.	Доска — в соседней колонке.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Добавить шахматные закладки
+	More board actions	Другие действия с доской
+	Back to the moves	Назад к ходам
+	Back to the moves (Esc)	Назад к ходам (Esc)
+	Game	Партия
+	The game starts at move:	Партия начинается с хода:
+	Comment	Комментарий
+	The comments of the move shown, under the moves	Комментарии к показанному ходу, под ходами
+	Edit the FEN and the PGN	Изменить FEN и PGN
+	More continuations: {moves}	Другие продолжения: {moves}

@@ -2221,9 +2221,17 @@ fn row_menu(ui: &mut egui::Ui, targets: &[usize], len: usize) -> Option<RowChoic
     choice
 }
 
-/// The games of the document shown: the list, what can be done with them, and why they aren't
-/// autosaved when they aren't.
-pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) -> Option<GamesAction> {
+/// The games list's title: "Games in this document (3)", or "Games (3)" with no document.
+pub(crate) fn games_title(games: &ChessGames) -> String {
+    let c: &ChessCollection = games.current.and_then(|id| games.docs.get(&id)).unwrap_or(&games.none);
+    let n = c.len().to_string();
+    let title = if games.current.is_some() { tl!("Games in this document ({n})") } else { tl!("Games ({n})") };
+    crate::i18n::fmt(title, &[("n", &n)])
+}
+
+/// The games list itself, under its title (the Board tab shows it in the moves' place from Game
+/// ▾, plan A9-I0b).
+pub(crate) fn games_list(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) -> Option<GamesAction> {
     let ChessGames { docs, none, current, list, .. } = games;
     let c: &ChessCollection = current.and_then(|id| docs.get(&id)).unwrap_or(none);
     // A question about a game that is gone (deleted, or another document shown) is dropped.
@@ -2236,13 +2244,7 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
     // Games no longer in the list (deleted, or another document's) are no longer selected.
     list.sel.picked.retain(|&uid| c.position(uid).is_some());
     let mut action = None;
-    let n = c.len().to_string();
-    let title = if current.is_some() { tl!("Games in this document ({n})") } else { tl!("Games ({n})") };
-    let mut header = egui::CollapsingHeader::new(crate::i18n::fmt(title, &[("n", &n)])).id_salt("chess-games").default_open(true);
-    if list.renaming.is_some() || list.deleting.is_some() {
-        header = header.open(Some(true));
-    }
-    header.show(ui, |ui| {
+    {
         let why = c.autosave.blocked.as_ref().map(blocked_text);
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
@@ -2301,7 +2303,7 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
                 action = Some(a);
             }
         });
-    });
+    }
     // Games deleted or copied leave nothing selected (the first copy is shown), and a game added
     // is shown alone.
     if matches!(action, Some(GamesAction::DeleteMany(_) | GamesAction::DuplicateMany(_) | GamesAction::New | GamesAction::Restore(_))) {

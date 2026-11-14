@@ -429,10 +429,14 @@ fn board_split(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
 }
 
 /// The board's panel is as wide as it is dragged, docked or in Read mode: the board grows past
-/// the 480 pt it once stopped at, and the page keeps its least width (160 pt).
+/// the 480 pt it once stopped at, and the page keeps its least width (160 pt). In a window tall
+/// enough for it: the board never scrolls, so the height left over the moves' rows bounds it too
+/// (plan A9-I0b).
 #[test]
 fn the_board_panel_is_as_wide_as_it_is_dragged() {
     let mut h = harness("", false);
+    h.set_size(egui::vec2(1400.0, 1800.0));
+    h.run_steps(3);
     let narrow = h.get_by_label_contains("Board, ").rect();
     assert!(narrow.width() < 400.0, "{narrow:?}");
     let split = board_split(&h);

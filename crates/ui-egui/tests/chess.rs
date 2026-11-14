@@ -1527,10 +1527,9 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.get_by_label("Make this the main line").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 c5 $5 (1... e5)");
-    // Copy FEN, in the FEN section (closed until opened), copies the position on the board.
-    h.get_by_label("FEN").click_accesskit();
+    // Copy FEN, in the bar's FEN/PGN ▾ (plan A9-I0b), copies the position on the board.
+    h.get_by_label("FEN/PGN").click_accesskit();
     h.run_steps(2);
-    // The section opens at the panel's foot, partly under the window's edge: by its action.
     h.get_by_label("Copy FEN").click_accesskit();
     let mut copied = false;
     for _ in 0..3 {
@@ -1545,7 +1544,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     assert!(copied, "the board's FEN was copied");
     // A comment typed in two goes keeps the space between them: the game trims what it stores,
     // and the field must not take that back while it is being typed in.
-    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    open_comment(&mut h);
+    let comment = h.get_by_label("Comment on this move");
     comment.focus();
     comment.type_text("good ");
     h.run_steps(2);
@@ -1681,17 +1681,18 @@ fn open_on_the_board_from_the_panel() {
     assert!(h.state().chess_board_shown(), "the column's Board tab");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Board");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
-    // In front: its board is drawn, the rail's set-up tool and the Analysis section with it.
+    // In front: its board is drawn, the rail's set-up tool and Analyze with it.
     h.get_by_label("Board, White to move, move 1");
     h.get_by_label("Set up a position");
-    h.get_by_label("Analysis");
+    h.get_by_label("Analyze");
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
 }
 
-/// The move number beside "To move:" on the Board panel corrects a game whose diagram was read
-/// without its number: every move is renumbered, in one undo step, and moves can be played on.
+/// The move number, in the Board tab's Game ▾ (plan A9-I0b; it was beside "To move:"), corrects a
+/// game whose diagram was read without its number: every move is renumbered, in one undo step, and
+/// moves can be played on.
 #[test]
 fn the_board_panel_corrects_the_move_number() {
     let mut h = harness();
@@ -1705,7 +1706,9 @@ fn the_board_panel_corrects_the_move_number() {
     click_square(&mut h, "e7");
     click_square(&mut h, "e5");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
-    h.get_by_label("Move number:");
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label("The game starts at move:");
     // Clicked where it is drawn: the field is in view, not under the panel's edge.
     h.get_by_role(egui::accesskit::Role::SpinButton).click();
     h.run_steps(2);
@@ -1713,6 +1716,8 @@ fn the_board_panel_corrects_the_move_number() {
     h.get_by_role(egui::accesskit::Role::SpinButton).type_text("35");
     h.key_press(egui::Key::Enter);
     h.run_steps(3);
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "35. e4 e5");
     assert_eq!(h.state().chess.board().game.start_fen(), START_FEN.replace(" 0 1", " 0 35"));
     click_square(&mut h, "g1");
@@ -1740,7 +1745,7 @@ fn open_on_the_board_shows_the_windows_board() {
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Board);
     assert!(!h.state().chess_board_shown(), "not in the column");
     assert_eq!(h.get_all_by_label("Board, White to move, move 1").count(), 1, "the window's board, once");
-    h.get_by_label("Analysis");
+    h.get_by_label("Analyze");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams");
 }
 
@@ -1831,10 +1836,10 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     h.get_by_label("Next move (Right arrow)").click();
     h.run_steps(2);
     assert_eq!(marks(&h).len(), 2);
-    // The Analysis section, closed until opened, clears them and says how they are drawn.
+    // The board's menu (⋯) clears them and says how they are drawn (plan A9-I0b: it was the
+    // Analysis section).
     assert!(h.query_by_label("Clear drawings").is_none());
-    h.get_by_label("Analysis").click();
-    h.run_steps(2);
+    board_menu(&mut h);
     h.get_by_label_contains("Right-click a square to circle it");
     h.get_by_label("Clear drawings").click();
     h.run_steps(2);
@@ -1842,22 +1847,22 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
 
     // Analysis with an engine that cannot be started says so; switched off, it says nothing.
     h.state_mut().chess.study.engine_path = Some("this-engine-does-not-exist-anywhere.exe".into());
-    h.get_by_label("Engine analysis").click();
+    h.state_mut().chess.study.analysis = true;
     h.run_steps(3);
-    assert!(h.state().chess.study.analysis);
     assert!(h.get_all_by_label_contains("The engine couldn't be started").next().is_some());
-    h.get_by_label("Engine analysis").click();
+    h.get_by_label("Stop the analysis").click();
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
     assert!(h.query_by_label_contains("The engine couldn't be started").is_none());
     // Choose engine… takes the program picked and switches the analysis on with it.
     h.state_mut().pick_override = Some(vec!["another-engine-that-does-not-exist.exe".into()]);
+    board_menu(&mut h);
     h.get_by_label("Choose engine…").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.study.engine_path.as_deref(), Some(std::path::Path::new("another-engine-that-does-not-exist.exe")));
     assert!(h.state().chess.study.analysis);
     assert!(h.get_all_by_label_contains("The engine couldn't be started").next().is_some());
-    h.get_by_label("Engine analysis").click();
+    h.get_by_label("Stop the analysis").click();
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
 
@@ -1868,7 +1873,7 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     assert!(h.state_mut().execute("chess.game.new"));
     h.run_steps(3);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
-    h.get_by_label("Analysis");
+    h.get_by_label("Analyze");
     assert!(h.state_mut().execute("chess.tool.setup"));
     h.run_steps(2);
     assert!(h.query_by_label("Empty board").is_some(), "the command arms the tool");
@@ -1915,9 +1920,8 @@ fn drawings_belong_to_the_move_and_go_into_the_pgn() {
     assert!(h.state_mut().chess.board_mut().redo());
     h.run_steps(2);
     assert_eq!(marks(&h), ["d5d5Green", "g1f3Red"]);
-    // Clear drawings in the Analysis section is a step too.
-    h.get_by_label("Analysis").click();
-    h.run_steps(2);
+    // Clear drawings in the board's menu is a step too.
+    board_menu(&mut h);
     h.get_by_label("Clear drawings").click();
     h.run_steps(2);
     assert!(marks(&h).is_empty());
@@ -1966,14 +1970,13 @@ fn the_chosen_engine_is_remembered_and_bad_settings_are_ignored() {
     let mut h = harness();
     h.state_mut().show_chess_board();
     h.run_steps(3);
-    h.get_by_label("Analysis").click();
-    h.run_steps(2);
     h.state_mut().pick_override = Some(vec![exe.display().to_string()]);
+    board_menu(&mut h);
     h.get_by_label("Choose engine…").click();
     h.run_steps(3);
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
     assert_eq!(saved["chess_engine"]["path"].as_str(), exe.to_str(), "{saved}");
-    h.get_by_label("Engine analysis").click();
+    h.get_by_label("Stop the analysis").click();
     h.run_steps(2);
     // Bad values: each ignored, the rest used.
     let missing = exe.with_file_name("no-such-engine-anywhere.exe");
@@ -2083,7 +2086,7 @@ fn wait_for(h: &mut Harness<'static, PdfCraftApp>, log: &EngineLog, done: impl F
 /// With an engine, the Analysis section's switch starts and closes the analysis: the lines in
 /// the section, the evaluation bar beside the board and the best move on it.
 #[test]
-fn the_analysis_section_switches_the_engine() {
+fn analyze_switches_the_engine() {
     let mut h = harness();
     h.state_mut().show_chess_board();
     h.run_steps(3);
@@ -2091,7 +2094,6 @@ fn the_analysis_section_switches_the_engine() {
     h.state_mut().chess.study.use_engine(engine);
     // The bar beside the board makes the board narrower, and what is under it moves up.
     h.run_steps(2);
-    h.get_by_label("Analysis").click();
     // The score twice: the line's, and the bar's name.
     let reported = wait_for(&mut h, &log, |h| h.query_by_label_contains("Fake Engine 1").is_some() && h.query_all_by_label("+0.30").count() == 2);
     assert!(reported, "the engine's line is shown");
@@ -2112,7 +2114,7 @@ fn the_analysis_section_switches_the_engine() {
     h.run_steps(3);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
     // Switched off: the engine is closed and the bar goes.
-    h.get_by_label("Engine analysis").click();
+    h.get_by_label("Stop the analysis").click();
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
     assert!(h.query_by_label_contains("0.30").is_none(), "no bar, no lines");
@@ -2171,8 +2173,8 @@ fn analyze_on_the_diagram_tab_analyses_the_edited_position() {
     assert_eq!(h.state().chess.board().game.fen(), edited, "the edited position is on the board");
     assert!(h.state().chess.study.analysis, "analysis is on");
     assert!(!h.state().chess.study.assistant, "an engine is there: no assistant");
-    // The section is open without a click on it: its switch shows.
-    h.get_by_label("Engine analysis");
+    // Its rows show without a click: the board's Analyze is on.
+    h.get_by_label("Stop the analysis");
     let sent = format!("position fen {edited}");
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
     assert!(wait_for(&mut h, &log, |h| h.query_by_label_contains("Fake Engine 1").is_some()), "the engine's line is shown");
@@ -2193,7 +2195,6 @@ fn analyze_in_the_list_opens_the_diagram_analysed() {
     assert!(h.state().chess_board_shown(), "the column's Board tab");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert!(h.state().chess.study.analysis);
-    h.get_by_label("Engine analysis");
     let sent = format!("position fen {START_FEN}");
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
     // The board's own Analyze is on, and switches it off.
@@ -2201,6 +2202,39 @@ fn analyze_in_the_list_opens_the_diagram_analysed() {
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
+}
+
+/// Put the Board tab's FEN and PGN fields in the moves' place (FEN/PGN ▾, plan A9-I0b: they
+/// were sections under the list).
+fn board_fields(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("FEN/PGN").click();
+    h.run_steps(2);
+    h.get_by_label("Edit the FEN and the PGN").click();
+    h.run_steps(3);
+}
+
+/// The document's games in the Board tab's moves' place, from its bar's Game ▾ (plan A9-I0b: the
+/// list was a section under the moves).
+fn games_view(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Games in this document (").click();
+    h.run_steps(3);
+}
+
+/// The comment fields of the move shown under the moves, from the bar's Comment (plan A9-I0b);
+/// left as they are when they show.
+fn open_comment(h: &mut Harness<'static, PdfCraftApp>) {
+    if h.query_by_label("Comment on this move").is_none() {
+        h.get_by_label("Comment").click();
+        h.run_steps(2);
+    }
+}
+
+/// Open the Board tab's menu (⋯): the engine's lines and program, Clear drawings (plan A9-I0b).
+fn board_menu(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("More board actions").click();
+    h.run_steps(2);
 }
 
 /// The node labelled `label` inside the dialog card `id`.
@@ -2261,10 +2295,8 @@ fn the_board_panel_analyses_with_a_real_engine() {
     let mut h = harness();
     h.state_mut().show_chess_board();
     h.run_steps(3);
-    h.get_by_label("Analysis").click();
-    h.run_steps(2);
     h.state_mut().chess.study.engine_path = Some(engine);
-    h.get_by_label("Engine analysis").click();
+    h.get_by_label("Analyze").click();
     // The app's own analyser has no hook here: frames until the line shows, NET at most.
     let deadline = std::time::Instant::now() + NET;
     let mut found = false;
@@ -2394,7 +2426,8 @@ fn a_comment_typed_in_several_goes_is_one_undo_step() {
     h.run_steps(3);
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    open_comment(&mut h);
+    let comment = h.get_by_label("Comment on this move");
     comment.focus();
     comment.type_text("good ");
     h.run_steps(2);
@@ -2475,6 +2508,7 @@ fn each_diagram_opened_is_a_new_game_and_the_first_is_kept() {
     double_click_diagram(&mut h);
     assert_eq!(games(h.state()), (vec!["1. e4".to_owned(), String::new()], 1), "a new game; the first is intact");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    games_view(&mut h);
     h.get_by_label("Games in this document (2)");
     // Back to the first game from the list: its moves are there, and a click there is not an undo step.
     h.get_all_by_label("Diagram 1, p. 1").next().expect("listed").click();
@@ -2604,17 +2638,8 @@ fn the_games_come_back_exactly_in_the_next_session() {
     // The diagram the first game came from is in this document.
     h.state_mut().show_chess_board();
     h.run_steps(3);
-    // The list of games is under the board, at the window's bottom: scrolled into view first.
-    let list = h.get_by_label("Werle–Jianu").rect().center();
-    h.hover_at(egui::pos2(list.x, 900.0));
-    h.run_steps(1);
-    h.event(egui::Event::MouseWheel {
-        unit: egui::MouseWheelUnit::Point,
-        delta: egui::vec2(0.0, -200.0),
-        phase: egui::TouchPhase::Move,
-        modifiers: egui::Modifiers::NONE,
-    });
-    h.run_steps(3);
+    // The list of games, in the moves' place (plan A9-I0b).
+    games_view(&mut h);
     h.get_by_label("Werle–Jianu").click();
     h.run_steps(2);
     let source = h.state().chess.board().source.unwrap();
@@ -2723,6 +2748,7 @@ fn a_newer_games_file_of_this_document_is_only_read() {
     h.state_mut().settle_chess_games();
     h.state_mut().show_chess_board();
     h.run_steps(3);
+    games_view(&mut h);
     assert!(h.query_by_label_contains("Saved by a newer PdfCraft: these games are only read here.").is_some(), "the list says why");
     drop(h);
     assert_eq!(chess_files(&s), ["0123456789abcdef0123456789abcdef.games.json"]);
@@ -2830,6 +2856,7 @@ fn a_pgn_file_with_several_games_is_imported() {
     h.run_steps(2);
     assert_eq!(games(h.state()), (vec!["1. e4 e5 {open} 2. Nf3".to_owned(), "1. d4 d5 (1... Nf6 2. c4) 2. c4".to_owned()], 0));
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Games read from db.pgn: 2 · Not read: 1"));
+    games_view(&mut h);
     h.get_by_label("Werle–Jianu");
     // Named by its event (T14), without players.
     h.get_by_label("C").click();
@@ -2893,9 +2920,9 @@ fn host_key(h: &mut Harness<'static, PdfCraftApp>, modifiers: egui::Modifiers, k
 /// A click on a label of the Board panel: the chess scope goes on, and nothing takes the focus.
 fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
     let title = h
-        .get_all_by_label("To move:")
+        .get_all_by_label_contains(" to move")
         .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label)
-        .expect("a label of the panel (its title is the docking tab: plan A8, P6)");
+        .expect("the Board tab's header: the move shown and whose move it is (plan A9-I0b)");
     let at = title.rect().center();
     click_at(h, at);
     assert!(h.state().chess.in_scope());
@@ -3084,6 +3111,7 @@ fn deleted_moves_are_kept_and_open_again_as_a_new_game() {
     h.run_steps(2);
     assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
     assert_eq!(h.state().chess.games.collection().trash().len(), 1);
+    games_view(&mut h);
     h.get_by_label("Deleted moves (1)…").click();
     h.run_steps(2);
     h.get_by_label_contains("5 moves · 2 moves deleted");
@@ -3135,8 +3163,7 @@ fn the_fen_field_never_takes_the_games_moves() {
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0]);
     assert!(h.query_by_label("Delete the moves after this one").is_none(), "no delete button beside the notation");
-    h.get_by_label("FEN").click();
-    h.run_steps(3);
+    board_fields(&mut h);
     let fen = h.state().chess.board().fen_text.clone();
     // The field, not the position's FEN shown elsewhere.
     let field = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value(&fen);
@@ -3173,14 +3200,16 @@ fn the_standard_start_over_moves_is_a_new_game() {
     h.state_mut().show_chess_board();
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0]);
-    h.get_by_label("FEN").click();
-    h.run_steps(3);
+    h.get_by_label("FEN/PGN").click();
+    h.run_steps(2);
     h.get_by_label("Standard start position").click();
     h.run_steps(3);
     let games = h.state().chess.games.collection();
     assert_eq!((games.len(), games.active_index()), (2, 1));
     assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
     assert_eq!(movetext(&h), "", "a new game from the start");
+    h.get_by_label("FEN/PGN").click();
+    h.run_steps(2);
     h.get_by_label("Standard start position").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.games.collection().len(), 2, "no moves: no other game");
@@ -3196,8 +3225,7 @@ fn typed_pgn_outlives_a_step_and_loads_in_place() {
     h.state_mut().show_chess_board();
     h.run_steps(3);
     put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
-    h.get_by_label("PGN").click();
-    h.run_steps(3);
+    board_fields(&mut h);
     assert!(h.query_by_label("PGN edited").is_none());
     let pgn = h.state().chess.board().pgn_text.clone();
     h.get_by_value(&pgn).click();
@@ -3291,7 +3319,8 @@ fn keys_typed_in_a_comment_stay_in_the_comment() {
     click_board_title(&mut h);
     let promote = format!("Promote one level ({})", key_text(true, false, "↑"));
     h.get_by_label(&promote);
-    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    open_comment(&mut h);
+    let comment = h.get_by_label("Comment on this move");
     comment.focus();
     comment.type_text("good");
     h.run_steps(2);
@@ -3487,13 +3516,15 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
 
 /// T13a, T13b: the window's board is as large as its height allows. A window 760 pt wide or more
 /// has the Diagrams and Text tabs beside the board panel, and in a very wide one the board panel
-/// has the moves and fields beside the board too (§4.1); a narrow one shows one at a time.
+/// has the moves and its bar beside the board too (§4.1, plan A9-I0b); a narrow one shows one at
+/// a time.
 #[test]
 fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
     assert!(h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board, ").rect();
-    assert!(board.width() > 480.0, "{board:?}");
+    // As large as the moves' ten rows under it leave it (plan A9-I0b: the board never scrolls).
+    assert!(board.width() > 360.0, "{board:?}");
     let scan = h.get_by_label("Detect diagrams").rect();
     assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
     let moves = h.get_by_label("Moves").rect();
@@ -3502,23 +3533,20 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     // from its top, and the Diagrams tab beyond it.
     let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
     let board = h.get_by_label_contains("Board, ").rect();
-    let fen = h.get_by_label("FEN").rect();
-    assert!(fen.min.x > board.max.x, "the fields beside the board: {fen:?} {board:?}");
     let moves = h.get_by_label("Moves").rect();
     assert!(moves.min.x > board.max.x && moves.min.y < board.center().y, "the moves beside the board: {moves:?} {board:?}");
     assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
+    // The bar at the foot of the moves' column (plan A9-I0b: the fields were sections there).
+    let bar = h.get_by_label("FEN/PGN").rect();
+    assert!(bar.min.x > board.max.x && bar.min.y >= moves.max.y - 0.5, "the bar under the moves: {bar:?} {moves:?}");
     let scan = h.get_by_label("Detect diagrams").rect();
     assert!(scan.min.x > moves.max.x, "and the Diagrams tab beside them: {scan:?} {moves:?}");
-    // The study board's Analysis section heads that column (T5c); the set-up view takes the
-    // board's place in its own column, and the moves stay beside it.
-    let analysis = h.get_by_label("Analysis").rect();
-    assert!(analysis.min.x > board.max.x && analysis.max.y <= moves.min.y, "{analysis:?} {moves:?}");
+    // The set-up view takes the board's place in its own column, and the moves stay beside it.
     assert!(h.state_mut().execute("chess.tool.setup"));
     h.run_steps(2);
     assert_eq!(h.get_all_by_label("Empty board").count(), 1);
     assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "the set-up board alone");
     assert!(h.query_by_label_contains("Board, ").is_none(), "the analysis board gives it its place");
-    assert!(h.query_by_label("Analysis").is_none());
     h.get_by_label("Moves");
     h.get_by_label("Cancel").click();
     h.run_steps(2);
@@ -3799,43 +3827,6 @@ fn tall_window(height: f32) -> Harness<'static, PdfCraftApp> {
     h
 }
 
-/// The Board panel's height (spec §4.1): the notation takes what the board and the rest leave,
-/// never less than 120 pt; FEN, PGN and the game's details are sections, closed until opened,
-/// and one opened takes its room from the notation.
-#[test]
-fn the_notation_fills_the_panel_and_the_fields_are_closed_sections() {
-    let mut h = tall_window(1400.0);
-    h.state_mut().show_chess_board();
-    h.run_steps(3);
-    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
-    h.run_steps(3);
-    let moves = |h: &Harness<'static, PdfCraftApp>| h.get_by_label("Moves").rect().height();
-    let tall = moves(&h);
-    assert!(tall > 180.0, "the notation fills the panel, not capped at 180 pt: {tall}");
-    for (section, inside) in [("FEN", "Copy FEN"), ("PGN", "Load PGN"), ("Game details", "Event")] {
-        assert!(h.query_by_label(inside).is_none(), "{section} is closed until opened");
-        h.get_by_label(section).click();
-        h.run_steps(3);
-        h.get_by_label(inside);
-        h.get_by_label(section).click();
-        h.run_steps(3);
-        assert!(h.query_by_label(inside).is_none(), "{section} closes again");
-    }
-    assert!((moves(&h) - tall).abs() < 1.0, "all closed again: the notation is as tall as before");
-    h.get_by_label("PGN").click();
-    h.run_steps(3);
-    let shorter = moves(&h);
-    assert!(shorter < tall - 40.0 && shorter >= 120.0, "the PGN field took its room from the notation: {tall} → {shorter}");
-    // A short window: the notation keeps its least height, and the panel scrolls instead.
-    let mut h = tall_window(560.0);
-    h.state_mut().show_chess_board();
-    h.run_steps(3);
-    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
-    h.run_steps(3);
-    let least = moves(&h);
-    assert!((119.0..=121.0).contains(&least), "the notation's least height: {least}");
-}
-
 // ---- T6: glyphs, comments and the glyph palette ----
 
 /// Type `text` as the desktop app gets it: through `raw_input_hook`, where the chess scope takes
@@ -3935,7 +3926,8 @@ fn glyphs_typed_in_the_chess_scope_go_on_the_move_and_not_into_a_text_field() {
     h.run_steps(2);
     assert_eq!(glyph_codes(&h), [1, 14], "one step put both back");
     // In the comment field, ! is text.
-    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    open_comment(&mut h);
+    let comment = h.get_by_label("Comment on this move");
     comment.focus();
     h.run_steps(2);
     host_text(&mut h, "!");
@@ -3955,9 +3947,10 @@ fn the_comment_before_a_move_goes_where_pgn_has_room_and_says_where_it_has_none(
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0, 1]);
     click_board_title(&mut h);
-    assert_eq!(h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).count(), 1, "the comment after the move only");
+    assert_eq!(h.query_all_by_role(egui::accesskit::Role::MultilineTextInput).count(), 0, "no comment field until it is asked for (plan A9-I0b)");
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     assert!(h.state().chess.board().comment_editor_open(), "Enter opened the comment editor");
+    assert_eq!(h.query_all_by_role(egui::accesskit::Role::MultilineTextInput).count(), 2, "before and after the move");
     let before = h.get_by_label("Comment before 1…c5");
     before.focus();
     before.type_text("Sicilian");
@@ -3996,7 +3989,8 @@ fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
     click_board_title(&mut h);
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::G);
     h.get_by_label("White knight");
-    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    open_comment(&mut h);
+    let comment = h.get_by_label("Comment on this move");
     comment.focus();
     comment.type_text("a b");
     h.run_steps(2);
@@ -4055,7 +4049,9 @@ fn the_move_list_stands_beside_the_page_on_either_side() {
     let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board, ").rect());
     assert!(moves.min.x >= page.max.x && moves.max.x <= board.min.x, "between the page and the board: {moves:?} {page:?} {board:?}");
     assert!(moves.height() > 400.0, "the list's height: {moves:?}");
-    h.get_by_label("PGN");
+    // The board's moves region holds the document's games then, and the bar stays (plan A9-I0b).
+    h.get_by_label("FEN/PGN");
+    h.get_by_label("Games in this document (1)");
     h.get_by_label("Left").click();
     h.run_steps(4);
     assert!(h.state().docking.moves_on_left());
@@ -4585,10 +4581,11 @@ fn a_correction_marks_the_one_diagram_the_exports_give_it() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Plan A8, P6: docked, the board panel is named by its workspace tab alone; who moves is a
-/// segmented control whose choices are radio buttons; the chess panel's tabs switch as before.
+/// Plan A8, P6: docked, the board panel is named by its workspace tab alone; the chess panel's
+/// tabs switch as before. Who moves is said in the board's header; choosing it is the set-up's
+/// (plan A9-I0b, §2.8.1, finding A6-24: it showed, disabled, over a game with moves).
 #[test]
-fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
+fn the_panel_board_is_named_once_and_says_who_moves() {
     use egui::accesskit::Role;
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
@@ -4602,11 +4599,12 @@ fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
     h.state_mut().show_chess_board();
     h.run_steps(4);
     assert_eq!(h.query_all_by_label("Chess board").count(), 0, "the column's Board tab names it (plan A9-I0a)");
-    let black = h.query_all_by_role_and_label(Role::RadioButton, "Black").count();
-    assert_eq!(black, 1, "Black is one segment of who moves");
-    h.get_by_role_and_label(Role::RadioButton, "Black").click();
-    h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.side_to_move(), pdfcraft_engine::chess::pdfcraft_chess::placement::Color::Black);
+    assert_eq!(h.query_all_by_role_and_label(Role::RadioButton, "Black").count(), 0, "no choice of who moves in Navigate");
+    assert_eq!(h.get_by_label("White to move").accesskit_node().role(), Role::Label, "the header says it");
+    // The set-up chooses it.
+    assert!(h.state_mut().execute("chess.tool.setup"));
+    h.run_steps(2);
+    assert_eq!(h.query_all_by_role_and_label(Role::RadioButton, "Black").count(), 1, "the set-up's who moves");
 }
 
 /// Plan A8, P5 (finding X4), as plan A9-I0a has it: no offer to collapse the tools panel any
@@ -6226,4 +6224,220 @@ fn a_page_inserted_before_takes_the_games_pages_along() {
     let bytes = std::fs::read(&path).unwrap();
     let h = session(&s, "book.pdf", Some(&path), bytes);
     assert_eq!(pages(&h), (Some(1), Some(1)), "and come back there");
+}
+
+// ─── Plan A9-I0b: the board never scrolls ───────────────────────────────────────────────────
+
+/// The Board tab's regions as the last frame measured them (plan A9-I0b): header, board,
+/// navigation, engine, trail, moves, bar.
+fn board_regions(h: &Harness<'static, PdfCraftApp>) -> [egui::Rect; 7] {
+    h.ctx.data(|d| d.get_temp::<[egui::Rect; 7]>(egui::Id::new("pdfcraft-chess-board-regions"))).expect("the Board tab is drawn")
+}
+
+/// A main line of `n` moves, the knights going out and back (Nf3 Nf6 Ng1 Ng8 …).
+fn dance(n: usize) -> String {
+    let steps = ["Nf3", "Nf6", "Ng1", "Ng8"];
+    let mut pgn = String::new();
+    for i in 0..n {
+        if i % 2 == 0 {
+            pgn.push_str(&format!("{}. ", i / 2 + 1));
+        }
+        pgn.push_str(steps[i % 4]);
+        pgn.push(' ');
+    }
+    pgn.push('*');
+    pgn
+}
+
+/// The height of a row of the notation as drawn: the smallest step down between two of its
+/// moves' rows.
+fn row_pitch(h: &Harness<'static, PdfCraftApp>) -> f32 {
+    let mut ys: Vec<f32> = h.query_all_by_label_contains("knight ").map(|n| n.rect().min.y).collect();
+    ys.sort_by(f32::total_cmp);
+    ys.windows(2).map(|w| w[1] - w[0]).filter(|d| *d > 1.0).fold(f32::INFINITY, f32::min)
+}
+
+/// Plan A9-I0b (§2.8.0 sketch (d), findings A6-12, A6-24): at 1366 × 768 (1360 × 705 inside) the
+/// Board tab never scrolls. The board, its navigation, the engine's three lines, the trail, seven
+/// rows of moves or more and the bar Game ▾ · Comment · FEN/PGN ▾ are all inside the Chess
+/// column, each under the one before; without the engine the moves have ten rows or more. The
+/// list was a 120 pt scroll area inside a panel that scrolled too, with the fields under it.
+#[test]
+fn the_board_tab_never_scrolls() {
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, &dance(120), &[0]);
+    // The engine on (one that cannot start: its rows are kept all the same).
+    h.state_mut().chess.study.engine_path = Some("this-engine-does-not-exist-anywhere.exe".into());
+    h.state_mut().chess.study.analysis = true;
+    h.run_steps(4);
+    let column = chess_column(&h);
+    let window = h.ctx.content_rect();
+    let inside = |r: egui::Rect| column.contains_rect(r.shrink(0.5)) && window.contains_rect(r.shrink(0.5));
+    let board = h.get_by_label_contains("Board, ").rect();
+    let moves = h.get_by_label("Moves").rect();
+    assert!(inside(board), "the board {board:?} in the column {column:?}");
+    assert!(inside(moves), "the moves {moves:?} in the column {column:?}, not under its edge");
+    let rows = row_pitch(&h);
+    assert!(rows.is_finite() && moves.height() >= 7.0 * rows - 1.0, "{} rows of {rows} pt with the engine", moves.height() / rows);
+    // Compact rows leave the board its room: 96 pt with the panel's 29 pt rows.
+    assert!(rows <= 24.0 && board.width() >= 140.0, "rows of {rows} pt, the board {board:?}");
+    // The regions, one under the other, the bar at the column's foot.
+    let regions = board_regions(&h);
+    let [header, square, nav, engine, trail, list, bar] = regions;
+    for (a, b) in regions.iter().zip(regions.iter().skip(1)) {
+        assert!(a.max.y <= b.min.y + 0.5, "{regions:?}");
+    }
+    for r in regions {
+        assert!(inside(r) || r.height() == 0.0, "{r:?} in {column:?}");
+    }
+    assert!((header.height(), nav.height(), trail.height(), bar.height()) == (28.0, 28.0, 20.0, 24.0), "{regions:?}");
+    assert!((engine.height() - 60.0).abs() < 0.5, "three lines of 20 pt: {engine:?}");
+    assert!(square.contains_rect(board.shrink(0.5)) && list.contains_rect(moves.shrink(0.5)));
+    assert!(column.max.y - bar.max.y < 16.0, "the bar at the column's foot: {bar:?} {column:?}");
+    for name in ["Previous move (Left arrow)", "Flip board"] {
+        assert!(nav.contains_rect(h.get_by_label(name).rect().shrink(0.5)), "{name} in the navigation row");
+    }
+    for name in ["Game", "Comment", "FEN/PGN"] {
+        assert!(bar.contains_rect(h.get_by_label(name).rect().shrink(0.5)), "{name} in the bar {bar:?}");
+    }
+    assert!(header.contains(h.get_by_label("Stop the analysis").rect().center()));
+    assert!(h.query_by_label("Move number:").is_none() && h.query_by_label("To move:").is_none(), "no set-up controls in Navigate (A6-24)");
+    // The wheel over the board scrolls nothing.
+    h.hover_at(board.center());
+    h.run_steps(1);
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, -300.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run_steps(3);
+    assert_eq!(h.get_by_label_contains("Board, ").rect(), board, "the board stays where it is");
+    shot(&mut h, "i0b-1360x705-engine.png");
+    // Without the engine: ten rows and more.
+    h.state_mut().chess.study.analysis = false;
+    h.run_steps(4);
+    let moves = h.get_by_label("Moves").rect();
+    assert!(inside(moves) && moves.height() >= 10.0 * rows - 1.0, "{} rows without the engine", moves.height() / rows);
+    shot(&mut h, "i0b-1360x705.png");
+    // With PDFCRAFT_CHESS_SHOTS set, the plan's other screens, the engine on.
+    h.state_mut().chess.study.analysis = true;
+    for (w, ht) in [(1366.0, 768.0), (1440.0, 900.0), (1920.0, 1080.0)] {
+        h.set_size(egui::vec2(w, ht));
+        h.run_steps(4);
+        let moves = h.get_by_label("Moves").rect();
+        let column = chess_second(&h).unwrap_or_else(|| chess_column(&h));
+        assert!(column.contains_rect(moves.shrink(0.5)), "{w}: {moves:?} in {column:?}");
+        shot(&mut h, &format!("i0b-{w}x{ht}.png"));
+    }
+}
+
+/// Plan A9-I0b (§2.8.0, R5-04): at 200 % of a 1366 × 768 screen (680 × 352 pt) the Board tab
+/// still fits its column: every control in sight is inside it and the window, the bar at its
+/// foot.
+#[test]
+fn at_200_percent_the_board_tab_fits_its_column() {
+    no_piece_model();
+    let mut h = Harness::builder().with_size(egui::vec2(680.0, 352.0)).with_pixels_per_point(2.0).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().show_chess_board();
+    h.run_steps(4);
+    put_game(&mut h, &dance(40), &[0]);
+    h.run_steps(3);
+    let (column, window) = (chess_column(&h), h.ctx.content_rect());
+    let shown = column.intersect(window);
+    let mut seen = 0;
+    for node in h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus)).filter(|n| shown.intersects(n.rect())) {
+        let r = node.rect();
+        let name = node.accesskit_node().label().unwrap_or_default();
+        // The moves' rows scroll in their own area; the rest is inside the column.
+        assert!(column.min.x - 0.5 <= r.min.x && r.max.x <= column.max.x.min(window.max.x) + 0.5, "{name:?} {r:?} out of {column:?}");
+        seen += 1;
+    }
+    assert!(seen >= 8, "the tab's controls: {seen}");
+    let bar = board_regions(&h)[6];
+    assert!(bar.max.y <= window.max.y + 0.5 && bar.max.y <= column.max.y + 0.5, "the bar in the window: {bar:?} {window:?}");
+    for name in ["Game", "Comment", "FEN/PGN"] {
+        assert!(bar.contains_rect(h.get_by_label(name).rect().shrink(0.5)), "{name}");
+    }
+    shot(&mut h, "i0b-680x352.png");
+}
+
+/// Plan A9-I0b (finding R8-07): in columns too, a long game builds only the rows in view (and the
+/// one with the move shown): every one of its rows was built every frame.
+#[test]
+fn the_moves_in_columns_build_only_the_rows_in_view() {
+    let mut h = harness();
+    h.state_mut().set_option("move-list-layout", "columns").unwrap();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, &dance(600), &[0]);
+    h.run_steps(6);
+    let built = h.query_all_by_label("knight f3").count();
+    assert!(built > 0 && built < 60, "{built} of 150 knight-f3 moves built");
+    // At the end, the move shown is built and in view.
+    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.run_steps(6);
+    let last = h.get_all_by_label("knight g8").last().expect("the last move built").rect();
+    assert!(h.get_by_label("Moves").rect().intersects(last), "{last:?} in view");
+}
+
+/// Plan A9-I0b (§2.8.0: the bar took the sections' place): Game ▾ has the number of the game's
+/// first move, its details and the document's games, the last two in the moves' place; FEN/PGN ▾
+/// copies, and puts the FEN and PGN fields in the moves' place; "‹ Moves" and Esc go back.
+/// Comment opens the comment fields under the moves.
+#[test]
+fn the_bar_holds_the_game_the_comment_and_the_fields() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0, 0]);
+    let moves = h.get_by_label("Moves").rect();
+    // Game ▾: its details in the moves' place, then back.
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label("The game starts at move:");
+    h.get_by_label("Game details").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("Moves").is_none(), "the details in the moves' place");
+    assert!(moves.contains(h.get_by_label("Event").rect().center()), "where the moves were");
+    h.get_by_label("Back to the moves").click();
+    h.run_steps(2);
+    h.get_by_label("Moves");
+    // The document's games, then Esc.
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label("Games in this document (1)").click();
+    h.run_steps(3);
+    h.get_by_label("Save all games as PGN…");
+    click_board_title(&mut h);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    h.get_by_label("Moves");
+    // FEN/PGN ▾: the two fields in the moves' place.
+    h.get_by_label("FEN/PGN").click();
+    h.run_steps(2);
+    h.get_by_label("Copy FEN");
+    h.get_by_label("Edit the FEN and the PGN").click();
+    h.run_steps(3);
+    let pgn = h.get_by_label("PGN").rect();
+    assert!(moves.contains(h.get_by_label("FEN").rect().center()) && pgn.height() > 100.0, "the PGN field fills the place: {pgn:?}");
+    h.get_by_label("Back to the moves").click();
+    h.run_steps(2);
+    // Comment: the fields under the moves, and off again.
+    assert!(h.query_by_label("Comment on this move").is_none());
+    h.get_by_label("Comment").click();
+    h.run_steps(3);
+    let field = h.get_by_label("Comment on this move").rect();
+    assert!(field.min.y >= h.get_by_label("Moves").rect().max.y - 0.5 && field.max.y <= board_regions(&h)[6].min.y + 0.5, "{field:?}");
+    h.get_by_label("Comment").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("Comment on this move").is_none());
 }
