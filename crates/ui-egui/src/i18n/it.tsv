@@ -3741,6 +3741,8 @@ the move's comment	Move comment	Commento della mossa
 	Tools panel collapsed	Pannello Strumenti compresso
 	Show the page (F6)	Mostra la pagina (F6)
 	The board is in the column beside.	La scacchiera è nella colonna accanto.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Aggiungi segnalibri degli scacchi
 	More board actions	Altre azioni della scacchiera
 	Back to the moves	Torna alle mosse
 	Back to the moves (Esc)	Torna alle mosse (Esc)
@@ -3755,6 +3757,5 @@ the move's comment	Move comment	Commento della mossa
 	Original diagram, page {p}, diagram {n}	Diagramma originale, pagina {p}, diagramma {n}
 	The page's picture of this diagram shows once its page is drawn.	L’immagine della pagina di questo diagramma appare non appena la sua pagina è disegnata.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Aggiungi segnalibri degli scacchi
 	Not confirmed	Non confermato
 progress bar	Progress	Avanzamento

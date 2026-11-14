@@ -3780,6 +3780,8 @@ the move's comment	Move comment	Ėjimo komentaras
 	Tools panel collapsed	Įrankių skydelis suskleistas
 	Show the page (F6)	Rodyti puslapį (F6)
 	The board is in the column beside.	Lenta yra gretimame stulpelyje.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Pridėti šachmatų žymeles
 	More board actions	Daugiau lentos veiksmų
 	Back to the moves	Atgal į ėjimus
 	Back to the moves (Esc)	Atgal į ėjimus (Esc)
@@ -3793,6 +3795,5 @@ the move's comment	Move comment	Ėjimo komentaras
 	Original diagram, page {p}, diagram {n}	Originali diagrama, {p} puslapis, {n} diagrama
 	The page's picture of this diagram shows once its page is drawn.	Šios diagramos puslapio paveikslas parodomas, kai jos puslapis nupiešiamas.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Pridėti šachmatų žymeles
 	Not confirmed	Nepatvirtinta
 progress bar	Progress	Eiga

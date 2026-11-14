@@ -3525,6 +3525,8 @@ the move's comment	Move comment	Hamlenin yorumu
 	Tools panel collapsed	Araçlar paneli daraltıldı
 	Show the page (F6)	Sayfayı göster (F6)
 	The board is in the column beside.	Tahta yandaki sütunda.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Satranç yer işaretleri ekle
 	More board actions	Diğer tahta eylemleri
 	Back to the moves	Hamlelere dön
 	Back to the moves (Esc)	Hamlelere dön (Esc)
@@ -3539,6 +3541,5 @@ the move's comment	Move comment	Hamlenin yorumu
 	Original diagram, page {p}, diagram {n}	Özgün diyagram, sayfa {p}, diyagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Bu diyagramın sayfa görüntüsü, sayfası çizildiğinde görünür.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Satranç yer işaretleri ekle
 	Not confirmed	Onaylanmadı
 progress bar	Progress	İlerleme

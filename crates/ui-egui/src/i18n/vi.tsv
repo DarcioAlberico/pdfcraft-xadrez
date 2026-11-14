@@ -3782,6 +3782,8 @@ the move's comment	Move comment	Bình luận của nước đi
 	Tools panel collapsed	Đã thu gọn bảng Công cụ
 	Show the page (F6)	Hiện trang (F6)
 	The board is in the column beside.	Bàn cờ ở cột bên cạnh.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Thêm dấu trang cờ vua
 	More board actions	Thao tác khác với bàn cờ
 	Back to the moves	Về các nước đi
 	Back to the moves (Esc)	Về các nước đi (Esc)
@@ -3795,6 +3797,5 @@ the move's comment	Move comment	Bình luận của nước đi
 	Original diagram, page {p}, diagram {n}	Sơ đồ gốc, trang {p}, sơ đồ {n}
 	The page's picture of this diagram shows once its page is drawn.	Hình trên trang của sơ đồ này hiện khi trang của nó đã được vẽ.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Thêm dấu trang cờ vua
 	Not confirmed	Chưa xác nhận
 progress bar	Progress	Tiến độ

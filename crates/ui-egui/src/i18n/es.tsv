@@ -3670,6 +3670,8 @@ the move's comment	Move comment	Comentario de la jugada
 	Tools panel collapsed	Panel Herramientas contraído
 	Show the page (F6)	Mostrar la página (F6)
 	The board is in the column beside.	El tablero está en la columna de al lado.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Añadir marcadores de ajedrez
 	More board actions	Más acciones del tablero
 	Back to the moves	Volver a las jugadas
 	Back to the moves (Esc)	Volver a las jugadas (Esc)
@@ -3684,6 +3686,5 @@ the move's comment	Move comment	Comentario de la jugada
 	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
 	The page's picture of this diagram shows once its page is drawn.	La imagen de la página de este diagrama aparece en cuanto se dibuja su página.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Añadir marcadores de ajedrez
 	Not confirmed	Sin confirmar
 progress bar	Progress	Progreso

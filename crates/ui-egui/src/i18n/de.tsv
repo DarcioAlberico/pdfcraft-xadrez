@@ -3530,6 +3530,8 @@ the move's comment	Move comment	Kommentar des Zugs
 	Tools panel collapsed	Bereich „Werkzeuge“ eingeklappt
 	Show the page (F6)	Seite zeigen (F6)
 	The board is in the column beside.	Das Brett ist in der Spalte daneben.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Schach-Lesezeichen hinzufügen
 	More board actions	Weitere Brett-Aktionen
 	Back to the moves	Zurück zu den Zügen
 	Back to the moves (Esc)	Zurück zu den Zügen (Esc)
@@ -3544,6 +3546,5 @@ the move's comment	Move comment	Kommentar des Zugs
 	Original diagram, page {p}, diagram {n}	Originaldiagramm, Seite {p}, Diagramm {n}
 	The page's picture of this diagram shows once its page is drawn.	Das Bild der Seite mit diesem Diagramm erscheint, sobald seine Seite gezeichnet ist.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Schach-Lesezeichen hinzufügen
 	Not confirmed	Nicht bestätigt
 progress bar	Progress	Fortschritt

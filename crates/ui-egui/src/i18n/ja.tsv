@@ -3531,6 +3531,8 @@ the move's comment	Move comment	手のコメント
 	Tools panel collapsed	ツールパネルを折りたたみました
 	Show the page (F6)	ページを表示 (F6)
 	The board is in the column beside.	盤は隣の列にあります。
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	チェスのしおりを追加
 	More board actions	盤のその他の操作
 	Back to the moves	指し手に戻る
 	Back to the moves (Esc)	指し手に戻る (Esc)
@@ -3545,6 +3547,5 @@ the move's comment	Move comment	手のコメント
 	Original diagram, page {p}, diagram {n}	元の局面図、{p} ページ、局面図 {n}
 	The page's picture of this diagram shows once its page is drawn.	この局面図のページの画像は、そのページが描画されると表示されます。
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	チェスのしおりを追加
 	Not confirmed	未確定
 progress bar	Progress	進行状況

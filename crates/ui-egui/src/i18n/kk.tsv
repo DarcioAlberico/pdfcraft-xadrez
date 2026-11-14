@@ -3527,6 +3527,8 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Tools panel collapsed	Құралдар тақтасы жиналды
 	Show the page (F6)	Бетті көрсету (F6)
 	The board is in the column beside.	Тақта көрші бағанда.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Шахмат бетбелгілерін қосу
 	More board actions	Тақтаның басқа әрекеттері
 	Back to the moves	Жүрістерге оралу
 	Back to the moves (Esc)	Жүрістерге оралу (Esc)
@@ -3541,6 +3543,5 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Original diagram, page {p}, diagram {n}	Түпнұсқа диаграмма, {p}-бет, {n}-диаграмма
 	The page's picture of this diagram shows once its page is drawn.	Бұл диаграмманың бет суреті оның беті салынғанда көрсетіледі.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Шахмат бетбелгілерін қосу
 	Not confirmed	Расталмаған
 progress bar	Progress	Орындалу барысы
