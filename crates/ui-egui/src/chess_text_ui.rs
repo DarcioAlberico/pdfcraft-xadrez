@@ -40,13 +40,14 @@ use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
 
-/// The panel's tabs. The study board that was a third tab is the Board panel since T5c (D11 b);
-/// the tab is not saved, so no setting names it.
+/// The Chess column's tabs (plan A9-I0a, §2.8.0). The study board, a panel of its own since T5c
+/// (D11 b), is a tab of the column again; the tab is not saved, so no setting names it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChessTab {
     #[default]
     Diagrams,
     Text,
+    Board,
 }
 
 /// One page read as text.
