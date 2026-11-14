@@ -764,7 +764,28 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
 /// scope ends, so the arrows are the page's again. Taken only then; otherwise F6 is left alone.
 fn take_f6(chess: &mut ChessState, ctx: &egui::Context, events: &mut Vec<Event>) {
     let f6 = |event: &Event| matches!(event, Event::Key { key: Key::F6, pressed: true, modifiers, .. } if modifiers.is_none());
-    if !events.iter().any(f6) || !(chess.in_scope() || chess.diagram_keys.focus_in_tab) {
+    if !events.iter().any(f6) {
+        return;
+    }
+    // Under 1,000 pt (plan A9-I0a): F6 switches the page and the Chess column in its place, and
+    // takes the keyboard there.
+    if chess.budget.alternating {
+        events.retain(|event| !f6(event));
+        let page = !chess.budget.show_page;
+        chess.budget.show_page = page;
+        chess.budget.focus_to = (!page).then_some(crate::chess_budget::FocusTo::Column);
+        ctx.memory_mut(|m| {
+            if let Some(id) = m.focused() {
+                m.surrender_focus(id);
+            }
+        });
+        chess.diagram_keys.focus_in_tab = false;
+        if page {
+            chess.leave_for_document();
+        }
+        return;
+    }
+    if !(chess.in_scope() || chess.diagram_keys.focus_in_tab) {
         return;
     }
     events.retain(|event| !f6(event));

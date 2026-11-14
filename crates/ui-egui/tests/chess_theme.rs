@@ -451,7 +451,8 @@ fn the_board_panel_is_as_wide_as_it_is_dragged() {
     h.state_mut().mode = pdfcraft_ui_egui::Mode::Read;
     h.run_steps(4);
     let panel = |h: &Harness<'static, PdfCraftApp>| {
-        egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new("read_board_panel")).expect("the Read mode board panel").outer_rect
+        // The right-hand panel, which holds the Chess column (plan A9-I0a).
+        egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new("read_right_panel")).expect("the Read mode right-hand panel").outer_rect
     };
     let edge = panel(&h).left_center() + egui::vec2(2.0, 0.0);
     drag(&mut h, edge, edge - egui::vec2(600.0, 0.0));

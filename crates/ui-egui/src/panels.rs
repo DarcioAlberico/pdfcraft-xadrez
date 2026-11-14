@@ -519,6 +519,10 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     let Some((index, id)) = app.active_ids() else { return };
     let Some(panel) = app.right else { return };
+    if panel == RightPanel::Chess {
+        crate::chess_ui::column(app, ui);
+        return;
+    }
     let mut nav: Option<Nav> = None;
     let mut close = false;
     let mut toggle_layer: Option<(usize, bool)> = None;
@@ -531,15 +535,10 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut sig_action: Option<crate::sign_ui::PanelAction> = None;
     let mut a11y_action: Option<crate::a11y_ui::PanelAction> = None;
     let mut compare_action: Option<crate::compare_ui::PanelAction> = None;
-    let mut chess_action: Option<crate::chess_ui::PanelAction> = None;
     let mut bm_rename = app.bookmark_rename.clone();
     let bm_editable = app.session.get(id).is_some_and(|d| d.allows_assembly() && d.read_only_reason.is_none());
     // Prepare a form is open: the Fields panel orders tabs.
     let preparing = app.is_preparing();
-    // Where the chess panel draws the diagram editor (plan A9-I15).
-    let chess_editor_here = app.chess_editor_in_panel();
-    // What the chess panel shows of the book's PGN, which the session holds (plan A9-I1b).
-    let chess_pgn = app.book_pgn_view(id);
     {
         let Some(doc) = app.session.get(id) else { return };
         let info = &doc.info;
@@ -549,15 +548,6 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         let a11y = &mut app.a11y;
         let tags_state = &mut app.tags_state;
         let compare = &app.compare;
-        // The Diagrams and Text tabs are in the chess window while it is out (T13b).
-        let chess_in_window = app.chess_window.in_window();
-        // The tools panel takes 270 points of a narrow window: the chess panel offers to collapse
-        // it, once (plan A8, P5).
-        let narrow = ui.ctx().content_rect().width() < crate::chess_ui::TOOLS_OFFER_BELOW;
-        app.chess.tools_offer = narrow && app.left_open && app.mode != crate::Mode::Read && !app.chess.tools_offer_answered;
-        let chess = &mut app.chess;
-        let chess_now = app.session.chess_stamp(id);
-        let chess_origin = app.session.chess_origin(id);
         let comment_allowed = doc.allows_annotation();
         // A dialog or the palette owns the keyboard: the panel leaves Escape to it.
         let modal = app.dialog.is_some() || app.palette_open;
@@ -578,7 +568,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     RightPanel::Tags => ("Tags", None),
                     RightPanel::Search => ("Search", None),
                     RightPanel::Compare => ("Compare", compare.as_ref().filter(|c| c.new == id).map(|c| c.result.changes.len())),
-                    RightPanel::Chess => ("Chess diagrams", chess.results_of(id).map(crate::chess_ui::ChessResults::count)),
+                    // Drawn by `chess_ui::column`.
+                    RightPanel::Chess => ("Chess", None),
                 };
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new(tl!(title)).font(theme::semibold(15.5)));
@@ -750,21 +741,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
-                    RightPanel::Chess => {
-                        chess_action = crate::chess_ui::panel(
-                            ui,
-                            &t,
-                            chess,
-                            id,
-                            info,
-                            chess_now,
-                            chess_origin,
-                            view.current,
-                            chess_in_window,
-                            chess_editor_here,
-                            &chess_pgn,
-                        )
-                    }
+                    RightPanel::Chess => {}
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {
                             empty(ui, &t, "paperclip", "This document has no attachments.");
@@ -823,9 +800,6 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     if let Some(a) = compare_action {
         app.compare_action(index, a);
-    }
-    if let Some(a) = chess_action {
-        app.chess_action(a);
     }
     match sig_action {
         Some(crate::sign_ui::PanelAction::Validate) => app.run_command("sign.validate"),

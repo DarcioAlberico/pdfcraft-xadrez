@@ -1,20 +1,23 @@
-//! Chess: where the tools keep the diagram corrections and the books' PGNs (plan A9-G5a, decision
-//! D17), and `chess_store_migrate`, which brings in what an earlier build kept elsewhere.
+//! Chess: where the tools keep the diagram corrections, the books' PGNs (plan A9-G5a, decision
+//! D17) and the documents' games (plan A9-G3b), and `chess_store_migrate`, which brings in what an
+//! earlier build kept elsewhere.
 //!
 //! **One place.** A frontend that knows the app's data folder (the command line and the MCP
-//! server: [`Automation::with_chess_data`]) keeps both stores where the app does, in its `chess`
-//! folder (`corrections`, `reference`), whatever the working folder. With `--root` or the
+//! server: [`Automation::with_chess_data`]) keeps the stores where the app does, in its `chess`
+//! folder (`corrections`, `reference`, `games`), whatever the working folder. With `--root` or the
 //! automation roots that folder must be inside them: when it is not, a reading tool reads nothing
 //! and says so (`outside_root`), and a change is refused until `store` / `reference_store` names
 //! a folder inside them. An `Automation` without one (tests, an embedding) keeps the stores in
-//! `.pdfcraft/chess-corrections` and `.pdfcraft/chess-reference` of its root or working folder,
-//! as before.
+//! `.pdfcraft/chess-corrections`, `.pdfcraft/chess-reference` and `.pdfcraft/chess-games` of its
+//! root or working folder, as before.
 //!
 //! **Bringing in what was kept elsewhere.** The first time the app's folder is used without
 //! confinement, the recovery folder's `chess` stores (where the app kept them before) are merged
-//! in; `chess_store_migrate` merges a `.pdfcraft` folder (or any folder of stores) on request.
-//! Merging is the kinds' own rule ([`pdfcraft_engine::chess::store::DocStore::migrate_from`]): it
-//! can run again, and the source is only read.
+//! in, and the games the app autosaved there before plan A9-G3b (`<cid>.games`, version 1);
+//! `chess_store_migrate` merges a `.pdfcraft` folder (or any folder of stores) on request.
+//! Merging is the kinds' own rule ([`pdfcraft_engine::chess::store::DocStore::migrate_from`],
+//! [`pdfcraft_engine::chess::games_store::DirStore::migrate_v1`]): it can run again, and the source
+//! is only read.
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -51,6 +54,7 @@ pub(crate) struct Kind {
 
 pub(crate) const CORRECTIONS: Kind = Kind { arg: "store", dir: "corrections", legacy: crate::chess_corrections::DEFAULT_STORE };
 pub(crate) const REFERENCE: Kind = Kind { arg: "reference_store", dir: "reference", legacy: crate::chess_reference::DEFAULT_STORE };
+pub(crate) const GAMES: Kind = Kind { arg: "games_store", dir: "games", legacy: ".pdfcraft/chess-games" };
 pub(crate) const EVALS: Kind = Kind { arg: "evals_store", dir: "evals", legacy: crate::chess_evals::DEFAULT_STORE };
 
 /// The summary of one kind's migration, for a reply.
@@ -122,6 +126,8 @@ impl Automation {
             let _ = corrections.migrate_from(&earlier.join(CORRECTIONS.dir));
             let reference = pdfcraft_engine::chess::reference_store::DirStore::new(dir.join(REFERENCE.dir));
             let _ = reference.migrate_from(&earlier.join(REFERENCE.dir));
+            // The app's games before plan A9-G3b: `<cid>.games` in the recovery folder's `chess`.
+            let _ = pdfcraft_engine::chess::games_store::DirStore::new(dir.join(GAMES.dir)).migrate_v1(earlier);
         }
         #[cfg(target_arch = "wasm32")]
         let _ = (dir, earlier);
@@ -143,7 +149,9 @@ impl Automation {
             return Err(failed(format!("{shown} is not a folder")));
         }
         let mut reply = serde_json::Map::new();
-        for (kind, sources) in [(CORRECTIONS, ["chess-corrections", "corrections"]), (REFERENCE, ["chess-reference", "reference"])] {
+        for (kind, sources) in
+            [(CORRECTIONS, ["chess-corrections", "corrections"]), (REFERENCE, ["chess-reference", "reference"]), (GAMES, ["chess-games", "games"])]
+        {
             let StoreAt::Folder(to) = self.chess_store_at(a, kind, true)? else { return Err(failed("no store to migrate into")) };
             // The `.pdfcraft` layout, the app's `chess` layout, or the folder itself.
             let mut found: Vec<PathBuf> = sources.iter().map(|s| from.join(s)).filter(|d| d.is_dir()).collect();
@@ -167,13 +175,26 @@ impl Automation {
     }
 }
 
-/// Merge `source` into the store of kind `kind` in `to`.
+/// Merge `source` into the store of kind `kind` in `to`: for the games, the `<hash>.games.json`
+/// files and the app's `<cid>.games` of before plan A9-G3b.
 #[cfg(not(target_arch = "wasm32"))]
 fn migrate(kind: Kind, to: &std::path::Path, source: &std::path::Path) -> Result<Migration> {
     if kind.dir == CORRECTIONS.dir {
         pdfcraft_engine::chess::corrections::DirStore::new(to).migrate_from(source).map_err(failed)
-    } else {
+    } else if kind.dir == REFERENCE.dir {
         pdfcraft_engine::chess::reference_store::DirStore::new(to).migrate_from(source).map_err(failed)
+    } else {
+        let store = pdfcraft_engine::chess::games_store::DirStore::new(to);
+        let (a, b) = (store.migrate_from(source).map_err(failed)?, store.migrate_v1(source).map_err(failed)?);
+        Ok(Migration {
+            merged: a.merged.saturating_add(b.merged),
+            changed: a.changed.saturating_add(b.changed),
+            unchanged: a.unchanged.saturating_add(b.unchanged),
+            newer: a.newer.saturating_add(b.newer),
+            unreadable: a.unreadable.saturating_add(b.unreadable),
+            left_here: a.left_here.saturating_add(b.left_here),
+            skipped: a.skipped.saturating_add(b.skipped),
+        })
     }
 }
 

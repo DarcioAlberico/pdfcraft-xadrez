@@ -279,9 +279,10 @@ fn now_secs() -> u64 {
 
 impl PdfCraftApp {
     /// Turn on autosave into `store`, and look for documents a previous session left behind.
-    /// The chess games are autosaved in its `chess` folder, under the same instance lock. The
-    /// diagram corrections and the books' PGNs are kept in the app's data folder since plan
-    /// A9-G5a ([`PdfCraftApp::use_chess_data`]).
+    /// The chess games are autosaved under the same instance lock, in the app's data folder when
+    /// [`PdfCraftApp::use_chess_data`] gave it first (plan A9-G3b), else in the recovery folder's
+    /// `chess/games`. The diagram corrections and the books' PGNs are kept in the app's data
+    /// folder since plan A9-G5a.
     pub fn enable_recovery(&mut self, store: RecoveryStore) {
         store.claim();
         self.chess.games.autosave_to_files(&store);
@@ -292,19 +293,20 @@ impl PdfCraftApp {
         self.recovery = Some(store);
     }
 
-    /// Keep the diagram corrections and the books' PGNs in `dir` (the app's `chess` folder: its
-    /// `corrections` and `reference`, plan A9-G5a, decision D17, the folder the command line uses
-    /// too), made open to its owner alone, after merging in what earlier builds kept in `earlier`
-    /// (the recovery folder's `chess`): by each kind's rule, never copied over, `earlier` only read,
-    /// so a build that still writes there keeps working and what it changes since is brought in
-    /// at the next start, and said.
+    /// Keep the diagram corrections, the books' PGNs and the documents' games in `dir` (the app's
+    /// `chess` folder: its `corrections`, `reference` and `games`, plans A9-G5a and A9-G3b,
+    /// decision D17, the folder the command line uses too), made open to its owner alone, after
+    /// merging in what earlier builds kept in `earlier` (the recovery folder's `chess`, and its
+    /// `<id>.games` files): by each kind's rule, never copied over, `earlier` only read, so a build
+    /// that still writes there keeps working and what it changes since is brought in at the next
+    /// start (said for the corrections and the PGNs; the games show in their lists).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn use_chess_data(&mut self, dir: std::path::PathBuf, earlier: Option<std::path::PathBuf>) {
         if let Err(e) = pdfcraft_platform::app_dirs::create_private_dir(&dir) {
             log::warn!("chess folder {} can't be made: {e}", dir.display());
         }
         let (corrections, reference) = (dir.join("corrections"), dir.join("reference"));
-        if let Some(earlier) = earlier {
+        if let Some(earlier) = &earlier {
             let changed = [
                 pdfcraft_engine::chess::corrections::DirStore::new(&corrections)
                     .migrate_from(&earlier.join("corrections"))
@@ -328,6 +330,7 @@ impl PdfCraftApp {
         }
         self.chess.corrections.use_folder(corrections);
         self.chess.book_pgns.use_folder(reference);
+        self.chess.games.use_games_folder(dir.join("games"), earlier.as_deref());
     }
 
     /// [`PdfCraftApp::use_chess_data`] with the app's own folders: `chess` in its data folder,
@@ -446,8 +449,10 @@ impl PdfCraftApp {
 
     /// Clean shutdown: documents were saved or discarded, so nothing needs recovering.
     pub fn shutdown_recovery(&mut self) {
-        // The chess games are kept whatever happens to the documents.
+        // The chess games are kept whatever happens to the documents: written, and waited for at
+        // most `SETTLE` (plan A9-I3b), since the window closes next.
         self.flush_chess_games();
+        self.settle_chess_games();
         if self.first_dirty().is_none()
             && let Some(store) = &self.recovery
         {
