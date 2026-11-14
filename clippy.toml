@@ -12,4 +12,8 @@ disallowed-methods = [
     { path = "egui::Ui::radio", reason = "use radio from crates/ui-egui/src/widgets.rs, which is outlined and filled" },
     { path = "egui::Ui::radio_value", reason = "use radio_value from crates/ui-egui/src/widgets.rs, which is outlined and filled" },
     { path = "egui::RadioButton::new", reason = "use radio from crates/ui-egui/src/widgets.rs, which is outlined and filled" },
+    # Plan A9-I8 (§2.8.1): a modal is a named dialog that gives the focus back, and a progress bar
+    # reads at 3:1 (finding A6-17).
+    { path = "egui::Modal::new", reason = "use show_titled_modal (or modal) from crates/ui-egui/src/widgets.rs: a named dialog that gives the focus back" },
+    { path = "egui::ProgressBar::new", reason = "use progress from crates/ui-egui/src/widgets.rs, whose bar reads at 3:1" },
 ]

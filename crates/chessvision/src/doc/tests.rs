@@ -10,6 +10,7 @@ use proptest::prelude::*;
 mod board;
 mod compat;
 mod errata;
+mod exercises;
 mod fragment;
 mod from_games;
 mod html;

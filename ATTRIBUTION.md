@@ -4,7 +4,7 @@
 
 Every asset PdfCraft includes, bundles or uses to build its published material, with its author, source and licence. The policy is in [AGENTS.md](AGENTS.md) §1. The machine-readable list, with SHA-256 hashes, is [ATTRIBUTION.toml](ATTRIBUTION.toml). Licence texts are kept beside the assets and summarised in [NOTICE](NOTICE).
 
-## In this repository (504)
+## In this repository (505)
 
 | Asset | Title | Author | Licence | Source | Used for |
 |---|---|---|---|---|---|
@@ -65,6 +65,7 @@ Every asset PdfCraft includes, bundles or uses to build its published material, 
 | `assets/icons/chevrons-left.svg` | Lucide icon "chevrons-left" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/chevrons-left.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
 | `assets/icons/chevrons-right.svg` | Lucide icon "chevrons-right" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/chevrons-right.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
 | `assets/icons/circle-check.svg` | Lucide icon "circle-check" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/circle-check.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
+| `assets/icons/circle-stop.svg` | Lucide icon "circle-stop" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (icons/circle-stop.svg: its circle and rounded square as Lucide draws them, written out in the format of this folder's other Lucide icons) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
 | `assets/icons/circle-dashed.svg` | Lucide icon "circle-dashed" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/circle-dashed.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
 | `assets/icons/circle-dot.svg` | Lucide icon "circle-dot" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/circle-dot.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |
 | `assets/icons/circle-help.svg` | Lucide icon "circle-help" | Lucide Contributors (portions Cole Bemis, Feather) | ISC | https://github.com/lucide-icons/lucide (npm lucide-static 1.49.0, icons/circle-help.svg) | UI icon, embedded via crates/ui-egui/src/icon_data.rs |

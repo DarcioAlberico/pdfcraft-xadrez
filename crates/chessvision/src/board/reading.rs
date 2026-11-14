@@ -113,7 +113,7 @@ pub fn boards_per_call(model: &dyn SquareClassifier) -> usize {
 }
 
 /// Where a reading's position came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ReadingSource {
     /// The piece model read the squares.
     Model,
@@ -125,7 +125,7 @@ pub enum ReadingSource {
 }
 
 /// Why a board could not be read.
-#[derive(Clone, Debug, PartialEq, thiserror::Error)]
+#[derive(Clone, Debug, PartialEq, thiserror::Error, serde::Serialize, serde::Deserialize)]
 pub enum Unreadable {
     #[error("no piece model is loaded")]
     NoModel,
@@ -146,7 +146,7 @@ pub enum Unreadable {
 }
 
 /// A position read from a diagram.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ReadPosition {
     /// The pieces, in the orientation chosen.
     pub placement: Placement,
@@ -172,7 +172,7 @@ pub struct ReadPosition {
 }
 
 /// What [`ReadPosition::check_mate`] found.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MateFinding {
     /// The solver's report for the side to move (decided by it when the page did not say and only
     /// that side mates).
@@ -249,11 +249,12 @@ impl ReadPosition {
 }
 
 /// One candidate's reading.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BoardReading {
     /// The candidate's index in the slice given to [`read`].
     pub index: usize,
     /// The candidate's box, in user space.
+    #[serde(with = "crate::coords::PageRectDef")]
     pub bbox_user: PageRect,
     pub source: ReadingSource,
     /// The resolution of the raster the board was read from, in dots per inch.
