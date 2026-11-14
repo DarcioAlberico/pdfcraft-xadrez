@@ -3782,3 +3782,11 @@ the move's comment	Move comment	Ėjimo komentaras
 	The board is in the column beside.	Lenta yra gretimame stulpelyje.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Pridėti šachmatų žymeles
+	More board actions	Daugiau lentos veiksmų
+	Back to the moves	Atgal į ėjimus
+	Back to the moves (Esc)	Atgal į ėjimus (Esc)
+	Game	Partija
+	The game starts at move:	Partija prasideda ėjimu:
+	The comments of the move shown, under the moves	Rodomo ėjimo komentarai, po ėjimais
+	Edit the FEN and the PGN	Redaguoti FEN ir PGN
+	More continuations: {moves}	Daugiau tęsinių: {moves}

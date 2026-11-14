@@ -34,6 +34,7 @@ mod appearance;
 pub mod canvas;
 mod chess_annotate;
 mod chess_autosave;
+mod chess_board_tab;
 mod chess_board_ui;
 mod chess_capture;
 mod chess_collection;

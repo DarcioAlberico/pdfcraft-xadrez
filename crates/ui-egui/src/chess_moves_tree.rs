@@ -188,77 +188,134 @@ pub(crate) enum TreeAction {
 /// main line only) and, while the move shown is in a variation, the trail to it ("Main line ›
 /// 2…Nf6 › 3.Bc4"), each segment going to the first move of its line.
 pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, tokens: &[Token]) -> Option<TreeAction> {
-    let game = &state.game;
     // From the notation's tokens, worked out once per change (a 10,000-move game is not walked
     // every frame).
-    if !tokens.iter().any(|t| matches!(t, Token::VariationStart)) {
+    if !has_variations(tokens) {
         return None;
     }
     let mut action = None;
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 4.0;
-        let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("list", 14.0, t.icon)));
-        let (r, picked) = menu.ui(ui, |ui| {
-            let mut pick = None;
-            if ui.button(tl!("Expand all")).clicked() {
-                pick = Some(TreeAction::ExpandAll);
-                ui.close();
-            }
-            if ui.button(tl!("Collapse all")).clicked() {
-                pick = Some(TreeAction::CollapseAll);
-                ui.close();
-            }
-            let mut only = state.main_only;
-            if ui.add(crate::widgets::checkbox(&mut only, tl!("Only the main line"))).changed() {
-                pick = Some(TreeAction::MainOnly(only));
-                ui.close();
-            }
-            pick
-        });
-        let name = tl!("Variations");
-        r.on_hover_text(name).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
-        if let Some(p) = picked.and_then(|p| p.inner) {
-            action = Some(p);
-        }
-        let current = game.current();
-        let holding = variations_holding(game, current);
-        if holding.is_empty() {
-            return;
-        }
-        // In one line for screen readers: which variation at its fork, and the move shown
-        // ("Variation 1 of 2 after 2. Nf3, move 3. Bc4").
-        if let Some(&innermost) = holding.last() {
-            let fork = game_parent_of(game, innermost);
-            let replies = game.replies(fork);
-            let k = replies.iter().position(|&n| n == innermost).unwrap_or(0);
-            let said = crate::i18n::fmt(
-                tl!("Variation {i} of {n} after {fork}, move {move}"),
-                &[
-                    ("i", &k.to_string()),
-                    ("n", &replies.len().saturating_sub(1).to_string()),
-                    ("fork", &if fork == 0 { tl!("the start").to_owned() } else { crate::chess_tools::move_name(game, fork) }),
-                    ("move", &crate::chess_tools::move_name(game, current)),
-                ],
-            );
-            let id = ui.id().with("chess-trail");
-            let r = ui.interact(egui::Rect::from_min_size(ui.cursor().min, egui::vec2(1.0, 1.0)), id, egui::Sense::hover());
-            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &said));
-        }
-        if ui.link(egui::RichText::new(tl!("Main line")).small()).clicked() {
-            // The main line's move the outermost variation forks from.
-            action = Some(TreeAction::Go(holding.first().map_or(0, |&n| game_parent_of(game, n))));
-        }
-        for start in &holding {
-            ui.label(egui::RichText::new("›").small().color(t.text_faint));
-            if ui.link(egui::RichText::new(crate::chess_tools::move_name(game, *start)).small()).clicked() {
-                action = Some(TreeAction::Go(*start));
-            }
-        }
-        if holding.last() != Some(&current) {
-            ui.label(egui::RichText::new("›").small().color(t.text_faint));
-            ui.label(egui::RichText::new(crate::chess_tools::move_name(game, current)).small().strong());
+        action = tree_menu(ui, t, state);
+        if let Some(a) = trail(ui, t, state, f32::INFINITY) {
+            action = Some(a);
         }
     });
+    action
+}
+
+/// Whether the notation's `tokens` have a variation.
+pub(crate) fn has_variations(tokens: &[Token]) -> bool {
+    tokens.iter().any(|t| matches!(t, Token::VariationStart))
+}
+
+/// Do what the tree's menu or trail asked for.
+pub(crate) fn apply(state: &mut BoardState, asked: Option<TreeAction>) {
+    match asked {
+        Some(TreeAction::Go(node)) => state.game.go_to_node(node),
+        Some(TreeAction::ExpandAll) => {
+            state.folded.clear();
+            state.main_only = false;
+        }
+        Some(TreeAction::CollapseAll) => state.folded = state.game.variation_starts().into_iter().collect(),
+        Some(TreeAction::MainOnly(on)) => state.main_only = on,
+        None => {}
+    }
+}
+
+/// The tree's menu: expand all, collapse all, the main line only.
+pub(crate) fn tree_menu(ui: &mut egui::Ui, t: &Tokens, state: &BoardState) -> Option<TreeAction> {
+    let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("list", 14.0, t.icon)));
+    let (r, picked) = menu.ui(ui, |ui| {
+        let mut pick = None;
+        if crate::widgets::menu_entry(ui, true, egui::Button::new(tl!("Expand all"))).clicked() {
+            pick = Some(TreeAction::ExpandAll);
+        }
+        if crate::widgets::menu_entry(ui, true, egui::Button::new(tl!("Collapse all"))).clicked() {
+            pick = Some(TreeAction::CollapseAll);
+        }
+        let mut only = state.main_only;
+        if ui.add(crate::widgets::checkbox(&mut only, tl!("Only the main line"))).changed() {
+            pick = Some(TreeAction::MainOnly(only));
+            ui.close();
+        }
+        pick
+    });
+    let name = tl!("Variations");
+    r.on_hover_text(name).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+    picked.and_then(|p| p.inner)
+}
+
+/// While the move shown is in a variation, the trail to it ("Main line › 2…Nf6 › 3.Bc4"), each
+/// segment going to the first move of its line, in `room` points at most: the segments that do
+/// not fit are left out from the second on, with a "…" in their place (the trail's last
+/// segments, nearest the move shown, are the ones kept; its whole is its accessible name).
+pub(crate) fn trail(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, room: f32) -> Option<TreeAction> {
+    let game = &state.game;
+    let current = game.current();
+    let holding = variations_holding(game, current);
+    let &innermost = holding.last()?;
+    let mut action = None;
+    // In one line for screen readers: which variation at its fork, and the move shown
+    // ("Variation 1 of 2 after 2. Nf3, move 3. Bc4").
+    let fork = game_parent_of(game, innermost);
+    let replies = game.replies(fork);
+    let k = replies.iter().position(|&n| n == innermost).unwrap_or(0);
+    let said = crate::i18n::fmt(
+        tl!("Variation {i} of {n} after {fork}, move {move}"),
+        &[
+            ("i", &k.to_string()),
+            ("n", &replies.len().saturating_sub(1).to_string()),
+            ("fork", &if fork == 0 { tl!("the start").to_owned() } else { crate::chess_tools::move_name(game, fork) }),
+            ("move", &crate::chess_tools::move_name(game, current)),
+        ],
+    );
+    let id = ui.id().with("chess-trail");
+    let r = ui.interact(egui::Rect::from_min_size(ui.cursor().min, egui::vec2(1.0, 1.0)), id, egui::Sense::hover());
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &said));
+    // The segments: the variations' first moves, then the move shown when it is further on.
+    let mut segments: Vec<(String, Option<NodeId>)> = holding.iter().map(|&n| (crate::chess_tools::move_name(game, n), Some(n))).collect();
+    if holding.last() != Some(&current) {
+        segments.push((crate::chess_tools::move_name(game, current), None));
+    }
+    let font = egui::TextStyle::Small.resolve(ui.style());
+    let gap = ui.spacing().item_spacing.x;
+    let width = |text: &str| crate::widgets::text_width(ui, text, &font) + gap;
+    let arrow = width("›");
+    let main = width(tl!("Main line"));
+    // From the last segment back, as many as fit beside "Main line" (and a "…" when some don't).
+    let mut used = main;
+    let mut first = segments.len();
+    for (i, (name, _)) in segments.iter().enumerate().rev() {
+        let w = arrow + width(name);
+        let ellipsis = if i > 0 { arrow + width("…") } else { 0.0 };
+        if used + w + ellipsis > room && first < segments.len() {
+            break;
+        }
+        used += w;
+        first = i;
+    }
+    if ui.link(egui::RichText::new(tl!("Main line")).small()).clicked() {
+        // The main line's move the outermost variation forks from.
+        action = Some(TreeAction::Go(holding.first().map_or(0, |&n| game_parent_of(game, n))));
+    }
+    if first > 0 {
+        ui.label(egui::RichText::new("›").small().color(t.text_faint));
+        ui.label(egui::RichText::new("…").small().color(t.text_faint));
+    }
+    for (name, node) in segments.iter().skip(first) {
+        ui.label(egui::RichText::new("›").small().color(t.text_faint));
+        match node {
+            Some(n) => {
+                if ui.link(egui::RichText::new(name).small()).clicked() {
+                    action = Some(TreeAction::Go(*n));
+                }
+            }
+            None => {
+                ui.label(egui::RichText::new(name).small().strong());
+            }
+        }
+    }
     action
 }
 
@@ -273,41 +330,81 @@ fn game_parent_of(game: &Game, node: NodeId) -> NodeId {
 /// Under the board, when the move shown has more than one continuation: a chip for each, the
 /// one a step forward takes marked; a click steps into it (plan A8 V3). While a step forward
 /// asks (`AtFork::Ask`), the chip picked is the one the keys move, framed, with what to press.
-pub(crate) fn continuations(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
+///
+/// In one row of `room` points (the Board tab's trail row, plan A9-I0b): the chips that fit, and
+/// the rest in a "…" menu; while a step forward asks, the keys to press are the row's tooltip
+/// (and a line of the moves' region).
+/// Whether the move shown is at a fork (and the row was drawn).
+pub(crate) fn continuations(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, room: f32) -> bool {
     let current = state.game.current();
     let replies = state.game.replies(current).to_vec();
     if replies.len() < 2 {
         state.choosing = None;
-        return;
+        return false;
     }
     let remembered = state.game.next_reply(current);
     let choosing = state.choosing.filter(|k| *k < replies.len());
     let mut pick = None;
-    let frame = if choosing.is_some() { egui::Frame::group(ui.style()).stroke(egui::Stroke::new(1.0, t.accent)) } else { egui::Frame::NONE };
-    frame.show(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
+    let names: Vec<String> = replies.iter().map(|&reply| crate::chess_tools::move_name(&state.game, reply)).collect();
+    let marked = |i: usize| match choosing {
+        Some(k) => k == i,
+        None => replies.get(i).copied() == remembered,
+    };
+    let frame = if choosing.is_some() {
+        egui::Frame::NONE
+            .stroke(egui::Stroke::new(1.0, t.accent))
+            .corner_radius(egui::CornerRadius::same(4))
+            .inner_margin(egui::Margin::symmetric(2, 0))
+    } else {
+        egui::Frame::NONE
+    };
+    let shown = frame.show(ui, |ui| {
+        ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
+            let font = egui::TextStyle::Small.resolve(ui.style());
+            let gap = ui.spacing().item_spacing.x;
+            let pad = 2.0 * ui.spacing().button_padding.x;
+            let chip = |ui: &egui::Ui, name: &str| crate::widgets::text_width(ui, name, &font) + pad + gap;
+            let more = chip(ui, "…");
+            let start = ui.cursor().min.x;
             ui.label(egui::RichText::new(tl!("Continuations:")).small().color(t.text_muted));
-            for (i, &reply) in replies.iter().enumerate() {
-                let name = crate::chess_tools::move_name(&state.game, reply);
-                let marked = match choosing {
-                    Some(k) => k == i,
-                    None => Some(reply) == remembered,
-                };
-                if ui.selectable_label(marked, egui::RichText::new(name).small()).clicked() {
+            let mut left = names.len();
+            for (i, name) in names.iter().enumerate() {
+                let used = ui.cursor().min.x - start;
+                let rest_after = if i + 1 < names.len() { more } else { 0.0 };
+                if i > 0 && used + chip(ui, name) + rest_after > room {
+                    left = i;
+                    break;
+                }
+                if ui.selectable_label(marked(i), egui::RichText::new(name).small()).clicked() {
                     pick = Some(i);
                 }
             }
+            if left < names.len() {
+                let menu = egui::containers::menu::MenuButton::new(egui::RichText::new("…").small());
+                let (r, _) = menu.ui(ui, |ui| {
+                    for (i, name) in names.iter().enumerate().skip(left) {
+                        if crate::widgets::menu_entry(ui, true, egui::Button::new(name.as_str()).selected(marked(i))).clicked() {
+                            pick = Some(i);
+                        }
+                    }
+                });
+                let all = names.join(" · ");
+                let said = crate::i18n::fmt(tl!("More continuations: {moves}"), &[("moves", &all)]);
+                r.on_hover_text(&all).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &said));
+            }
         });
-        if choosing.is_some() {
-            ui.label(egui::RichText::new(tl!("↑ ↓ choose, → or Enter goes in, Esc takes the main line.")).small().color(t.text_faint));
-        }
     });
+    if choosing.is_some() {
+        // The keys are said under the trail too (the Board tab's moves).
+        shown.response.on_hover_text(tl!("↑ ↓ choose, → or Enter goes in, Esc takes the main line."));
+    }
     if let Some(i) = pick {
         state.choosing = None;
         state.game.forward_to(i);
         state.selected = None;
     }
+    true
 }
 
 /// A key while a step forward asks which reply (`AtFork::Ask`): ↑ ↓ move the choice, → or Enter

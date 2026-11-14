@@ -3530,3 +3530,12 @@ the move's comment	Move comment	A lépés megjegyzése
 	The board is in the column beside.	A tábla a szomszédos oszlopban van.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Sakk-könyvjelzők hozzáadása
+	More board actions	További táblaműveletek
+	Back to the moves	Vissza a lépésekhez
+	Back to the moves (Esc)	Vissza a lépésekhez (Esc)
+	Game	Játszma
+	The game starts at move:	A játszma ezzel a lépéssel kezdődik:
+	Comment	Megjegyzés
+	The comments of the move shown, under the moves	A mutatott lépés megjegyzései, a lépések alatt
+	Edit the FEN and the PGN	A FEN és a PGN szerkesztése
+	More continuations: {moves}	További folytatások: {moves}

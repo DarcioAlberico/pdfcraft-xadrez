@@ -5,7 +5,7 @@
 //! page), opens the position on the analysis board and walks the diagrams the Diagrams list's
 //! chip shows, or with none the ones to review ("12 of 40 to review", "3 of 12 · Corrected", Page
 //! Up / Page Down; plan A8, P4), saying so when it goes round from one end to the other and when
-//! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it the board (as large as the tab allows, 200 to 420 pt),
+//! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it the board (as large as the tab allows, 200 to 380 pt),
 //! the palette under the board, who moves, the move number, and the details (castling, the FEN,
 //! the view from Black's side, Restore the automatic reading) with the model's second readings. The footer
 //! stays put: whether the position is legal (and why not), the other actions, and the main one,
@@ -37,7 +37,8 @@ const FOOTER: f32 = 52.0;
 /// The board's side: the room the tab leaves beside it, and its height less what goes around the
 /// board, from [`MIN_BOARD`] to [`MAX_BOARD`] points, and never more than the room ([`board_side`]).
 const MIN_BOARD: f32 = 200.0;
-const MAX_BOARD: f32 = 420.0;
+/// Up to 380 pt, which a 420 pt column from 1,920 pt leaves (plan A9-I0c, finding R4-13).
+const MAX_BOARD: f32 = 380.0;
 const AROUND_BOARD: f32 = 204.0;
 
 /// The margin the body keeps on each side of the tab.

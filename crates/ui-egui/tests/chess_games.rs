@@ -48,7 +48,7 @@ fn boards() -> Vec<u8> {
     out
 }
 
-/// Tall enough for the Board panel's board, rail, least notation and a list of a few games.
+/// Tall enough for the Board tab's board and a list of a few games in the moves' place.
 const WINDOW_HEIGHT: f32 = 1300.0;
 
 /// The app on [`boards`], the Board panel shown.
@@ -68,7 +68,23 @@ fn harness_of(height: f32) -> Harness<'static, PdfCraftApp> {
     h.run_steps(4);
     h.state_mut().show_chess_board();
     h.run_steps(3);
+    games_view(&mut h);
     h
+}
+
+/// The moves again in the Board tab's moves' place (plan A9-I0b).
+fn moves_view(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("Back to the moves").click();
+    h.run_steps(2);
+}
+
+/// The document's games in the Board tab's moves' place, from its bar's Game ▾ (plan A9-I0b: the
+/// list was a section under the moves).
+fn games_view(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Games in this document (").click();
+    h.run_steps(3);
 }
 
 /// A folder of its own for one test.
@@ -155,9 +171,9 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 /// A click on the Board panel's title: the chess key scope goes on, and nothing has the focus.
 fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
     let title = h
-        .get_all_by_label("To move:")
+        .get_all_by_label_contains(" to move")
         .find(|n| n.accesskit_node().role() == Role::Label)
-        .expect("a label of the panel (its title is the docking tab: plan A8, P6)");
+        .expect("the Board tab's header: the move shown and whose move it is (plan A9-I0b)");
     let at = title.rect().center();
     click_at(h, at);
     assert!(h.state().chess.in_scope());
@@ -413,6 +429,7 @@ fn a_new_game_from_here_starts_at_that_position() {
     h.get_all_by_label("Diagram 1, p. 1").next().unwrap().click();
     h.run_steps(2);
     assert_eq!(listed(h.state()).1, 0);
+    moves_view(&mut h);
     h.get_by_label("e4").click_secondary();
     h.run_steps(2);
     h.get_by_label("New game from this position").click();
@@ -507,6 +524,7 @@ fn the_order_and_the_names_come_back_in_the_next_session() {
         h.run_steps(4);
         h.state_mut().show_chess_board();
         h.run_steps(3);
+        games_view(&mut h);
         h
     };
     let expected = {
@@ -712,9 +730,11 @@ fn undo_takes_back_a_diagram_opened_on_the_board() {
 /// the list after it, said; Undo takes the games added back first, then the game loaded.
 #[test]
 fn the_pgn_field_puts_its_first_game_on_the_board_and_adds_the_others() {
-    // Tall enough for the PGN section under the list of games.
     let mut h = harness_of(1700.0);
-    h.get_by_label("PGN").click();
+    // The FEN and PGN fields in the moves' place (plan A9-I0b).
+    h.get_by_label("FEN/PGN").click();
+    h.run_steps(2);
+    h.get_by_label("Edit the FEN and the PGN").click();
     h.run_steps(3);
     h.state_mut().chess.board_mut().pgn_text = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n".into();
     // The notation gives the opened section its room over a few frames.
@@ -912,6 +932,7 @@ fn the_list_renames_site_date_and_round_and_refuses_a_date_pgn_cannot_read() {
 #[test]
 fn the_games_header_shows_what_is_known_and_opens_its_details() {
     let mut h = harness();
+    moves_view(&mut h);
     h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
     h.run_steps(2);
     assert!(h.query_by_label("Result: *").is_some());

@@ -8,7 +8,9 @@
 //!   button switch between them, the keyboard going along;
 //! - from 1,000 pt ([`Budget::One`]), one column of [`COLUMN`] points;
 //! - from 1,600 pt ([`Budget::Two`]), two: the Chess column, and beside it the diagram being
-//!   edited, else the board.
+//!   edited, else the board;
+//! - from 1,920 pt ([`Budget::Wide`]), two of [`WIDE_COLUMN`] points (plan A9-I0c, finding R4-13:
+//!   a large screen gave the editor's board 280 pt and left 400 pt blank under it).
 //!
 //! Below 1,920 pt the Tools panel is collapsed, once a session, with a notice that brings it back
 //! ("Tools panel collapsed · Undo"); from 1,920 it may stay. The budget never undoes what the
@@ -17,6 +19,9 @@
 
 /// The Chess column's width, in points.
 pub(crate) const COLUMN: f32 = 360.0;
+
+/// The columns' width from 1,920 pt (plan A9-I0c).
+pub(crate) const WIDE_COLUMN: f32 = 420.0;
 
 /// What a window's width allows the chess surfaces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,11 +58,16 @@ impl Budget {
         }
     }
 
+    /// One column's width: [`COLUMN`], or [`WIDE_COLUMN`] from 1,920 pt.
+    pub(crate) fn column(self) -> f32 {
+        if self == Budget::Wide { WIDE_COLUMN } else { COLUMN }
+    }
+
     /// The Inspector's width for the Chess column; none where it takes the page's place.
     pub(crate) fn width(self) -> Option<f32> {
         match self {
             Budget::Narrow => None,
-            other => Some(COLUMN * other.columns() as f32),
+            other => Some(other.column() * other.columns() as f32),
         }
     }
 
@@ -116,6 +126,7 @@ mod tests {
             assert_eq!(Budget::of(width), budget, "{width}");
         }
         assert_eq!((Budget::One.width(), Budget::Two.width(), Budget::Narrow.width()), (Some(360.0), Some(720.0), None));
+        assert_eq!((Budget::Wide.column(), Budget::Wide.width()), (420.0, Some(840.0)), "420 pt columns from 1,920 (plan A9-I0c)");
         assert!(Budget::Two.collapses_tools() && !Budget::Wide.collapses_tools());
     }
 }

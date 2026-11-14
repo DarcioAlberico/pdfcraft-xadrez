@@ -1270,6 +1270,10 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
                     ui.close();
                 }
             }
+            // The Capture tool's settings under its tools (plan A9-I0b).
+            if group.id == crate::chess_capture::CAPTURE.id {
+                crate::chess_capture::popup_settings(ui, chess);
+            }
         });
     if let Some((i, target)) = chosen
         && let Some(tool) = group.members.get(i)
@@ -1368,10 +1372,16 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
         }
     }
     if nav == Nav::Escape {
-        // In order: the capture preview closes, then the comment editor and the glyph palette,
-        // then an armed tool goes back to Navigate, then the piece picked up (or the pawn waiting
-        // for its piece) is put down.
+        // In order: the capture preview closes, then a view in the moves' place, the comment
+        // editor and the glyph palette, then an armed tool goes back to Navigate, then the piece
+        // picked up (or the pawn waiting for its piece) is put down.
         if crate::chess_capture::escape_preview(chess) {
+            return;
+        }
+        // The game's details, its games or the FEN and PGN fields in the moves' place go back to
+        // the moves (plan A9-I0b).
+        if chess.board_view != crate::chess_board_tab::MovesView::Moves {
+            chess.board_view = crate::chess_board_tab::MovesView::Moves;
             return;
         }
         let palette = std::mem::take(&mut chess.tools.palette_open);

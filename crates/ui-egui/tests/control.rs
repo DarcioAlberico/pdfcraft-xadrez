@@ -1985,7 +1985,8 @@ fn the_control_channel_steps_the_board() {
     for _ in 0..2 {
         host_step(&mut h);
     }
-    let title = first(&mut h, &c, json!({ "query": "To move:", "role": "Label" }));
+    // The Board tab's header says whose move it is (plan A9-I0b).
+    let title = first(&mut h, &c, json!({ "query": "White to move", "role": "Label" }));
     let r = title["rect"].as_array().expect("the label's rect").iter().map(|v| v.as_f64().unwrap_or(0.0)).collect::<Vec<_>>();
     host_ok(&mut h, &c, "ui.click", json!({ "x": (r[0] + r[2]) / 2.0, "y": (r[1] + r[3]) / 2.0 }));
     assert!(h.state().chess.in_scope(), "the click put the chess scope on");
