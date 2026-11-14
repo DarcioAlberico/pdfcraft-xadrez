@@ -839,7 +839,8 @@ fn chess_export_pgn_writes_the_books_pgn_with_its_text() {
 /// Plan A9-N19: `chess_errata` lists a knight printed taking on an empty d8 and a check printed on
 /// a move that gives none as two CSV rows with their page and move, inline or to a file inside the
 /// root; as Markdown too. With the book's PGN, a move in conflict with it on the born-digital page
-/// is a row, unless the user kept the book's move in the app, which is counted instead.
+/// is a row to check (A9-N19b), unless the user kept the book's move in the app, which is counted
+/// instead; a mark the position does not bear out is a misprint, listed first.
 #[test]
 fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     let (base, root) = workdir("errata");
@@ -850,14 +851,15 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     assert_eq!(
         csv["text"].as_str().unwrap().lines().collect::<Vec<_>>(),
         [
-            "page,page_label,move,printed,issue,expected,detail,read_from",
-            "1,1,2.,2.Ng5+,check_mark,Ng5,\"printed with a check, but Ng5 gives none\",text",
-            "1,1,4.,4.Nxd8,capture_mark,Nd8,\"printed as a capture, but Nd8 takes nothing\",text",
+            "page,page_label,move,printed,issue,expected,detail,read_from,kind",
+            "1,1,2.,2.Ng5+,check_mark,Ng5,\"printed with a check, but Ng5 gives none\",text,misprint",
+            "1,1,4.,4.Nxd8,capture_mark,Nd8,\"printed as a capture, but Nd8 takes nothing\",text,misprint",
         ],
         "{csv:#}"
     );
     assert_eq!(csv["rows"], 2);
     assert_eq!(csv["issues"], json!({ "capture_mark": 1, "check_mark": 1, "mate_mark": 0, "move_number": 0, "book_pgn": 0 }));
+    assert_eq!((&csv["kind"], &csv["kinds"]), (&json!("all"), &json!({ "misprint": 2, "check": 0 })));
     assert_eq!((csv["born_digital_pages"].as_u64(), csv["ocr_pages"].as_u64(), &csv["reference"]), (Some(1), Some(0), &Value::Null));
     // As Markdown, to a file inside the root, and nothing inline.
     let md = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "format": "markdown", "out": "errata.md", "title": "Marks" }));
@@ -865,7 +867,7 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     let written = std::fs::read_to_string(root.join("errata.md")).unwrap();
     assert!(written.starts_with("# Notation errata: Marks\n\n| Page |"), "{written}");
     // `4\.` reads `4.` (escaped where a line may start a list, as the Markdown export escapes it).
-    assert!(written.contains("| 1 | 1 | 4\\. | 4.Nxd8 | capture mark | Nd8 |"), "{written}");
+    assert!(written.contains("| 1 | 1 | 4\\. | 4.Nxd8 | capture mark | Nd8 |") && written.contains("| text layer | misprint |\n"), "{written}");
     // With bom, Excel's byte order mark first.
     ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "out": "errata.csv", "bom": true }));
     assert!(std::fs::read(root.join("errata.csv")).unwrap().starts_with(b"\xEF\xBB\xBFpage,"));
@@ -879,15 +881,28 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
     let e = a.call("chess_errata", &json!({ "doc": doc, "format": "xlsx" })).unwrap_err();
     assert!(e.to_string().contains("format"), "{e}");
+    let e = a.call("chess_errata", &json!({ "doc": doc, "kind": "erratum" })).unwrap_err();
+    assert!(e.to_string().contains("kind"), "{e}");
 
-    // The book's 1...c5 is not in its PGN, which plays 2.Nf3 after 1...e5.
-    std::fs::write(root.join("line.pdf"), text_pdf("1.e4 e5 (1...c5 2.Nf3) 2.Nf3")).unwrap();
-    std::fs::write(root.join("book.pgn"), "[Event \"Chapter 1\"]\n\n1.e4 e5 2.Nf3 Nc6 *\n").unwrap();
+    // The book's 1...c5 is not in its PGN, which plays 2.Nf3 after 1...e5; a row to check (plan
+    // A9-N19b), after the misprint printed later on the page.
+    std::fs::write(root.join("line.pdf"), text_pdf("1.e4 e5 (1...c5 2.Nf3) 2.Nf3 Nc6 3.Bxb5")).unwrap();
+    std::fs::write(root.join("book.pgn"), "[Event \"Chapter 1\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 *\n").unwrap();
     let line = ok(&mut a, "doc_open", json!({ "path": "line.pdf" }))["doc"].as_u64().unwrap();
     let pgn = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en", "reference_pgn": "book.pgn" }));
     let rows: Vec<&str> = pgn["text"].as_str().unwrap().lines().skip(1).collect();
-    assert_eq!(rows.len(), 1, "{pgn:#}");
-    assert!(rows[0].starts_with("1,1,2.,2.Nf3,book_pgn,2.Nf3,\"the book's PGN (game 1, Chapter 1) plays 2.Nf3 from another position;"), "{rows:?}");
+    assert_eq!(rows.len(), 2, "{pgn:#}");
+    assert!(rows[0].starts_with("1,1,3.,3.Bxb5,capture_mark,Bb5,") && rows[0].ends_with(",text,misprint"), "{rows:?}");
+    assert!(rows[1].starts_with("1,1,2.,2.Nf3,book_pgn,2.Nf3,\"the book's PGN (game 1, Chapter 1) plays 2.Nf3 from another position;"), "{rows:?}");
+    assert!(rows[1].ends_with(",text,check"), "{rows:?}");
+    assert_eq!(pgn["kinds"], json!({ "misprint": 1, "check": 1 }), "{pgn:#}");
+    // One kind only; the counts of both stay.
+    for (kind, issue) in [("misprint", "capture_mark"), ("check", "book_pgn")] {
+        let only = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en", "reference_pgn": "book.pgn", "kind": kind }));
+        let listed: Vec<&str> = only["text"].as_str().unwrap().lines().skip(1).collect();
+        assert_eq!((listed.len(), &only["kind"], &only["kinds"]), (1, &json!(kind), &pgn["kinds"]), "{only:#}");
+        assert!(listed[0].contains(&format!(",{issue},")) && listed[0].ends_with(&format!(",{kind}")), "{listed:?}");
+    }
     assert_eq!((pgn["reference"]["kept_as_printed"].as_u64(), pgn["reference"]["not_judged"].as_u64()), (Some(0), Some(0)), "{pgn:#}");
     // The user kept the book's move in the app (no tool makes the choice): no row, counted.
     let set = ok(&mut a, "chess_reference_set", json!({ "doc": line, "path": "book.pgn" }));
@@ -908,7 +923,8 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
         json!([{ "page": 0, "block": at.0, "inline": at.1, "san": "Nf3", "san_read": "Nf3", "ordinal": 0, "choice": "book", "pgn_san": "Nf3" }]);
     std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
     let decided = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en" }));
-    assert_eq!((decided["rows"].as_u64(), decided["reference"]["kept_as_printed"].as_u64()), (Some(0), Some(1)), "{decided:#}");
+    assert_eq!((decided["rows"].as_u64(), decided["reference"]["kept_as_printed"].as_u64()), (Some(1), Some(1)), "{decided:#}");
+    assert_eq!(decided["kinds"], json!({ "misprint": 1, "check": 0 }), "the misprint stays: {decided:#}");
     assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
     let _ = std::fs::remove_dir_all(base);
 }
