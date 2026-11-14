@@ -3788,3 +3788,7 @@ the move's comment	Move comment	Ėjimo komentaras
 	The comments of the move shown, under the moves	Rodomo ėjimo komentarai, po ėjimais
 	Edit the FEN and the PGN	Redaguoti FEN ir PGN
 	More continuations: {moves}	Daugiau tęsinių: {moves}
+	Diagram shown	Rodoma diagrama
+	Alt+O switches between the board as read and the page's own picture.	Alt+O perjungia nuskaitytą lentą ir paties puslapio paveikslą.
+	Original diagram, page {p}, diagram {n}	Originali diagrama, {p} puslapis, {n} diagrama
+	The page's picture of this diagram shows once its page is drawn.	Šios diagramos puslapio paveikslas parodomas, kai jos puslapis nupiešiamas.

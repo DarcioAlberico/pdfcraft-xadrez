@@ -5,7 +5,10 @@
 //! page), opens the position on the analysis board and walks the diagrams the Diagrams list's
 //! chip shows, or with none the ones to review ("12 of 40 to review", "3 of 12 · Corrected", Page
 //! Up / Page Down; plan A8, P4), saying so when it goes round from one end to the other and when
-//! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it the board (as large as the tab allows, 200 to 380 pt),
+//! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it **Read |
+//! Original** (Alt+O; plan A9-I0, finding A6-14): the board as read, or in its square the page's
+//! own picture of the diagram, drawn from the page view's picture of the page (its UV), never one
+//! beside the other. Then the board (as large as the tab allows, 200 to 380 pt),
 //! the palette under the board, who moves, the move number, and the details (castling, the FEN,
 //! the view from Black's side, Restore the automatic reading) with the model's second readings. The footer
 //! stays put: whether the position is legal (and why not), the other actions, and the main one,
@@ -39,7 +42,10 @@ const FOOTER: f32 = 52.0;
 const MIN_BOARD: f32 = 200.0;
 /// Up to 380 pt, which a 420 pt column from 1,920 pt leaves (plan A9-I0c, finding R4-13).
 const MAX_BOARD: f32 = 380.0;
-const AROUND_BOARD: f32 = 204.0;
+const AROUND_BOARD: f32 = 204.0 + SWITCH_ROW;
+
+/// The row of the Read / Original switch over the board (plan A9-I0, sketch (b)).
+const SWITCH_ROW: f32 = 28.0;
 
 /// The margin the body keeps on each side of the tab.
 const BODY_MARGIN: f32 = 8.0;
@@ -186,6 +192,9 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut hint = !app.chess.diagram_hint_seen;
     let board_keys = app.chess.diagram_keys.board.take();
     let suggestion = crate::chess_reference_ui::suggestion(app.chess.text_of(id), id, current, page, index);
+    // The page's own picture of the diagram, for Original (plan A9-I0, finding A6-14).
+    let picture = original_picture(app, id, page, index);
+    let mut original = app.chess.diagram_original;
     let Some(ed) = app.chess.editor.as_mut() else { return };
 
     // The tab's keys (plan A8, P3c), taken in `raw_input_hook`.
@@ -197,6 +206,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             Some(TabKey::Previous) if !queue.is_empty() => action = Some(EditorAction::Previous),
             Some(TabKey::Next) if !queue.is_empty() => action = Some(EditorAction::Next),
             Some(TabKey::BackToList) => back_to_list = true,
+            Some(TabKey::Original) => original = !original,
             _ => {}
         }
     }
@@ -278,18 +288,35 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             let room = board_room(body_rect.width(), ui.spacing().scroll.bar_width);
             let side = board_side(room, body_rect.height());
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
+            // Read or Original, in one row of its own (plan A9-I0, sketch (b)).
+            // Its own id: the segments' ids come from their parent's, and the To move switch
+            // under the board sits in a row whose id is the same as this one's.
+            ui.allocate_ui_with_layout(egui::vec2(room, SWITCH_ROW), Layout::left_to_right(Align::Center), |ui| {
+                ui.push_id("chess-diagram-shown", |ui| {
+                    widgets::segmented(ui, tl!("Diagram shown"), &mut original, &[(false, tl_ctx!("diagram state", "Read")), (true, tl!("Original"))])
+                });
+            })
+            .response
+            .on_hover_text(tl!("Alt+O switches between the board as read and the page's own picture."));
             ui.horizontal(|ui| {
                 ui.add_space(((room - side) / 2.0).max(0.0));
-                crate::chess_editor::board_view(
-                    ui,
-                    &t,
-                    ed,
-                    &pieces,
-                    side,
-                    true,
-                    &crate::chess_editor::board_name(&label, index),
-                    board_keys.as_ref(),
-                );
+                if original {
+                    // The page's picture in the board's square, never beside or under it.
+                    if original_view(ui, &t, picture, side, &original_name(&label, index)) {
+                        action = Some(EditorAction::ShowOnPage);
+                    }
+                } else {
+                    crate::chess_editor::board_view(
+                        ui,
+                        &t,
+                        ed,
+                        &pieces,
+                        side,
+                        true,
+                        &crate::chess_editor::board_name(&label, index),
+                        board_keys.as_ref(),
+                    );
+                }
             });
             ui.add_space(6.0);
             crate::chess_editor::palette(ui, sprites.as_ref(), &mut ed.brush, false);
@@ -369,6 +396,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if !hint {
         app.chess.diagram_hint_seen = true;
     }
+    app.chess.diagram_original = original;
     if let Some(a) = action {
         app.chess_editor_action(a);
     }
@@ -392,6 +420,85 @@ fn first_time_hint(ui: &mut egui::Ui, t: &Tokens) -> bool {
     });
     ui.add_space(4.0);
     away
+}
+
+/// The page's own picture of diagram `index` of `page` (plan A9-I0, finding A6-14): the texture
+/// the page view drew the page with (its whole raster, or the backdrop under its tiles; else its
+/// thumbnail) and the diagram's place in it, with its width over its height. Nothing is rendered
+/// for it: a page never drawn has no picture yet.
+fn original_picture(app: &PdfCraftApp, id: pdfcraft_engine::DocId, page: usize, index: usize) -> Option<(egui::TextureId, egui::Rect, f32)> {
+    let view = app.views.iter().find(|v| v.id == id)?;
+    let (bbox, _) = app.chess.results_of(id)?.diagram(page, index)?;
+    let info = app.session.get(id)?.info.pages.get(page)?;
+    let (uv, aspect) = diagram_uv(info.crop, info.rotation, bbox)?;
+    let tex = view.page_raster(page).or_else(|| view.thumb_id(page))?;
+    Some((tex, uv, aspect))
+}
+
+/// Where the user-space box `bbox` of a page with crop box `crop` and `rotation` is on the page as
+/// drawn, from 0 to 1 each way from its top left (the picture's UV), and its width over its
+/// height as drawn. `None` for an empty or non-finite box, or one off the page.
+pub(crate) fn diagram_uv(crop: [f32; 4], rotation: u16, bbox: [f32; 4]) -> Option<(egui::Rect, f32)> {
+    let [cx0, cy0, cx1, cy1] = crop;
+    let (cw, ch) = (cx1 - cx0, cy1 - cy0);
+    if !(cw.is_finite() && ch.is_finite() && cw > 0.0 && ch > 0.0 && bbox.iter().all(|v| v.is_finite())) {
+        return None;
+    }
+    let norm = |x: f32, y: f32| -> egui::Pos2 {
+        let (u, v) = ((x - cx0) / cw, (cy1 - y) / ch);
+        let (a, b) = match rotation {
+            90 => (1.0 - v, u),
+            180 => (1.0 - u, 1.0 - v),
+            270 => (v, 1.0 - u),
+            _ => (u, v),
+        };
+        egui::pos2(a.clamp(0.0, 1.0), b.clamp(0.0, 1.0))
+    };
+    let uv = egui::Rect::from_two_pos(norm(bbox[0], bbox[1]), norm(bbox[2], bbox[3]));
+    if uv.width() <= 0.0 || uv.height() <= 0.0 {
+        return None;
+    }
+    // In points as drawn: the page's sides swap at a quarter turn.
+    let (w, h) = if rotation % 180 == 90 { (uv.width() * ch, uv.height() * cw) } else { (uv.width() * cw, uv.height() * ch) };
+    Some((uv, w / h))
+}
+
+/// The Original view's name: "Original diagram, page 13, diagram 1".
+fn original_name(page: &str, index: usize) -> String {
+    crate::i18n::fmt(tl!("Original diagram, page {p}, diagram {n}"), &[("p", page), ("n", &index.saturating_add(1).to_string())])
+}
+
+/// The Original view: the page's picture of the diagram in a square `side` points wide, as large
+/// as its shape allows, named `name`; without a picture, why, and Show it on the page. Whether
+/// that was clicked.
+fn original_view(ui: &mut egui::Ui, t: &Tokens, picture: Option<(egui::TextureId, egui::Rect, f32)>, side: f32, name: &str) -> bool {
+    let (square, response) = ui.allocate_exact_size(egui::vec2(side, side), egui::Sense::hover());
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, name));
+    let mut show = false;
+    match picture {
+        Some((tex, uv, aspect)) => {
+            let aspect = if aspect.is_finite() && aspect > 0.0 { aspect } else { 1.0 };
+            let size = if aspect >= 1.0 { egui::vec2(side, side / aspect) } else { egui::vec2(side * aspect, side) };
+            let rect = egui::Rect::from_center_size(square.center(), size);
+            ui.painter().image(tex, rect, uv, egui::Color32::WHITE);
+            ui.painter().rect_stroke(rect, 0.0, egui::Stroke::new(1.0, t.border), egui::StrokeKind::Outside);
+        }
+        None => {
+            ui.painter().rect_filled(square, 6.0, t.card);
+            let inner = square.shrink(16.0);
+            ui.scope_builder(UiBuilder::new().max_rect(inner).layout(Layout::top_down(Align::Center)), |ui| {
+                ui.add_space((inner.height() / 2.0 - 30.0).max(0.0));
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(tl!("The page's picture of this diagram shows once its page is drawn.")).small().color(t.text_muted),
+                    )
+                    .wrap(),
+                );
+                show = ui.button(tl!("Show it on the page")).clicked();
+            });
+        }
+    }
+    show
 }
 
 /// Nothing to edit: how to get a diagram here.
@@ -596,6 +703,29 @@ mod tests {
         // A key found before the budget ran out is not proved the only one.
         assert_eq!(mate_line(&report(Color::White, &["Qf7"], Some(2), true, None, None, false)), "Mate in 2: 1.Qf7! (not proved the only key)");
         assert_eq!(mate_line(&MateFinding::BothSides { n: 1 }), "Mate in 1: both sides mate, so who moves stays assumed");
+    }
+
+    /// Plan A9-I0 (finding A6-14): the diagram's place on the page as drawn (the picture's UV),
+    /// with the page turned as `/Rotate` says, and its shape; nothing for a box that isn't one.
+    #[test]
+    fn the_original_is_the_diagrams_place_on_the_page_as_drawn() {
+        let crop = [0.0, 0.0, 600.0, 800.0];
+        let bbox = [60.0, 580.0, 220.0, 740.0];
+        let near = |a: egui::Rect, b: egui::Rect| (a.min - b.min).length() < 1e-4 && (a.max - b.max).length() < 1e-4;
+        let (uv, aspect) = diagram_uv(crop, 0, bbox).unwrap();
+        assert!(near(uv, egui::Rect::from_min_max(egui::pos2(0.1, 0.075), egui::pos2(220.0 / 600.0, 0.275))), "{uv:?}");
+        assert!((aspect - 1.0).abs() < 1e-4);
+        // A quarter turn: the page drawn landscape, the box where the turn puts it, still square.
+        let (uv, aspect) = diagram_uv(crop, 90, bbox).unwrap();
+        assert!(near(uv, egui::Rect::from_min_max(egui::pos2(0.725, 0.1), egui::pos2(0.925, 220.0 / 600.0))), "{uv:?}");
+        assert!((aspect - 1.0).abs() < 1e-4);
+        // A wide box keeps its shape.
+        assert!((diagram_uv(crop, 0, [0.0, 0.0, 300.0, 100.0]).unwrap().1 - 3.0).abs() < 1e-4);
+        assert!((diagram_uv(crop, 270, [0.0, 0.0, 300.0, 100.0]).unwrap().1 - 1.0 / 3.0).abs() < 1e-4);
+        for bad in [[0.0, 0.0, 0.0, 0.0], [f32::NAN, 0.0, 10.0, 10.0], [700.0, 900.0, 800.0, 1000.0]] {
+            assert!(diagram_uv(crop, 0, bad).is_none(), "{bad:?}");
+        }
+        assert!(diagram_uv([0.0, 0.0, 0.0, 800.0], 0, bbox).is_none(), "an empty page");
     }
 
     /// The board never takes more than the tab leaves it: the margins and the scroll bar come

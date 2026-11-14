@@ -3534,3 +3534,7 @@ the move's comment	Move comment	Hamlenin yorumu
 	The comments of the move shown, under the moves	Gösterilen hamlenin yorumları, hamlelerin altında
 	Edit the FEN and the PGN	FEN ve PGN'yi düzenle
 	More continuations: {moves}	Diğer devamlar: {moves}
+	Diagram shown	Gösterilen diyagram
+	Alt+O switches between the board as read and the page's own picture.	Alt+O, okunduğu hâliyle tahta ile sayfanın kendi görüntüsü arasında geçiş yapar.
+	Original diagram, page {p}, diagram {n}	Özgün diyagram, sayfa {p}, diyagram {n}
+	The page's picture of this diagram shows once its page is drawn.	Bu diyagramın sayfa görüntüsü, sayfası çizildiğinde görünür.

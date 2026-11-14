@@ -3538,3 +3538,7 @@ the move's comment	Move comment	Commentaire du coup
 	The comments of the move shown, under the moves	Les commentaires du coup affiché, sous les coups
 	Edit the FEN and the PGN	Modifier le FEN et le PGN
 	More continuations: {moves}	Autres suites : {moves}
+	Diagram shown	Diagramme affiché
+	Alt+O switches between the board as read and the page's own picture.	Alt+O bascule entre l’échiquier tel qu’il a été lu et l’image de la page elle-même.
+	Original diagram, page {p}, diagram {n}	Diagramme d’origine, page {p}, diagramme {n}
+	The page's picture of this diagram shows once its page is drawn.	L’image de ce diagramme sur la page s’affiche dès que sa page est dessinée.

@@ -3501,3 +3501,7 @@ the move's comment	Move comment	Коментар към хода
 	The comments of the move shown, under the moves	Коментарите на показания ход, под ходовете
 	Edit the FEN and the PGN	Редактиране на FEN и PGN
 	More continuations: {moves}	Още продължения: {moves}
+	Diagram shown	Показана диаграма
+	Alt+O switches between the board as read and the page's own picture.	Alt+O превключва между дъската, както е прочетена, и собственото изображение на страницата.
+	Original diagram, page {p}, diagram {n}	Оригинална диаграма, страница {p}, диаграма {n}
+	The page's picture of this diagram shows once its page is drawn.	Изображението на страницата за тази диаграма се показва, щом страницата ѝ бъде изчертана.

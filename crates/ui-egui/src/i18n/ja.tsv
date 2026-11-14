@@ -3540,3 +3540,7 @@ the move's comment	Move comment	手のコメント
 	The comments of the move shown, under the moves	表示中の手のコメント (指し手の下)
 	Edit the FEN and the PGN	FEN と PGN を編集
 	More continuations: {moves}	その他の続き: {moves}
+	Diagram shown	表示する局面図
+	Alt+O switches between the board as read and the page's own picture.	Alt+O で、読み取った盤面とページそのものの画像を切り替えます。
+	Original diagram, page {p}, diagram {n}	元の局面図、{p} ページ、局面図 {n}
+	The page's picture of this diagram shows once its page is drawn.	この局面図のページの画像は、そのページが描画されると表示されます。

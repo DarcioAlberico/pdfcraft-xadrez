@@ -3539,3 +3539,7 @@ the move's comment	Move comment	Kommentar des Zugs
 	The comments of the move shown, under the moves	Die Kommentare des gezeigten Zugs, unter den Zügen
 	Edit the FEN and the PGN	FEN und PGN bearbeiten
 	More continuations: {moves}	Weitere Fortsetzungen: {moves}
+	Diagram shown	Gezeigtes Diagramm
+	Alt+O switches between the board as read and the page's own picture.	Alt+O wechselt zwischen dem Brett, wie es gelesen wurde, und dem Bild der Seite selbst.
+	Original diagram, page {p}, diagram {n}	Originaldiagramm, Seite {p}, Diagramm {n}
+	The page's picture of this diagram shows once its page is drawn.	Das Bild der Seite mit diesem Diagramm erscheint, sobald seine Seite gezeichnet ist.

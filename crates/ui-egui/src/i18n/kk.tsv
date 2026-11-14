@@ -3536,3 +3536,7 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	The comments of the move shown, under the moves	Көрсетілген жүрістің түсініктемелері, жүрістердің астында
 	Edit the FEN and the PGN	FEN мен PGN-ді өңдеу
 	More continuations: {moves}	Басқа жалғасулар: {moves}
+	Diagram shown	Көрсетілген диаграмма
+	Alt+O switches between the board as read and the page's own picture.	Alt+O оқылған тақта мен беттің өз суретінің арасында ауыстырады.
+	Original diagram, page {p}, diagram {n}	Түпнұсқа диаграмма, {p}-бет, {n}-диаграмма
+	The page's picture of this diagram shows once its page is drawn.	Бұл диаграмманың бет суреті оның беті салынғанда көрсетіледі.
