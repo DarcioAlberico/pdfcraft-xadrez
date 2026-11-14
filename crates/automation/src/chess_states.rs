@@ -48,7 +48,7 @@ impl Automation {
         let mut total: HashMap<Status, usize> = HashMap::new();
         let mut per_page = Vec::new();
         for page in corrected.pages.iter().filter(|p| !p.diagrams.is_empty()) {
-            let counts = page_counts(page, &kinds, reference.as_ref().map(|r| &r.index));
+            let counts = page_counts(page, &kinds, reference.as_ref().map(|r| &*r.index));
             for (status, n) in &counts {
                 let t = total.entry(*status).or_insert(0);
                 *t = t.saturating_add(*n);

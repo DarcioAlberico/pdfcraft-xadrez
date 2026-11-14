@@ -337,7 +337,7 @@ pub(crate) const CAPTURE: Group = Group {
             "chess.tool.capture",
             CaptureMode::Auto,
         ),
-        capture_tool("capture-line", "list-ordered", |_| tl!("Capture as the line").to_owned(), &[], "chess.tool.capture_line", CaptureMode::Line),
+        capture_tool("capture-line", "rows-3", |_| tl!("Capture as the line").to_owned(), &[], "chess.tool.capture_line", CaptureMode::Line),
         capture_tool(
             "capture-variation",
             "git-compare",

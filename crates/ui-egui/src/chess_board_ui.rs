@@ -1440,6 +1440,7 @@ pub(crate) fn notation(
         let r = ui.interact(region, ui.id().with("chess-notation"), egui::Sense::hover());
         r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, tl!("Moves")));
     }
+    crate::widgets::solid_scroll_bar(ui);
     let mut area = egui::ScrollArea::vertical().id_salt("chess-board-moves");
     area = match height {
         Some(h) => area.min_scrolled_height(h).max_height(h).auto_shrink([false, false]),

@@ -127,7 +127,7 @@ impl ChessScanSettings {
 }
 
 /// What scanning found on one page.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ChessPage {
     /// The page, 0-based.
     pub page: usize,
@@ -366,6 +366,8 @@ pub(crate) struct ChessCache {
     /// and its book's PGN (plan A9-I1b): [`Session::chess_cipher`], [`Session::chess_origin`],
     /// [`Session::chess_book_pgn`].
     books: std::collections::HashMap<DocId, BookState>,
+    /// The books' PGNs indexed, by their text (plan A9-I3b): [`Session::chess_book_indexes`].
+    indexes: Arc<pdfcraft_chessvision::doc::reference::IndexMemo>,
 }
 
 /// One document's book cipher, as its reads and exports taught it, and its book origin, as the
@@ -1308,7 +1310,7 @@ impl Session {
         let keys: Vec<Option<page_key::PageKey>> = match doc.editor.as_ref() {
             Some(editor) => {
                 let objects = page_objects(&editor.cos, all);
-                let mut memo = page_key::KeyMemo::default();
+                let mut memo = page_key::KeyMemo::<page_key::Wide>::default();
                 pages.iter().map(|p| objects.get(*p).and_then(|r| memo.page(&editor.cos, *r))).collect()
             }
             None => vec![None; pages.len()],
@@ -1472,6 +1474,20 @@ impl Session {
         self.chess.page_keys(id, (doc.generation, doc.bytes.len()), &editor.cos, doc.info.pages.len(), pages)
     }
 
+    /// The content keys of `pages` (0-based) of document `id` on disk (plan A9-N5a): SHA-256 over
+    /// what [`Self::chess_page_keys`] hashes, the same from one build to the next, made now with a
+    /// memo of their own, so only when a reading kept on disk is looked for or kept
+    /// ([`reading::scan_key`], [`reading::alone_key`]). `None` for a page without one (out of
+    /// range, too many or too deep objects); every one `None` for a document that is not open or
+    /// not readable yet.
+    pub fn chess_disk_keys(&self, id: DocId, pages: &[usize]) -> Vec<Option<[u8; 32]>> {
+        let Some(doc) = self.get(id) else { return vec![None; pages.len()] };
+        let Some(editor) = doc.editor.as_ref() else { return vec![None; pages.len()] };
+        let objects = page_objects(&editor.cos, doc.info.pages.len());
+        let mut memo = page_key::KeyMemo::<page_key::Sha>::default();
+        pages.iter().map(|p| objects.get(*p).and_then(|r| memo.page(&editor.cos, *r))).collect()
+    }
+
     /// Scan `pages` (0-based; empty = all) of document `id`, from the cache where it still
     /// answers and scanning the rest now (the CLI and agents use this). `read`: read the
     /// diagrams with the user's models, not only find them. Fails when the document does not
@@ -1624,6 +1640,22 @@ impl Session {
         if self.get(id).is_some() {
             self.chess.books.entry(id).or_default().pgn = pgn.map(Arc::new);
         }
+    }
+
+    /// The books' PGNs this session indexed, by the SHA-256 of their text (plan A9-I3b): a handle
+    /// to index through on any thread — a worker off the interface's, a reading tool's call —
+    /// whose index the session then finds made, never making it twice.
+    pub fn chess_book_indexes(&self) -> Arc<pdfcraft_chessvision::doc::reference::IndexMemo> {
+        self.chess.indexes.clone()
+    }
+
+    /// `text` indexed as a book's PGN ([`Self::chess_book_indexes`]): the index this session made
+    /// of the same text before, else one made now, on the calling thread.
+    pub fn chess_book_index(
+        &self,
+        text: &str,
+    ) -> Result<Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>, pdfcraft_chessvision::doc::reference::ReferenceError> {
+        self.chess.indexes.index(text)
     }
 
     /// The user said where document `id`'s pages came from: its later reads and exports follow it.
@@ -1827,6 +1859,7 @@ pub mod links;
 pub mod notes;
 pub mod office;
 mod page_key;
+pub mod reading;
 pub mod reference_store;
 pub mod replace;
 pub mod review_pack;

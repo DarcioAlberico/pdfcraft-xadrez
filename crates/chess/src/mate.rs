@@ -62,7 +62,7 @@ impl std::fmt::Display for MateError {
 impl std::error::Error for MateError {}
 
 /// What [`solve`] found.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MateReport {
     /// The moves asked for.
     pub n: u8,
