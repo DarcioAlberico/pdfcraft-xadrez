@@ -1,7 +1,7 @@
-//! Chess ▸ Diagram (plan A8, P3b2): the selected diagram's position to check and confirm, a tab
-//! of its own beside the Inspector.
+//! Chess ▸ Diagram (plan A8, P3b2): the selected diagram's position to check and confirm, in the
+//! Chess column's Diagrams tab in the list's place (plan A9-I0a, master-detail).
 //!
-//! The header says which diagram it is ("Page 17 · diagram 1 of 2", a link that shows it on the
+//! The header goes back to the list ("‹ Diagrams", or Esc), says which diagram it is ("Page 17 · diagram 1 of 2", a link that shows it on the
 //! page), opens the position on the analysis board and walks the diagrams the Diagrams list's
 //! chip shows, or with none the ones to review ("12 of 40 to review", "3 of 12 · Corrected", Page
 //! Up / Page Down; plan A8, P4), saying so when it goes round from one end to the other and when
@@ -225,6 +225,14 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 }
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                // Back to the list, the diagram's row taking the keyboard (plan A9-I0a).
+                let back = egui::Button::image_and_text(crate::icons::image("chevron-left", 14.0, t.icon), tl!("Diagrams"))
+                    .min_size(egui::vec2(0.0, widgets::MIN_TARGET));
+                let back = ui.add(back);
+                back.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Back to Diagrams")));
+                if back.on_hover_text(tl!("Back to Diagrams")).clicked() {
+                    back_to_list = true;
+                }
                 state_icon(ui, &t, state, 16.0, dirty);
                 let title = diagram_title(&label, index, on_page);
                 // Its text's width (no more than the room left) and 24 points tall, the least a
@@ -350,8 +358,9 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     app.chess.diagram_keys.tab = Some(whole);
     app.chess.diagram_keys.focus_in_tab = focus_in && !back_to_list;
     if back_to_list {
-        // Esc: the keyboard goes back to the diagram's row in the list; nothing is discarded.
-        app.chess.diagram_keys.focus_list = true;
+        // "‹ Diagrams" or Esc: the list again, the keyboard on the diagram's row; nothing is
+        // discarded.
+        app.close_chess_detail();
         ui.memory_mut(|m| m.surrender_focus(editor_board));
         app.reveal_chess_diagrams();
     }

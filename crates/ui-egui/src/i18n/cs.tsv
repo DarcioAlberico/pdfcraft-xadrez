@@ -3599,3 +3599,4 @@ the move's comment	Move comment	Komentář k tahu
 	the page has more diagrams than are read on one page	stránka má více diagramů, než se čte na jedné stránce
 	the piece model failed: {e}	model figur selhal: {e}
 	the piece model's output is not a probability matrix: {e}	výstup modelu figur není matice pravděpodobností: {e}
+	Back to Diagrams	Zpět na Diagramy

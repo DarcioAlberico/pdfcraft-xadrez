@@ -3527,3 +3527,4 @@ the move's comment	Move comment	手のコメント
 	the page has more diagrams than are read on one page	1 ページで読み取る数より多くの局面図がページにあります
 	the piece model failed: {e}	駒モデルが失敗しました: {e}
 	the piece model's output is not a probability matrix: {e}	駒モデルの出力が確率行列ではありません: {e}
+	Back to Diagrams	局面図に戻る

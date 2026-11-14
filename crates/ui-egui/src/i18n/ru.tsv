@@ -3438,3 +3438,4 @@ the move's comment	Move comment	Комментарий к ходу
 	the page has more diagrams than are read on one page	на странице больше диаграмм, чем читается на одной странице
 	the piece model failed: {e}	модель фигур дала сбой: {e}
 	the piece model's output is not a probability matrix: {e}	выход модели фигур не является матрицей вероятностей: {e}
+	Back to Diagrams	Назад в «Диаграммы»

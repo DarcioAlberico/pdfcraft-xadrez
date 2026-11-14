@@ -3521,3 +3521,4 @@ the move's comment	Move comment	Hamlenin yorumu
 	the page has more diagrams than are read on one page	sayfada, bir sayfada okunandan daha fazla diyagram var
 	the piece model failed: {e}	taş modeli başarısız oldu: {e}
 	the piece model's output is not a probability matrix: {e}	taş modelinin çıktısı bir olasılık matrisi değil: {e}
+	Back to Diagrams	Diyagramlar'a dön

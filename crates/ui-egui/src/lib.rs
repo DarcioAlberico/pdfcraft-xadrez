@@ -2280,7 +2280,10 @@ impl PdfCraftApp {
             self.mode = mode;
         }
         if mode == Mode::Read && !was_read {
-            self.right_before_read = self.right.take();
+            // The Chess column stays: Read mode has the same chess surfaces (plan A9-I0a).
+            if self.right != Some(RightPanel::Chess) {
+                self.right_before_read = self.right.take();
+            }
             // An editing tool is put down so its open paragraph is applied, as `select_mode` does.
             if matches!(self.quick_tool, QuickTool::EditText | QuickTool::AddText) {
                 self.put_down_edit_text();
@@ -2458,13 +2461,22 @@ impl PdfCraftApp {
             self.chess.typed_wait = wait;
         }
         if let Some(saved) = v.get("docking")
-            && let Ok(workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
-            && workspace.validate().is_ok()
+            && let Ok(mut workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
         {
-            self.docking = workspace;
-            self.left_open =
-                v.get("docking_left_open").and_then(serde_json::Value::as_bool).unwrap_or(self.docking.layout.contains(&docking::Panel::Tools));
-            self.right = v.get("docking_right").and_then(|value| serde_json::from_value(value.clone()).ok()).flatten();
+            // A layout saved before the Chess column (plan A9-I0a): the board's and the Diagram
+            // tab's panels go, and the column opens on the tab that showed.
+            let (board, diagram) = workspace.migrate();
+            if workspace.validate().is_ok() {
+                self.docking = workspace;
+                self.left_open =
+                    v.get("docking_left_open").and_then(serde_json::Value::as_bool).unwrap_or(self.docking.layout.contains(&docking::Panel::Tools));
+                self.right = v.get("docking_right").and_then(|value| serde_json::from_value(value.clone()).ok()).flatten();
+                if board || diagram {
+                    self.chess.tab = if board { chess_text_ui::ChessTab::Board } else { chess_text_ui::ChessTab::Diagrams };
+                    self.chess.diagram_open = diagram;
+                    self.right = Some(RightPanel::Chess);
+                }
+            }
         }
         // After the workspace: a board in its own window is not also in the dock.
         self.restore_chess_window(&v["docking_detached"]);
@@ -3523,22 +3535,14 @@ impl eframe::App for PdfCraftApp {
             // there, so its buttons (Bookmarks, Page thumbnails, ...) must open their panels.
             // Outside Read mode the docking workspace draws the inspector.
             if self.mode == Mode::Read && self.right.is_some() {
+                // As wide as it is dragged while the page keeps its least width, as when docked:
+                // it holds the Chess column and its board (plan A9-I0a).
                 egui::Panel::right("read_right_panel")
                     .resizable(true)
                     .default_size(330.0)
-                    .size_range(260.0..=520.0)
-                    .frame(egui::Frame::NONE)
-                    .show(ui, |ui| panels::right_panel(self, ui));
-            }
-            // The chess board panel too, when it is open (Read mode has no docking workspace), as
-            // wide as it is dragged while the page keeps its least width, as when docked.
-            if self.mode == Mode::Read && self.docking.exposed(docking::Panel::Board) {
-                egui::Panel::right("read_board_panel")
-                    .resizable(true)
-                    .default_size(docking::SIDE_WIDTH)
                     .size_range(260.0..=docking::widest_beside_page(ui.available_width(), 260.0))
                     .frame(egui::Frame::NONE)
-                    .show(ui, |ui| chess_ui::board_panel(self, ui));
+                    .show(ui, |ui| panels::right_panel(self, ui));
             }
             // The Move list last, so it stands against the page, on the side it was put.
             if self.mode == Mode::Read && self.chess.moves_beside {

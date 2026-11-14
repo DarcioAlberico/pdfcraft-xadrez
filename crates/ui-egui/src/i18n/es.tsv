@@ -3666,3 +3666,4 @@ the move's comment	Move comment	Comentario de la jugada
 	the page has more diagrams than are read on one page	la página tiene más diagramas de los que se leen en una página
 	the piece model failed: {e}	el modelo de piezas falló: {e}
 	the piece model's output is not a probability matrix: {e}	la salida del modelo de piezas no es una matriz de probabilidades: {e}
+	Back to Diagrams	Volver a Diagramas

@@ -12,25 +12,31 @@ pub enum Panel {
     Canvas,
     Tools,
     Inspector,
-    /// Chess ▸ Board: the analysis board, a tab beside the Inspector.
-    Board,
     /// The board's game as a list of moves, against the page's left or right edge.
     Moves,
-    /// Chess ▸ Diagrams: the selected diagram's position to check and confirm (plan A8, P3b2),
-    /// a tab beside the Inspector.
-    Diagram,
+    /// The chess board's panel of a layout saved before plan A9-I0a, where the board was a tab
+    /// beside the Inspector. The board is a tab of the Inspector's Chess column now: a layout
+    /// that has it loads, and [`Workspace::migrate`] takes it out (decision 4 of I0a). Never
+    /// drawn, opened or listed in [`Panel::ALL`].
+    #[serde(rename = "board")]
+    OldBoard,
+    /// The Diagram tab's panel of a layout saved before plan A9-I0a, now the Chess column's
+    /// detail: as [`Panel::OldBoard`].
+    #[serde(rename = "diagram")]
+    OldDiagram,
 }
 
 impl Panel {
-    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board, Self::Moves, Self::Diagram];
+    /// The panels a layout may hold.
+    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Moves];
     pub fn id(self) -> &'static str {
         match self {
             Self::Canvas => "canvas",
             Self::Tools => "tools",
             Self::Inspector => "inspector",
-            Self::Board => "board",
             Self::Moves => "moves",
-            Self::Diagram => "diagram",
+            Self::OldBoard => "board",
+            Self::OldDiagram => "diagram",
         }
     }
     fn label(self) -> &'static str {
@@ -38,16 +44,16 @@ impl Panel {
             Self::Canvas => "Document",
             Self::Tools => "Tools",
             Self::Inspector => "Inspector",
-            Self::Board => "Chess board",
             Self::Moves => "Move list",
-            Self::Diagram => "Diagram",
+            Self::OldBoard => "Chess board",
+            Self::OldDiagram => "Diagram",
         }
     }
     fn default_side(self) -> Zone {
         match self {
             Self::Canvas => Zone::Right,
             Self::Tools => Zone::Left,
-            Self::Inspector | Self::Board | Self::Moves | Self::Diagram => Zone::Right,
+            Self::Inspector | Self::Moves | Self::OldBoard | Self::OldDiagram => Zone::Right,
         }
     }
     fn parse(id: &str) -> Result<Self, String> {
@@ -59,8 +65,7 @@ impl Panel {
     fn opening_width(self) -> Option<f32> {
         match self {
             Self::Canvas | Self::Tools => None,
-            Self::Inspector | Self::Board => Some(SIDE_WIDTH),
-            Self::Diagram => Some(DIAGRAM_WIDTH),
+            Self::Inspector | Self::OldBoard | Self::OldDiagram => Some(SIDE_WIDTH),
             Self::Moves => Some(MOVES_WIDTH),
         }
     }
@@ -70,15 +75,11 @@ fn permissions(panel: &Panel) -> Permissions {
     if *panel == Panel::Canvas { Permissions::PROTECTED } else { Permissions::default() }
 }
 
-/// The Inspector's and the chess board's width when they open beside the page, in points.
+/// The Inspector's width when it opens beside the page, in points.
 pub(crate) const SIDE_WIDTH: f32 = 330.0;
 
 /// The Move list's width when it opens beside the page, in points.
 pub(crate) const MOVES_WIDTH: f32 = 260.0;
-
-/// The Diagram tab's width when it opens beside the Inspector, in points: a 280 pt board and its
-/// margins.
-pub(crate) const DIAGRAM_WIDTH: f32 = 320.0;
 
 /// What was asked of the Move list in a frame, done where the layout is not being drawn
 /// ([`drain_moves`]): shown or closed, or put against the page's left (`true`) or right edge.
@@ -197,8 +198,28 @@ impl Workspace {
         }
     }
 
+    /// A layout saved before plan A9-I0a, with the chess board's panel or the Diagram tab's in
+    /// it, as it is now: they are taken out (open, closed with a place kept, or floating), the
+    /// rest of the layout as it was. Which of them showed its body, so the Chess column can open
+    /// on that tab: the board (`.0`), the diagram (`.1`).
+    pub fn migrate(&mut self) -> (bool, bool) {
+        let shown = (self.exposed(Panel::OldBoard), self.exposed(Panel::OldDiagram));
+        for panel in [Panel::OldBoard, Panel::OldDiagram] {
+            // Closing keeps a place in `hidden`; nothing opens them again, so it goes too.
+            if self.layout.contains(&panel) {
+                let _ = self.layout.apply_with_permissions(Action::Close { panel }, permissions);
+            }
+            self.hidden.retain(|(p, _)| *p != panel);
+        }
+        shown
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         self.layout.validate().map_err(|error| error.to_string())?;
+        // The panels before plan A9-I0a only load ([`Self::migrate`]): nothing opens them.
+        if [Panel::OldBoard, Panel::OldDiagram].iter().any(|p| self.layout.contains(p) || self.hidden.iter().any(|(h, _)| h == p)) {
+            return Err(format!("Unknown panel: {}", Panel::OldBoard.id()));
+        }
         if !self.layout.contains(&Panel::Canvas) || self.hidden.len() > Panel::ALL.len() {
             return Err("The panel layout must contain its document view and bounded hidden panels".into());
         }
@@ -290,31 +311,6 @@ impl Workspace {
             saved.placement = Placement::Tab { before: None };
         }
         let restored = location.as_ref().is_some_and(|location| next.layout.restore(panel, location).is_ok());
-        // The Diagram tab opens between the page and the Inspector, so the diagrams listed there
-        // stay in sight. A layout saved before the tab existed has no place for it, so it opens
-        // there too.
-        let restored = restored
-            || (panel == Panel::Diagram
-                && next.layout.contains(&Panel::Inspector)
-                && next
-                    .layout
-                    .apply_with_permissions(Action::OpenAt { panel, anchor: Panel::Canvas, placement: Placement::Split(Zone::Right) }, permissions)
-                    .is_ok()
-                && {
-                    next.fit_opening(Panel::Diagram);
-                    true
-                });
-        // The board opens as a tab beside the Inspector, where the diagrams it shows are listed.
-        let restored = restored
-            || (panel == Panel::Board
-                && next.layout.contains(&Panel::Inspector)
-                && next
-                    .layout
-                    .apply_with_permissions(
-                        Action::OpenAt { panel, anchor: Panel::Inspector, placement: Placement::Tab { before: None } },
-                        permissions,
-                    )
-                    .is_ok());
         if !restored {
             next.layout
                 .apply_with_permissions(
@@ -450,9 +446,9 @@ fn sync(workspace: &mut Workspace, app: &crate::PdfCraftApp) -> Result<(), Strin
 
 fn drain_reveals(workspace: &mut Workspace, app: &mut crate::PdfCraftApp) {
     for panel in std::mem::take(&mut app.pending_panel_reveals) {
-        // The board's and the move list's visibility is their own (the others follow the app's
-        // state): revealing opens them.
-        if matches!(panel, Panel::Board | Panel::Moves | Panel::Diagram)
+        // The move list's visibility is its own (the others follow the app's state): revealing
+        // opens it.
+        if panel == Panel::Moves
             && let Err(error) = workspace.set_visible(panel, true)
         {
             app.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
@@ -620,15 +616,13 @@ impl DockContent<Panel> for Content<'_> {
                 ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-inspector-body"), ui.max_rect()));
                 crate::panels::right_panel(app, ui);
             }
-            Panel::Board => crate::chess_ui::board_panel(app, ui),
             Panel::Moves => crate::chess_ui::moves_panel(app, ui),
-            Panel::Diagram => crate::chess_diagram_tab::panel(app, ui),
+            // Taken out of every layout as it loads ([`Workspace::migrate`]), refused after.
+            Panel::OldBoard | Panel::OldDiagram => {}
         }
     }
 
     fn panel_menu(&mut self, ui: &mut egui::Ui, panel: &Panel) {
-        // The Board tab: the board in its own window (T13a).
-        crate::chess_window::dock_menu(self.app, ui, *panel);
         // The Move list's tab: the page's edge it stands against.
         if *panel == Panel::Moves {
             crate::chess_ui::moves_side_menu(self.app, ui);
@@ -647,12 +641,11 @@ pub(crate) fn widest_beside_page(available: f32, least: f32) -> f32 {
 
 fn panel_limits(panel: &Panel) -> PanelLimits {
     // The right-hand column and the Move list are as wide as they are dragged: only the page's
-    // least width stops them. The whole column, since the board is a tab beside the Inspector
-    // and a tab group is no wider than the widest each of its panels allows.
+    // least width stops them.
     let (min, max_width) = match panel {
         Panel::Canvas => (egui::vec2(PAGE_MIN_WIDTH, 160.0), 1_000_000.0),
         Panel::Tools => (egui::vec2(240.0, 120.0), 520.0),
-        Panel::Inspector | Panel::Board | Panel::Diagram => (egui::vec2(260.0, 120.0), 1_000_000.0),
+        Panel::Inspector | Panel::OldBoard | Panel::OldDiagram => (egui::vec2(260.0, 120.0), 1_000_000.0),
         Panel::Moves => (egui::vec2(180.0, 120.0), 1_000_000.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }
@@ -687,17 +680,47 @@ mod tests {
             workspace.layout.root.as_ref().and_then(|root| find(root, panel))
         }
         let mut workspace = Workspace::default();
-        workspace.set_visible(Panel::Inspector, false).unwrap();
-        // No Inspector to be a tab beside: each in a split of its own.
-        workspace.set_visible(Panel::Board, true).unwrap();
-        assert_eq!(width(&workspace, Panel::Board), Some(SplitSize::FixedSecond(SIDE_WIDTH)));
-        workspace.set_visible(Panel::Diagram, true).unwrap();
-        assert_eq!(width(&workspace, Panel::Diagram), Some(SplitSize::FixedSecond(DIAGRAM_WIDTH)));
+        workspace.set_visible(Panel::Moves, true).unwrap();
+        assert_eq!(width(&workspace, Panel::Moves), Some(SplitSize::FixedSecond(MOVES_WIDTH)));
         // Dragged to the page's left edge.
-        workspace.apply(Action::Move { panel: Panel::Board, anchor: Panel::Canvas, placement: Placement::Split(Zone::Left) }).unwrap();
-        assert_eq!(width(&workspace, Panel::Board), Some(SplitSize::FixedFirst(SIDE_WIDTH)));
+        workspace.apply(Action::Move { panel: Panel::Inspector, anchor: Panel::Canvas, placement: Placement::Split(Zone::Left) }).unwrap();
+        assert_eq!(width(&workspace, Panel::Inspector), Some(SplitSize::FixedFirst(SIDE_WIDTH)));
         workspace.apply(Action::Move { panel: Panel::Tools, anchor: Panel::Canvas, placement: Placement::Split(Zone::Right) }).unwrap();
         assert!(matches!(width(&workspace, Panel::Tools), Some(SplitSize::Ratio(_))), "{:?}", workspace.layout);
+    }
+
+    /// Plan A9-I0a (decision 4): a layout saved before the Chess column, with the board a tab in
+    /// front beside the Inspector and the Diagram tab between the page and the Inspector, loads;
+    /// the two panels go, the rest stays as it was, and it says which of them showed. Nothing
+    /// opens them again.
+    #[test]
+    fn a_layout_saved_with_the_old_chess_panels_loads_without_them() {
+        let mut old = Workspace::default();
+        let open = |layout: &mut Layout<Panel>, panel, anchor, placement| {
+            layout.apply_with_permissions(Action::OpenAt { panel, anchor, placement }, permissions)
+        };
+        open(&mut old.layout, Panel::OldBoard, Panel::Inspector, Placement::Tab { before: None }).unwrap();
+        open(&mut old.layout, Panel::OldDiagram, Panel::Canvas, Placement::Split(Zone::Right)).unwrap();
+        let saved = serde_json::to_string(&old).unwrap();
+        assert!(saved.contains("\"board\"") && saved.contains("\"diagram\""), "the ids a build before I0a wrote: {saved}");
+        let mut loaded: Workspace = serde_json::from_str(&saved).unwrap();
+        assert!(loaded.validate().is_err(), "not used as it is");
+        assert_eq!(loaded.migrate(), (true, true));
+        loaded.validate().unwrap();
+        let mut panels: Vec<Panel> = loaded.layout.panels().into_iter().copied().collect();
+        panels.sort_by_key(|p| p.id());
+        assert_eq!(panels, [Panel::Canvas, Panel::Inspector, Panel::Tools]);
+        // Closed with a place kept, and floating: the same.
+        let mut old = Workspace::default();
+        open(&mut old.layout, Panel::OldBoard, Panel::Inspector, Placement::Tab { before: None }).unwrap();
+        old.layout.apply_with_permissions(Action::Float { panel: Panel::OldBoard, rect: [10.0, 10.0, 300.0, 400.0] }, permissions).unwrap();
+        old.hidden.push((Panel::OldDiagram, old.layout.location(&Panel::Inspector).unwrap()));
+        let mut loaded: Workspace = serde_json::from_str(&serde_json::to_string(&old).unwrap()).unwrap();
+        assert_eq!(loaded.migrate(), (true, false), "a floating board shows");
+        loaded.validate().unwrap();
+        assert!(loaded.layout.floating.is_empty() && loaded.hidden.is_empty(), "{:?}", loaded.layout);
+        // The control channel can't open them.
+        assert!(loaded.command(&json!({"operation": "open", "panel": "board"})).is_err());
     }
 
     #[test]
