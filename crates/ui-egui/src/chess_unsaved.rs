@@ -45,10 +45,13 @@ pub enum GamesAnswer {
 }
 
 impl PdfCraftApp {
-    /// Before `then`: write every collection that can be written now and, when one of those
-    /// `then` concerns still isn't kept, ask about it. Whether `then` must wait for the answer.
+    /// Before `then`: write every collection that can be written now, wait for the writes at most
+    /// [`crate::chess_writer::SETTLE`] (plan A9-I3b: the store's writer thread writes them) and,
+    /// when one of those `then` concerns still isn't kept, or still being written, ask about it.
+    /// Whether `then` must wait for the answer.
     pub(crate) fn ask_chess_games(&mut self, then: AfterGames) -> bool {
         self.flush_chess_games();
+        self.settle_chess_games();
         let order: Vec<DocId> = match then {
             AfterGames::CloseTab(id) => vec![id],
             AfterGames::CloseAll | AfterGames::Quit => self.views.iter().map(|v| v.id).collect(),
