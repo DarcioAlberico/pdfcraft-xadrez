@@ -95,6 +95,9 @@ pub struct ChessState {
     pub corrections: crate::chess_corrections_ui::Corrections,
     /// The books' own PGNs, and where they are kept (plan "Carregar PGN do livro", R6a).
     pub book_pgns: crate::chess_reference_ui::BookPgns,
+    /// The folder the books' readings are kept in (plan A9-N5b): `chess/reading` in the app's data
+    /// folder, so a book opened again reads none of its pages; `None` (the web, a test) keeps none.
+    pub reading_dir: Option<std::path::PathBuf>,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,

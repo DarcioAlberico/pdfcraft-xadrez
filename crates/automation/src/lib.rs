@@ -19,6 +19,7 @@ mod batch;
 mod chess;
 mod chess_area;
 mod chess_bookmarks;
+mod chess_cache;
 mod chess_corrections;
 mod chess_errata;
 mod chess_evals;
@@ -878,6 +879,8 @@ impl Automation {
             "chess_store_migrate" => self.chess_store_migrate(&a)?,
             "chess_review_pack_export" => self.chess_review_pack_export(&a)?,
             "chess_review_pack_import" => self.chess_review_pack_import(&a)?,
+            "chess_cache_status" => self.chess_cache_status(&a)?,
+            "chess_cache_clear" => self.chess_cache_clear(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_errata" => self.chess_errata(&a)?,

@@ -350,6 +350,8 @@ pub struct GlyphModel {
     pub classes: Vec<String>,
     /// The calibration temperature, applied to the logits.
     pub temperature: f32,
+    /// What the model is: [`model_digest`] of its two files, taken when it was loaded.
+    digest: [u8; 32],
 }
 
 impl fmt::Debug for GlyphModel {
@@ -361,13 +363,20 @@ impl fmt::Debug for GlyphModel {
 impl GlyphModel {
     /// Load from the ONNX file's bytes and its description.
     pub fn from_bytes(model: Vec<u8>, meta: &[u8]) -> Result<GlyphModel, ModelError> {
+        let digest = model_digest(&model, meta);
         let meta = parse_meta(meta, GLYPHS)?;
         let classes = meta.output.classes.clone();
         if classes.is_empty() || classes.len() > MAX_GLYPH_CLASSES || classes.iter().any(String::is_empty) {
             return Err(ModelError::Classes(format!("{} classes, or an empty one", classes.len())));
         }
         let net = Network::load(model, &meta, GLYPH_SIDE)?;
-        Ok(GlyphModel { net, classes, temperature: meta.temperature })
+        Ok(GlyphModel { net, classes, temperature: meta.temperature, digest })
+    }
+
+    /// What the model is ([`model_digest`] of its files): a page's chess OCR kept on disk is keyed
+    /// by it (plan A9-N5b), as a board's reading is by the piece model's (A9-G6).
+    pub fn digest(&self) -> &[u8; 32] {
+        &self.digest
     }
 
     /// Calibrated class probabilities for `count` cells, each `32 × 32` gray values in 0..1
