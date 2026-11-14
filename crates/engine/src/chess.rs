@@ -32,6 +32,7 @@
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pdfcraft_chess::mate;
@@ -620,6 +621,9 @@ struct PageInputs {
     key: Option<page_key::PageKey>,
 }
 
+/// Most threads one scan runs on ([`ChessScanJob::run_parallel`]).
+pub const MAX_SCAN_WORKERS: usize = 4;
+
 /// Everything scanning needs from a document, detached from the session.
 pub struct ChessScanJob {
     doc: DocId,
@@ -689,6 +693,104 @@ impl ChessScanJob {
     pub fn run_with(self, model: Option<&dyn SquareClassifier>, progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
         let key = if model.is_some() { ModelKey::Supplied } else { ModelKey::Missing };
         self.run_inner(model, key, progress)
+    }
+
+    /// [`Self::run`] on `workers` threads (plan A9-V10, R8-02: a book's scan used one core),
+    /// each with its own page renderer and the same guard against a page that panics; the pages
+    /// come back in order, and `progress(done, total)` is told of those scanned from the first
+    /// (returning `false` stops the workers between two pages, and the pages scanned from the first
+    /// up to a gap are returned). One worker, one page or a target without threads (the web)
+    /// scans as [`Self::run`] does. What it finds is what [`Self::run`] finds.
+    pub fn run_parallel(self, models: &ChessModels, workers: usize, progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
+        let model = models.pieces.loaded().map(|m| m as &(dyn SquareClassifier + Sync));
+        self.run_parallel_inner(model, ModelKey::of(models), workers, progress)
+    }
+
+    /// [`Self::run_parallel`] with a classifier the caller supplies ([`Self::run_with`]).
+    pub fn run_parallel_with(
+        self,
+        model: Option<&(dyn SquareClassifier + Sync)>,
+        workers: usize,
+        progress: impl FnMut(usize, usize) -> bool,
+    ) -> ChessScan {
+        let key = if model.is_some() { ModelKey::Supplied } else { ModelKey::Missing };
+        self.run_parallel_inner(model, key, workers, progress)
+    }
+
+    /// How many workers a scan uses by default: one core is left to the rest of the program, and
+    /// at most [`MAX_SCAN_WORKERS`] (each holds a page's peak: 120 MB detecting, 285-445 MB
+    /// reading, measured for R8-02).
+    pub fn default_workers() -> usize {
+        std::thread::available_parallelism().map_or(1, |n| n.get().saturating_sub(1)).clamp(1, MAX_SCAN_WORKERS)
+    }
+
+    fn run_parallel_inner(
+        mut self,
+        model: Option<&(dyn SquareClassifier + Sync)>,
+        key: ModelKey,
+        workers: usize,
+        mut progress: impl FnMut(usize, usize) -> bool,
+    ) -> ChessScan {
+        let total = self.inputs.len();
+        let workers = workers.min(MAX_SCAN_WORKERS).min(total);
+        if cfg!(target_arch = "wasm32") || workers <= 1 {
+            return self.run_inner(model.map(|m| m as &dyn SquareClassifier), key, progress);
+        }
+        if self.read {
+            self.params.model = Some(key);
+        }
+        let settings = self.settings.sanitized();
+        let next = AtomicUsize::new(0);
+        let stop = AtomicBool::new(false);
+        let mut slots: Vec<Option<Arc<ChessPage>>> = vec![None; total];
+        let job = &self;
+        std::thread::scope(|scope| {
+            let (tx, rx) = std::sync::mpsc::channel::<(usize, ChessPage)>();
+            for _ in 0..workers {
+                let tx = tx.clone();
+                let (next, stop, settings) = (&next, &stop, &settings);
+                scope.spawn(move || {
+                    let mut renderer = PageRenderer::new(job.bytes.clone(), job.render_config());
+                    while !stop.load(Ordering::Relaxed) {
+                        let i = next.fetch_add(1, Ordering::Relaxed);
+                        let Some(input) = job.inputs.get(i) else { break };
+                        // The same last-resort guard as a page at a time ([`ChessScanSteps::step`]).
+                        let scanned = catch_unwind(AssertUnwindSafe(|| {
+                            scan_page(&mut renderer, input, settings, job.read, model.map(|m| m as &dyn SquareClassifier))
+                        }));
+                        let page = scanned.unwrap_or_else(|_| {
+                            renderer = PageRenderer::new(job.bytes.clone(), job.render_config());
+                            failed_page(input, "scanning the page failed unexpectedly")
+                        });
+                        if tx.send((i, page)).is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+            drop(tx);
+            let mut done = 0usize;
+            if !progress(done, total) {
+                stop.store(true, Ordering::Relaxed);
+            }
+            for (i, page) in rx {
+                if let Some(slot) = slots.get_mut(i) {
+                    *slot = Some(Arc::new(page));
+                }
+                let before = done;
+                while slots.get(done).is_some_and(Option::is_some) {
+                    done += 1;
+                }
+                if done > before && !stop.load(Ordering::Relaxed) && done < total && !progress(done, total) {
+                    stop.store(true, Ordering::Relaxed);
+                }
+            }
+        });
+        progress(total, total);
+        // The pages scanned from the first: a stop leaves the rest unscanned, as a page at a time.
+        let pages: Vec<Arc<ChessPage>> = slots.into_iter().map_while(|p| p).collect();
+        let keys = self.inputs.iter().map(|i| (i.page, i.key)).collect();
+        ChessScan { doc: self.doc, params: self.params, pages, keys }
     }
 
     fn run_inner(self, model: Option<&dyn SquareClassifier>, key: ModelKey, mut progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
@@ -1353,9 +1455,11 @@ impl Session {
         if !missing.is_empty() {
             self.chess.scanned = self.chess.scanned.saturating_add(missing.len());
             let job = self.chess_scan_job_keyed(id, &missing, &missing_keys, &settings, read).ok_or("no such document")?;
+            // On the cores (plan A9-V10a): the command line and the agents scan whole books here.
+            let workers = ChessScanJob::default_workers();
             let scan = match &models {
-                Some(m) => job.run(m, |_, _| true),
-                None => job.run_with(None, |_, _| true),
+                Some(m) => job.run_parallel(m, workers, |_, _| true),
+                None => job.run_parallel_with(None, workers, |_, _| true),
             };
             self.store_chess_scan(&scan);
             for page in scan.pages {

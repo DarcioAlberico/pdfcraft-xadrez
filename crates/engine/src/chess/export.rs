@@ -10,9 +10,12 @@ use std::path::Path;
 use std::sync::Arc;
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
+use pdfcraft_chess::game::Game;
 use pdfcraft_chess::san::Lang;
+use pdfcraft_chessvision::doc::from_games::{FromGames, from_games};
 use pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
-use pdfcraft_chessvision::doc::{Block, PageLabel, markdown};
+use pdfcraft_chessvision::doc::reference::{self, ReferenceIndex};
+use pdfcraft_chessvision::doc::{Block, ChessDoc, LangTag, PageLabel, markdown};
 use pdfcraft_chessvision::text_font::TextFont;
 
 use super::ChessScanSettings;
@@ -97,9 +100,17 @@ pub struct ChessExportOptions {
     /// HTML and EPUB: highlight what the reading flagged for review. `None`: on in HTML (a file
     /// to check), off in EPUB (a book to read; plan A8 P9b).
     pub review_marks: Option<bool>,
-    /// PGN: the book's own PGN (plan "Carregar PGN do livro", R4). With it, the PGN written is
-    /// that PGN's games with the book's text as their comments, in place of the games read.
-    pub reference: Option<Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>>,
+    /// The book's own PGN (plan "Carregar PGN do livro", R4; every format since plan A9-N2). The
+    /// pages read are linked to it, after [`ChessExportOptions::games`] ([`reference::link_all`]):
+    /// a diagram it confirms shows its position, the moves are walked again from it, and a move
+    /// the reader did not play and it did is shown with its position, marked (HTML, EPUB). PGN:
+    /// the PGN written is that PGN's games with the book's text as their comments, in place of the
+    /// games read.
+    pub reference: Option<Arc<ReferenceIndex>>,
+    /// The user's own games for the book (the document's game collection as a PGN; plan A9-N2,
+    /// §2.9): linked first, so they outrank [`ChessExportOptions::reference`], and the reading
+    /// comes last. PGN: without `reference`, the PGN written is these games with the book's text.
+    pub games: Option<Arc<ReferenceIndex>>,
 }
 
 impl ChessExportOptions {
@@ -130,6 +141,7 @@ impl ChessExportOptions {
             pgn_style: pdfcraft_chess::pgn_style::PgnStyle::FULL,
             review_marks: None,
             reference: None,
+            games: None,
         }
     }
 }
@@ -149,11 +161,15 @@ pub struct ChessExport {
     pub positions_skipped: Vec<markdown::SkippedPosition>,
     /// PGN: what writing left out of the games, by game in the order written (plan A9-F4).
     pub pgn_warnings: Vec<pdfcraft_chessvision::doc::pgn::GameWarning>,
-    /// PGN with [`ChessExportOptions::reference`]: what the book's PGN was given.
+    /// PGN with [`ChessExportOptions::reference`] (else [`ChessExportOptions::games`]): what that
+    /// PGN was given.
     /// Boxed: the export's result travels in the interface's job messages, which it would make large.
     pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
+    /// The links to [`ChessExportOptions::games`] and [`ChessExportOptions::reference`], in that
+    /// order, those given (plan A9-N2).
+    pub linked: Vec<reference::Linked>,
 }
 
 impl ChessExport {
@@ -183,72 +199,126 @@ pub fn page_label_of(info: &crate::DocInfo, index: usize) -> PageLabel {
     PageLabel::new(info.pages.get(index).map(|p| p.label.as_str()), u32::try_from(index).unwrap_or(u32::MAX))
 }
 
+/// What [`write_doc`] writes besides the options: the book's language (a BCP 47 tag), the
+/// number printed on each page, and, for EPUB, the package's metadata with the labels its pages
+/// are titled by.
+struct WriteContext<'a> {
+    lang: &'a str,
+    labels: &'a [String],
+    epub: Option<(super::epub::EpubMeta, Vec<String>)>,
+}
+
+/// What [`write_doc`] made: the file's bytes, Markdown's images, and how many diagrams were drawn.
+struct Written {
+    bytes: Vec<u8>,
+    images: Vec<(String, Vec<u8>)>,
+    drawn: usize,
+}
+
+/// `doc` written as `format` (HTML, EPUB, Word, RTF or Markdown: the one writer of each, for a
+/// book read from a PDF and for one made of games, plan A9-N9), what the writers noted pushed
+/// to `notes`. PGN is not written here: [`Session::chess_export`] writes it from the games read.
+fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: WriteContext<'_>, notes: &mut Vec<String>) -> Result<Written, String> {
+    let options = HtmlOptions {
+        title: &o.title,
+        pieces: &o.pieces,
+        style: o.style,
+        diagrams: o.diagrams,
+        figurines: o.figurines,
+        links: o.links,
+        link_text: &o.link_text,
+        text_font: o.text_font.as_deref(),
+        sign_font: o.sign_font.as_deref(),
+        lang: w.lang,
+        page_labels: w.labels,
+        review_marks: o.review_marks.unwrap_or(format != ChessFormat::Epub),
+    };
+    let mut images = Vec::new();
+    // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
+    let with_position = doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
+    let mut drawn = if o.diagrams == DiagramMode::Svg { with_position } else { 0 };
+    let bytes = match format {
+        ChessFormat::Html => html::write(doc, &options).into_bytes(),
+        ChessFormat::Epub => {
+            let (meta, printed) = w.epub.ok_or("an EPUB needs its package's metadata")?;
+            super::epub::epub(doc, &HtmlOptions { page_labels: &printed, ..options.clone() }, &meta)?
+        }
+        ChessFormat::Pgn => return Err("PGN is written from the games read".into()),
+        ChessFormat::Markdown => {
+            let with_images = o.diagrams == DiagramMode::Svg;
+            drawn = 0;
+            if with_images {
+                for page in &doc.pages {
+                    for block in &page.blocks {
+                        let Block::Diagram(d) = block else { continue };
+                        let Some(shown) = d.shown() else { continue };
+                        let png = pdfcraft_chess::fen::Fen::parse(shown.fen)
+                            .map_err(|e| e.to_string())
+                            .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px));
+                        match png {
+                            Ok(png) => {
+                                images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
+                                drawn += 1;
+                            }
+                            Err(e) => notes.push(format!("page {}, diagram {}: {e}", PageLabel::of(w.labels, page.index), d.number + 1)),
+                        }
+                    }
+                }
+            }
+            let md = markdown::MarkdownOptions {
+                title: &o.title,
+                figurines: o.figurines,
+                diagrams: if with_images { markdown::MarkdownDiagrams::Images } else { markdown::MarkdownDiagrams::Fen },
+                links: o.links,
+                link_text: &o.link_text,
+                image_dir: &o.image_dir,
+                lang: w.lang,
+                page_labels: w.labels,
+            };
+            markdown::write(doc, &md).into_bytes()
+        }
+        ChessFormat::Docx | ChessFormat::Rtf => {
+            let office = super::office::OfficeOptions {
+                title: &o.title,
+                pieces: &o.pieces,
+                style: o.style,
+                figurines: o.figurines,
+                links: o.links,
+                link_text: &o.link_text,
+                diagram_px: o.diagram_px,
+                text_font: o.text_font.as_deref(),
+                sign_font: o.sign_font.as_deref(),
+                lang: w.lang,
+                page_labels: w.labels,
+            };
+            let (flow, count) = super::office::to_flow(doc, &office, notes);
+            drawn = count;
+            if format == ChessFormat::Docx { super::office::docx(&flow).map_err(|e| e.to_string())? } else { super::office::rtf(&flow).into_bytes() }
+        }
+    };
+    Ok(Written { bytes, images, drawn })
+}
+
 impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
-        let read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        let mut read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        // One truth of the games for every format (plan A9-N2): the user's games, then the book's
+        // PGN, then the reading.
+        let refs: Vec<&ReferenceIndex> = [o.games.as_deref(), o.reference.as_deref()].into_iter().flatten().collect();
+        let linked = if refs.is_empty() { Vec::new() } else { reference::link_all(&mut read.doc, &refs) };
         // The book's language, not its piece letters' (plan A9-L6a, A2-08): `<html lang>`,
         // `dc:language`, `w:lang`; the letters' only when nothing says the text's.
         let book_lang = if read.text_lang.is_empty() { read.lang.lang.code() } else { read.text_lang.as_str() };
         // The printed page numbers and the book's language say each diagram (plan A8 P9b, P9d).
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
-        let options = HtmlOptions {
-            title: &o.title,
-            pieces: &o.pieces,
-            style: o.style,
-            diagrams: o.diagrams,
-            figurines: o.figurines,
-            links: o.links,
-            link_text: &o.link_text,
-            text_font: o.text_font.as_deref(),
-            sign_font: o.sign_font.as_deref(),
-            lang: book_lang,
-            page_labels: &labels,
-            review_marks: o.review_marks.unwrap_or(format != ChessFormat::Epub),
-        };
         let mut notes = Vec::new();
-        let mut images = Vec::new();
         let mut position_games = None;
         let mut positions_skipped = Vec::new();
         let mut pgn_warnings = Vec::new();
         let mut annotated = None;
-        // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
-        let read_diagrams = read.doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
-        let mut drawn = if o.diagrams == DiagramMode::Svg { read_diagrams } else { 0 };
-        let bytes = match format {
-            ChessFormat::Html => html::write(&read.doc, &options).into_bytes(),
-            ChessFormat::Epub => {
-                let doc = self.get(id).ok_or("no such document")?;
-                // The cover is the book's first page; a book without one is still a book.
-                let first = read.doc.pages.first().and_then(|p| usize::try_from(p.index).ok()).unwrap_or(0);
-                let cover = match super::epub::cover_png(doc.export_source(), first) {
-                    Ok(png) => Some(png),
-                    Err(e) => {
-                        notes.push(format!("the book has no cover: {e}"));
-                        None
-                    }
-                };
-                let meta = super::epub::EpubMeta {
-                    title: o.title.clone(),
-                    lang: book_lang.to_owned(),
-                    // The PDF's own identifier outlives saving; its bytes do not. The identifier
-                    // every new file used to get names no document (`DocKeys::id`); a part of the
-                    // document is another book.
-                    identifier: super::epub::identifier_for_pages(
-                        doc.doc_keys().id().map_or_else(|| super::epub::identifier(&doc.bytes), |id| super::epub::identifier_from_id(&id)),
-                        &o.pages,
-                        doc.info.pages.len(),
-                    ),
-                    modified: super::epub::modified_at(self.now_secs()),
-                    cover,
-                    creator: doc.info.author.clone(),
-                    source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
-                };
-                // A book with no `/PageLabels` is paged by the numbers it prints (plan A9-L1b).
-                let printed = PageLabel::with_folios(&labels, &read.doc);
-                super::epub::epub(&read.doc, &HtmlOptions { page_labels: &printed, ..options.clone() }, &meta)?
-            }
+        let written = match format {
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).
                 let doc = self.get(id).ok_or("no such document")?;
@@ -256,8 +326,7 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                drawn = 0;
-                if let Some(index) = &o.reference {
+                let bytes = if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
                     let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
                     let bytes = made.pgn.clone().into_bytes();
                     position_games = Some(made.positions);
@@ -271,64 +340,100 @@ impl Session {
                     positions_skipped = made.skipped;
                     pgn_warnings = made.warnings;
                     made.pgn.into_bytes()
-                }
+                };
+                Written { bytes, images: Vec::new(), drawn: 0 }
             }
-            ChessFormat::Markdown => {
-                let with_images = o.diagrams == DiagramMode::Svg;
-                drawn = 0;
-                if with_images {
-                    for page in &read.doc.pages {
-                        for block in &page.blocks {
-                            let Block::Diagram(d) = block else { continue };
-                            let Some(shown) = d.shown() else { continue };
-                            let png = pdfcraft_chess::fen::Fen::parse(shown.fen)
-                                .map_err(|e| e.to_string())
-                                .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px));
-                            match png {
-                                Ok(png) => {
-                                    images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
-                                    drawn += 1;
-                                }
-                                Err(e) => notes.push(format!("page {}, diagram {}: {e}", PageLabel::of(&labels, page.index), d.number + 1)),
-                            }
+            _ => {
+                let epub = if format == ChessFormat::Epub {
+                    let doc = self.get(id).ok_or("no such document")?;
+                    // The cover is the book's first page; a book without one is still a book.
+                    let first = read.doc.pages.first().and_then(|p| usize::try_from(p.index).ok()).unwrap_or(0);
+                    let cover = match super::epub::cover_png(doc.export_source(), first) {
+                        Ok(png) => Some(png),
+                        Err(e) => {
+                            notes.push(format!("the book has no cover: {e}"));
+                            None
                         }
-                    }
-                }
-                let md = markdown::MarkdownOptions {
-                    title: &o.title,
-                    figurines: o.figurines,
-                    diagrams: if with_images { markdown::MarkdownDiagrams::Images } else { markdown::MarkdownDiagrams::Fen },
-                    links: o.links,
-                    link_text: &o.link_text,
-                    image_dir: &o.image_dir,
-                    lang: book_lang,
-                    page_labels: &labels,
-                };
-                markdown::write(&read.doc, &md).into_bytes()
-            }
-            ChessFormat::Docx | ChessFormat::Rtf => {
-                let office = super::office::OfficeOptions {
-                    title: &o.title,
-                    pieces: &o.pieces,
-                    style: o.style,
-                    figurines: o.figurines,
-                    links: o.links,
-                    link_text: &o.link_text,
-                    diagram_px: o.diagram_px,
-                    text_font: o.text_font.as_deref(),
-                    sign_font: o.sign_font.as_deref(),
-                    lang: book_lang,
-                    page_labels: &labels,
-                };
-                let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);
-                drawn = count;
-                if format == ChessFormat::Docx {
-                    super::office::docx(&flow).map_err(|e| e.to_string())?
+                    };
+                    let meta = super::epub::EpubMeta {
+                        title: o.title.clone(),
+                        lang: book_lang.to_owned(),
+                        // The PDF's own identifier outlives saving; its bytes do not. The identifier
+                        // every new file used to get names no document (`DocKeys::id`); a part of
+                        // the document is another book.
+                        identifier: super::epub::identifier_for_pages(
+                            doc.doc_keys().id().map_or_else(|| super::epub::identifier(&doc.bytes), |id| super::epub::identifier_from_id(&id)),
+                            &o.pages,
+                            doc.info.pages.len(),
+                        ),
+                        modified: super::epub::modified_at(self.now_secs()),
+                        cover,
+                        creator: doc.info.author.clone(),
+                        source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
+                    };
+                    // A book with no `/PageLabels` is paged by the numbers it prints (plan A9-L1b).
+                    Some((meta, PageLabel::with_folios(&labels, &read.doc)))
                 } else {
-                    super::office::rtf(&flow).into_bytes()
-                }
+                    None
+                };
+                write_doc(&read.doc, format, o, WriteContext { lang: book_lang, labels: &labels, epub }, &mut notes)?
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes })
+        let Written { bytes, images, drawn } = written;
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes, linked })
     }
+}
+
+/// What [`games_book`] made.
+#[derive(Clone, Debug)]
+pub struct GamesBook {
+    pub bytes: Vec<u8>,
+    /// Markdown: the images, as (path relative to the Markdown file, PNG bytes).
+    pub images: Vec<(String, Vec<u8>)>,
+    /// The book the games became ([`from_games`]): a page per game.
+    pub doc: ChessDoc,
+    /// Diagrams drawn (SVG boards or images).
+    pub drawn: usize,
+    /// What the writers noted.
+    pub notes: Vec<String>,
+}
+
+/// What [`games_book`] says of the book besides the export's options: the language of its text
+/// (empty: not said, English then), its author, the moment it is made (seconds since 1970, for
+/// the EPUB's `dcterms:modified`) and the bytes its EPUB identifier is made from (the games' PGN,
+/// so the same games make the same book).
+#[derive(Clone, Debug, Default)]
+pub struct GamesBookMeta {
+    pub text_lang: LangTag,
+    pub creator: Option<String>,
+    pub now_secs: i64,
+    pub identity: Vec<u8>,
+}
+
+/// From games to a book (plan A9-N9, A8-12): `games` made a book ([`from_games`], a page per game)
+/// and written as `format` by the writers a book read from a PDF is written with ([`write_doc`]),
+/// `o` saying how (its pages, scan settings, OCR, cipher, references and PGN options are not
+/// used: there is nothing to read). The pages are numbered by game. An EPUB has no cover. PGN is
+/// refused: the games are their own PGN.
+pub fn games_book(games: &[Game], format: ChessFormat, o: &ChessExportOptions, meta: &GamesBookMeta) -> Result<GamesBook, String> {
+    if format == ChessFormat::Pgn {
+        return Err("the games are their own PGN: write them as PGN, not as a book".into());
+    }
+    let doc = from_games(games, &FromGames { text_lang: meta.text_lang.clone() });
+    let lang = if meta.text_lang.is_empty() { Lang::En.code() } else { meta.text_lang.as_str() };
+    let epub = (format == ChessFormat::Epub).then(|| {
+        let package = super::epub::EpubMeta {
+            title: o.title.clone(),
+            lang: lang.to_owned(),
+            identifier: format!("{}:games", super::epub::identifier(&meta.identity)),
+            modified: super::epub::modified_at(meta.now_secs),
+            cover: None,
+            creator: meta.creator.clone(),
+            source: None,
+        };
+        (package, Vec::new())
+    });
+    let mut notes = Vec::new();
+    let w = write_doc(&doc, format, o, WriteContext { lang, labels: &[], epub }, &mut notes)?;
+    Ok(GamesBook { bytes: w.bytes, images: w.images, doc, drawn: w.drawn, notes })
 }

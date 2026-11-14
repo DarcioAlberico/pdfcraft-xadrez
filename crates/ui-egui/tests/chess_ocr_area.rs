@@ -268,8 +268,8 @@ fn esc_drops_an_area_being_read() {
     let asked: Asked = Arc::default();
     let read = reader(MOVES, 0, &asked);
     h.state_mut().set_chess_area_reader(Some(move |q: &AreaQuery| {
-        // Held until the test lets it go (or ten seconds pass).
-        let _ = wait.lock().unwrap().recv_timeout(std::time::Duration::from_secs(10));
+        // Held until the test lets it go (or a minute passes: a net against a hang).
+        let _ = wait.lock().unwrap().recv_timeout(std::time::Duration::from_secs(60));
         read(q)
     }));
     assert!(h.state_mut().execute("chess.tool.capture"));

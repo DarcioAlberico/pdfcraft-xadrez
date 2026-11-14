@@ -184,19 +184,29 @@ pub enum TextFontError {
     TooLarge(usize),
     #[error("not a TrueType, OpenType, WOFF or WOFF2 font")]
     NotAFont,
+    /// A WOFF or WOFF2 font: compressed, so its licence cannot be checked before an export
+    /// embeds it (plan A9-V5, A3-05: any file starting `wOFF` was embedded as a figurine font).
+    #[error("{0:?} is a WOFF or WOFF2 font, whose licence cannot be checked: convert it to TTF or OTF")]
+    Compressed(String),
     #[error("the font has no chess figurines (U+2654–U+265F) and is not a figurine or sign font PdfCraft knows")]
     NoFigurines,
-    /// Its OS/2 `fsType` says Restricted License embedding: an export must not carry it (plan A8
-    /// P9b).
-    #[error("the font {0:?} may not be embedded: its licence says so (OS/2 fsType: Restricted License)")]
+    /// Its OS/2 `fsType` says Restricted License embedding (plan A8 P9b), or bitmap embedding
+    /// only (plan A9-V5): an export, which embeds the outlines, must not carry it.
+    #[error("the font {0:?} may not be embedded: its licence says so (OS/2 fsType: Restricted License, or bitmaps only)")]
     Restricted(String),
 }
 
-/// Whether an OS/2 `fsType` forbids embedding: its usage permissions (bits 0–3) say Restricted
-/// License (2) alone. Preview & Print, Editable and Installable fonts may be embedded.
-pub fn restricted(fs_type: u16) -> bool {
-    fs_type & 0x000F == 0x0002
+/// Whether an OS/2 `fsType` forbids embedding the font's outlines, which an export embeds:
+/// its usage permissions (bits 0–3) say Restricted License (2), or it allows bitmap embedding
+/// only (bit 9; plan A9-V5, A3-06: that bit was not looked at). Preview & Print, Editable and
+/// Installable fonts may be embedded.
+pub fn embedding_forbidden(fs_type: u16) -> bool {
+    fs_type & 0x000F == 0x0002 || fs_type & 0x0200 != 0
 }
+
+/// Least bytes of a WOFF file: its header (WOFF 1.0 and 2.0 alike start with a 44-byte one at
+/// least).
+const WOFF_HEADER_BYTES: usize = 44;
 
 /// The role a font named `name` has by its name alone: ISChess, or a catalogued figurine family.
 fn role_by_name(name: &str) -> Option<FontRole> {
@@ -214,8 +224,9 @@ fn is_diagram_font(name: &str) -> bool {
 
 /// A font from its bytes. `name_hint` (the file name, say) helps when the font's own name does
 /// not say what it is. A TrueType or OpenType font must be ISChess, a catalogued figurine font
-/// or have the Unicode chess symbols; WOFF and WOFF2 are compressed, so only their name says,
-/// else they are taken as Unicode figurine fonts.
+/// or have the Unicode chess symbols, and a licence that allows embedding
+/// ([`embedding_forbidden`]); a WOFF or WOFF2 font is refused ([`TextFontError::Compressed`]):
+/// its tables are compressed, so neither its licence nor its symbols can be checked.
 pub fn from_bytes(bytes: Vec<u8>, name_hint: &str) -> Result<TextFont, TextFontError> {
     if bytes.len() > MAX_FONT_BYTES {
         return Err(TextFontError::TooLarge(bytes.len()));
@@ -234,12 +245,14 @@ pub fn from_bytes(bytes: Vec<u8>, name_hint: &str) -> Result<TextFont, TextFontE
         }
         // An export embeds the font: one whose licence forbids it is refused (a font with no OS/2
         // table says nothing, and is taken).
-        if font.os2().is_ok_and(|os2| restricted(os2.fs_type())) {
+        if font.os2().is_ok_and(|os2| embedding_forbidden(os2.fs_type())) {
             return Err(TextFontError::Restricted(family));
         }
         (role.ok_or(TextFontError::NoFigurines)?, family)
+    } else if bytes.len() < WOFF_HEADER_BYTES {
+        return Err(TextFontError::NotAFont);
     } else {
-        (role_by_name(name_hint).unwrap_or(FontRole::Unicode), String::new())
+        return Err(TextFontError::Compressed(name_hint.to_owned()));
     };
     Ok(TextFont { bytes, format, role, family, path: None })
 }
@@ -299,13 +312,14 @@ fn font_files(dir: &Path) -> Vec<PathBuf> {
 }
 
 /// The export fonts in `dir`. Files that are no export font (a diagram font, say) are skipped;
-/// one whose licence forbids embedding is reported, so the user knows why it was not used.
+/// one whose licence forbids embedding, or cannot be checked (WOFF), is reported, so the user
+/// knows why it was not used.
 pub fn from_folder(dir: &Path) -> UserFonts {
     let mut found = UserFonts::default();
     for path in font_files(dir) {
         match from_file(&path) {
             Ok(font) => found.offer(font),
-            Err(e @ TextFontError::Restricted(_)) => found.errors.push(e),
+            Err(e @ (TextFontError::Restricted(_) | TextFontError::Compressed(_))) => found.errors.push(e),
             Err(_) => {}
         }
     }
@@ -393,8 +407,8 @@ mod tests {
     /// it, and a folder says why it was not used.
     #[test]
     fn a_font_that_may_not_be_embedded_is_refused_and_said() {
-        assert!(restricted(0x0002) && restricted(0x0102), "Restricted License, whatever the other bits");
-        assert!(!restricted(0) && !restricted(0x0004) && !restricted(0x0008), "installable, preview & print, editable");
+        assert!(embedding_forbidden(0x0002) && embedding_forbidden(0x0102), "Restricted License, whatever the other bits");
+        assert!(!embedding_forbidden(0) && !embedding_forbidden(0x0004) && !embedding_forbidden(0x0008), "installable, preview & print, editable");
         assert!(matches!(from_bytes(inter_with_fs_type(2), "Inter"), Err(TextFontError::Restricted(f)) if f == "Inter"));
         // The same font with an embeddable licence goes on to the role check.
         assert!(matches!(from_bytes(inter_with_fs_type(0), "Inter"), Err(TextFontError::NoFigurines)));
@@ -407,6 +421,33 @@ mod tests {
         assert!(found.figurines.is_none() && found.signs.is_none());
         assert_eq!(found.errors.len(), 1, "only the restricted one is said: {:?}", found.errors);
         assert!(found.errors[0].to_string().contains("may not be embedded"), "{}", found.errors[0]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-V5 (A3-05, A3-06): a WOFF or WOFF2 font, whose licence cannot be checked, is
+    /// refused with what to do (it was embedded as a figurine font, even a file of four bytes),
+    /// and said in a folder; a licence allowing bitmap embedding only (fsType bit 9) refuses the
+    /// font, whose outlines an export embeds.
+    #[test]
+    fn a_compressed_or_bitmap_only_font_is_not_embedded() {
+        assert!(matches!(from_bytes(b"wOFF".to_vec(), "x"), Err(TextFontError::NotAFont)));
+        let mut woff = b"wOFF".to_vec();
+        woff.resize(WOFF_HEADER_BYTES, 0);
+        let refused = from_bytes(woff.clone(), "Figurines").unwrap_err();
+        assert!(matches!(&refused, TextFontError::Compressed(name) if name == "Figurines"), "{refused}");
+        assert!(refused.to_string().contains("convert it to TTF or OTF"), "{refused}");
+        let mut woff2 = b"wOF2".to_vec();
+        woff2.resize(WOFF_HEADER_BYTES, 0);
+        assert!(matches!(from_bytes(woff2, "Inter-Regular"), Err(TextFontError::Compressed(_))));
+        assert!(embedding_forbidden(0x0200) && embedding_forbidden(0x0208), "bitmap embedding only");
+        assert!(matches!(from_bytes(inter_with_fs_type(0x0200), "Inter"), Err(TextFontError::Restricted(_))));
+        let dir = std::env::temp_dir().join(format!("pdfcraft-woff-fonts-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("figurines.woff"), &woff).unwrap();
+        let found = from_folder(&dir);
+        assert!(found.figurines.is_none(), "a WOFF takes no place");
+        assert!(found.errors.iter().any(|e| matches!(e, TextFontError::Compressed(_))), "{:?}", found.errors);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -438,9 +479,9 @@ mod tests {
         assert_eq!(role_by_name("SEMFIGN"), Some(FontRole::Letters));
         assert_eq!(role_by_name("ChessMerida"), None, "a diagram font is for the pieces");
         assert_eq!(role_by_name("Inter"), None);
-        // A compressed font is known by its file name only.
-        assert_eq!(from_bytes(b"wOF2 data".to_vec(), "semfign").unwrap().role, FontRole::Letters);
-        assert_eq!(from_bytes(b"wOF2 data".to_vec(), "dejavu").unwrap().role, FontRole::Unicode);
+        // A font whose own name says nothing is known by its file name.
+        let plain = crate::pieces::test_font::font("Plain", "KQRBN", false, 0);
+        assert_eq!(from_bytes(plain, "semfign").unwrap().role, FontRole::Letters);
     }
 
     #[test]
@@ -487,15 +528,17 @@ mod tests {
         // figurine font by letters takes its place, ISChess is the sign font.
         std::fs::write(dir.join("a-inter.ttf"), include_bytes!("../../../assets/fonts/Inter-Regular.ttf")).unwrap();
         std::fs::write(dir.join("notes.txt"), b"not a font").unwrap();
-        std::fs::write(dir.join("b-dejavu.woff2"), b"wOF2 unicode").unwrap();
-        std::fs::write(dir.join("c-SemFigN.WOFF2"), b"wOF2 letters").unwrap();
-        std::fs::write(dir.join("d-ISChess.woff2"), b"wOF2 signs").unwrap();
+        use crate::pieces::test_font::font as ttf;
+        std::fs::write(dir.join("b-dejavu.ttf"), ttf("DejaVu Sans", "\u{2654}\u{265A}", false, 0)).unwrap();
+        std::fs::write(dir.join("c-SemFigN.TTF"), ttf("SemFigN", "KQRBN", false, 0)).unwrap();
+        std::fs::write(dir.join("d-ISChess.ttf"), ttf("ISChess", "MOR", false, 0)).unwrap();
         let found = from_folder(&dir);
+        assert!(found.errors.is_empty(), "{:?}", found.errors);
         let figurines = found.figurines.unwrap();
-        assert_eq!((figurines.role, figurines.bytes.as_slice()), (FontRole::Letters, b"wOF2 letters".as_slice()));
+        assert_eq!((figurines.role, figurines.family.as_str()), (FontRole::Letters, "SemFigN"));
         let signs = found.signs.unwrap();
         assert_eq!(signs.role, FontRole::Signs);
-        assert_eq!(signs.path.as_deref(), Some(dir.join("d-ISChess.woff2").as_path()));
+        assert_eq!(signs.path.as_deref(), Some(dir.join("d-ISChess.ttf").as_path()));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

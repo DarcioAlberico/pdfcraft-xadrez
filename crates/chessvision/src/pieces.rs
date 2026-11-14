@@ -182,7 +182,7 @@ fn read_font(bytes: &[u8], name_hint: &str) -> Result<FontPieces, PieceError> {
             *g = black;
         }
     }
-    let restricted = font.os2().is_ok_and(|os2| crate::text_font::restricted(os2.fs_type()));
+    let restricted = font.os2().is_ok_and(|os2| crate::text_font::embedding_forbidden(os2.fs_type()));
     Ok(FontPieces { set: PieceSet { glyphs, name: family.display_name.to_owned() }, family, restricted })
 }
 

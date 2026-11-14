@@ -13,15 +13,9 @@ const FIXTURE: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-/// Tests that render pixels (`h.render()`) take this first, so only one wgpu device compiles
-/// shaders at a time: WARP's ARM64 pixel-shader JIT crashes when two do (see `tests/view.rs`).
-/// Declared before the harness, so it is released after the device is dropped.
-static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn gpu() -> std::sync::MutexGuard<'static, ()> {
-    // A test that panicked while holding it leaves nothing to clean up.
-    GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
+#[path = "common/gpu.rs"]
+mod gpu;
+use gpu::gpu;
 
 fn harness() -> Harness<'static, PdfCraftApp> {
     harness_bytes(FIXTURE)

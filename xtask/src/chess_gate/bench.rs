@@ -323,6 +323,13 @@ impl Gate {
             eprintln!("chess-gate: stage 5 runs with --full");
             return true;
         }
+        // The scan cache's measure on a book of 703 pages, out of the everyday tests (plan
+        // A9-Q4b, finding A7-17).
+        let t = Instant::now();
+        let result = self.tests("pdfcraft-engine", &strings(&["--lib"]), &strings(&["chess::tests::page_cache::", "--ignored"]));
+        if !self.record(5, "the scan cache on 703 pages (engine, --ignored)", t, result) {
+            return false;
+        }
         let t = Instant::now();
         let head = super::git(&self.root, &["rev-parse", "HEAD"]).map(|h| h.trim().to_owned()).unwrap_or_default();
         let result = match Paths::load(&self.gate_dir).bench38 {
