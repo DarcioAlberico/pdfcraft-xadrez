@@ -3517,3 +3517,25 @@ progress bar	Progress	进度
 	Games left out (an illegal position has no game): {n}	未导出的对局（非法局面没有对局）：{n}
 	Indexing the book's PGN…	正在为本书的 PGN 建立索引…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本书的 PGN 超出了 PdfCraft 的索引上限：只有前 {moves} 步与本书关联。
+	PGN — exercises	PGN — 练习
+	Anki — cards	Anki — 卡片
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	书中带编号的棋图及其解答，作为标准的习题 PGN。
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki 可导入的文本文件，每道练习一张卡片，棋图的图片放在旁边的文件夹中。
+	Book's language	书的语言
+	As the book says ({lang})	按书中所述 ({lang})
+	As the book's text says	按书的正文判断
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	导出所用的语言，也用于描述其棋图。如果书被识别成另一种语言，请更正。
+	Diagram descriptions	棋图描述
+	Letters (Kg1)	字母 (Kg1)
+	Words (king g1)	文字 (王 g1)
+	How a screen reader says each diagram's pieces.	屏幕阅读器如何读出每个棋图的棋子。
+	Pages: {n}	页数：{n}
+	Diagrams: {n}	棋图：{n}
+	not checked: {n}	未检查：{n}
+	Diagrams: not detected yet	棋图：尚未检测
+	Games from the book's PGN: {n}	来自书中 PGN 的对局：{n}
+	Games: read from the text	对局：从正文读取
+	Your games, linked first: {n}	你的对局（优先关联）：{n}
+	Language: {lang}	语言：{lang}
+	from the book's text	根据书的正文
+	Games: read from the text, linked to the book's PGN	对局：从正文读取，并关联到书中的 PGN

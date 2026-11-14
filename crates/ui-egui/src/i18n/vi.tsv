@@ -3805,3 +3805,25 @@ progress bar	Progress	Tiến độ
 	Games left out (an illegal position has no game): {n}	Các ván bị bỏ qua (thế cờ không hợp lệ không có ván): {n}
 	Indexing the book's PGN…	Đang lập chỉ mục PGN của sách…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN của sách lớn hơn mức PdfCraft lập chỉ mục: chỉ {moves} nước đầu tiên của nó được liên kết với sách.
+	PGN — exercises	PGN — bài tập
+	Anki — cards	Anki — thẻ
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Các sơ đồ được đánh số của sách cùng lời giải, dưới dạng PGN bài toán chuẩn.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Một tệp văn bản Anki nhập được, mỗi bài tập một thẻ, kèm ảnh các sơ đồ trong một thư mục bên cạnh.
+	Book's language	Ngôn ngữ của sách
+	As the book says ({lang})	Theo sách ({lang})
+	As the book's text says	Theo văn bản của sách
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Ngôn ngữ dùng để viết bản xuất và mô tả các sơ đồ. Hãy sửa nếu sách bị đọc thành ngôn ngữ khác.
+	Diagram descriptions	Mô tả sơ đồ
+	Letters (Kg1)	Chữ cái (Kg1)
+	Words (king g1)	Từ (vua g1)
+	How a screen reader says each diagram's pieces.	Cách trình đọc màn hình đọc các quân của mỗi sơ đồ.
+	Pages: {n}	Trang: {n}
+	Diagrams: {n}	Sơ đồ: {n}
+	not checked: {n}	chưa kiểm tra: {n}
+	Diagrams: not detected yet	Sơ đồ: chưa phát hiện
+	Games from the book's PGN: {n}	Ván cờ từ PGN của sách: {n}
+	Games: read from the text	Ván cờ: đọc từ văn bản
+	Your games, linked first: {n}	Ván cờ của bạn, liên kết trước: {n}
+	Language: {lang}	Ngôn ngữ: {lang}
+	from the book's text	theo văn bản của sách
+	Games: read from the text, linked to the book's PGN	Ván cờ: đọc từ văn bản, liên kết với PGN của sách

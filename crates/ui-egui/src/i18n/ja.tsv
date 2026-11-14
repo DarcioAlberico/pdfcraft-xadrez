@@ -3555,3 +3555,25 @@ progress bar	Progress	進行状況
 	Games left out (an illegal position has no game): {n}	除いた対局 (不正な局面には対局がありません): {n}
 	Indexing the book's PGN…	本の PGN を索引付けしています…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本の PGN は PdfCraft が索引付けできる大きさを超えています: 本に関連付けられるのは最初の {moves} 手だけです。
+	PGN — exercises	PGN — 練習問題
+	Anki — cards	Anki — カード
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	本の番号付き局面図とその解答を、標準的な問題の PGN として。
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki が取り込むテキスト ファイル。練習問題ごとに 1 枚のカードで、局面図の画像は隣のフォルダーに入ります。
+	Book's language	本の言語
+	As the book says ({lang})	本の指定どおり ({lang})
+	As the book's text says	本の本文から判断
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	書き出しの文章と局面図の説明に使う言語です。本が別の言語として読み取られたときは修正してください。
+	Diagram descriptions	局面図の説明
+	Letters (Kg1)	文字 (Kg1)
+	Words (king g1)	単語 (king g1)
+	How a screen reader says each diagram's pieces.	スクリーン リーダーが各局面図の駒をどう読み上げるか。
+	Pages: {n}	ページ: {n}
+	Diagrams: {n}	局面図: {n}
+	not checked: {n}	未確認: {n}
+	Diagrams: not detected yet	局面図: まだ検出していません
+	Games from the book's PGN: {n}	本の PGN の対局: {n}
+	Games: read from the text	対局: 本文から読み取り
+	Your games, linked first: {n}	あなたの対局 (先に関連付け): {n}
+	Language: {lang}	言語: {lang}
+	from the book's text	本の本文から
+	Games: read from the text, linked to the book's PGN	対局: 本文から読み取り、本の PGN に関連付け

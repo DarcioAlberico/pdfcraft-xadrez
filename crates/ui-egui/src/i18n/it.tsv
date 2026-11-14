@@ -3765,3 +3765,25 @@ progress bar	Progress	Avanzamento
 	Games left out (an illegal position has no game): {n}	Partite tralasciate (una posizione illegale non ha partita): {n}
 	Indexing the book's PGN…	Indicizzazione del PGN del libro…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Il PGN del libro è più grande di quanto PdfCraft indicizzi: solo le sue prime {moves} mosse sono collegate al libro.
+	PGN — exercises	PGN — esercizi
+	Anki — cards	Anki — schede
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	I diagrammi numerati del libro con le soluzioni, come PGN di problemi standard.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Un file di testo che Anki importa, una scheda per esercizio, con le immagini dei diagrammi in una cartella accanto.
+	Book's language	Lingua del libro
+	As the book says ({lang})	Come dice il libro ({lang})
+	As the book's text says	Come dice il testo del libro
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	La lingua in cui l'esportazione è scritta e descrive i diagrammi. Correggila quando il libro è stato letto come un'altra.
+	Diagram descriptions	Descrizione dei diagrammi
+	Letters (Kg1)	Lettere (Rg1)
+	Words (king g1)	Parole (re g1)
+	How a screen reader says each diagram's pieces.	Come un lettore di schermo dice i pezzi di ogni diagramma.
+	Pages: {n}	Pagine: {n}
+	Diagrams: {n}	Diagrammi: {n}
+	not checked: {n}	non controllati: {n}
+	Diagrams: not detected yet	Diagrammi: non ancora rilevati
+	Games from the book's PGN: {n}	Partite dal PGN del libro: {n}
+	Games: read from the text	Partite: lette dal testo
+	Your games, linked first: {n}	Le tue partite, collegate per prime: {n}
+	Language: {lang}	Lingua: {lang}
+	from the book's text	dal testo del libro
+	Games: read from the text, linked to the book's PGN	Partite: lette dal testo, collegate al PGN del libro

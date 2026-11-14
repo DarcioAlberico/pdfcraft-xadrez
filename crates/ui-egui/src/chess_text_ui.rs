@@ -31,7 +31,6 @@ use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
 use pdfcraft_engine::chess::reference_store::Choice;
@@ -256,11 +255,8 @@ pub enum TextAction {
     /// Put the game the move belongs to on the board, at that move, the pages around its page
     /// read too (`chess_source`).
     OpenGame(MoveAt),
-    Export(ChessFormat),
-    /// Choose which diagrams the PGN export gives a game of their own.
-    PgnPositions(PgnPositions),
-    /// Choose where the PGN export takes its games from (plan "Carregar PGN do livro", R6b).
-    PgnSource(crate::chess_export_ui::PgnSource),
+    /// Open the export dialog (plan A9-X2).
+    OpenExport,
     /// Say where the document's pages came from.
     Origin(BookOrigin),
     /// Load the book's PGN (`true`) or remove it (plan "Carregar PGN do livro", R6a).
@@ -268,27 +264,16 @@ pub enum TextAction {
     /// Keep the PGN beside the PDF as the book's PGN (R6c).
     SiblingPgn,
     /// Put game `game` of the book's PGN on the board at node `node` (R6c).
-    OpenPgnGame {
-        game: usize,
-        node: usize,
-    },
+    OpenPgnGame { game: usize, node: usize },
     /// Read every page and link it to the book's PGN (R6d).
     LinkBook,
     /// Stop the long job of the document shown (Export, Align the book; plan A9-I2).
     Stop,
     /// Go to page `page` (0-based) and put game `game` of the book's PGN on the board at its start
     /// (R6d: the PGN's games list).
-    PgnGameAt {
-        game: usize,
-        page: Option<usize>,
-    },
+    PgnGameAt { game: usize, page: Option<usize> },
     /// The user's choice for a move in conflict with the PGN (R6e).
-    Decide {
-        at: MoveAt,
-        san: String,
-        san_read: String,
-        choice: pdfcraft_engine::chess::reference_store::Choice,
-    },
+    Decide { at: MoveAt, san: String, san_read: String, choice: pdfcraft_engine::chess::reference_store::Choice },
 }
 
 /// The book's PGN row: what the document keeps, and the button to load or remove it; with none
@@ -471,12 +456,6 @@ fn figurines(ctx: &egui::Context) -> Figurines {
     if ctx.fonts_mut(|f| f.has_glyphs(&FontId::proportional(13.0), "♔♕♖♗♘♙")) { Figurines::Unicode } else { Figurines::AsPrinted }
 }
 
-/// The Export… menu (`positions`: which diagrams the PGN gives a game of their own; `source`:
-/// where it takes its games from, when the document keeps a book's PGN).
-pub fn export_menu(ui: &mut egui::Ui, positions: PgnPositions, source: Option<crate::chess_export_ui::PgnSource>) -> Option<TextAction> {
-    ui.menu_button(tl!("Export book…"), |ui| crate::chess_export_ui::items(ui, positions, source)).inner.flatten()
-}
-
 /// The Text tab for page `page` of document `id`, whose book origin is `origin`.
 #[allow(clippy::too_many_arguments)]
 pub fn text_tab(
@@ -489,9 +468,7 @@ pub fn text_tab(
     origin: BookOrigin,
     busy: Option<&'static str>,
     long: Option<&LongRow>,
-    positions: PgnPositions,
     pgn: &crate::chess_reference_ui::BookPgnView,
-    source: crate::chess_export_ui::PgnSource,
 ) -> Option<TextAction> {
     let book_pgn = pgn.summary.as_ref();
     let mut action = None;
@@ -528,7 +505,7 @@ pub fn text_tab(
         {
             action = Some(TextAction::Read(true));
         }
-        if let Some(a) = export_menu(ui, positions, book_pgn.map(|_| source)) {
+        if let Some(a) = crate::chess_export_ui::entry(ui) {
             action = Some(a);
         }
     });
@@ -1134,17 +1111,7 @@ impl PdfCraftApp {
             }
             TextAction::OpenGame(at) => self.read_book_game(at),
             TextAction::Stop => self.stop_chess_job(),
-            TextAction::Export(format) => self.export_chess_dialog(format),
-            TextAction::PgnPositions(p) => {
-                if let Some((_, id)) = self.active_ids() {
-                    self.chess.doc_mut(id).pgn_positions = p;
-                }
-            }
-            TextAction::PgnSource(s) => {
-                if let Some((_, id)) = self.active_ids() {
-                    self.chess.doc_mut(id).pgn_source = s;
-                }
-            }
+            TextAction::OpenExport => self.open_chess_export(),
             // The page shown is read again under the new origin (the tab sees it is not current).
             TextAction::Origin(origin) => {
                 if let Some((_, id)) = self.active_ids() {
@@ -1171,30 +1138,27 @@ impl PdfCraftApp {
         }
     }
 
-    /// Chess ▸ Export: ask about unconfirmed changes and diagrams still to review, then
-    /// [`Self::export_chess_save`].
-    pub fn export_chess_dialog(&mut self, format: ChessFormat) {
+    /// Chess ▸ Export, once the export dialog said what (plan A9-X2, where the diagrams still to
+    /// review are said): ask about unconfirmed changes, then [`Self::export_chess_save`].
+    pub fn export_chess_dialog(&mut self, format: impl Into<crate::chess_export_ui::ExportFormat>) {
+        let format = format.into();
         let Some((_, id)) = self.active_ids() else { return };
         // Diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
         if self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::Export(format)) {
-            return;
-        }
-        // Then diagrams still to review (P9c).
-        if self.ask_chess_pending(id, format) {
             return;
         }
         self.export_chess_save(id, format);
     }
 
     /// The book's PGN a `format` export of document `id` is linked to: the one the document
-    /// keeps, in every format (plan A9-N2: it reached the PGN alone); for PGN, unless the export
-    /// menu says the text read (plan "Carregar PGN do livro", R6b).
+    /// keeps, in every format (plan A9-N2: it reached the PGN alone); for the PGN of games,
+    /// unless the export dialog says the text read (plan "Carregar PGN do livro", R6b).
     pub(crate) fn export_reference(
         &mut self,
         id: DocId,
-        format: ChessFormat,
+        format: crate::chess_export_ui::ExportFormat,
     ) -> Option<Arc<pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex>> {
-        if format == ChessFormat::Pgn && self.chess.doc(id).map(|d| d.pgn_source).unwrap_or_default() != crate::chess_export_ui::PgnSource::Book {
+        if format == crate::chess_export_ui::ExportFormat::Pgn && self.chess.export.source != crate::chess_export_ui::PgnSource::Book {
             return None;
         }
         self.book_pgn_index(id)
@@ -1210,23 +1174,23 @@ impl PdfCraftApp {
         (!text.is_empty()).then(|| text.join("\n"))
     }
 
-    /// Ask where (`save_override` in tests), then read document `id` and write it as `format`.
-    pub(crate) fn export_chess_save(&mut self, id: DocId, format: ChessFormat) {
+    /// Ask where (`save_override` in tests), then read document `id` and write it as `export`.
+    pub(crate) fn export_chess_save(&mut self, id: DocId, export: crate::chess_export_ui::ExportFormat) {
         if !self.may_copy(id) {
             return;
         }
         let Some(doc) = self.session.get(id) else { return };
         let stem = doc.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string();
-        let ext = format.extension();
+        let ext = export.extension();
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let write = move |app: &mut Self, path: std::path::PathBuf| app.export_chess_to(id, format, &path);
+            let write = move |app: &mut Self, path: std::path::PathBuf| app.export_chess_to(id, export, &path);
             match self.save_override.clone() {
                 Some(p) => write(self, p.into()),
                 None => {
                     let dialog = rfd::AsyncFileDialog::new()
                         .set_title(tl!("Export").to_string())
-                        .add_filter(format.name(), &[ext])
+                        .add_filter(export.name(), &[ext])
                         .set_file_name(format!("{stem}.{ext}"));
                     self.ask_one(crate::pickers::Ask::Save(dialog), None, write);
                 }
@@ -1240,9 +1204,10 @@ impl PdfCraftApp {
             options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
             options.book = self.chess_cipher(id);
             options.ocr = self.chess_origin(id).ocr_mode();
-            options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
-            options.reference = self.export_reference(id, format);
+            // What the export dialog chose (plan A9-X2).
+            self.chess_export_options(id, export, &mut options);
             let games = self.export_games(id);
+            let format = export.engine();
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id, ctl| {
                 JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl))
             });
@@ -1251,7 +1216,9 @@ impl PdfCraftApp {
 
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn export_chess_to(&mut self, id: DocId, format: ChessFormat, path: &std::path::Path) {
+    pub fn export_chess_to(&mut self, id: DocId, export: impl Into<crate::chess_export_ui::ExportFormat>, path: &std::path::Path) {
+        let export = export.into();
+        let format = export.engine();
         if self.chess.long.is_some() {
             return self.notify(tl!("A chess document is already being read or exported").to_string());
         }
@@ -1263,8 +1230,8 @@ impl PdfCraftApp {
         options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
         options.book = self.chess_cipher(id);
         options.ocr = self.chess_origin(id).ocr_mode();
-        options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
-        options.reference = self.export_reference(id, format);
+        // What the export dialog chose (plan A9-X2).
+        self.chess_export_options(id, export, &mut options);
         let games = self.export_games(id);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());

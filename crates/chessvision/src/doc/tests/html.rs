@@ -21,6 +21,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         lang: "",
         page_labels: &[],
         review_marks: true,
+        naming: pdfcraft_chess::describe::Naming::Letters,
     }
 }
 
@@ -381,6 +382,7 @@ fn the_pages_furniture_is_not_exported() {
             image_dir: "",
             lang: "",
             page_labels: &[],
+            naming: pdfcraft_chess::describe::Naming::Letters,
         },
     );
     assert_eq!(md.matches("Issue 47").count(), 1, "{md}");

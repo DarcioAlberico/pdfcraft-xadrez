@@ -1,26 +1,34 @@
-//! Chess ▸ Export (plan A8, P9c): the menu, the notice about diagrams not checked yet, and what
-//! the export said, with Open folder.
+//! Chess ▸ Export (plan A8 P9c; plan A9-X2, finding R4-04): the export dialog, and what the export
+//! said, with Open folder.
 //!
-//! The menu (in the Diagrams panel's header and on the Text tab) names each format by what it
-//! makes ("EPUB — e-book") under "Export chess book", in the order PGN, EPUB, HTML, Word, RTF,
-//! Markdown. It also holds which diagrams the PGN gives a game of their own: those not in a game
-//! (the default), all of them or none. The choice lasts for the session.
+//! One dialog, opened by Export book… (in the Diagrams panel's header and on the Text tab), in
+//! place of the menus of radio items that closed at each choice. It holds the format (each named
+//! by what it makes: "EPUB — e-book"), the pages, the book's language (which the reading may have
+//! got wrong, A2-08), how the diagrams' text alternatives name the pieces (letters or words, for
+//! speech), and for the PGN of games which diagrams get a game of their own and, when the document
+//! keeps a book's PGN, where the games come from. Under them, what will come out ("Pages: 748 ·
+//! Diagrams: 999 (not checked: 12) · Games from the book's PGN: 120 · Language: English"), and the
+//! diagrams not checked yet, with Review first. The format, the PGN's choices and the descriptions
+//! are remembered (the `chess_export` setting); the pages and the language are the document's, for
+//! the session.
 //!
-//! Exporting while diagrams detected in the document are still to review asks first ("Diagrams
-//! not checked yet: 40"). Review first opens the first of them; Export anyway goes on. Once the
-//! file is written, a window says where, with what the export noted (a diagram not read, a font
-//! only named) and Open folder.
+//! Once the file is written, a window says where, with what the export noted (a diagram not
+//! read, a font only named) and Open folder.
 
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::export::ChessFormat;
+use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
+use pdfcraft_engine::chess::pdfcraft_chess::describe::Naming;
+use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::LangTag;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 
 use crate::PdfCraftApp;
 use crate::chess_text_ui::TextAction;
+use crate::theme::Tokens;
 
 /// Where the PGN export takes its games from when the document keeps a book's PGN (plan
 /// "Carregar PGN do livro", R6b): that PGN, every line kept, with the book's text as comments
-/// (the default), or the text read from the PDF, as without one. The choice lasts for the session.
+/// (the default), or the text read from the PDF, as without one.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PgnSource {
     #[default]
@@ -28,81 +36,243 @@ pub enum PgnSource {
     Text,
 }
 
-/// The formats, in the menu's order.
-pub const MENU: [ChessFormat; 6] =
-    [ChessFormat::Pgn, ChessFormat::Epub, ChessFormat::Html, ChessFormat::Docx, ChessFormat::Rtf, ChessFormat::Markdown];
-
-/// A format as the menu names it: what it makes.
-pub fn label(format: ChessFormat) -> &'static str {
-    match format {
-        ChessFormat::Pgn => tl!("PGN — games"),
-        ChessFormat::Epub => tl!("EPUB — e-book"),
-        ChessFormat::Html => tl!("HTML — web page"),
-        // A program's and formats' own names, the same in every language.
-        ChessFormat::Docx => "Word (.docx)",
-        ChessFormat::Rtf => "RTF",
-        ChessFormat::Markdown => "Markdown",
-    }
+/// What an export writes: the engine's formats, and the book's exercises as a PGN of problems or
+/// as Anki's cards (plan A9-N10, N10b), which are a PGN export to the engine.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ExportFormat {
+    #[default]
+    Pgn,
+    Exercises,
+    Anki,
+    Epub,
+    Html,
+    Docx,
+    Rtf,
+    Markdown,
 }
 
-/// The export menu's items (in a menu that `ui` is): the formats, then which diagrams the PGN
-/// gives a game of their own (`positions`, the choice now) and, when the document keeps a book's
-/// PGN, where the PGN takes its games from (`source`, the choice now).
-pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions, source: Option<PgnSource>) -> Option<TextAction> {
-    let mut action = None;
-    ui.label(egui::RichText::new(tl!("Export chess book")).strong());
-    for f in MENU {
-        if crate::widgets::menu_entry(ui, true, egui::Button::new(label(f))).clicked() {
-            action = Some(TextAction::Export(f));
+impl From<ChessFormat> for ExportFormat {
+    fn from(format: ChessFormat) -> ExportFormat {
+        match format {
+            ChessFormat::Pgn => ExportFormat::Pgn,
+            ChessFormat::Epub => ExportFormat::Epub,
+            ChessFormat::Html => ExportFormat::Html,
+            ChessFormat::Docx => ExportFormat::Docx,
+            ChessFormat::Rtf => ExportFormat::Rtf,
+            ChessFormat::Markdown => ExportFormat::Markdown,
         }
     }
-    ui.separator();
-    let choices =
-        [(PgnPositions::Unused, tl!("Only those not in a game")), (PgnPositions::All, tl!("All of them")), (PgnPositions::None, tl!("None"))];
-    ui.menu_button(tl!("Diagrams as PGN games"), |ui| {
-        for (p, name) in choices {
-            if crate::widgets::menu_radio(ui, positions == p, name).clicked() {
-                action = Some(TextAction::PgnPositions(p));
-            }
+}
+
+impl ExportFormat {
+    /// The formats, in the dialog's order.
+    pub const ALL: [ExportFormat; 8] = [
+        ExportFormat::Pgn,
+        ExportFormat::Exercises,
+        ExportFormat::Anki,
+        ExportFormat::Epub,
+        ExportFormat::Html,
+        ExportFormat::Docx,
+        ExportFormat::Rtf,
+        ExportFormat::Markdown,
+    ];
+
+    /// The engine's format: the exercises are a PGN export.
+    pub fn engine(self) -> ChessFormat {
+        match self {
+            ExportFormat::Pgn | ExportFormat::Exercises | ExportFormat::Anki => ChessFormat::Pgn,
+            ExportFormat::Epub => ChessFormat::Epub,
+            ExportFormat::Html => ChessFormat::Html,
+            ExportFormat::Docx => ChessFormat::Docx,
+            ExportFormat::Rtf => ChessFormat::Rtf,
+            ExportFormat::Markdown => ChessFormat::Markdown,
         }
-    })
-    .response
-    .on_hover_text(tl!(
-        "A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game."
-    ));
-    if let Some(source) = source {
-        let choices = [(PgnSource::Book, tl!("The book's PGN, with the book's text")), (PgnSource::Text, tl!("The text read from the PDF"))];
-        ui.menu_button(tl!("PGN games from"), |ui| {
-            for (s, name) in choices {
-                if crate::widgets::menu_radio(ui, source == s, name).clicked() {
-                    action = Some(TextAction::PgnSource(s));
-                }
-            }
-        })
-        .response
-        .on_hover_text(tl!(
-            "With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move."
-        ));
     }
-    action
+
+    /// The file's extension: Anki imports a text file.
+    pub fn extension(self) -> &'static str {
+        match self {
+            ExportFormat::Anki => "txt",
+            other => other.engine().extension(),
+        }
+    }
+
+    /// The format's name, as the save dialog's filter shows it.
+    pub fn name(self) -> &'static str {
+        match self {
+            ExportFormat::Anki => "Anki",
+            other => other.engine().name(),
+        }
+    }
+
+    /// The format as the dialog names it: what it makes.
+    pub fn label(self) -> &'static str {
+        match self {
+            ExportFormat::Pgn => tl!("PGN — games"),
+            ExportFormat::Exercises => tl!("PGN — exercises"),
+            ExportFormat::Anki => tl!("Anki — cards"),
+            ExportFormat::Epub => tl!("EPUB — e-book"),
+            ExportFormat::Html => tl!("HTML — web page"),
+            // A program's and formats' own names, the same in every language.
+            ExportFormat::Docx => "Word (.docx)",
+            ExportFormat::Rtf => "RTF",
+            ExportFormat::Markdown => "Markdown",
+        }
+    }
+
+    /// What its item's tooltip adds, when its name does not say it all.
+    fn tip(self) -> Option<&'static str> {
+        match self {
+            ExportFormat::Exercises => Some(tl!("The book's numbered diagrams with their solutions, as a standard PGN of problems.")),
+            ExportFormat::Anki => Some(tl!("A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.")),
+            _ => None,
+        }
+    }
+
+    /// Whether it says its diagrams in words (a text alternative), which the descriptions choice
+    /// is for.
+    fn describes(self) -> bool {
+        matches!(self, ExportFormat::Epub | ExportFormat::Html | ExportFormat::Docx | ExportFormat::Rtf | ExportFormat::Markdown)
+    }
+
+    /// The name the setting keeps.
+    fn token(self) -> &'static str {
+        match self {
+            ExportFormat::Pgn => "pgn",
+            ExportFormat::Exercises => "exercises",
+            ExportFormat::Anki => "anki",
+            ExportFormat::Epub => "epub",
+            ExportFormat::Html => "html",
+            ExportFormat::Docx => "docx",
+            ExportFormat::Rtf => "rtf",
+            ExportFormat::Markdown => "markdown",
+        }
+    }
+
+    fn from_token(token: &str) -> Option<ExportFormat> {
+        ExportFormat::ALL.into_iter().find(|f| f.token() == token)
+    }
 }
 
-/// The question asked before exporting while diagrams are still to review.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PendingPrompt {
-    pub doc: DocId,
-    pub format: ChessFormat,
-    /// How many diagrams are still to review.
-    pub to_review: usize,
+/// The export dialog's choices that are remembered (plan A9-X2; the PGN's, P9c's open item): the
+/// format, which diagrams the PGN gives a game of their own, where the PGN's games come from and
+/// how the diagrams' descriptions name the pieces.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ExportChoices {
+    pub format: ExportFormat,
+    pub positions: PgnPositions,
+    pub source: PgnSource,
+    pub naming: Naming,
 }
 
-/// An answer to it.
+impl ExportChoices {
+    /// As the settings keep them.
+    pub fn to_json(self) -> serde_json::Value {
+        let positions = match self.positions {
+            PgnPositions::All => "all",
+            PgnPositions::Unused => "unused",
+            PgnPositions::None => "none",
+        };
+        let source = if self.source == PgnSource::Text { "text" } else { "book" };
+        serde_json::json!({ "format": self.format.token(), "positions": positions, "source": source, "descriptions": self.naming.name() })
+    }
+
+    /// Read back, each choice on its own: one this build does not know keeps its default.
+    pub fn from_json(value: &serde_json::Value) -> ExportChoices {
+        let text = |key: &str| value.get(key).and_then(serde_json::Value::as_str).unwrap_or_default();
+        ExportChoices {
+            format: ExportFormat::from_token(text("format")).unwrap_or_default(),
+            positions: PgnPositions::from_name(text("positions")).unwrap_or_default(),
+            source: if text("source") == "text" { PgnSource::Text } else { PgnSource::Book },
+            naming: Naming::from_name(text("descriptions")).unwrap_or_default(),
+        }
+    }
+}
+
+/// The pages an export reads, 1-based as the dialog shows them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PendingAnswer {
-    /// Open the first diagram to review; nothing is exported.
+pub struct Pages {
+    pub all: bool,
+    pub from: usize,
+    pub to: usize,
+}
+
+impl Default for Pages {
+    fn default() -> Pages {
+        Pages { all: true, from: 1, to: usize::MAX }
+    }
+}
+
+impl Pages {
+    /// The first and the last page (1-based) of the range in a document of `count` pages: never
+    /// empty, never past its end (a document of no pages has the one page 1).
+    fn bounds(self, count: usize) -> (usize, usize) {
+        let last = count.max(1);
+        let from = self.from.clamp(1, last);
+        (from, self.to.clamp(from, last))
+    }
+
+    /// The pages (0-based) of a document of `count` pages; empty for all of them, as the engine
+    /// takes it.
+    pub fn pages(self, count: usize) -> Vec<usize> {
+        let (from, to) = self.bounds(count);
+        if self.all || count == 0 || (from == 1 && to == count) {
+            return Vec::new();
+        }
+        (from..=to).map(|p| p.saturating_sub(1)).collect()
+    }
+
+    /// How many pages that is.
+    fn count(self, count: usize) -> usize {
+        let (from, to) = self.bounds(count);
+        if self.all { count } else { (to - from).saturating_add(1).min(count) }
+    }
+
+    /// Whether 0-based page `page` of a document of `count` pages is among them.
+    fn holds(self, page: usize, count: usize) -> bool {
+        let (from, to) = self.bounds(count);
+        self.all || (from..=to).contains(&page.saturating_add(1))
+    }
+}
+
+/// What the export dialog holds of one document for the session: its pages and the language the
+/// user said its book is in (`None`: as the reading decides).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DocExport {
+    pub pages: Pages,
+    pub lang: Option<Lang>,
+}
+
+/// What the book says its language is, when the dialog opened: what the reading will decide
+/// unless the user says otherwise.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BookSays {
+    /// The PDF's `/Lang`, or the page the Text tab read, names it.
+    Lang(Lang),
+    /// The reading will decide it from the book's text.
+    FromText,
+}
+
+/// The export dialog while it is shown (plan A9-X2).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExportDialog {
+    pub doc: DocId,
+    pub choices: ExportChoices,
+    pub pages: Pages,
+    pub lang: Option<Lang>,
+    /// The document's page count when it opened.
+    page_count: usize,
+    says: BookSays,
+}
+
+/// An answer to the dialog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DialogAnswer {
+    /// Ask where, then write the file.
+    Export,
+    /// Open the first diagram to review in the pages chosen; nothing is exported.
     ReviewFirst,
-    ExportAnyway,
-    /// Esc, or a click outside: nothing happens.
+    /// Cancel, Esc, or a click outside: nothing happens.
     Cancel,
 }
 
@@ -117,31 +287,66 @@ pub struct Done {
     pub notes: Vec<String>,
 }
 
+/// Export book…: the one entry that opens the dialog (the Text tab's row).
+pub fn entry(ui: &mut egui::Ui) -> Option<TextAction> {
+    ui.button(tl!("Export book…")).clicked().then_some(TextAction::OpenExport)
+}
+
 impl PdfCraftApp {
-    /// Before exporting document `id` as `format`: when diagrams detected in it are still to
-    /// review, ask first. Whether the export must wait for the answer.
-    pub(crate) fn ask_chess_pending(&mut self, id: DocId, format: ChessFormat) -> bool {
-        let to_review = self.chess.results_of(id).map_or(0, |r| r.review_queue().len());
-        if to_review == 0 {
-            return false;
-        }
-        self.chess.export_prompt = Some(PendingPrompt { doc: id, format, to_review });
-        true
+    /// Export book…: open the export dialog for the active document.
+    pub fn open_chess_export(&mut self) {
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(doc) = self.session.get(id) else { return };
+        let page_count = doc.info.pages.len();
+        // What the reading will take the book's language to be: its PDF's `/Lang`, else what the
+        // page the Text tab read says (the prose of every page decides it in the export).
+        let declared = LangTag::parse(doc.initial_view().language.as_deref().unwrap_or_default());
+        let kept = self.chess.doc(id).map(|d| d.export).unwrap_or_default();
+        let read = self.chess.doc(id).and_then(|d| d.text.as_ref()).and_then(|t| t.chess.pages.first()).and_then(|p| p.text_lang.lang());
+        let says = match declared.lang().or(read) {
+            Some(lang) => BookSays::Lang(lang),
+            None => BookSays::FromText,
+        };
+        self.chess.export_dialog = Some(ExportDialog { doc: id, choices: self.chess.export, pages: kept.pages, lang: kept.lang, page_count, says });
     }
 
-    /// Answer the question about the diagrams still to review.
-    pub fn answer_chess_pending(&mut self, answer: PendingAnswer) {
-        let Some(p) = self.chess.export_prompt.take() else { return };
+    /// Answer the export dialog. Its choices are kept whatever the answer but Cancel.
+    pub fn answer_chess_export(&mut self, answer: DialogAnswer) {
+        let Some(d) = self.chess.export_dialog.take() else { return };
+        if answer == DialogAnswer::Cancel {
+            return;
+        }
+        self.chess.export = d.choices;
+        self.chess.doc_mut(d.doc).export = DocExport { pages: d.pages, lang: d.lang };
+        // The document must still be the one the dialog was for.
+        if !self.active_ids().is_some_and(|(_, id)| id == d.doc) {
+            return;
+        }
         match answer {
-            PendingAnswer::ReviewFirst => self.review_chess_now(),
-            PendingAnswer::ExportAnyway => {
-                // The document must still be the one asked about.
-                if self.active_ids().is_some_and(|(_, id)| id == p.doc) {
-                    self.export_chess_save(p.doc, p.format);
+            DialogAnswer::Export => self.export_chess_dialog(d.choices.format),
+            DialogAnswer::ReviewFirst => {
+                let first = self.chess.results_of(d.doc).and_then(|r| r.review_queue().into_iter().find(|at| d.pages.holds(at.page, d.page_count)));
+                self.chess.doc_mut(d.doc).list.filter = None;
+                if let Some(at) = first {
+                    self.edit_chess_diagram(at.page, at.index, true);
                 }
             }
-            PendingAnswer::Cancel => {}
+            DialogAnswer::Cancel => {}
         }
+    }
+
+    /// Set on `options` what the export dialog chose for exporting document `id` as `format`:
+    /// the pages, the book's language, the descriptions, the PGN's choices and the book's PGN.
+    pub(crate) fn chess_export_options(&mut self, id: DocId, format: ExportFormat, options: &mut ChessExportOptions) {
+        let count = self.session.get(id).map_or(0, |d| d.info.pages.len());
+        let kept = self.chess.doc(id).map(|d| d.export).unwrap_or_default();
+        options.pages = kept.pages.pages(count);
+        options.text_lang = kept.lang.map(LangTag::of);
+        options.naming = self.chess.export.naming;
+        options.positions = self.chess.export.positions;
+        options.exercises = matches!(format, ExportFormat::Exercises | ExportFormat::Anki);
+        options.anki = format == ExportFormat::Anki;
+        options.reference = self.export_reference(id, format);
     }
 
     /// The export of `made` was written (to `path`; none on the web): say where, with its notes.
@@ -169,34 +374,234 @@ impl PdfCraftApp {
             self.notify_error(e);
         }
     }
+
+    /// What the dialog says will come out of document `d.doc`: the pages, the diagrams detected in
+    /// them and those not checked yet, where the games come from, and the language. With the
+    /// diagrams still to review in the pages chosen.
+    fn chess_export_summary(&self, d: &ExportDialog) -> (String, usize) {
+        let pages = d.pages.count(d.page_count);
+        let mut parts = vec![crate::i18n::fmt(tl!("Pages: {n}"), &[("n", &pages.to_string())])];
+        let mut to_review = 0;
+        let mut counted = false;
+        if let Some(r) = self.chess.results_of(d.doc) {
+            to_review = r.review_queue().iter().filter(|at| d.pages.holds(at.page, d.page_count)).count();
+            // Counted only when every page chosen was detected (the scan holds each page once):
+            // else the export finds more.
+            let chosen: Vec<_> = r.pages.iter().filter(|p| d.pages.holds(p.page, d.page_count)).collect();
+            if chosen.len() == pages {
+                let diagrams: usize = chosen.iter().map(|p| p.diagrams.len()).sum();
+                let mut said = crate::i18n::fmt(tl!("Diagrams: {n}"), &[("n", &diagrams.to_string())]);
+                if to_review > 0 {
+                    said = format!("{said} ({})", crate::i18n::fmt(tl!("not checked: {n}"), &[("n", &to_review.to_string())]));
+                }
+                parts.push(said);
+                counted = true;
+            }
+        }
+        if !counted {
+            parts.push(tl!("Diagrams: not detected yet").to_owned());
+        }
+        let format = d.choices.format;
+        if !matches!(format, ExportFormat::Exercises | ExportFormat::Anki) {
+            // The PGN of games is the book's PGN's games; every other format, the text read,
+            // linked to it (plan A9-N2).
+            let book = self.session.chess_book_pgn(d.doc).map(|p| p.index.games().len());
+            match book {
+                Some(n) if format == ExportFormat::Pgn && d.choices.source == PgnSource::Book => {
+                    parts.push(crate::i18n::fmt(tl!("Games from the book's PGN: {n}"), &[("n", &n.to_string())]));
+                }
+                Some(_) if format != ExportFormat::Pgn => parts.push(tl!("Games: read from the text, linked to the book's PGN").to_owned()),
+                _ => parts.push(tl!("Games: read from the text").to_owned()),
+            }
+            // The user's own games are linked first (plan A9-N2): they are in every format.
+            let yours = self.chess.games.games_of(d.doc).iter().filter(|b| b.illegal.is_none() && !b.game.is_empty()).count();
+            if yours > 0 {
+                parts.push(crate::i18n::fmt(tl!("Your games, linked first: {n}"), &[("n", &yours.to_string())]));
+            }
+        }
+        let lang = match (d.lang, d.says) {
+            (Some(lang), _) | (None, BookSays::Lang(lang)) => crate::chess_capture::endonym(lang).to_owned(),
+            (None, BookSays::FromText) => tl!("from the book's text").to_owned(),
+        };
+        parts.push(crate::i18n::fmt(tl!("Language: {lang}"), &[("lang", &lang)]));
+        (parts.join(" · "), to_review)
+    }
 }
 
-/// The question before exporting, or what the export said, while either is shown.
+/// The width of the dialog's labels, in points: the fields line up after it.
+const LABEL_WIDTH: f32 = 150.0;
+
+/// One row of the dialog: `label` in its column, then what `field` adds, given the label's
+/// response (to name the field by, `labelled_by`).
+fn row<R>(ui: &mut egui::Ui, label: &str, field: impl FnOnce(&mut egui::Ui, &egui::Response) -> R) -> R {
+    ui.horizontal_top(|ui| {
+        let height = ui.spacing().interact_size.y;
+        let named = ui.allocate_ui_with_layout(egui::vec2(LABEL_WIDTH, height), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            ui.set_min_size(egui::vec2(LABEL_WIDTH, height));
+            ui.label(label)
+        });
+        field(ui, &named.inner)
+    })
+    .inner
+}
+
+/// The dialog's fields: the format, the pages, the language, the descriptions and the PGN's
+/// choices, each named by the label beside it (plan A9-X2: role `Dialog`, fields `labelled_by`).
+fn fields(ui: &mut egui::Ui, d: &mut ExportDialog, book_pgn: bool) {
+    ui.spacing_mut().item_spacing.y = 8.0;
+    row(ui, tl!("Format"), |ui, _| {
+        ui.scope(|ui| {
+            crate::widgets::radio_group(ui, tl!("Format"));
+            // Two columns, read down each: the PGNs and Anki, then the books.
+            let (left, right) = ExportFormat::ALL.split_at(4);
+            ui.horizontal_top(|ui| {
+                for column in [left, right] {
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 4.0;
+                        for &f in column {
+                            let r = crate::widgets::radio_value(ui, &mut d.choices.format, f, f.label());
+                            if f == d.choices.format {
+                                crate::widgets::dialog_focus(&r);
+                            }
+                            if let Some(tip) = f.tip() {
+                                r.on_hover_text(tip);
+                            }
+                        }
+                    });
+                    ui.add_space(12.0);
+                }
+            });
+        });
+    });
+    row(ui, tl!("Pages"), |ui, _| {
+        ui.scope(|ui| {
+            crate::widgets::radio_group(ui, tl!("Pages"));
+            ui.horizontal(|ui| {
+                crate::widgets::radio_value(ui, &mut d.pages.all, true, tl!("All pages"));
+                let from = crate::widgets::radio_value(ui, &mut d.pages.all, false, tl!("Pages from"));
+                let last = d.page_count.max(1);
+                d.pages.from = d.pages.from.clamp(1, last);
+                d.pages.to = d.pages.to.clamp(d.pages.from, last);
+                ui.add_enabled(!d.pages.all, egui::DragValue::new(&mut d.pages.from).range(1..=last)).labelled_by(from.id);
+                let to = ui.label(tl!("to"));
+                ui.add_enabled(!d.pages.all, egui::DragValue::new(&mut d.pages.to).range(1..=last)).labelled_by(to.id);
+                d.pages.to = d.pages.to.max(d.pages.from);
+            });
+        });
+    });
+    row(ui, tl!("Book's language"), |ui, label| {
+        let as_book = match d.says {
+            BookSays::Lang(lang) => crate::i18n::fmt(tl!("As the book says ({lang})"), &[("lang", crate::chess_capture::endonym(lang))]),
+            BookSays::FromText => tl!("As the book's text says").to_owned(),
+        };
+        let shown = d.lang.map_or_else(|| as_book.clone(), |l| crate::chess_capture::endonym(l).to_owned());
+        let combo = egui::ComboBox::from_id_salt("chess-export-lang").selected_text(shown).show_ui(ui, |ui| {
+            ui.selectable_value(&mut d.lang, None, as_book);
+            for lang in Lang::ALL {
+                ui.selectable_value(&mut d.lang, Some(lang), crate::chess_capture::endonym(lang));
+            }
+        });
+        combo
+            .response
+            .labelled_by(label.id)
+            .on_hover_text(tl!("The language the export is written in and says its diagrams in. Correct it when the book was read as another."));
+    });
+    let format = d.choices.format;
+    if format.describes() {
+        row(ui, tl!("Diagram descriptions"), |ui, _| {
+            ui.scope(|ui| {
+                crate::widgets::radio_group(ui, tl!("Diagram descriptions"));
+                ui.horizontal(|ui| {
+                    let tip = tl!("How a screen reader says each diagram's pieces.");
+                    crate::widgets::radio_value(ui, &mut d.choices.naming, Naming::Letters, tl!("Letters (Kg1)")).on_hover_text(tip);
+                    crate::widgets::radio_value(ui, &mut d.choices.naming, Naming::Words, tl!("Words (king g1)")).on_hover_text(tip);
+                });
+            });
+        });
+    }
+    if format == ExportFormat::Pgn {
+        row(ui, tl!("Diagrams as PGN games"), |ui, label| {
+            let choices =
+                [(PgnPositions::Unused, tl!("Only those not in a game")), (PgnPositions::All, tl!("All of them")), (PgnPositions::None, tl!("None"))];
+            let shown = choices.iter().find(|(p, _)| *p == d.choices.positions).map_or("", |(_, n)| *n);
+            let combo = egui::ComboBox::from_id_salt("chess-export-positions").selected_text(shown).show_ui(ui, |ui| {
+                for (p, name) in choices {
+                    ui.selectable_value(&mut d.choices.positions, p, name);
+                }
+            });
+            combo.response.labelled_by(label.id).on_hover_text(tl!(
+                "A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game."
+            ));
+        });
+        if book_pgn {
+            row(ui, tl!("PGN games from"), |ui, label| {
+                let choices = [(PgnSource::Book, tl!("The book's PGN, with the book's text")), (PgnSource::Text, tl!("The text read from the PDF"))];
+                let shown = choices.iter().find(|(s, _)| *s == d.choices.source).map_or("", |(_, n)| *n);
+                let combo = egui::ComboBox::from_id_salt("chess-export-source").selected_text(shown).show_ui(ui, |ui| {
+                    for (s, name) in choices {
+                        ui.selectable_value(&mut d.choices.source, s, name);
+                    }
+                });
+                combo.response.labelled_by(label.id).on_hover_text(tl!(
+                    "With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move."
+                ));
+            });
+        }
+    }
+}
+
+/// The diagrams not checked yet in the pages chosen, inside the dialog, with Review first.
+fn pending(ui: &mut egui::Ui, t: &Tokens, to_review: usize) -> bool {
+    let mut review = false;
+    egui::Frame::new().fill(t.warning_soft).corner_radius(egui::CornerRadius::same(6)).inner_margin(egui::Margin::same(10)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        let title = crate::i18n::fmt(tl!("Diagrams not checked yet: {n}"), &[("n", &to_review.to_string())]);
+        ui.label(egui::RichText::new(title).strong().color(t.warning_text));
+        ui.label(
+            egui::RichText::new(tl!("They are exported as they were read, and a reading may be wrong. Review first opens the first of them."))
+                .color(t.text),
+        );
+        ui.add_space(4.0);
+        review = crate::widgets::pill_button(ui, tl!("Review first"), false).clicked();
+    });
+    review
+}
+
+/// The export dialog, or what the export said, while either is shown.
 pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
-    if let Some(p) = app.chess.export_prompt.as_ref() {
-        let n = p.to_review;
+    if let Some(mut d) = app.chess.export_dialog.take() {
+        let book_pgn = app.session.chess_book_pgn(d.doc).is_some();
+        let t = Tokens::get(ctx);
         let mut answer = None;
-        let title = crate::i18n::fmt(tl!("Diagrams not checked yet: {n}"), &[("n", &n.to_string())]);
-        let shown = crate::widgets::show_titled_modal(ctx, "chess-export-pending", &title, |ui| {
-            ui.set_max_width(420.0);
-            ui.label(tl!("They are exported as they were read, and a reading may be wrong. Review first opens the first of them."));
+        let shown = crate::widgets::show_titled_modal(ctx, "chess-export", tl!("Export chess book"), |ui| {
+            ui.set_max_width(560.0);
+            fields(ui, &mut d, book_pgn);
+            ui.add_space(8.0);
+            ui.separator();
+            let (summary, to_review) = app.chess_export_summary(&d);
+            ui.label(summary);
+            if to_review > 0 {
+                ui.add_space(6.0);
+                if pending(ui, &t, to_review) {
+                    answer = Some(DialogAnswer::ReviewFirst);
+                }
+            }
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                let review = crate::widgets::pill_button(ui, tl!("Review first"), true);
-                crate::widgets::dialog_focus(&review);
-                if review.clicked() {
-                    answer = Some(PendingAnswer::ReviewFirst);
+                if crate::widgets::pill_button(ui, tl!("Export…"), true).clicked() {
+                    answer = Some(DialogAnswer::Export);
                 }
-                if crate::widgets::pill_button(ui, tl!("Export anyway"), false).clicked() {
-                    answer = Some(PendingAnswer::ExportAnyway);
+                if crate::widgets::pill_button(ui, tl!("Cancel"), false).clicked() {
+                    answer = Some(DialogAnswer::Cancel);
                 }
             });
         });
         if answer.is_none() && shown.should_close() {
-            answer = Some(PendingAnswer::Cancel);
+            answer = Some(DialogAnswer::Cancel);
         }
+        app.chess.export_dialog = Some(d);
         if let Some(a) = answer {
-            app.answer_chess_pending(a);
+            app.answer_chess_export(a);
         }
         return;
     }
@@ -230,5 +635,43 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         app.reveal_chess_export();
     } else if close || shown.should_close() {
         app.chess.export_done = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pages_are_all_or_a_range_within_the_document() {
+        assert_eq!(Pages::default().pages(9), Vec::<usize>::new());
+        assert_eq!(Pages::default().count(9), 9);
+        let some = Pages { all: false, from: 2, to: 4 };
+        assert_eq!(some.pages(9), [1, 2, 3]);
+        assert_eq!(some.count(9), 3);
+        assert!(some.holds(1, 9) && some.holds(3, 9) && !some.holds(0, 9) && !some.holds(4, 9));
+        // The whole document as a range is every page; a range past the end stops at it.
+        assert_eq!(Pages { all: false, from: 1, to: 9 }.pages(9), Vec::<usize>::new());
+        assert_eq!(Pages { all: false, from: 8, to: usize::MAX }.pages(9), [7, 8]);
+        // A range is never empty, which the engine would take for every page.
+        assert_eq!(Pages { all: false, from: 0, to: 0 }.pages(3), [0]);
+        assert_eq!(Pages { all: false, from: 5, to: 2 }.pages(9), [4]);
+        assert_eq!(Pages { all: false, from: 12, to: 20 }.pages(9), [8]);
+        assert_eq!(Pages { all: false, from: 5, to: 2 }.count(9), 1);
+        assert_eq!(Pages::default().pages(0), Vec::<usize>::new());
+        assert_eq!(Pages { all: false, from: 3, to: 4 }.pages(0), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn the_remembered_choices_read_back_and_unknown_ones_keep_their_defaults() {
+        let c = ExportChoices { format: ExportFormat::Anki, positions: PgnPositions::None, source: PgnSource::Text, naming: Naming::Words };
+        assert_eq!(ExportChoices::from_json(&c.to_json()), c);
+        assert_eq!(ExportChoices::from_json(&serde_json::json!({ "format": "tiff", "positions": 3 })), ExportChoices::default());
+        assert_eq!(ExportChoices::from_json(&serde_json::Value::Null), ExportChoices::default());
+        for f in ExportFormat::ALL {
+            assert_eq!(ExportFormat::from_token(f.token()), Some(f));
+        }
+        assert_eq!(ExportFormat::Anki.extension(), "txt");
+        assert_eq!(ExportFormat::Exercises.engine(), ChessFormat::Pgn);
     }
 }

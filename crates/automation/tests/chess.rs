@@ -1194,6 +1194,31 @@ fn chess_export_epub_writes_a_book_inside_the_root_only() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-X2: `text_lang` is the book's language the export says itself in, over the reading's,
+/// and `descriptions: words` names the pieces in words, as the app's export dialog sets them; a
+/// tag that is not one, or another naming, is refused.
+#[test]
+fn chess_export_takes_the_books_language_and_the_pieces_in_words() {
+    let (base, root) = workdir("export-lang");
+    let (mut a, doc) = opened(&root);
+    let args =
+        json!({ "doc": doc, "models_dir": "models", "out": "book.html", "pieces": "geometric", "text_lang": "pt-BR", "descriptions": "words" });
+    ok(&mut a, "chess_export_html", args);
+    let html = std::fs::read_to_string(root.join("book.html")).unwrap();
+    assert!(html.contains("<html lang=\"pt-BR\">") && html.contains("Diagrama 1, pág. 1") && html.contains("rei e1"), "{html:.2000}");
+    ok(&mut a, "chess_export_html", json!({ "doc": doc, "models_dir": "models", "out": "letters.html", "pieces": "geometric" }));
+    let letters = std::fs::read_to_string(root.join("letters.html")).unwrap();
+    assert!(!letters.contains("<html lang=\"pt-BR\">") && letters.contains("Ke1") && !letters.contains("king e1"), "{letters:.2000}");
+    for (args, needle) in [
+        (json!({ "doc": doc, "out": "a.html", "text_lang": "not a tag!" }), "text_lang"),
+        (json!({ "doc": doc, "out": "a.html", "descriptions": "Words" }), "descriptions"),
+    ] {
+        let e = a.call("chess_export_html", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{args}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Word and RTF: the read diagram becomes an image, the two unread ones are said in words, and
 /// both files are confined to the root.
 #[test]

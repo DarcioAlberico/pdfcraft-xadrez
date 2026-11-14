@@ -3558,3 +3558,25 @@ progress bar	Progress	Napredek
 	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}
 	Indexing the book's PGN…	Indeksiranje PGN knjige…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knjige je večji, kot ga PdfCraft indeksira: s knjigo je povezanih le prvih {moves} potez.
+	PGN — exercises	PGN — vaje
+	Anki — cards	Anki — kartice
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Oštevilčeni diagrami knjige z rešitvami, kot standardni PGN problemov.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Besedilna datoteka, ki jo Anki uvozi, ena kartica na vajo, s slikami diagramov v mapi poleg nje.
+	Book's language	Jezik knjige
+	As the book says ({lang})	Kot pravi knjiga ({lang})
+	As the book's text says	Kot pravi besedilo knjige
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Jezik, v katerem je izvoz napisan in opisuje svoje diagrame. Popravite ga, če je bila knjiga prebrana kot drug jezik.
+	Diagram descriptions	Opisi diagramov
+	Letters (Kg1)	Črke (Kg1)
+	Words (king g1)	Besede (kralj g1)
+	How a screen reader says each diagram's pieces.	Kako bralnik zaslona izgovori figure vsakega diagrama.
+	Pages: {n}	Strani: {n}
+	Diagrams: {n}	Diagrami: {n}
+	not checked: {n}	nepregledani: {n}
+	Diagrams: not detected yet	Diagrami: še niso zaznani
+	Games from the book's PGN: {n}	Partije iz PGN knjige: {n}
+	Games: read from the text	Partije: prebrane iz besedila
+	Your games, linked first: {n}	Vaše partije, povezane najprej: {n}
+	Language: {lang}	Jezik: {lang}
+	from the book's text	po besedilu knjige
+	Games: read from the text, linked to the book's PGN	Partije: prebrane iz besedila, povezane s PGN knjige

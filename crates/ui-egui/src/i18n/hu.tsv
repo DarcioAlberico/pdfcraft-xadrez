@@ -3552,3 +3552,25 @@ progress bar	Progress	Előrehaladás
 	Games left out (an illegal position has no game): {n}	Kihagyott játszmák (szabálytalan állásnak nincs játszmája): {n}
 	Indexing the book's PGN…	A könyv PGN-jének indexelése…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	A könyv PGN-je nagyobb, mint amennyit a PdfCraft indexel: csak az első {moves} lépése kapcsolódik a könyvhöz.
+	PGN — exercises	PGN — feladatok
+	Anki — cards	Anki — kártyák
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	A könyv számozott diagramjai a megoldásukkal, szabványos feladat-PGN-ként.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Az Anki által importált szövegfájl, feladatonként egy kártya, a diagramok képeivel egy mellette lévő mappában.
+	Book's language	A könyv nyelve
+	As the book says ({lang})	Ahogy a könyv mondja ({lang})
+	As the book's text says	Ahogy a könyv szövege mondja
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Az a nyelv, amelyen az export íródik és a diagramjait leírja. Javítsa ki, ha a könyvet más nyelvként olvasta be.
+	Diagram descriptions	Diagramleírások
+	Letters (Kg1)	Betűk (Kg1)
+	Words (king g1)	Szavak (király g1)
+	How a screen reader says each diagram's pieces.	Hogyan mondja ki a képernyőolvasó az egyes diagramok bábuit.
+	Pages: {n}	Oldalak: {n}
+	Diagrams: {n}	Diagramok: {n}
+	not checked: {n}	nem ellenőrzött: {n}
+	Diagrams: not detected yet	Diagramok: még nincsenek felismerve
+	Games from the book's PGN: {n}	Játszmák a könyv PGN-jéből: {n}
+	Games: read from the text	Játszmák: a szövegből olvasva
+	Your games, linked first: {n}	Az Ön játszmái, elsőként összekapcsolva: {n}
+	Language: {lang}	Nyelv: {lang}
+	from the book's text	a könyv szövege alapján
+	Games: read from the text, linked to the book's PGN	Játszmák: a szövegből olvasva, a könyv PGN-jéhez kapcsolva

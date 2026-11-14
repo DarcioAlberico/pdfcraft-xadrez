@@ -191,6 +191,8 @@ fn chess_export_schema() -> Value {
                     json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }),
                 );
                 o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language in the PDF, as a BCP 47 tag. Default: chosen from the pages." }));
+                o.insert("text_lang".into(), json!({ "type": "string", "maxLength": 35, "description": "The book's language, as a BCP 47 tag (pt-BR), in place of the one the reading decides (the PDF's /Lang, else what its prose says): the export's own language (html lang, dc:language, w:lang) and the one its diagrams and notes are said in, as the app's export dialog sets it (plan A9-X2). Default: the reading's." }));
+                o.insert("descriptions".into(), json!({ "type": "string", "enum": ["letters", "words"], "description": "How the diagrams' text alternatives name the pieces: letters (default, Kg1) or words (king g1), which speech synthesisers say better." }));
                 o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, or is another program's invisible OCR over a scan; off (a born-digital book: never, poor pages are listed in needs_ocr); or all pages (a scanned book). Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
                 o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out), to start chess OCR from: what the book's figurine fonts or misreadings map to, learned on other pages." }));
                 o.insert(
@@ -242,6 +244,8 @@ fn pgn_style_props() -> [(&'static str, Value); 3] {
 fn chess_export_pgn_schema() -> Value {
     let mut s = chess_export_schema();
     if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
+        // A PGN describes no diagram in words.
+        props.remove("descriptions");
         for (name, prop) in pgn_style_props() {
             props.insert(name.into(), prop);
         }
@@ -281,7 +285,7 @@ fn chess_export_exercises_schema() -> Value {
 fn chess_export_anki_schema() -> Value {
     let mut s = chess_export_schema();
     if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
-        for name in ["diagrams", "figurines", "letters_lang", "links", "link_text", "review_marks"] {
+        for name in ["diagrams", "figurines", "letters_lang", "links", "link_text", "review_marks", "descriptions"] {
             props.remove(name);
         }
         props.insert(
