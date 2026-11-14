@@ -826,7 +826,9 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     // beside the Chess column, else the board (plan A9-I0a).
     let whole = ui.max_rect();
     let two = budget.columns() == 2 && whole.width() >= 2.0 * crate::chess_budget::COLUMN - 1.0;
-    let opened = app.chess_detail_shown(id);
+    // A diagram opened is edited where its list is: in the chess window while that is out (plan
+    // A9-I0c, finding R4-12: it opened in the main window).
+    let opened = app.chess_detail_shown(id) && !in_window;
     let detail = app.chess.tab == ChessTab::Diagrams && opened && !two;
     let board_beside = two && !opened && !in_window;
     let second = if two { Some(egui::Rect::from_min_max(egui::pos2(whole.max.x - whole.width() / 2.0, whole.min.y), whole.max)) } else { None };
@@ -1565,9 +1567,14 @@ impl PdfCraftApp {
                 ed.focus = true;
             }
             self.chess.diagram_open = true;
-            self.chess.tab = crate::chess_text_ui::ChessTab::Diagrams;
-            if self.right != Some(crate::RightPanel::Chess) {
-                self.choose_right_panel(Some(crate::RightPanel::Chess));
+            if self.chess_window_detached() {
+                // In the chess window's Diagrams tab, the list's place (plan A9-I0c).
+                self.show_chess_tab(crate::chess_text_ui::ChessTab::Diagrams);
+            } else {
+                self.chess.tab = crate::chess_text_ui::ChessTab::Diagrams;
+                if self.right != Some(crate::RightPanel::Chess) {
+                    self.choose_right_panel(Some(crate::RightPanel::Chess));
+                }
             }
         }
     }
@@ -1591,9 +1598,10 @@ impl PdfCraftApp {
     }
 
     /// Whether the Chess column shows the open document's diagram editor, in the Diagrams list's
-    /// place (plan A9-I0a).
+    /// place (plan A9-I0a); while the chess window is out, the window shows it (plan A9-I0c).
     pub fn chess_diagram_shown(&self) -> bool {
         self.chess_column_shown()
+            && !self.chess_window.in_window()
             && self.chess.tab == crate::chess_text_ui::ChessTab::Diagrams
             && self.active_ids().is_some_and(|(_, id)| self.chess_detail_shown(id))
     }
