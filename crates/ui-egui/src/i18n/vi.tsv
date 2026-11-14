@@ -3778,5 +3778,9 @@ the move's comment	Move comment	Bình luận của nước đi
 	the page has more diagrams than are read on one page	trang có nhiều sơ đồ hơn số được đọc trên một trang
 	the piece model failed: {e}	mô hình quân cờ thất bại: {e}
 	the piece model's output is not a probability matrix: {e}	đầu ra của mô hình quân cờ không phải ma trận xác suất: {e}
+	Back to Diagrams	Về Sơ đồ
+	Tools panel collapsed	Đã thu gọn bảng Công cụ
+	Show the page (F6)	Hiện trang (F6)
+	The board is in the column beside.	Bàn cờ ở cột bên cạnh.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Thêm dấu trang cờ vua

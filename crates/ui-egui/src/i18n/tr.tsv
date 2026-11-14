@@ -3521,5 +3521,9 @@ the move's comment	Move comment	Hamlenin yorumu
 	the page has more diagrams than are read on one page	sayfada, bir sayfada okunandan daha fazla diyagram var
 	the piece model failed: {e}	taş modeli başarısız oldu: {e}
 	the piece model's output is not a probability matrix: {e}	taş modelinin çıktısı bir olasılık matrisi değil: {e}
+	Back to Diagrams	Diyagramlar'a dön
+	Tools panel collapsed	Araçlar paneli daraltıldı
+	Show the page (F6)	Sayfayı göster (F6)
+	The board is in the column beside.	Tahta yandaki sütunda.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Satranç yer işaretleri ekle

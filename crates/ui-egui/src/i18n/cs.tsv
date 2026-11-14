@@ -3599,5 +3599,9 @@ the move's comment	Move comment	Komentář k tahu
 	the page has more diagrams than are read on one page	stránka má více diagramů, než se čte na jedné stránce
 	the piece model failed: {e}	model figur selhal: {e}
 	the piece model's output is not a probability matrix: {e}	výstup modelu figur není matice pravděpodobností: {e}
+	Back to Diagrams	Zpět na Diagramy
+	Tools panel collapsed	Panel Nástroje je sbalen
+	Show the page (F6)	Zobrazit stránku (F6)
+	The board is in the column beside.	Šachovnice je ve vedlejším sloupci.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Přidat šachové záložky

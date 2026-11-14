@@ -247,6 +247,9 @@ struct Autosave {
     keeping: Keeping,
     /// A write waits for the user's answer: the app asks.
     ask: bool,
+    /// A write the store's writer thread has not answered yet (plan A9-I3b): its generation and
+    /// the fingerprint it writes.
+    pending: Option<(u64, u64)>,
 }
 
 /// A change to the list of games that Undo takes back (wave 10, U2): a game deleted, moved or
@@ -1107,9 +1110,14 @@ impl ChessGames {
         })
     }
 
-    /// Whether `c`'s games are not kept and the user wasn't told so for them as they are.
+    /// Whether `c`'s games are not kept and the user wasn't told so for them as they are: a write
+    /// of them was refused, or is still being written (plan A9-I3b: Close and Quit wait for it
+    /// first, [`Self::settle`]).
     fn not_kept(&self, c: &ChessCollection) -> bool {
-        c.autosave.blocked.is_some() && c.kept_content() && !c.in_store() && self.left.get(&c.cid) != Some(&c.fingerprint())
+        (c.autosave.blocked.is_some() || c.autosave.pending.is_some())
+            && c.kept_content()
+            && !c.in_store()
+            && self.left.get(&c.cid) != Some(&c.fingerprint())
     }
 
     /// The collection `cid`, open, closed or the one for no document.
@@ -1143,7 +1151,13 @@ impl ChessGames {
 
     /// Why collection `cid`'s games aren't autosaved, when a write of them was refused.
     pub(crate) fn why_not_kept(&self, cid: &str) -> Option<&'static str> {
-        self.by_cid(cid).and_then(|c| c.autosave.blocked.as_ref()).map(blocked_text)
+        let c = self.by_cid(cid)?;
+        match (&c.autosave.blocked, c.autosave.pending) {
+            (Some(why), _) => Some(blocked_text(why)),
+            // Still being written after Close or Quit waited ([`Self::settle`]).
+            (None, Some(_)) => Some(blocked_text(&Blocked::Io(String::new()))),
+            (None, None) => None,
+        }
     }
 
     /// The collection shown: the open document's, or the one for no document.
@@ -1425,8 +1439,9 @@ impl ChessGames {
     }
 
     /// Write the collections changed `DEBOUNCE_SECS` ago or more (all changed ones when `now` is
-    /// `None`).
+    /// `None`), after taking in what became of the writes queued before ([`Self::written`]).
     fn autosave(&mut self, now: Option<f64>) {
+        self.written();
         let ChessGames { docs, none, closed, store, said, notes, .. } = self;
         let mut w = Writer { store, said, notes };
         for c in docs.values_mut().chain(std::iter::once(none)) {
@@ -1438,6 +1453,37 @@ impl ChessGames {
             w.tick(c, now);
             !c.in_store()
         });
+    }
+
+    /// What became of the writes the store's writer thread made (plan A9-I3b), each taken by the
+    /// collection whose last write it was; an earlier one, which a later write of the same games
+    /// follows, is passed over. A collection of a closed document that is now kept is let go.
+    fn written(&mut self) {
+        let done = self.store.take_written();
+        if done.is_empty() {
+            return;
+        }
+        let ChessGames { docs, none, closed, store, said, notes, .. } = self;
+        let mut w = Writer { store, said, notes };
+        for d in done {
+            let c = docs.values_mut().chain(std::iter::once(&mut *none)).chain(closed.iter_mut()).find(|c| c.cid == d.file);
+            if let Some(c) = c
+                && let Some((generation, fp)) = c.autosave.pending
+                && generation == d.generation
+            {
+                c.autosave.pending = None;
+                w.landed(c, fp, d.result);
+            }
+        }
+        closed.retain(|c| !c.in_store());
+    }
+
+    /// Wait for the writes the store's writer thread has not made yet, at most `timeout` (Close
+    /// and Quit: [`crate::chess_writer::SETTLE`]), and take in what became of them. A write still
+    /// pending then counts as not kept ([`Self::unsaved`]), so the app asks.
+    pub(crate) fn settle(&mut self, timeout: std::time::Duration) {
+        self.store.settle(timeout);
+        self.written();
     }
 }
 
@@ -1477,12 +1523,17 @@ impl Writer<'_> {
         }
     }
 
-    /// Write `c` now. Whether it is in the store as it is (or needs no writing).
+    /// Write `c` now (or have the store's writer thread write it). Whether it is in the store as
+    /// it is (or needs no writing).
     fn write(&mut self, c: &mut ChessCollection) -> bool {
         let fp = c.fingerprint();
         c.autosave.changed_at = None;
         c.autosave.force = false;
         if !self.store.is_on() {
+            return false;
+        }
+        // These games are being written already.
+        if c.autosave.pending.is_some_and(|(_, p)| p == fp) {
             return false;
         }
         if !c.kept_content() && !c.autosave.stored {
@@ -1509,13 +1560,29 @@ impl Writer<'_> {
         let before_shown = c.iter().take(c.active_index().saturating_add(1)).filter(|e| !e.ephemeral()).count();
         let active = before_shown.saturating_sub(1);
         match self.store.write(&c.cid, &keys, active, &boards, &c.trash.stored()) {
+            Ok(chess_autosave::Written::Now) => self.landed(c, fp, Ok(())),
+            Ok(chess_autosave::Written::Queued(generation)) => {
+                c.autosave.pending = Some((generation, fp));
+                false
+            }
+            Err(why) => {
+                c.autosave.pending = None;
+                self.landed(c, fp, Err(why))
+            }
+        }
+    }
+
+    /// The write of `c`'s games as they were at fingerprint `fp` ended with `result`: kept, or
+    /// not and why, said once. Whether they are in the store as they are now.
+    fn landed(&mut self, c: &mut ChessCollection, fp: u64, result: Result<(), Blocked>) -> bool {
+        match result {
             Ok(()) => {
                 c.autosave.saved = fp;
                 c.autosave.stored = true;
                 c.autosave.blocked = None;
                 // Over the cap again later: said again.
                 self.said.remove(&format!("cap {}", c.cid));
-                true
+                c.in_store()
             }
             Err(why) => {
                 match &why {
@@ -2395,6 +2462,14 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         self.chess.games.autosave(None);
         self.ask_chess_games_keep();
+        self.show_chess_notes();
+    }
+
+    /// Wait for the chess games' writes the store's writer thread has not made yet, at most
+    /// [`crate::chess_writer::SETTLE`] (plan A9-I3b: Close and Quit, and the tests), and say what
+    /// became of them. A write still pending then counts as not kept.
+    pub fn settle_chess_games(&mut self) {
+        self.chess.games.settle(crate::chess_writer::SETTLE);
         self.show_chess_notes();
     }
 
@@ -3442,6 +3517,7 @@ mod tests {
         let doc = app.views[0].id;
         fill(&mut app, chess_autosave::MAX_GAMES + 1);
         app.flush_chess_games();
+        app.settle_chess_games();
         let ctx = egui::Context::default();
         assert!(!app.request_quit(&ctx), "Quit asks first");
         assert!(!app.allow_quit);
@@ -3481,6 +3557,7 @@ mod tests {
         assert_eq!(c.active().board.source.map(|s| s.index), Some(1));
         assert_eq!((c.counted(), c.room()), (chess_autosave::MAX_GAMES, 0));
         app.flush_chess_games();
+        app.settle_chess_games();
         assert_eq!(app.chess.games.collection().autosave.blocked, None, "not counted, so all is kept");
         let stored = std::fs::read_dir(dir.join("chess"))
             .unwrap()
@@ -3496,7 +3573,71 @@ mod tests {
         assert_eq!(app.chess.games.collection().active().board.source.map(|s| s.index), Some(1));
         play(app.chess.games.collection_mut(), "e2e3");
         app.flush_chess_games();
+        app.settle_chess_games();
         assert_eq!(app.chess.games.collection().autosave.blocked, Some(Blocked::TooBig), "changed, it counts");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The document's games file, read: its header and the PGN of its games.
+    fn stored_games(dir: &std::path::Path) -> Vec<String> {
+        let text = std::fs::read_dir(dir.join("chess"))
+            .unwrap()
+            .flatten()
+            .filter(|e| e.path().extension().is_some_and(|x| x == "games"))
+            .find_map(|e| std::fs::read_to_string(e.path()).ok())
+            .unwrap_or_default();
+        let body: serde_json::Value = text.lines().nth(1).and_then(|l| serde_json::from_str(l).ok()).unwrap_or_default();
+        body["games"].as_array().into_iter().flatten().map(|g| g["pgn"].as_str().unwrap_or_default().to_owned()).collect()
+    }
+
+    /// Plan A9-I3b: the autosave of a document's games is the store's writer thread's: the
+    /// interface thread hands it the file and goes on (the write is pending, not done, when the
+    /// autosave returns), and what became of it is taken in later. Quit right after a change waits
+    /// for it: the change is in the file.
+    #[test]
+    fn the_writer_thread_writes_the_games_and_quit_waits_for_it() {
+        let (mut app, dir) = app_with_store("writer");
+        let id = app.views[0].id;
+        play(app.chess.games.collection_mut(), "e2e4");
+        app.flush_chess_games();
+        let c = app.chess.games.docs.get(&id).unwrap();
+        assert!(c.autosave.pending.is_some() && !c.in_store(), "handed to the writer thread, not written by the frame");
+        app.settle_chess_games();
+        let c = app.chess.games.docs.get(&id).unwrap();
+        assert!(c.autosave.pending.is_none() && c.in_store(), "taken in once written");
+        let stored = stored_games(&dir);
+        assert!(stored.len() == 1 && stored[0].contains("1. e4") && !stored[0].contains("e5"), "{stored:?}");
+        // A move, then Quit at once: Quit waits for the write, and asks nothing.
+        play(app.chess.games.collection_mut(), "e7e5");
+        let ctx = egui::Context::default();
+        assert!(app.request_quit(&ctx), "nothing unkept: Quit goes on");
+        let stored = stored_games(&dir);
+        assert!(stored.len() == 1 && stored[0].contains("1. e4 e5"), "{stored:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-I3b: what a write the writer thread refused comes back to the interface thread as
+    /// the collection's reason (`Blocked`), and Close asks about those games as before: a newer
+    /// PdfCraft's file is never written over.
+    #[test]
+    fn a_write_refused_on_the_writer_thread_comes_back_as_blocked() {
+        let (mut app, dir) = app_with_store("refused");
+        let id = app.views[0].id;
+        play(app.chess.games.collection_mut(), "d2d4");
+        app.flush_chess_games();
+        app.settle_chess_games();
+        let file =
+            std::fs::read_dir(dir.join("chess")).unwrap().flatten().map(|e| e.path()).find(|p| p.extension().is_some_and(|x| x == "games")).unwrap();
+        // A newer PdfCraft writes the file meanwhile.
+        let newer = std::fs::read_to_string(&file).unwrap().replacen("\"version\":1", "\"version\":9", 1);
+        std::fs::write(&file, &newer).unwrap();
+        play(app.chess.games.collection_mut(), "d7d5");
+        app.flush_chess_games();
+        assert_eq!(app.chess.games.docs.get(&id).unwrap().autosave.blocked, None, "not known yet");
+        app.settle_chess_games();
+        assert_eq!(app.chess.games.docs.get(&id).unwrap().autosave.blocked, Some(Blocked::Newer(9)));
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), newer, "never written over");
+        assert!(app.ask_chess_games(crate::chess_unsaved::AfterGames::CloseTab(id)), "Close asks about the games not kept");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

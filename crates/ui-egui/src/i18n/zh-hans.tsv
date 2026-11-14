@@ -3489,5 +3489,9 @@ the move's comment	Move comment	此着法的评论
 	the page has more diagrams than are read on one page	页面上的棋图多于一页读取的上限
 	the piece model failed: {e}	棋子模型失败：{e}
 	the piece model's output is not a probability matrix: {e}	棋子模型的输出不是概率矩阵：{e}
+	Back to Diagrams	返回棋图
+	Tools panel collapsed	工具面板已收起
+	Show the page (F6)	显示页面 (F6)
+	The board is in the column beside.	棋盘在旁边一栏。
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	添加国际象棋书签

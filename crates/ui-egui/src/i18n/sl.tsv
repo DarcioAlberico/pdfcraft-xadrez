@@ -3530,5 +3530,9 @@ the move's comment	Move comment	Komentar k potezi
 	the page has more diagrams than are read on one page	stran ima več diagramov, kot se jih prebere na eni strani
 	the piece model failed: {e}	model figur ni uspel: {e}
 	the piece model's output is not a probability matrix: {e}	izhod modela figur ni matrika verjetnosti: {e}
+	Back to Diagrams	Nazaj na »Diagrami«
+	Tools panel collapsed	Plošča Orodja je strnjena
+	Show the page (F6)	Pokaži stran (F6)
+	The board is in the column beside.	Šahovnica je v sosednjem stolpcu.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Dodaj šahovske zaznamke

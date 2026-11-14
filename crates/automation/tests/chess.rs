@@ -3738,6 +3738,93 @@ fn compat_an_earlier_build_reads_the_pgn_this_build_writes() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+// ─── Plan A9, G3b: the documents' games on the engine's store ─────────────────────────────────
+
+/// A version 1 games file as the app wrote it before plan A9-G3b (`<cid>.games`, two lines), for
+/// the document named `board.pdf` of `size` bytes (with `path` too, when given), two games.
+fn app_games_v1(size: usize, path: Option<&str>) -> String {
+    let header = json!({ "format": "pdfcraft-chess-games", "version": 1, "keys": { "name": "board.pdf", "size": size, "path": path }, "instance": "instance-1-0.lock", "games": 2 });
+    let body = json!({ "active": 1, "games": [
+        { "pgn": "[White \"Werle\"]\n[Black \"Jianu\"]\n\n1. e4 e5 *\n", "current": [0], "flipped": true },
+        { "pgn": "1. d4 d5 2. c4 *\n", "sources": [{ "path": [0], "page": 0, "rect": [1.0, 2.0, 3.0, 4.0] }] },
+    ], "trash": [] });
+    format!("{header}\n{body}\n")
+}
+
+/// A9-G3b (§2.3): the games the app autosaved are in a store the command line reaches: brought
+/// in from the app's files of before (left as they were), listed for the document with `doc`,
+/// imported into with `pgn`, and kept merged, so another session reads all four.
+#[test]
+fn the_command_line_reads_and_keeps_the_games_the_app_autosaved() {
+    let (base, root) = workdir("games-store");
+    let size = chess_pdf().len();
+    let (data, earlier) = (base.join("data").join("chess"), base.join("data").join("Recovery").join("chess"));
+    std::fs::create_dir_all(&earlier).unwrap();
+    let v1 = app_games_v1(size, Some("C:\\Users\\someone\\board.pdf"));
+    std::fs::write(earlier.join("18c2f-1a-0.games"), &v1).unwrap();
+    let path = |p: &Path| p.to_string_lossy().into_owned();
+    let mut cli = Automation::new().with_chess_data(Some(data.clone()), Some(earlier.clone()));
+    let doc = ok(&mut cli, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    let listed = ok(&mut cli, "chess_games", json!({ "doc": doc, "keep": false }));
+    assert_eq!(listed["count"], 2, "the app's games: {listed:#}");
+    assert_eq!((listed["active"].as_u64(), listed["games"][0]["white"].as_str()), (Some(1), Some("Werle")));
+    let kept = ok(&mut cli, "chess_games", json!({ "doc": doc, "pgn": "[Event \"a\"]\n\n1. c4 *\n\n[Event \"b\"]\n\n1. Nf3 *\n" }));
+    assert_eq!(
+        (kept["count"].as_u64(), kept["store"]["kept"].as_bool(), kept["store"]["games"].as_u64()),
+        (Some(4), Some(true), Some(4)),
+        "{:#}",
+        kept["store"]
+    );
+    let file = data.join("games").join(kept["store"]["file"].as_str().unwrap());
+    let text = std::fs::read_to_string(&file).unwrap();
+    assert!(file.to_string_lossy().ends_with(".games.json") && !text.contains("Users"), "no path in clear: {text}");
+    assert_eq!(std::fs::read_to_string(earlier.join("18c2f-1a-0.games")).unwrap(), v1, "the app's file left as it was");
+    // Another session reads the four, the move read on a page with them.
+    let mut again = Automation::new().with_chess_data(Some(data.clone()), None);
+    let doc = ok(&mut again, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    let read = ok(&mut again, "chess_games", json!({ "doc": doc, "keep": false, "ops": [{ "op": "delete", "game": 0 }] }));
+    assert_eq!(read["count"], 3, "deleted in the list");
+    assert_eq!(read["store"]["kept"], false, "keep: false writes nothing");
+    let gone = ok(&mut again, "chess_games", json!({ "doc": doc, "ops": [{ "op": "delete", "game": 0 }] }));
+    assert_eq!(gone["store"]["games"], 3, "{:#}", gone["store"]);
+    // Bringing the app's file in again (the next start) does not bring the deleted game back.
+    let mut third = Automation::new().with_chess_data(Some(data.clone()), Some(earlier.clone()));
+    let doc = ok(&mut third, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    assert_eq!(ok(&mut third, "chess_games", json!({ "doc": doc, "keep": false }))["count"], 3);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G3b (§2.3): a document whose games a running PdfCraft autosaves (its instance lock held in
+/// the recovery folder) is not written by a tool unless the call says `merge`; then the app's
+/// games are kept, and so is its name in the file.
+#[test]
+fn a_running_apps_games_are_merged_into_only_when_asked() {
+    let (base, root) = workdir("games-owner");
+    let size = chess_pdf().len();
+    let (data, recovery) = (base.join("data").join("chess"), base.join("data").join("Recovery"));
+    std::fs::create_dir_all(data.join("games")).unwrap();
+    std::fs::create_dir_all(recovery.join("chess")).unwrap();
+    let lock = std::fs::File::create(recovery.join("instance-77-0.lock")).unwrap();
+    lock.try_lock().expect("the app's lock");
+    let owned = json!({ "format": "pdfcraft-chess-games", "version": 2, "doc": { "name": "board.pdf", "size": size, "pages": 1 },
+        "instance": "instance-77-0.lock", "games": [{ "uid": "a1", "rev": 1, "pgn": "1. e4 *\n" }] });
+    std::fs::write(data.join("games").join("0123456789abcdef0123456789abcdef.games.json"), owned.to_string()).unwrap();
+    let mut cli = Automation::new().with_chess_data(Some(data.clone()), Some(recovery.join("chess")));
+    let doc = ok(&mut cli, "doc_open", json!({ "path": root.join("board.pdf").to_string_lossy() }))["doc"].as_u64().unwrap();
+    match cli.call("chess_games", &json!({ "doc": doc, "pgn": "1. d4 *\n" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("merge: true"), "{m}"),
+        other => panic!("written over a running app's games: {other:?}"),
+    }
+    let merged = ok(&mut cli, "chess_games", json!({ "doc": doc, "pgn": "1. d4 *\n", "merge": true }));
+    assert_eq!(merged["store"]["games"], 2, "{:#}", merged["store"]);
+    let text = std::fs::read_to_string(data.join("games").join(merged["store"]["file"].as_str().unwrap())).unwrap();
+    assert!(text.contains("instance-77-0.lock"), "the app still autosaves them: {text}");
+    // Once the app is gone, no merge is needed.
+    drop(lock);
+    assert_eq!(ok(&mut cli, "chess_games", json!({ "doc": doc, "pgn": "1. c4 *\n" }))["store"]["games"], 3);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Pages of Helvetica lines, `(top from the page's top, size, text)` each, one content stream a
 /// page.
 fn lines_pdf(pages: &[Vec<(f32, f32, &str)>]) -> Vec<u8> {

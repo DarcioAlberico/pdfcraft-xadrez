@@ -3524,5 +3524,9 @@ the move's comment	Move comment	A lépés megjegyzése
 	the page has more diagrams than are read on one page	az oldalon több diagram van, mint amennyi egy oldalon beolvasható
 	the piece model failed: {e}	a bábumodell hibát adott: {e}
 	the piece model's output is not a probability matrix: {e}	a bábumodell kimenete nem valószínűségi mátrix: {e}
+	Back to Diagrams	Vissza a diagramokhoz
+	Tools panel collapsed	Eszközök panel összecsukva
+	Show the page (F6)	Az oldal megjelenítése (F6)
+	The board is in the column beside.	A tábla a szomszédos oszlopban van.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Sakk-könyvjelzők hozzáadása

@@ -3547,5 +3547,9 @@ the move's comment	Move comment	Коментар до ходу
 	the page has more diagrams than are read on one page	на сторінці більше діаграм, ніж читається на одній сторінці
 	the piece model failed: {e}	модель фігур дала збій: {e}
 	the piece model's output is not a probability matrix: {e}	вихід моделі фігур не є матрицею ймовірностей: {e}
+	Back to Diagrams	Назад до «Діаграми»
+	Tools panel collapsed	Панель «Інструменти» згорнуто
+	Show the page (F6)	Показати сторінку (F6)
+	The board is in the column beside.	Дошка — у сусідній колонці.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Додати шахові закладки

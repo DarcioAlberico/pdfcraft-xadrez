@@ -28,7 +28,10 @@
 //!
 //! **Safety.** Files are written atomically ([`crate::editing::write_atomically`]) and only by the
 //! instance that holds a lock in the recovery folder; a file another running instance wrote is
-//! left alone. Reading reads the first line within a cap, then checks the size, and parses
+//! left alone. On the desktop the interface thread only encodes a document's games (what changed,
+//! plan A9-I3a); the file is checked and written by the store's writer thread (plan A9-I3b,
+//! [`crate::chess_writer`]), the last request of each file winning, and what became of the write
+//! comes back as [`Written::Queued`]'s generation with its [`Blocked`], if any. Reading reads the first line within a cap, then checks the size, and parses
 //! leniently; a file that can't be read as this version's or a newer one's, or is too big, is set
 //! aside as `….bad` (never deleted) and the user is told. Nothing is evicted: a document above
 //! [`MAX_GAMES`] games or [`MAX_BODY_BYTES`] is not autosaved (the user is told) until it is back
@@ -207,6 +210,28 @@ pub(crate) enum Blocked {
     /// The file couldn't be written.
     Io(String),
 }
+
+/// What [`Store::write`] did with a document's games.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Written {
+    /// They are in the store now (memory, the web's value).
+    Now,
+    /// The store's writer thread writes them (plan A9-I3b): what became of the write comes back
+    /// from [`Store::take_written`] with this generation.
+    Queued(u64),
+}
+
+/// What the writer thread writes: a document's file, whole.
+pub(crate) struct FileJob {
+    path: PathBuf,
+    bytes: Vec<u8>,
+    /// The instance writing it (its lock's name), which a file another live instance wrote is
+    /// never written over by.
+    instance: String,
+}
+
+/// The writer of a folder of games files.
+type GamesWriter = crate::chess_writer::StoreWriter<FileJob, Result<(), Blocked>>;
 
 /// Every move of `game`, the start first.
 fn nodes(game: &Game) -> Vec<NodeId> {
@@ -500,7 +525,9 @@ impl Store {
         }
     }
 
-    /// Store a document's games under `cid`.
+    /// Store a document's games under `cid`: in memory now, or, in a folder, by the store's
+    /// writer thread ([`Written::Queued`]; plan A9-I3b). What can be told without the file (too
+    /// many games, no lock) is said now.
     pub(crate) fn write(
         &mut self,
         cid: &str,
@@ -508,11 +535,28 @@ impl Store {
         active: usize,
         boards: &[&BoardState],
         trash: &[crate::chess_trash::Trashed],
-    ) -> Result<(), Blocked> {
+    ) -> Result<Written, Blocked> {
         match self {
-            Store::Off => Ok(()),
-            Store::Files(f) => f.write(cid, keys, active, boards, trash),
-            Store::Memory(m) => m.write(cid, keys, active, boards, trash),
+            Store::Off => Ok(Written::Now),
+            Store::Files(f) => f.submit(cid, keys, active, boards, trash).map(Written::Queued),
+            Store::Memory(m) => m.write(cid, keys, active, boards, trash).map(|()| Written::Now),
+        }
+    }
+
+    /// What became of the writes [`Store::write`] queued, since the last call: each one's
+    /// collection id, generation and result.
+    pub(crate) fn take_written(&mut self) -> Vec<crate::chess_writer::Done<Result<(), Blocked>>> {
+        match self {
+            Store::Files(f) => f.writer.as_ref().map(GamesWriter::take_done).unwrap_or_default(),
+            Store::Off | Store::Memory(_) => Vec::new(),
+        }
+    }
+
+    /// Wait until the queued writes have ended, at most `timeout`. Whether they all have.
+    pub(crate) fn settle(&self, timeout: std::time::Duration) -> bool {
+        match self {
+            Store::Files(f) => f.writer.as_ref().is_none_or(|w| w.settle(timeout)),
+            Store::Off | Store::Memory(_) => true,
         }
     }
 
@@ -535,11 +579,13 @@ pub(crate) struct FileStore {
     ignored: HashSet<PathBuf>,
     /// The games' records as last written (plan A9-I3a).
     records: RecordCache,
+    /// The writer thread, made with the first write ([`FileStore::submit`]; plan A9-I3b).
+    writer: Option<GamesWriter>,
 }
 
 impl FileStore {
     pub(crate) fn new(dir: PathBuf, recovery: crate::RecoveryStore) -> FileStore {
-        FileStore { dir, recovery, ignored: HashSet::new(), records: RecordCache::default() }
+        FileStore { dir, recovery, ignored: HashSet::new(), records: RecordCache::default(), writer: None }
     }
 
     fn path(&self, cid: &str) -> PathBuf {
@@ -583,25 +629,13 @@ impl FileStore {
         serde_json::from_slice(bytes.get(at.checked_add(1)?..)?).ok()
     }
 
-    /// Set the file at `path` aside as `….bad` (or `….bad.1`, …), never over another one. The
-    /// name it was kept under, or `None` when it couldn't be renamed (it is then ignored).
+    /// [`set_aside`], and a file that couldn't be renamed is not looked at again.
     fn set_aside(&mut self, path: &Path) -> Option<String> {
-        let name = path.file_name()?.to_string_lossy().into_owned();
-        for n in 0..100u32 {
-            let bad = if n == 0 { format!("{name}.bad") } else { format!("{name}.bad.{n}") };
-            let to = path.with_file_name(&bad);
-            if to.exists() {
-                continue;
-            }
-            if std::fs::rename(path, &to).is_ok() {
-                log::warn!("chess games file {} couldn't be read; kept as {bad}", path.display());
-                return Some(bad);
-            }
-            break;
+        let kept = set_aside(path);
+        if kept.is_none() {
+            self.ignored.insert(path.to_path_buf());
         }
-        log::warn!("chess games file {} couldn't be read nor set aside", path.display());
-        self.ignored.insert(path.to_path_buf());
-        None
+        kept
     }
 
     fn find(&mut self, keys: &DocKeys, taken: &HashSet<String>) -> Found {
@@ -650,6 +684,32 @@ impl FileStore {
         found
     }
 
+    /// The file a write of `cid`'s games makes: encoded here, from what changed (plan A9-I3a);
+    /// what needs the file itself is [`commit`]'s.
+    fn prepare(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<FileJob, Blocked> {
+        if !plain_cid(cid) {
+            return Err(Blocked::Io(format!("bad collection id {cid:?}")));
+        }
+        let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
+        let (header, body) = encode_cached(&mut self.records, cid, keys, active, boards, trash, Some(instance.clone()))?;
+        let line = serde_json::to_string(&header).map_err(|e| Blocked::Io(e.to_string()))?;
+        let mut bytes = Vec::with_capacity(line.len().saturating_add(body.len()).saturating_add(2));
+        bytes.extend_from_slice(line.as_bytes());
+        bytes.push(b'\n');
+        bytes.extend_from_slice(body.as_bytes());
+        bytes.push(b'\n');
+        Ok(FileJob { path: self.path(cid), bytes, instance })
+    }
+
+    /// Write `cid`'s games now, on this thread (the tests; the writer thread is [`Self::submit`]).
+    #[cfg(test)]
     fn write(
         &mut self,
         cid: &str,
@@ -658,42 +718,75 @@ impl FileStore {
         boards: &[&BoardState],
         trash: &[crate::chess_trash::Trashed],
     ) -> Result<(), Blocked> {
-        if !plain_cid(cid) {
-            return Err(Blocked::Io(format!("bad collection id {cid:?}")));
-        }
-        let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
-        let path = self.path(cid);
-        let head = FileStore::head(&path);
-        // A newer PdfCraft's file is only read here: never written over.
-        if let Some(Head::Newer(version, _)) = head {
-            return Err(Blocked::Newer(version));
-        }
-        let (header, body) = encode_cached(&mut self.records, cid, keys, active, boards, trash, Some(instance.clone()))?;
-        match head {
-            Some(Head::This(h)) => {
-                if let Some(other) = h.instance.as_deref().filter(|w| *w != instance)
-                    && self.recovery.held_by_another_instance(other)
-                {
-                    return Err(Blocked::OtherInstance);
-                }
-            }
-            None | Some(Head::Newer(..)) => {}
-            // What is there can't be read: keep it, never write over it.
-            Some(Head::Bad) => {
-                if self.set_aside(&path).is_none() {
-                    return Err(Blocked::Io("the file there couldn't be set aside".into()));
-                }
-            }
-        }
-        let line = serde_json::to_string(&header).map_err(|e| Blocked::Io(e.to_string()))?;
-        let mut bytes = Vec::with_capacity(line.len().saturating_add(body.len()).saturating_add(2));
-        bytes.extend_from_slice(line.as_bytes());
-        bytes.push(b'\n');
-        bytes.extend_from_slice(body.as_bytes());
-        bytes.push(b'\n');
-        std::fs::create_dir_all(&self.dir).map_err(|e| Blocked::Io(e.to_string()))?;
-        crate::editing::write_atomically(&path.to_string_lossy(), &bytes).map_err(|e| Blocked::Io(e.to_string()))
+        let job = self.prepare(cid, keys, active, boards, trash)?;
+        commit(&self.recovery, &self.dir, job)
     }
+
+    /// Have `cid`'s games written by the store's writer thread, which is made with the first
+    /// write: the request's generation ([`Written::Queued`]). What can be told here (a bad id, no
+    /// lock, too many games) is said now.
+    fn submit(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<u64, Blocked> {
+        let job = self.prepare(cid, keys, active, boards, trash)?;
+        let writer = self.writer.get_or_insert_with(|| {
+            let (recovery, dir) = (self.recovery.clone(), self.dir.clone());
+            crate::chess_writer::StoreWriter::new(
+                "chess-games-writer",
+                move |_cid: &str, job| commit(&recovery, &dir, job),
+                |panic| Err(Blocked::Io(format!("the writer stopped: {panic}"))),
+            )
+        });
+        Ok(writer.submit(cid, job))
+    }
+}
+
+/// Write `job` into the folder `dir`, unless the file there is a newer PdfCraft's (only read here,
+/// never written over) or another live instance's; a file that can't be read is set aside first,
+/// never written over.
+fn commit(recovery: &crate::RecoveryStore, dir: &Path, job: FileJob) -> Result<(), Blocked> {
+    match FileStore::head(&job.path) {
+        Some(Head::Newer(version, _)) => return Err(Blocked::Newer(version)),
+        Some(Head::This(h)) => {
+            if let Some(other) = h.instance.as_deref().filter(|w| *w != job.instance)
+                && recovery.held_by_another_instance(other)
+            {
+                return Err(Blocked::OtherInstance);
+            }
+        }
+        // What is there can't be read: kept aside, never written over.
+        Some(Head::Bad) if set_aside(&job.path).is_none() => {
+            return Err(Blocked::Io("the file there couldn't be set aside".into()));
+        }
+        None | Some(Head::Bad) => {}
+    }
+    std::fs::create_dir_all(dir).map_err(|e| Blocked::Io(e.to_string()))?;
+    crate::editing::write_atomically(&job.path.to_string_lossy(), &job.bytes).map_err(|e| Blocked::Io(e.to_string()))
+}
+
+/// Set the file at `path` aside as `….bad` (or `….bad.1`, …), never over another one. The name it
+/// was kept under, or `None` when it couldn't be renamed.
+fn set_aside(path: &Path) -> Option<String> {
+    let name = path.file_name()?.to_string_lossy().into_owned();
+    for n in 0..100u32 {
+        let bad = if n == 0 { format!("{name}.bad") } else { format!("{name}.bad.{n}") };
+        let to = path.with_file_name(&bad);
+        if to.exists() {
+            continue;
+        }
+        if std::fs::rename(path, &to).is_ok() {
+            log::warn!("chess games file {} couldn't be read; kept as {bad}", path.display());
+            return Some(bad);
+        }
+        break;
+    }
+    log::warn!("chess games file {} couldn't be read nor set aside", path.display());
+    None
 }
 
 /// One document's games in the web's value.
