@@ -925,6 +925,7 @@ fn side_tab(
     rect: Rect,
 ) {
     ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+        crate::widgets::solid_scroll_bar(ui);
         egui::ScrollArea::vertical().id_salt(("chess-window-tab", text)).auto_shrink([false, false]).show(ui, |ui| {
             let Some(d) = open else {
                 ui.label(egui::RichText::new(tl!("Open a document first")).color(t.text_muted));

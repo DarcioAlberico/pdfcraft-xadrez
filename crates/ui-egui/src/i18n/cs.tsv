@@ -3618,3 +3618,6 @@ the move's comment	Move comment	Komentář k tahu
 	Alt+O switches between the board as read and the page's own picture.	Alt+O přepíná mezi šachovnicí, jak byla přečtena, a vlastním obrázkem stránky.
 	Original diagram, page {p}, diagram {n}	Původní diagram, strana {p}, diagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Obrázek stránky s tímto diagramem se ukáže, jakmile se jeho stránka vykreslí.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Nepotvrzeno
+progress bar	Progress	Průběh
