@@ -88,6 +88,16 @@ impl DiagramState {
         }
     }
 
+    /// Its word in a list row, short so the row's title keeps its room (plan A9-I8, §2.8.1,
+    /// finding A6-13): the name, but "PGN" for one the book's PGN confirms. The whole name is the
+    /// row's tooltip and accessible name.
+    pub(crate) fn short_name(self) -> &'static str {
+        match self {
+            DiagramState::Reference => "PGN",
+            other => other.name(),
+        }
+    }
+
     /// Its filter chip's words: the diagrams in this state, as a group, and how many (`n`).
     pub(crate) fn filter_name(self, n: usize) -> String {
         let name = match self {
@@ -137,6 +147,57 @@ pub(crate) fn draft_dot(painter: &egui::Painter, rect: egui::Rect, t: &Tokens) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One icon, one concept (plan A9-I8, §2.8.1, finding R4-07): the icons the chess panels gave two
+    /// meanings, each with the one it keeps and the files that may draw it for that. The test reads
+    /// the chess sources and refuses any other use, and the × as Stop.
+    const ONE_ICON_ONE_CONCEPT: [(&str, &str, &[&str]); 4] = [
+        // Set up a position, the rail's tool; the Board button has grid-3x3 and its word.
+        ("layout-grid", "Set up a position", &["chess_tools.rs"]),
+        // The Move list beside the page; Capture as the line has rows-3.
+        ("list-ordered", "Move list beside the page", &["chess_board_tab.rs"]),
+        // The state Not read; the empty Diagram tab has square-dashed-mouse-pointer.
+        ("circle-dashed", "Not read", &["chess_widgets.rs"]),
+        // Stop, for a long job; × is closing.
+        ("circle-stop", "Stop", &["chess_panel_head.rs"]),
+    ];
+
+    /// The chess sources (`chess_*.rs`), without their test modules.
+    fn chess_sources() -> Vec<(String, String)> {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut out = Vec::new();
+        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.starts_with("chess_") && name.ends_with(".rs") {
+                let text = std::fs::read_to_string(entry.path()).unwrap();
+                // What the panels draw: the code, not its tests (this table is in one).
+                let code = text.split("#[cfg(test)]\nmod tests").next().unwrap_or_default().to_owned();
+                out.push((name, code));
+            }
+        }
+        assert!(out.len() > 30, "the chess sources: {}", out.len());
+        out
+    }
+
+    /// Plan A9-I8 (§2.8.1, finding R4-07): each icon of the table is drawn for its one concept,
+    /// in the files that draw that concept, and a long job's Stop is never the closing ×.
+    #[test]
+    fn one_icon_one_concept() {
+        let sources = chess_sources();
+        for (icon, concept, files) in ONE_ICON_ONE_CONCEPT {
+            let quoted = format!("\"{icon}\"");
+            let users: Vec<&str> = sources.iter().filter(|(_, text)| text.contains(&quoted)).map(|(name, _)| name.as_str()).collect();
+            assert!(!users.is_empty(), "{icon} ({concept}) is drawn somewhere");
+            for user in &users {
+                assert!(files.contains(user), "{icon} is {concept}'s, and {user} draws it for something else");
+            }
+        }
+        for (name, text) in &sources {
+            for line in text.lines().filter(|l| l.contains("icons::button(") && l.contains("\"x\"")) {
+                assert!(!line.contains("Stop"), "{name}: Stop drawn as the closing ×: {line}");
+            }
+        }
+    }
 
     /// "Read" alone is the Read mode's tab, a verb ("Ler", "Lesen", "Lire"); the diagram state says
     /// the diagram was read ("Lido", "Gelesen", "Lu"), in every language.

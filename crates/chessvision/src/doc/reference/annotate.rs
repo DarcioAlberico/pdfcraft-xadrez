@@ -127,7 +127,8 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, pos
     let links: HashMap<MoveAt, RefNode> = alignment.moves.iter().filter_map(|l| Some((l.at, l.node?))).collect();
     let shown: HashMap<DiagramAt, RefNode> = alignment.diagrams.iter().filter_map(|d| Some((d.at, d.node?))).collect();
     let page_game: HashMap<u32, usize> = alignment.pages.iter().map(|p| (p.page, p.game)).collect();
-    let mut games: Vec<Option<PgnGame>> = index.games().iter().map(|g| g.game.clone()).collect();
+    // Each game read again from its text: the index keeps none (plan A9-I3b).
+    let mut games: Vec<Option<PgnGame>> = (0..index.games().len()).map(|k| index.game(k)).collect();
     let mut notes: BTreeMap<RefNode, String> = BTreeMap::new();
     let mut marked: HashSet<RefNode> = HashSet::new();
     // Each move only the book has, and the move it was played from.

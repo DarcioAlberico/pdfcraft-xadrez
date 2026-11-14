@@ -332,6 +332,12 @@ impl PlacementKey {
         }
         PlacementKey(words)
     }
+
+    /// Its 256 bits, four a square from a1: for an index of many positions that keys them in
+    /// fewer bits (plan A9-I3b, the book's PGN's index digests them).
+    pub fn words(self) -> [u64; 4] {
+        self.0
+    }
 }
 
 /// A piece as four bits, never 0 (an empty square): 1–6 White's, 9–14 Black's.
@@ -423,7 +429,7 @@ pub fn parse_placement(fen: &str) -> Result<Placement, FenError> {
     parse(fen).map(|p| p.placement)
 }
 
-fn parse_placement_field(field: &str) -> Result<Placement, FenError> {
+pub(crate) fn parse_placement_field(field: &str) -> Result<Placement, FenError> {
     let ranks: Vec<&str> = field.split('/').collect();
     if ranks.len() != 8 {
         return Err(FenError::RankCount(ranks.len()));

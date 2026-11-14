@@ -77,6 +77,13 @@ pub fn title(number: usize, page: &str, side: Option<Color>, lang: Lang) -> Stri
     }
 }
 
+/// `White to move` (`brancas jogam`) in `lang`, as [`title`] says it: what an exercise asks
+/// first (plan A9-N10).
+pub fn to_move(side: Color, lang: Lang) -> &'static str {
+    let s = sides(lang);
+    if side == Color::White { s.white_to_move } else { s.black_to_move }
+}
+
 /// `Diagram 1, page 17: side to move not given`: a diagram whose side to move the book did not
 /// say and nothing else settled (plan A9-L6b, A1-14): the reader is not told White, which was only
 /// assumed.
