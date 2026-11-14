@@ -686,7 +686,7 @@ pub(crate) fn status(reading: Option<&BoardReading>, kind: Option<Kind>, confirm
         Some(Ok(p)) if p.accepted => tl!("Position read").to_string(),
         Some(Ok(_)) => tl!("Needs review").to_string(),
         Some(Err(Unreadable::NoModel)) => tl!("Not read: no piece model").to_string(),
-        Some(Err(e)) => crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &e.to_string())]),
+        Some(Err(e)) => crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &crate::chess_reasons::reason_text(e))]),
         None => tl!("Not read").to_string(),
     };
     (label, colour)

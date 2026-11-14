@@ -3482,6 +3482,51 @@ the move's comment	Move comment	手のコメント
 	mates in {m}	{m} 手で詰み
 	supposes castling is allowed	キャスリングが許されると仮定
 	Mate in {n}: both sides mate, so who moves stays assumed	{n} 手詰め: 双方とも詰ませるため、手番は仮定のままです
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	このページは調べる上限より多くのパスを描いています。残りは飛ばしました。
+	Content streams that couldn't be decoded and were skipped: {n}	デコードできずに飛ばしたコンテンツストリーム: {n}
+	The page's paths couldn't be read: {e}	ページのパスを読み取れませんでした: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	文書を編集用に読み取れないため、画像とパスは調べていません。
+	The page's text couldn't be read: {e}	ページのテキストを読み取れませんでした: {e}
+	Only the first {n} of the page's {total} images were looked at.	ページの画像 {total} 件のうち、最初の {n} 件だけを調べました。
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	ページの画像のピクセルが検索の予算を超えるため、切り抜かなかった画像: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	局面図 {d}: 双方とも {n} 手で詰ませるため、手番は仮定のままです。
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	局面図が {offered} dpi を提供しています。最大 {max} dpi で読み取りました (max_read_dpi)。
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	ページが大きすぎて {wanted} dpi で描画できません。局面図は {read} dpi で読み取りました。
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	読み取り用にページを {wanted} dpi で描画できませんでした ({e})。{read} dpi で読み取りました。
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	局面図 {d}: 修正後に読み取り結果が変わりました (現在 {fen})。修正はそのまま残します。
+	The frames around text were not looked for: {e}	テキストを囲む枠は探していません: {e}
+	The lines set bolder were not looked for: {e}	本文より太く組まれた行は探していません: {e}
+	The words set in bold were not looked for: {e}	太字で組まれた語は探していません: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	ページの高さの {p}% はテキストにしては細かいインクが多すぎます (図版、またはほこりの多いスキャン)。その帯は読み取っていません。
+	The general OCR failed ({e}); the glyph reader read the prose too.	一般 OCR が失敗しました ({e})。グリフ読み取りが本文も読みました。
+	Chess OCR failed: {e}	チェス OCR が失敗しました: {e}
+	The page couldn't be rendered for chess OCR: {e}	チェス OCR 用にページを描画できませんでした: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	チェス OCR が求められましたが、chess-glyphs モデルが必要です。
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	フォント {font} はチェスフォントに見えますが、カタログにありません。テキストは抽出されたままにしています。
+	The page has no visible area; it is left out.	ページに表示領域がないため、除外しました。
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	ページの段落を読み取れませんでした ({e})。行は間隔でまとめました。
+	The page's diagrams couldn't be read; they are left out.	ページの局面図を読み取れなかったため、除外しました。
+	A correction ({id}) was not used: {e}	修正 ({id}) は使われませんでした: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	記述式表記 ({examples}) には対応していません。その指し手は読み取っていません。
+	The document holds {n} games, the most it keeps: from here on, no game starts.	文書には {n} 局があり、これが保持できる上限です。ここから先は対局が始まりません。
+	This page couldn't be read: {e}	このページを読み取れませんでした: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (チェス OCR には chess-glyphs モデルが必要)
+	the page has no text layer	ページにテキストレイヤーがありません
+	the text layer has two-byte codes with no Unicode text	テキストレイヤーに Unicode テキストのない 2 バイトコードがあります
+	the text layer extracts as replacement characters	テキストレイヤーが置換文字として抽出されます
+	the text layer's Unicode map is dead	テキストレイヤーの Unicode マップが機能していません
+	chess-font glyphs that couldn't be resolved: {n}	解決できなかったチェスフォントのグリフ: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	駒の代わりに余計な記号がある指し手 (以前の OCR レイヤーが駒の記号を失った箇所): {n}
+	the text layer is invisible text over an image of the page: another program's OCR	テキストレイヤーはページ画像の上にある不可視テキスト、つまり別のプログラムの OCR です
+	no piece model is loaded	駒モデルが読み込まれていません
+	the page raster's resolution is not a positive number	ページラスターの解像度が正の数ではありません
+	the diagram's box or corners are not finite numbers on this page	このページでは局面図の枠または角が有限の数ではありません
+	the diagram lies outside the page raster	局面図がページラスターの外にあります
+	the diagram's corners do not form a quadrilateral	局面図の角が四角形を作りません
+	the page has more diagrams than are read on one page	1 ページで読み取る数より多くの局面図がページにあります
+	the piece model failed: {e}	駒モデルが失敗しました: {e}
+	the piece model's output is not a probability matrix: {e}	駒モデルの出力が確率行列ではありません: {e}
 	Back to Diagrams	局面図に戻る
 	Tools panel collapsed	ツールパネルを折りたたみました
 	Show the page (F6)	ページを表示 (F6)

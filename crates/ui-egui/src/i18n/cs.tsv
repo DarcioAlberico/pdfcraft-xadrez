@@ -3554,6 +3554,51 @@ the move's comment	Move comment	Komentář k tahu
 	mates in {m}	matuje {m}. tahem
 	supposes castling is allowed	předpokládá, že rošáda je povolena
 	Mate in {n}: both sides mate, so who moves stays assumed	Mat {n}. tahem: matují obě strany, proto zůstává, kdo je na tahu, jen předpokládáno
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Stránka kreslí více cest, než se prohlíží; zbytek byl přeskočen.
+	Content streams that couldn't be decoded and were skipped: {n}	Proudy obsahu, které nešlo dekódovat a byly přeskočeny: {n}
+	The page's paths couldn't be read: {e}	Cesty stránky nešlo přečíst: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Dokument nelze přečíst pro úpravy, proto jeho obrázky a cesty nebyly prohlédnuty.
+	The page's text couldn't be read: {e}	Text stránky nešlo přečíst: {e}
+	Only the first {n} of the page's {total} images were looked at.	Prohlédnuto bylo jen prvních {n} z {total} obrázků stránky.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Neoříznuté obrázky, protože pixely obrázků stránky přesahují rozpočet prohledávání: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagram č. {d}: obě strany dávají mat {n}. tahem, proto zůstává, kdo je na tahu, jen předpokládáno.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Diagram nabízí {offered} dpi; byl přečten nejvýše při {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Stránka je příliš velká na vykreslení při {wanted} dpi; její diagramy byly přečteny při {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Stránku nešlo vykreslit pro čtení při {wanted} dpi ({e}); byla přečtena při {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagram č. {d}: čtení se od opravy změnilo (nyní {fen}); oprava zůstává.
+	The frames around text were not looked for: {e}	Rámečky kolem textu se nehledaly: {e}
+	The lines set bolder were not looked for: {e}	Řádky vysázené tučněji než základní text se nehledaly: {e}
+	The words set in bold were not looked for: {e}	Slova vysázená tučně se nehledala: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p} % výšky stránky obsahuje příliš mnoho jemné barvy na to, aby to byl text (obrázek nebo zaprášený sken); tyto pruhy se nečetly.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Obecné OCR selhalo ({e}); čtečka glyfů přečetla i prózu.
+	Chess OCR failed: {e}	Šachové OCR selhalo: {e}
+	The page couldn't be rendered for chess OCR: {e}	Stránku nešlo vykreslit pro šachové OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Bylo požádáno o šachové OCR, ale to vyžaduje model chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Písmo {font} vypadá jako šachové, ale není v katalogu; jeho text zůstal tak, jak se extrahuje.
+	The page has no visible area; it is left out.	Stránka nemá žádnou viditelnou oblast; vynechává se.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Odstavce stránky nešlo přečíst ({e}); její řádky byly seskupeny podle mezer.
+	The page's diagrams couldn't be read; they are left out.	Diagramy stránky nešlo přečíst; vynechávají se.
+	A correction ({id}) was not used: {e}	Oprava ({id}) nebyla použita: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Popisná notace ({examples}) není podporována; její tahy se nečetly.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Dokument obsahuje {n} partií, nejvíce, kolik uchová: odtud dál už žádná partie nezačne.
+	This page couldn't be read: {e}	Tuto stránku nešlo přečíst: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (šachové OCR vyžaduje model chess-glyphs)
+	the page has no text layer	stránka nemá textovou vrstvu
+	the text layer has two-byte codes with no Unicode text	textová vrstva má dvoubajtové kódy bez textu Unicode
+	the text layer extracts as replacement characters	textová vrstva se extrahuje jako náhradní znaky
+	the text layer's Unicode map is dead	mapa Unicode textové vrstvy je nefunkční
+	chess-font glyphs that couldn't be resolved: {n}	glyfy šachových písem, které nešlo rozpoznat: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	tahy s cizím symbolem místo figury, kde dřívější vrstva OCR ztratila figurky: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	textová vrstva je neviditelný text nad obrázkem stránky: OCR jiného programu
+	no piece model is loaded	není načten žádný model figur
+	the page raster's resolution is not a positive number	rozlišení rastru stránky není kladné číslo
+	the diagram's box or corners are not finite numbers on this page	rámeček nebo rohy diagramu nejsou na této stránce konečná čísla
+	the diagram lies outside the page raster	diagram leží mimo rastr stránky
+	the diagram's corners do not form a quadrilateral	rohy diagramu netvoří čtyřúhelník
+	the page has more diagrams than are read on one page	stránka má více diagramů, než se čte na jedné stránce
+	the piece model failed: {e}	model figur selhal: {e}
+	the piece model's output is not a probability matrix: {e}	výstup modelu figur není matice pravděpodobností: {e}
 	Back to Diagrams	Zpět na Diagramy
 	Tools panel collapsed	Panel Nástroje je sbalen
 	Show the page (F6)	Zobrazit stránku (F6)

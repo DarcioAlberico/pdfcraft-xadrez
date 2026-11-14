@@ -28,13 +28,16 @@
 //!
 //! **Safety.** Files are written atomically ([`crate::editing::write_atomically`]) and only by the
 //! instance that holds a lock in the recovery folder; a file another running instance wrote is
-//! left alone. Reading reads the first line within a cap, then checks the size, and parses
+//! left alone. On the desktop the interface thread only encodes a document's games (what changed,
+//! plan A9-I3a); the file is checked and written by the store's writer thread (plan A9-I3b,
+//! [`crate::chess_writer`]), the last request of each file winning, and what became of the write
+//! comes back as [`Written::Queued`]'s generation with its [`Blocked`], if any. Reading reads the first line within a cap, then checks the size, and parses
 //! leniently; a file that can't be read as this version's or a newer one's, or is too big, is set
 //! aside as `….bad` (never deleted) and the user is told. Nothing is evicted: a document above
 //! [`MAX_GAMES`] games or [`MAX_BODY_BYTES`] is not autosaved (the user is told) until it is back
 //! under.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, Read};
 use std::path::{Path, PathBuf};
 
@@ -146,7 +149,7 @@ pub(crate) struct Body {
 }
 
 /// One game as stored.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct GameRecord {
     #[serde(default)]
     pgn: String,
@@ -174,7 +177,7 @@ struct StoredOrigin {
 }
 
 /// Where move `path` was read on a page.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct StoredSource {
     path: Vec<u16>,
     page: u32,
@@ -182,7 +185,7 @@ struct StoredSource {
 }
 
 /// Move `path`'s two comments, where PGN would put them elsewhere.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct StoredComments {
     path: Vec<u16>,
     #[serde(default)]
@@ -208,6 +211,28 @@ pub(crate) enum Blocked {
     Io(String),
 }
 
+/// What [`Store::write`] did with a document's games.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Written {
+    /// They are in the store now (memory, the web's value).
+    Now,
+    /// The store's writer thread writes them (plan A9-I3b): what became of the write comes back
+    /// from [`Store::take_written`] with this generation.
+    Queued(u64),
+}
+
+/// What the writer thread writes: a document's file, whole.
+pub(crate) struct FileJob {
+    path: PathBuf,
+    bytes: Vec<u8>,
+    /// The instance writing it (its lock's name), which a file another live instance wrote is
+    /// never written over by.
+    instance: String,
+}
+
+/// The writer of a folder of games files.
+type GamesWriter = crate::chess_writer::StoreWriter<FileJob, Result<(), Blocked>>;
+
 /// Every move of `game`, the start first.
 fn nodes(game: &Game) -> Vec<NodeId> {
     std::iter::once(0)
@@ -218,18 +243,46 @@ fn nodes(game: &Game) -> Vec<NodeId> {
         .collect()
 }
 
-/// `board`'s game as stored. `None` when its PGN is too long to be read back.
+/// The longest comment the readers of the builds before plan A9-F2b read whole (R9-01).
+const OLD_READER_COMMENT_BYTES: usize = 4096;
+
+/// Whether the comment `text` comes back as it is from the PGN this build writes, read by this
+/// build or an installed one: empty, or no longer than the old readers' cap, its words one space
+/// apart (the writer joins them so) and no `[%` command (read back as a drawing). Decided from the
+/// text alone, never by reading the PGN back (plan A9-I3a).
+fn comes_back(text: &str) -> bool {
+    text.is_empty() || (text.len() <= OLD_READER_COMMENT_BYTES && !text.contains("[%") && text.split(' ').eq(text.split_whitespace()))
+}
+
+/// `board`'s game as stored. `None` when its PGN is too long to be read back. The stores take it
+/// from a [`RecordCache`].
+#[cfg(test)]
 pub(crate) fn record(board: &BoardState) -> Option<GameRecord> {
-    let origin = board.source.map(|s| StoredOrigin { page: s.page, index: s.index });
+    let part = if board.illegal.is_some() { GameRecord::default() } else { game_part(&board.game)? };
+    Some(with_board(part, board))
+}
+
+/// `part` (what [`game_part`] stores of the board's game) with what the board adds: the move
+/// shown, the side the board is seen from, an illegal position and the diagram it came from.
+fn with_board(mut part: GameRecord, board: &BoardState) -> GameRecord {
+    part.origin = board.source.map(|s| StoredOrigin { page: s.page, index: s.index });
+    part.flipped = board.flipped;
     if let Some((_, fen)) = &board.illegal {
-        return Some(GameRecord { illegal_fen: Some(fen.clone()), flipped: board.flipped, origin, ..GameRecord::default() });
+        return GameRecord { illegal_fen: Some(fen.clone()), flipped: board.flipped, origin: part.origin, ..GameRecord::default() };
     }
-    let game = &board.game;
+    part.current = board.game.path_of(board.game.current()).map(|p| p.indices().to_vec()).unwrap_or_default();
+    part
+}
+
+/// What a game's moves, comments, glyphs, tags and sources store: the PGN, where moves were read
+/// and the comments PGN would not give back as they are. The same for every board showing the
+/// game at one revision ([`Game::revision`], a value no other game has). `None` when its PGN is
+/// too long to be read back.
+fn game_part(game: &Game) -> Option<GameRecord> {
     let pgn = game.pgn();
     if pgn.len() > MAX_PGN_LEN {
         return None;
     }
-    let reloaded = Game::from_pgn(&pgn).ok().map(|(g, _)| g);
     let mut sources = Vec::new();
     let mut comments = Vec::new();
     for node in nodes(game) {
@@ -237,14 +290,64 @@ pub(crate) fn record(board: &BoardState) -> Option<GameRecord> {
         if let Some(s) = game.source(node) {
             sources.push(StoredSource { path: path.indices().to_vec(), page: s.page, rect: s.rect_user });
         }
+        // Stored whenever the PGN may not give them back as they are, to this build or to the
+        // installed ones (plan A9-I3a, R9-01): every comment before a move, and a comment the
+        // writer changes or an old reader cuts. Decided from the text: reading every game's PGN
+        // back at every save cost the interface thread a whole reading per game (A5-02).
         let (after, before) = (game.comment(node), game.comment_before(node));
-        let back = reloaded.as_ref().and_then(|r| r.node_at(&path).map(|n| (r.comment(n), r.comment_before(n))));
-        if back != Some((after, before)) || old_readers_move(game, node) {
+        if !before.is_empty() || !comes_back(after) || old_readers_move(game, node) {
             comments.push(StoredComments { path: path.indices().to_vec(), after: after.to_owned(), before: before.to_owned() });
         }
     }
-    let current = game.path_of(game.current()).map(|p| p.indices().to_vec()).unwrap_or_default();
-    Some(GameRecord { pgn, current, flipped: board.flipped, illegal_fen: None, origin, sources, comments })
+    Some(GameRecord { pgn, sources, comments, ..GameRecord::default() })
+}
+
+/// Most collections whose records [`RecordCache`] keeps.
+const MAX_CACHED_COLLECTIONS: usize = 64;
+
+/// The games' records as the last write of each collection encoded them, by the game's revision
+/// (plan A9-I3a, finding A5-02): a write encodes again only the games that changed since, the
+/// others taken as they were.
+#[derive(Default)]
+pub(crate) struct RecordCache {
+    by_cid: HashMap<String, HashMap<u64, Option<GameRecord>>>,
+    /// Games encoded, not taken from the cache, so far (for tests).
+    pub(crate) encoded: usize,
+}
+
+impl RecordCache {
+    /// The records of collection `cid`'s `boards`; `None` when one is too long to be read back.
+    /// Only those boards' games are kept for the collection's next write.
+    fn records(&mut self, cid: &str, boards: &[&BoardState]) -> Option<Vec<GameRecord>> {
+        let before = self.by_cid.remove(cid).unwrap_or_default();
+        let mut now: HashMap<u64, Option<GameRecord>> = HashMap::with_capacity(boards.len());
+        let mut out = Vec::with_capacity(boards.len());
+        let mut whole = true;
+        for board in boards {
+            if board.illegal.is_some() {
+                out.push(with_board(GameRecord::default(), board));
+                continue;
+            }
+            let revision = board.game.revision();
+            let part = match now.get(&revision).or_else(|| before.get(&revision)) {
+                Some(part) => part.clone(),
+                None => {
+                    self.encoded = self.encoded.saturating_add(1);
+                    game_part(&board.game)
+                }
+            };
+            now.insert(revision, part.clone());
+            match part {
+                Some(part) => out.push(with_board(part, board)),
+                None => whole = false,
+            }
+        }
+        if self.by_cid.len() >= MAX_CACHED_COLLECTIONS {
+            self.by_cid.clear();
+        }
+        self.by_cid.insert(cid.to_owned(), now);
+        whole.then_some(out)
+    }
 }
 
 /// Whether a build before plan A9-F2b reads move `node`'s comments elsewhere from what this
@@ -299,7 +402,22 @@ pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardSt
 }
 
 /// The first line and the second of a document's file. `Err(TooBig)` above the caps.
+#[cfg(test)]
 pub(crate) fn encode(
+    keys: &DocKeys,
+    active: usize,
+    boards: &[&BoardState],
+    trash: &[crate::chess_trash::Trashed],
+    instance: Option<String>,
+) -> Result<(Header, String), Blocked> {
+    encode_cached(&mut RecordCache::default(), "", keys, active, boards, trash, instance)
+}
+
+/// [`encode`] for collection `cid`, its games' records taken from `cache` where they did not
+/// change since its last write (plan A9-I3a).
+fn encode_cached(
+    cache: &mut RecordCache,
+    cid: &str,
     keys: &DocKeys,
     active: usize,
     boards: &[&BoardState],
@@ -309,7 +427,7 @@ pub(crate) fn encode(
     if boards.len() > MAX_GAMES {
         return Err(Blocked::TooBig);
     }
-    let games = boards.iter().map(|b| record(b)).collect::<Option<Vec<_>>>().ok_or(Blocked::TooBig)?;
+    let games = cache.records(cid, boards).ok_or(Blocked::TooBig)?;
     let body = serde_json::to_string(&Body { active, games, trash: trash.to_vec() }).map_err(|e| Blocked::Io(e.to_string()))?;
     if body.len() > MAX_BODY_BYTES {
         return Err(Blocked::TooBig);
@@ -407,7 +525,9 @@ impl Store {
         }
     }
 
-    /// Store a document's games under `cid`.
+    /// Store a document's games under `cid`: in memory now, or, in a folder, by the store's
+    /// writer thread ([`Written::Queued`]; plan A9-I3b). What can be told without the file (too
+    /// many games, no lock) is said now.
     pub(crate) fn write(
         &mut self,
         cid: &str,
@@ -415,11 +535,28 @@ impl Store {
         active: usize,
         boards: &[&BoardState],
         trash: &[crate::chess_trash::Trashed],
-    ) -> Result<(), Blocked> {
+    ) -> Result<Written, Blocked> {
         match self {
-            Store::Off => Ok(()),
-            Store::Files(f) => f.write(cid, keys, active, boards, trash),
-            Store::Memory(m) => m.write(cid, keys, active, boards, trash),
+            Store::Off => Ok(Written::Now),
+            Store::Files(f) => f.submit(cid, keys, active, boards, trash).map(Written::Queued),
+            Store::Memory(m) => m.write(cid, keys, active, boards, trash).map(|()| Written::Now),
+        }
+    }
+
+    /// What became of the writes [`Store::write`] queued, since the last call: each one's
+    /// collection id, generation and result.
+    pub(crate) fn take_written(&mut self) -> Vec<crate::chess_writer::Done<Result<(), Blocked>>> {
+        match self {
+            Store::Files(f) => f.writer.as_ref().map(GamesWriter::take_done).unwrap_or_default(),
+            Store::Off | Store::Memory(_) => Vec::new(),
+        }
+    }
+
+    /// Wait until the queued writes have ended, at most `timeout`. Whether they all have.
+    pub(crate) fn settle(&self, timeout: std::time::Duration) -> bool {
+        match self {
+            Store::Files(f) => f.writer.as_ref().is_none_or(|w| w.settle(timeout)),
+            Store::Off | Store::Memory(_) => true,
         }
     }
 
@@ -440,11 +577,15 @@ pub(crate) struct FileStore {
     recovery: crate::RecoveryStore,
     /// Files that couldn't be read nor set aside: not looked at again this session.
     ignored: HashSet<PathBuf>,
+    /// The games' records as last written (plan A9-I3a).
+    records: RecordCache,
+    /// The writer thread, made with the first write ([`FileStore::submit`]; plan A9-I3b).
+    writer: Option<GamesWriter>,
 }
 
 impl FileStore {
     pub(crate) fn new(dir: PathBuf, recovery: crate::RecoveryStore) -> FileStore {
-        FileStore { dir, recovery, ignored: HashSet::new() }
+        FileStore { dir, recovery, ignored: HashSet::new(), records: RecordCache::default(), writer: None }
     }
 
     fn path(&self, cid: &str) -> PathBuf {
@@ -488,25 +629,13 @@ impl FileStore {
         serde_json::from_slice(bytes.get(at.checked_add(1)?..)?).ok()
     }
 
-    /// Set the file at `path` aside as `….bad` (or `….bad.1`, …), never over another one. The
-    /// name it was kept under, or `None` when it couldn't be renamed (it is then ignored).
+    /// [`set_aside`], and a file that couldn't be renamed is not looked at again.
     fn set_aside(&mut self, path: &Path) -> Option<String> {
-        let name = path.file_name()?.to_string_lossy().into_owned();
-        for n in 0..100u32 {
-            let bad = if n == 0 { format!("{name}.bad") } else { format!("{name}.bad.{n}") };
-            let to = path.with_file_name(&bad);
-            if to.exists() {
-                continue;
-            }
-            if std::fs::rename(path, &to).is_ok() {
-                log::warn!("chess games file {} couldn't be read; kept as {bad}", path.display());
-                return Some(bad);
-            }
-            break;
+        let kept = set_aside(path);
+        if kept.is_none() {
+            self.ignored.insert(path.to_path_buf());
         }
-        log::warn!("chess games file {} couldn't be read nor set aside", path.display());
-        self.ignored.insert(path.to_path_buf());
-        None
+        kept
     }
 
     fn find(&mut self, keys: &DocKeys, taken: &HashSet<String>) -> Found {
@@ -555,6 +684,32 @@ impl FileStore {
         found
     }
 
+    /// The file a write of `cid`'s games makes: encoded here, from what changed (plan A9-I3a);
+    /// what needs the file itself is [`commit`]'s.
+    fn prepare(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<FileJob, Blocked> {
+        if !plain_cid(cid) {
+            return Err(Blocked::Io(format!("bad collection id {cid:?}")));
+        }
+        let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
+        let (header, body) = encode_cached(&mut self.records, cid, keys, active, boards, trash, Some(instance.clone()))?;
+        let line = serde_json::to_string(&header).map_err(|e| Blocked::Io(e.to_string()))?;
+        let mut bytes = Vec::with_capacity(line.len().saturating_add(body.len()).saturating_add(2));
+        bytes.extend_from_slice(line.as_bytes());
+        bytes.push(b'\n');
+        bytes.extend_from_slice(body.as_bytes());
+        bytes.push(b'\n');
+        Ok(FileJob { path: self.path(cid), bytes, instance })
+    }
+
+    /// Write `cid`'s games now, on this thread (the tests; the writer thread is [`Self::submit`]).
+    #[cfg(test)]
     fn write(
         &mut self,
         cid: &str,
@@ -563,42 +718,75 @@ impl FileStore {
         boards: &[&BoardState],
         trash: &[crate::chess_trash::Trashed],
     ) -> Result<(), Blocked> {
-        if !plain_cid(cid) {
-            return Err(Blocked::Io(format!("bad collection id {cid:?}")));
-        }
-        let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
-        let path = self.path(cid);
-        let head = FileStore::head(&path);
-        // A newer PdfCraft's file is only read here: never written over.
-        if let Some(Head::Newer(version, _)) = head {
-            return Err(Blocked::Newer(version));
-        }
-        let (header, body) = encode(keys, active, boards, trash, Some(instance.clone()))?;
-        match head {
-            Some(Head::This(h)) => {
-                if let Some(other) = h.instance.as_deref().filter(|w| *w != instance)
-                    && self.recovery.held_by_another_instance(other)
-                {
-                    return Err(Blocked::OtherInstance);
-                }
-            }
-            None | Some(Head::Newer(..)) => {}
-            // What is there can't be read: keep it, never write over it.
-            Some(Head::Bad) => {
-                if self.set_aside(&path).is_none() {
-                    return Err(Blocked::Io("the file there couldn't be set aside".into()));
-                }
-            }
-        }
-        let line = serde_json::to_string(&header).map_err(|e| Blocked::Io(e.to_string()))?;
-        let mut bytes = Vec::with_capacity(line.len().saturating_add(body.len()).saturating_add(2));
-        bytes.extend_from_slice(line.as_bytes());
-        bytes.push(b'\n');
-        bytes.extend_from_slice(body.as_bytes());
-        bytes.push(b'\n');
-        std::fs::create_dir_all(&self.dir).map_err(|e| Blocked::Io(e.to_string()))?;
-        crate::editing::write_atomically(&path.to_string_lossy(), &bytes).map_err(|e| Blocked::Io(e.to_string()))
+        let job = self.prepare(cid, keys, active, boards, trash)?;
+        commit(&self.recovery, &self.dir, job)
     }
+
+    /// Have `cid`'s games written by the store's writer thread, which is made with the first
+    /// write: the request's generation ([`Written::Queued`]). What can be told here (a bad id, no
+    /// lock, too many games) is said now.
+    fn submit(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<u64, Blocked> {
+        let job = self.prepare(cid, keys, active, boards, trash)?;
+        let writer = self.writer.get_or_insert_with(|| {
+            let (recovery, dir) = (self.recovery.clone(), self.dir.clone());
+            crate::chess_writer::StoreWriter::new(
+                "chess-games-writer",
+                move |_cid: &str, job| commit(&recovery, &dir, job),
+                |panic| Err(Blocked::Io(format!("the writer stopped: {panic}"))),
+            )
+        });
+        Ok(writer.submit(cid, job))
+    }
+}
+
+/// Write `job` into the folder `dir`, unless the file there is a newer PdfCraft's (only read here,
+/// never written over) or another live instance's; a file that can't be read is set aside first,
+/// never written over.
+fn commit(recovery: &crate::RecoveryStore, dir: &Path, job: FileJob) -> Result<(), Blocked> {
+    match FileStore::head(&job.path) {
+        Some(Head::Newer(version, _)) => return Err(Blocked::Newer(version)),
+        Some(Head::This(h)) => {
+            if let Some(other) = h.instance.as_deref().filter(|w| *w != job.instance)
+                && recovery.held_by_another_instance(other)
+            {
+                return Err(Blocked::OtherInstance);
+            }
+        }
+        // What is there can't be read: kept aside, never written over.
+        Some(Head::Bad) if set_aside(&job.path).is_none() => {
+            return Err(Blocked::Io("the file there couldn't be set aside".into()));
+        }
+        None | Some(Head::Bad) => {}
+    }
+    std::fs::create_dir_all(dir).map_err(|e| Blocked::Io(e.to_string()))?;
+    crate::editing::write_atomically(&job.path.to_string_lossy(), &job.bytes).map_err(|e| Blocked::Io(e.to_string()))
+}
+
+/// Set the file at `path` aside as `….bad` (or `….bad.1`, …), never over another one. The name it
+/// was kept under, or `None` when it couldn't be renamed.
+fn set_aside(path: &Path) -> Option<String> {
+    let name = path.file_name()?.to_string_lossy().into_owned();
+    for n in 0..100u32 {
+        let bad = if n == 0 { format!("{name}.bad") } else { format!("{name}.bad.{n}") };
+        let to = path.with_file_name(&bad);
+        if to.exists() {
+            continue;
+        }
+        if std::fs::rename(path, &to).is_ok() {
+            log::warn!("chess games file {} couldn't be read; kept as {bad}", path.display());
+            return Some(bad);
+        }
+        break;
+    }
+    log::warn!("chess games file {} couldn't be read nor set aside", path.display());
+    None
 }
 
 /// One document's games in the web's value.
@@ -630,6 +818,8 @@ pub(crate) struct MemoryStore {
     /// The value was written by a newer PdfCraft, in this format version: it is only read, and
     /// never written back (plan A9-G12).
     newer: Option<u32>,
+    /// The games' records as last written (plan A9-I3a).
+    pub(crate) records: RecordCache,
 }
 
 impl MemoryStore {
@@ -721,7 +911,7 @@ impl MemoryStore {
         if let Some(v) = self.newer.or(entry_newer) {
             return Err(Blocked::Newer(v));
         }
-        let (header, body) = encode(keys, active, boards, trash, None)?;
+        let (header, body) = encode_cached(&mut self.records, cid, keys, active, boards, trash, None)?;
         let others: usize = self.entries.iter().filter(|e| e.cid != cid).map(|e| e.body.len().saturating_add(512)).sum();
         if others.saturating_add(body.len()) > WEB_MAX_BYTES {
             return Err(Blocked::TooBig);
@@ -919,12 +1109,13 @@ pub(crate) mod tests {
         let board = annotated();
         let rec = record(&board).unwrap();
         // PGN keeps the comment before Nf3 in its place since plan A9-F4; it is stored all the same,
-        // with e5's, into which a build before plan A9-F2b reads it (R9-01).
+        // with e5's, into which a build before plan A9-F2b reads it (R9-01). Every comment before a
+        // move is stored, decided without reading the PGN back (plan A9-I3a): c5's too.
         let (plain, _) = Game::from_pgn(&rec.pgn).unwrap();
         let nf3 = plain.node_at(&NodePath::new(vec![0, 0, 0])).unwrap();
         assert_eq!(plain.comment_before(nf3), "before Nf3");
         let stored: Vec<(&[u16], &str, &str)> = rec.comments.iter().map(|c| (c.path.as_slice(), c.after.as_str(), c.before.as_str())).collect();
-        assert_eq!(stored, [(&[0u16, 0][..], "after e5", ""), (&[0u16, 0, 0][..], "", "before Nf3")]);
+        assert_eq!(stored, [(&[0u16, 0][..], "after e5", ""), (&[0u16, 1][..], "", "before c5"), (&[0u16, 0, 0][..], "", "before Nf3")]);
         let text = serde_json::to_string(&rec).unwrap();
         let back = restore(&serde_json::from_str(&text).unwrap(), None).unwrap();
         same(&board, &back);
@@ -1200,14 +1391,24 @@ pub(crate) mod tests {
         let written = std::fs::read(store.path("abc-2")).unwrap();
         // The version 1 format, unchanged; the PGN in it is the one writer's since plan A9-F4
         // (wrapped, a comment before a move after the variations of the move before), and reads
-        // back, with the comments stored apart, to the same games.
+        // back, with the comments stored apart, to the same games. Every comment the sample stores
+        // apart is stored still; since plan A9-I3a, decided without reading the PGN back, every
+        // comment before a move is too.
         let without_pgn = |(header, mut body): (Value, Value)| {
             for g in body["games"].as_array_mut().into_iter().flatten() {
                 g["pgn"] = Value::Null;
+                g["comments"] = Value::Null;
             }
             (header, body)
         };
         assert_eq!(without_pgn(v1_lines(&written)), without_pgn(v1_lines(GAMES_V1)), "the version 1 format, unchanged");
+        let comments = |(_, body): (Value, Value)| -> Vec<Value> {
+            body["games"].as_array().into_iter().flatten().flat_map(|g| g["comments"].as_array().cloned().unwrap_or_default()).collect()
+        };
+        let now = comments(v1_lines(&written));
+        for c in comments(v1_lines(GAMES_V1)) {
+            assert!(now.contains(&c), "still stored: {c}");
+        }
         let (_, written_body) = v1_lines(&written);
         let (again, lost) = decode(&serde_json::from_value(written_body).unwrap(), Some(DocId(7)));
         assert_eq!((again.len(), lost), (sample.len(), 0));
@@ -1301,5 +1502,122 @@ pub(crate) mod tests {
         m.write("abc-1", &keys(), 0, &[&BoardState::default()], &[]).unwrap();
         let written: Value = serde_json::from_str(&m.take_value().unwrap()).unwrap();
         assert_eq!(written["entries"][0]["header"]["version"], json!(VERSION + 1), "kept as it was when the value is written");
+    }
+
+    /// 120 games of 80 plies, with a comment every eighth move and a variation every twentieth,
+    /// as a book's games are (plan A9-I3a).
+    fn book_games() -> Vec<BoardState> {
+        (0..120usize)
+            .map(|g| {
+                let mut b = BoardState::default();
+                for ply in 0..80usize {
+                    let legal = b.game.legal_moves();
+                    let Some(pick) = legal.get((ply * 7 + g) % legal.len().max(1)).cloned() else { break };
+                    let here = b.game.current();
+                    let _ = b.game.play_san(&pick);
+                    let next = b.game.current();
+                    // A variation beside the move, the main line going on from the move.
+                    if ply % 20 == 10
+                        && let Some(other) = legal.get((ply * 7 + g + 1) % legal.len()).filter(|o| **o != pick).cloned()
+                    {
+                        b.game.go_to_node(here);
+                        let _ = b.game.play_san(&other);
+                        b.game.go_to_node(next);
+                    }
+                    if ply % 8 == 3 {
+                        let n = b.game.current();
+                        let _ = b.game.set_comment(n, "A quiet move that keeps the balance.");
+                    }
+                }
+                b
+            })
+            .collect()
+    }
+
+    /// Plan A9-I3a (A5-02): the autosave of a document's 120 games takes at most 5 ms of the
+    /// interface thread (the best of five, in the tests' optimised build). It read every game's
+    /// PGN back at every save. Timing: `cargo test -p pdfcraft-ui-egui --lib -- --ignored perf_`.
+    #[test]
+    #[ignore = "timing (plan A9-I3a): run with --ignored perf_"]
+    fn perf_the_autosave_of_120_games_takes_at_most_5_ms() {
+        let boards = book_games();
+        let moves: usize = boards.iter().map(|b| b.game.main_line().len()).sum();
+        assert!(moves > 120 * 60, "long games: {moves} moves");
+        let mut boards = boards;
+        // The web's store (no disk): what a save costs the frame is the encoding. The first write
+        // encodes every game; then one game changes before each write.
+        let (mut m, _) = MemoryStore::load(None);
+        let refs: Vec<&BoardState> = boards.iter().collect();
+        m.write("perf-1", &keys(), 0, &refs, &[]).unwrap();
+        let mut best = f64::MAX;
+        for round in 0..5usize {
+            let b = &mut boards[round * 7];
+            let n = b.game.current();
+            let _ = b.game.set_comment(n, &format!("Changed {round}."));
+            let refs: Vec<&BoardState> = boards.iter().collect();
+            let started = std::time::Instant::now();
+            m.write("perf-1", &keys(), 0, &refs, &[]).unwrap();
+            best = best.min(started.elapsed().as_secs_f64() * 1000.0);
+        }
+        eprintln!("autosave of 120 games ({moves} moves), one changed: {best:.2} ms");
+        assert!(best <= 5.0, "{best:.2} ms");
+    }
+
+    /// Plan A9-I3a (A5-02): a write encodes again only the games that changed since the
+    /// collection's last write; the others' records are taken as they were, and the file says the
+    /// same as when every game is encoded.
+    #[test]
+    fn a_write_encodes_only_the_games_that_changed() {
+        let mut boards = book_games();
+        let (mut m, _) = MemoryStore::load(None);
+        let refs: Vec<&BoardState> = boards.iter().collect();
+        m.write("c-1", &keys(), 0, &refs, &[]).unwrap();
+        assert_eq!(m.records.encoded, 120);
+        let b = &mut boards[5];
+        let n = b.game.current();
+        b.game.set_comment(n, "A new comment.").unwrap();
+        let refs: Vec<&BoardState> = boards.iter().collect();
+        m.write("c-1", &keys(), 0, &refs, &[]).unwrap();
+        assert_eq!(m.records.encoded, 121, "one of 120 encoded again");
+        // Moving through a game or flipping its board is no new encoding, and is written.
+        boards[9].flipped = true;
+        let refs: Vec<&BoardState> = boards.iter().collect();
+        m.write("c-1", &keys(), 0, &refs, &[]).unwrap();
+        assert_eq!(m.records.encoded, 121);
+        let cached = m.find(&keys(), &HashSet::new()).games.unwrap().1;
+        let fresh = encode(&keys(), 0, &boards.iter().collect::<Vec<_>>(), &[], None).unwrap().1;
+        assert_eq!(serde_json::to_value(&cached).unwrap(), serde_json::from_str::<Value>(&fresh).unwrap());
+    }
+
+    /// Plan A9-I3a: without reading the PGN back, every comment that PGN would not give back as it
+    /// is, to this build or an installed one, is stored beside it: one with a line break or double
+    /// spaces, one longer than the old readers' 4 KiB, a `[%clk]` command, every comment before a
+    /// move. A plain comment is not.
+    #[test]
+    fn comments_the_pgn_changes_come_back_without_reading_it_back() {
+        let mut b = BoardState::default();
+        let long = "word ".repeat(1000).trim_end().to_owned();
+        let said = ["a plain comment", "two  spaces", long.as_str(), "time [%clk 0:01:00]", "a line\nbreak"];
+        for (m, text) in ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5"].iter().zip(said) {
+            b.game.play_uci(m).unwrap();
+            let n = b.game.current();
+            b.game.set_comment(n, text).unwrap();
+        }
+        b.game.play_uci("a7a6").unwrap();
+        let a6 = b.game.current();
+        b.game.set_comment_before(a6, "the Morphy").unwrap();
+        let rec = record(&b).unwrap();
+        // The plain comment of 1.e4 is not stored: it comes back from the PGN. The one longer than
+        // an old reader's 4 KiB is, and so is the comment before 3...a6.
+        let stored = |path: &[u16]| rec.comments.iter().find(|c| c.path == path);
+        assert!(stored(&[0]).is_none(), "{:?}", rec.comments.iter().map(|c| &c.path).collect::<Vec<_>>());
+        assert_eq!(stored(&[0, 0, 0]).map(|c| c.after.as_str()), Some(long.as_str()));
+        assert_eq!(stored(&[0, 0, 0, 0, 0, 0]).map(|c| c.before.as_str()), Some("the Morphy"));
+        let back = restore(&rec, None).unwrap();
+        for node in nodes(&b.game) {
+            let path = b.game.path_of(node).unwrap();
+            let n = back.game.node_at(&path).unwrap();
+            assert_eq!((back.game.comment(n), back.game.comment_before(n)), (b.game.comment(node), b.game.comment_before(node)), "{path:?}");
+        }
     }
 }

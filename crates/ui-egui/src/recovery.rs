@@ -446,8 +446,10 @@ impl PdfCraftApp {
 
     /// Clean shutdown: documents were saved or discarded, so nothing needs recovering.
     pub fn shutdown_recovery(&mut self) {
-        // The chess games are kept whatever happens to the documents.
+        // The chess games are kept whatever happens to the documents: written, and waited for at
+        // most `SETTLE` (plan A9-I3b), since the window closes next.
         self.flush_chess_games();
+        self.settle_chess_games();
         if self.first_dirty().is_none()
             && let Some(store) = &self.recovery
         {

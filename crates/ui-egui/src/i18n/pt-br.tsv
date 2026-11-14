@@ -3497,6 +3497,51 @@ the move's comment	Move comment	Comentário do lance
 	mates in {m}	dá mate em {m}
 	supposes castling is allowed	supõe o roque permitido
 	Mate in {n}: both sides mate, so who moves stays assumed	Mate em {n}: os dois lados dão mate, então quem joga continua suposto
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	A página desenha mais traçados do que os examinados; o resto foi pulado.
+	Content streams that couldn't be decoded and were skipped: {n}	Fluxos de conteúdo que não puderam ser decodificados e foram pulados: {n}
+	The page's paths couldn't be read: {e}	Os traçados da página não puderam ser lidos: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	O documento não pode ser lido para edição, então suas imagens e traçados não foram examinados.
+	The page's text couldn't be read: {e}	O texto da página não pôde ser lido: {e}
+	Only the first {n} of the page's {total} images were looked at.	Só as primeiras {n} das {total} imagens da página foram examinadas.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Imagens não recortadas, porque os pixels das imagens da página passam do orçamento da varredura: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagrama {d}: os dois lados dão mate em {n}, então quem joga continua suposto.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Um diagrama oferece {offered} dpi; foi lido a no máximo {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	A página é grande demais para renderizar a {wanted} dpi; seus diagramas foram lidos a {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	A página não pôde ser renderizada a {wanted} dpi para a leitura ({e}); foi lida a {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagrama {d}: a leitura mudou desde que ele foi corrigido (agora {fen}); a correção foi mantida.
+	The frames around text were not looked for: {e}	As molduras em volta do texto não foram procuradas: {e}
+	The lines set bolder were not looked for: {e}	As linhas mais grossas que o corpo do texto não foram procuradas: {e}
+	The words set in bold were not looked for: {e}	As palavras em negrito não foram procuradas: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% da altura da página tem tinta fina demais para ser texto (uma imagem ou uma digitalização suja); essas faixas não foram lidas.
+	The general OCR failed ({e}); the glyph reader read the prose too.	O OCR geral falhou ({e}); o leitor de glifos leu também a prosa.
+	Chess OCR failed: {e}	O OCR de xadrez falhou: {e}
+	The page couldn't be rendered for chess OCR: {e}	A página não pôde ser renderizada para o OCR de xadrez: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	O OCR de xadrez foi pedido, mas precisa do modelo chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	A fonte {font} parece uma fonte de xadrez, mas não está no catálogo; o texto dela ficou como é extraído.
+	The page has no visible area; it is left out.	A página não tem área visível; ela fica de fora.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Os parágrafos da página não puderam ser lidos ({e}); as linhas dela foram agrupadas pelo espaçamento.
+	The page's diagrams couldn't be read; they are left out.	Os diagramas da página não puderam ser lidos; eles ficam de fora.
+	A correction ({id}) was not used: {e}	Uma correção ({id}) não foi usada: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	A notação descritiva ({examples}) não é suportada; os lances dela não foram lidos.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	O documento tem {n} partidas, o máximo que guarda: daqui em diante, nenhuma partida começa.
+	This page couldn't be read: {e}	Esta página não pôde ser lida: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (o OCR de xadrez precisa do modelo chess-glyphs)
+	the page has no text layer	a página não tem camada de texto
+	the text layer has two-byte codes with no Unicode text	a camada de texto tem códigos de dois bytes sem texto Unicode
+	the text layer extracts as replacement characters	a camada de texto é extraída como caracteres de substituição
+	the text layer's Unicode map is dead	o mapa Unicode da camada de texto está morto
+	chess-font glyphs that couldn't be resolved: {n}	glifos de fonte de xadrez que não puderam ser resolvidos: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	lances com um símbolo solto no lugar da peça, onde uma camada de OCR anterior perdeu as figurinhas: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	a camada de texto é texto invisível sobre uma imagem da página: o OCR de outro programa
+	no piece model is loaded	nenhum modelo de peças está carregado
+	the page raster's resolution is not a positive number	a resolução do raster da página não é um número positivo
+	the diagram's box or corners are not finite numbers on this page	a caixa ou os cantos do diagrama não são números finitos nesta página
+	the diagram lies outside the page raster	o diagrama fica fora do raster da página
+	the diagram's corners do not form a quadrilateral	os cantos do diagrama não formam um quadrilátero
+	the page has more diagrams than are read on one page	a página tem mais diagramas do que os lidos numa página
+	the piece model failed: {e}	o modelo de peças falhou: {e}
+	the piece model's output is not a probability matrix: {e}	a saída do modelo de peças não é uma matriz de probabilidades: {e}
 	Back to Diagrams	Voltar para Diagramas
 	Tools panel collapsed	Painel Ferramentas recolhido
 	Show the page (F6)	Mostrar a página (F6)

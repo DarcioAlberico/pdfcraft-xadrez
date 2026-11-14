@@ -3502,6 +3502,51 @@ the move's comment	Move comment	Коментар до ходу
 	mates in {m}	матує у {m} ходи
 	supposes castling is allowed	припускає, що рокіровка дозволена
 	Mate in {n}: both sides mate, so who moves stays assumed	Мат у {n} ходи: матують обидві сторони, тож черга ходу лишається припущеною
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Сторінка малює більше контурів, ніж переглядається; решту пропущено.
+	Content streams that couldn't be decoded and were skipped: {n}	Потоки вмісту, які не вдалося декодувати і які пропущено: {n}
+	The page's paths couldn't be read: {e}	Не вдалося прочитати контури сторінки: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Документ не можна прочитати для редагування, тому його зображення і контури не переглядалися.
+	The page's text couldn't be read: {e}	Не вдалося прочитати текст сторінки: {e}
+	Only the first {n} of the page's {total} images were looked at.	Переглянуто лише перші {n} із {total} зображень сторінки.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Зображення не обрізано, бо пікселі зображень сторінки перевищують бюджет пошуку: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Діаграма {d}: мат у {n} є в обох сторін, тож черга ходу лишається припущеною.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Діаграма пропонує {offered} dpi; її прочитано щонайбільше з {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Сторінка завелика для відображення з {wanted} dpi; її діаграми прочитано з {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Не вдалося відобразити сторінку з {wanted} dpi для читання ({e}); її прочитано з {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Діаграма {d}: розпізнавання змінилося після виправлення (тепер {fen}); виправлення збережено.
+	The frames around text were not looked for: {e}	Рамки навколо тексту не шукалися: {e}
+	The lines set bolder were not looked for: {e}	Рядки, набрані жирніше за основний текст, не шукалися: {e}
+	The words set in bold were not looked for: {e}	Слова, набрані жирним, не шукалися: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% висоти сторінки містить забагато дрібної фарби, щоб бути текстом (малюнок або запилений скан); ці смуги не читалися.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Загальне OCR не спрацювало ({e}); читач гліфів прочитав і прозу.
+	Chess OCR failed: {e}	Шахове OCR не спрацювало: {e}
+	The page couldn't be rendered for chess OCR: {e}	Не вдалося відобразити сторінку для шахового OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Запитано шахове OCR, але йому потрібна модель chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Шрифт {font} схожий на шаховий, але його немає в каталозі; його текст залишено таким, як він видобувається.
+	The page has no visible area; it is left out.	Сторінка не має видимої області; її пропущено.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Не вдалося прочитати абзаци сторінки ({e}); її рядки згруповано за інтервалами.
+	The page's diagrams couldn't be read; they are left out.	Не вдалося прочитати діаграми сторінки; їх пропущено.
+	A correction ({id}) was not used: {e}	Виправлення ({id}) не використано: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Описова нотація ({examples}) не підтримується; її ходи не прочитано.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	У документі {n} партій — більше він не зберігає: далі жодна партія не починається.
+	This page couldn't be read: {e}	Не вдалося прочитати цю сторінку: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (шаховому OCR потрібна модель chess-glyphs)
+	the page has no text layer	сторінка не має текстового шару
+	the text layer has two-byte codes with no Unicode text	текстовий шар має двобайтові коди без тексту Unicode
+	the text layer extracts as replacement characters	текстовий шар видобувається як символи заміни
+	the text layer's Unicode map is dead	карта Unicode текстового шару не працює
+	chess-font glyphs that couldn't be resolved: {n}	гліфи шахових шрифтів, які не вдалося розпізнати: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	ходи зі стороннім символом замість фігури, де попередній шар OCR втратив фігурки: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	текстовий шар — невидимий текст поверх зображення сторінки: OCR іншої програми
+	no piece model is loaded	модель фігур не завантажено
+	the page raster's resolution is not a positive number	роздільність растра сторінки не є додатним числом
+	the diagram's box or corners are not finite numbers on this page	рамка або кути діаграми на цій сторінці не є скінченними числами
+	the diagram lies outside the page raster	діаграма лежить поза растром сторінки
+	the diagram's corners do not form a quadrilateral	кути діаграми не утворюють чотирикутник
+	the page has more diagrams than are read on one page	на сторінці більше діаграм, ніж читається на одній сторінці
+	the piece model failed: {e}	модель фігур дала збій: {e}
+	the piece model's output is not a probability matrix: {e}	вихід моделі фігур не є матрицею ймовірностей: {e}
 	Back to Diagrams	Назад до «Діаграми»
 	Tools panel collapsed	Панель «Інструменти» згорнуто
 	Show the page (F6)	Показати сторінку (F6)

@@ -3476,6 +3476,51 @@ the move's comment	Move comment	Hamlenin yorumu
 	mates in {m}	{m} hamlede mat eder
 	supposes castling is allowed	rok yapmanın serbest olduğunu varsayar
 	Mate in {n}: both sides mate, so who moves stays assumed	{n} hamlede mat: iki taraf da mat ediyor, bu yüzden hamle sırası varsayılmış kalıyor
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Sayfa, incelenenden daha fazla yol çiziyor; geri kalanı atlandı.
+	Content streams that couldn't be decoded and were skipped: {n}	Kodu çözülemeyen ve atlanan içerik akışları: {n}
+	The page's paths couldn't be read: {e}	Sayfanın yolları okunamadı: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Belge düzenleme için okunamıyor, bu yüzden görüntüleri ve yolları incelenmedi.
+	The page's text couldn't be read: {e}	Sayfanın metni okunamadı: {e}
+	Only the first {n} of the page's {total} images were looked at.	Sayfanın {total} görüntüsünden yalnızca ilk {n} tanesi incelendi.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Sayfanın görüntü pikselleri tarama bütçesini aştığı için kırpılmayan görüntüler: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diyagram {d}: iki taraf da {n} hamlede mat ediyor, bu yüzden hamle sırası varsayılmış kalıyor.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Bir diyagram {offered} dpi sunuyor; en fazla {max} dpi ile okundu (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Sayfa {wanted} dpi ile işlenemeyecek kadar büyük; diyagramları {read} dpi ile okundu.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Sayfa okuma için {wanted} dpi ile işlenemedi ({e}); {read} dpi ile okundu.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diyagram {d}: düzeltildiğinden beri okuma değişti (şimdi {fen}); düzeltme korunuyor.
+	The frames around text were not looked for: {e}	Metnin etrafındaki çerçeveler aranmadı: {e}
+	The lines set bolder were not looked for: {e}	Gövde metninden daha kalın dizilmiş satırlar aranmadı: {e}
+	The words set in bold were not looked for: {e}	Kalın dizilmiş sözcükler aranmadı: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	Sayfa yüksekliğinin %{p} kadarı metin olamayacak kadar çok ince mürekkep içeriyor (bir resim veya tozlu bir tarama); bu şeritler okunmadı.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Genel OCR başarısız oldu ({e}); glif okuyucu düzyazıyı da okudu.
+	Chess OCR failed: {e}	Satranç OCR başarısız oldu: {e}
+	The page couldn't be rendered for chess OCR: {e}	Sayfa satranç OCR için işlenemedi: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Satranç OCR istendi, ancak chess-glyphs modeli gerekiyor.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	{font} yazı tipi bir satranç yazı tipine benziyor ama katalogda yok; metni çıkarıldığı gibi tutuldu.
+	The page has no visible area; it is left out.	Sayfanın görünür alanı yok; dışarıda bırakıldı.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Sayfanın paragrafları okunamadı ({e}); satırları aralığa göre gruplandı.
+	The page's diagrams couldn't be read; they are left out.	Sayfanın diyagramları okunamadı; dışarıda bırakıldılar.
+	A correction ({id}) was not used: {e}	Bir düzeltme ({id}) kullanılmadı: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Tanımlayıcı notasyon ({examples}) desteklenmiyor; hamleleri okunmadı.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Belge {n} oyun içeriyor, tutabileceği en fazla sayı bu: buradan sonra hiçbir oyun başlamıyor.
+	This page couldn't be read: {e}	Bu sayfa okunamadı: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (satranç OCR için chess-glyphs modeli gerekir)
+	the page has no text layer	sayfanın metin katmanı yok
+	the text layer has two-byte codes with no Unicode text	metin katmanında Unicode metni olmayan iki baytlık kodlar var
+	the text layer extracts as replacement characters	metin katmanı yerine koyma karakterleri olarak çıkıyor
+	the text layer's Unicode map is dead	metin katmanının Unicode eşlemesi çalışmıyor
+	chess-font glyphs that couldn't be resolved: {n}	çözümlenemeyen satranç yazı tipi glifleri: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	taşın yerinde başıboş bir simge olan hamleler, önceki bir OCR katmanının taş simgelerini kaybettiği yerde: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	metin katmanı, sayfanın bir görüntüsü üzerindeki görünmez metin: başka bir programın OCR'ı
+	no piece model is loaded	yüklü bir taş modeli yok
+	the page raster's resolution is not a positive number	sayfa rasterının çözünürlüğü pozitif bir sayı değil
+	the diagram's box or corners are not finite numbers on this page	diyagramın kutusu veya köşeleri bu sayfada sonlu sayılar değil
+	the diagram lies outside the page raster	diyagram sayfa rasterının dışında
+	the diagram's corners do not form a quadrilateral	diyagramın köşeleri bir dörtgen oluşturmuyor
+	the page has more diagrams than are read on one page	sayfada, bir sayfada okunandan daha fazla diyagram var
+	the piece model failed: {e}	taş modeli başarısız oldu: {e}
+	the piece model's output is not a probability matrix: {e}	taş modelinin çıktısı bir olasılık matrisi değil: {e}
 	Back to Diagrams	Diyagramlar'a dön
 	Tools panel collapsed	Araçlar paneli daraltıldı
 	Show the page (F6)	Sayfayı göster (F6)

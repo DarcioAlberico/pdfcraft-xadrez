@@ -3393,6 +3393,51 @@ the move's comment	Move comment	Комментарий к ходу
 	mates in {m}	матует в {m} хода
 	supposes castling is allowed	предполагает, что рокировка разрешена
 	Mate in {n}: both sides mate, so who moves stays assumed	Мат в {n} хода: матуют обе стороны, поэтому очередь хода остаётся предполагаемой
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Страница рисует больше контуров, чем просматривается; остальные пропущены.
+	Content streams that couldn't be decoded and were skipped: {n}	Потоки содержимого, которые не удалось декодировать и которые были пропущены: {n}
+	The page's paths couldn't be read: {e}	Не удалось прочитать контуры страницы: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Документ нельзя прочитать для редактирования, поэтому его изображения и контуры не просматривались.
+	The page's text couldn't be read: {e}	Не удалось прочитать текст страницы: {e}
+	Only the first {n} of the page's {total} images were looked at.	Просмотрены только первые {n} из {total} изображений страницы.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Изображения не обрезаны, так как пиксели изображений страницы превышают бюджет поиска: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Диаграмма {d}: мат в {n} есть у обеих сторон, поэтому очередь хода остаётся предполагаемой.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Диаграмма предлагает {offered} dpi; она прочитана не более чем с {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Страница слишком велика для отрисовки с {wanted} dpi; её диаграммы прочитаны с {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Не удалось отрисовать страницу с {wanted} dpi для чтения ({e}); она прочитана с {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Диаграмма {d}: распознавание изменилось после исправления (теперь {fen}); исправление сохранено.
+	The frames around text were not looked for: {e}	Рамки вокруг текста не искались: {e}
+	The lines set bolder were not looked for: {e}	Строки, набранные жирнее основного текста, не искались: {e}
+	The words set in bold were not looked for: {e}	Слова, набранные жирным, не искались: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% высоты страницы содержит слишком много мелкой краски, чтобы быть текстом (рисунок или пыльный скан); эти полосы не читались.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Общее OCR не сработало ({e}); читатель глифов прочитал и прозу.
+	Chess OCR failed: {e}	Шахматное OCR не сработало: {e}
+	The page couldn't be rendered for chess OCR: {e}	Не удалось отрисовать страницу для шахматного OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Запрошено шахматное OCR, но ему нужна модель chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Шрифт {font} похож на шахматный, но его нет в каталоге; его текст оставлен в том виде, в каком извлекается.
+	The page has no visible area; it is left out.	У страницы нет видимой области; она пропущена.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Не удалось прочитать абзацы страницы ({e}); её строки сгруппированы по интервалам.
+	The page's diagrams couldn't be read; they are left out.	Не удалось прочитать диаграммы страницы; они пропущены.
+	A correction ({id}) was not used: {e}	Исправление ({id}) не использовано: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Описательная нотация ({examples}) не поддерживается; её ходы не прочитаны.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	В документе {n} партий — больше он не хранит: дальше ни одна партия не начинается.
+	This page couldn't be read: {e}	Не удалось прочитать эту страницу: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (шахматному OCR нужна модель chess-glyphs)
+	the page has no text layer	у страницы нет текстового слоя
+	the text layer has two-byte codes with no Unicode text	в текстовом слое двухбайтовые коды без текста Unicode
+	the text layer extracts as replacement characters	текстовый слой извлекается как символы замены
+	the text layer's Unicode map is dead	карта Unicode текстового слоя не работает
+	chess-font glyphs that couldn't be resolved: {n}	глифы шахматных шрифтов, которые не удалось распознать: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	ходы с посторонним символом вместо фигуры, где прежний слой OCR потерял фигурки: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	текстовый слой — невидимый текст поверх изображения страницы: OCR другой программы
+	no piece model is loaded	модель фигур не загружена
+	the page raster's resolution is not a positive number	разрешение растра страницы не является положительным числом
+	the diagram's box or corners are not finite numbers on this page	рамка или углы диаграммы на этой странице не являются конечными числами
+	the diagram lies outside the page raster	диаграмма лежит за пределами растра страницы
+	the diagram's corners do not form a quadrilateral	углы диаграммы не образуют четырёхугольник
+	the page has more diagrams than are read on one page	на странице больше диаграмм, чем читается на одной странице
+	the piece model failed: {e}	модель фигур дала сбой: {e}
+	the piece model's output is not a probability matrix: {e}	выход модели фигур не является матрицей вероятностей: {e}
 	Back to Diagrams	Назад в «Диаграммы»
 	Tools panel collapsed	Панель «Инструменты» свёрнута
 	Show the page (F6)	Показать страницу (F6)

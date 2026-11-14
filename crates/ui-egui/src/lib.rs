@@ -57,6 +57,7 @@ mod chess_moves_tree;
 mod chess_ocr_area;
 mod chess_panel_head;
 mod chess_pieces_ui;
+mod chess_reasons;
 mod chess_redraw;
 mod chess_reference_ui;
 mod chess_samples;
@@ -74,6 +75,7 @@ mod chess_ui;
 mod chess_unsaved;
 mod chess_window;
 pub use chess_window::{ChessWindowTab, SurfaceFailuresFn};
+mod chess_writer;
 mod chrome;
 mod combine_grid;
 mod image_pick;
@@ -3253,6 +3255,11 @@ impl eframe::App for PdfCraftApp {
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
         // Before egui reads this frame's wheel input.
         self.scroll_speed.apply(ctx, raw);
+        // What the control channel injects goes through the filters below as the keyboard's
+        // events do (plan A9-Q5).
+        if let Some(control) = &self.control {
+            control.feed(raw);
+        }
         // The chess key scope (§4.2): the chess panel's keys leave the input before egui and any
         // shortcut of the app (Delete on pages or a selected annotation, the arrows) can see them.
         let blocked = self.modal_open() || self.palette_open;
