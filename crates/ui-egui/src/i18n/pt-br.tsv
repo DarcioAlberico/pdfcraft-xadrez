@@ -3564,3 +3564,7 @@ the move's comment	Move comment	Comentário do lance
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Não confirmado
 progress bar	Progress	Progresso
+	Export as book	Exportar como livro
+	The games of the list as a book, a page each, with their diagrams.	As partidas da lista como livro, uma página cada, com seus diagramas.
+	Nothing to export: an illegal position has no game.	Nada a exportar: uma posição ilegal não tem partida.
+	Games left out (an illegal position has no game): {n}	Partidas deixadas de fora (uma posição ilegal não tem partida): {n}

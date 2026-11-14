@@ -3552,3 +3552,7 @@ the move's comment	Move comment	Komentar k potezi
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Ni potrjeno
 progress bar	Progress	Napredek
+	Export as book	Izvozi kot knjigo
+	The games of the list as a book, a page each, with their diagrams.	Partije s seznama kot knjiga, vsaka na svoji strani, z diagrami.
+	Nothing to export: an illegal position has no game.	Ničesar ni za izvoz: nedovoljen položaj nima partije.
+	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}

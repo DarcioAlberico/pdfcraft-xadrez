@@ -3546,3 +3546,7 @@ the move's comment	Move comment	A lépés megjegyzése
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Nincs megerősítve
 progress bar	Progress	Előrehaladás
+	Export as book	Exportálás könyvként
+	The games of the list as a book, a page each, with their diagrams.	A lista játszmái könyvként, mindegyik külön oldalon, a diagramjaikkal.
+	Nothing to export: an illegal position has no game.	Nincs mit exportálni: szabálytalan állásnak nincs játszmája.
+	Games left out (an illegal position has no game): {n}	Kihagyott játszmák (szabálytalan állásnak nincs játszmája): {n}
