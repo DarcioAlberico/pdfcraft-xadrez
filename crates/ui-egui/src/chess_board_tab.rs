@@ -158,7 +158,8 @@ impl Regions {
     }
 
     /// The regions of two columns: the header, the board, the navigation and the engine's lines in
-    /// `left`, the trail, the moves and the bar in `right` (the chess window when wide).
+    /// `left`, the trail, the moves and the bar in `right` (the chess window when wide; while its
+    /// column shows another tab, `right` is empty and so are they).
     pub(crate) fn beside(left: Rect, right: Rect, lines: usize, eval: f32, limit: f32) -> Regions {
         let (x, top) = (finite(left.min.x), finite(left.min.y));
         let (w, h) = (finite(left.width()).max(0.0), finite(left.height()).max(0.0));
@@ -231,12 +232,14 @@ pub(crate) fn column(
 ) -> Asked {
     let eval = crate::chess_study_ui::eval_room(ui, &chess.study);
     let regions = Regions::column(rect, engine_lines(chess), row_height(ui), eval, sizing.side_limit());
-    let asked = draw(ui, t, chess, pieces, source_label, sizing, &regions, false);
+    let asked = draw(ui, t, chess, pieces, source_label, sizing, &regions, Arrangement::Column);
     ui.advance_cursor_after_rect(rect);
     asked
 }
 
-/// The Board tab in two columns, the board's `left` and the moves' `right` (a wide chess window).
+/// The Board tab in two columns, the board's `left` and the moves' `right` (a wide chess window,
+/// plan A9-I0c); with no `right` (the window's column shows its Diagrams or Text tab), the board's
+/// regions alone.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn beside(
     ui: &mut egui::Ui,
@@ -246,13 +249,23 @@ pub(crate) fn beside(
     source_label: Option<&str>,
     sizing: Sizing,
     left: Rect,
-    right: Rect,
+    right: Option<Rect>,
 ) -> Asked {
     let eval = crate::chess_study_ui::eval_room(ui, &chess.study);
-    let regions = Regions::beside(left, right, engine_lines(chess), eval, sizing.side_limit());
-    let asked = draw(ui, t, chess, pieces, source_label, sizing, &regions, true);
-    ui.advance_cursor_after_rect(left.union(right));
+    let empty = Rect::from_min_size(left.left_bottom(), vec2(0.0, 0.0));
+    let regions = Regions::beside(left, right.unwrap_or(empty), engine_lines(chess), eval, sizing.side_limit());
+    let asked =
+        draw(ui, t, chess, pieces, source_label, sizing, &regions, if right.is_some() { Arrangement::Beside } else { Arrangement::BoardOnly });
+    ui.advance_cursor_after_rect(right.map_or(left, |r| left.union(r)));
     asked
+}
+
+/// How the regions are laid out: in one column, the moves beside the board, or the board alone.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Arrangement {
+    Column,
+    Beside,
+    BoardOnly,
 }
 
 /// Where the Board tab's regions are, for the layout's tests: header, board, navigation, engine,
@@ -268,7 +281,7 @@ fn draw(
     source_label: Option<&str>,
     sizing: Sizing,
     r: &Regions,
-    two: bool,
+    layout: Arrangement,
 ) -> Asked {
     let mut asked = Asked::default();
     ui.data_mut(|d| d.insert_temp(egui::Id::new(REGIONS_ID), [r.header, r.board, r.nav, r.engine, r.trail, r.moves, r.bar]));
@@ -302,7 +315,7 @@ fn draw(
             engine_rows(ui, t, chess, r.engine);
         }
     }
-    if setting_up && !two {
+    if (setting_up && layout == Arrangement::Column) || layout == Arrangement::BoardOnly {
         return asked;
     }
     if let Some(a) = in_row(ui, r.trail, "chess-tab-trail", |ui| trail_row(ui, t, chess, source_label)) {

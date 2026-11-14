@@ -3514,40 +3514,37 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     }
 }
 
-/// T13a, T13b: the window's board is as large as its height allows. A window 760 pt wide or more
-/// has the Diagrams and Text tabs beside the board panel, and in a very wide one the board panel
-/// has the moves and its bar beside the board too (§4.1, plan A9-I0b); a narrow one shows one at
-/// a time.
+/// T13a, T13b, plan A9-I0c (§2.8.0 sketch (f)): the window's board is as large as its height
+/// allows. A window 760 pt wide or more has a column beside the board with the tabs Moves ·
+/// Diagrams · Text, the moves and their bar under the first; a narrow one shows Board · Diagrams
+/// · Text one at a time.
 #[test]
-fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
-    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
+fn a_wide_window_has_a_larger_board_beside_its_column() {
+    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
     assert!(h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board, ").rect();
-    // As large as the moves' ten rows under it leave it (plan A9-I0b: the board never scrolls).
-    assert!(board.width() > 360.0, "{board:?}");
-    let scan = h.get_by_label("Detect diagrams").rect();
-    assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
-    let moves = h.get_by_label("Moves").rect();
-    assert!(moves.min.y > board.max.y && moves.max.x < scan.min.x, "the moves under the board: {moves:?} {board:?}");
-    // Very wide: the board column has the notation beside the board (T5b), filling the column
-    // from its top, and the Diagrams tab beyond it.
-    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
-    let board = h.get_by_label_contains("Board, ").rect();
-    let moves = h.get_by_label("Moves").rect();
+    assert!(board.width() > 480.0, "{board:?}");
+    let moves = moves_region(&h).rect();
     assert!(moves.min.x > board.max.x && moves.min.y < board.center().y, "the moves beside the board: {moves:?} {board:?}");
-    assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
-    // The bar at the foot of the moves' column (plan A9-I0b: the fields were sections there).
+    assert!(moves.height() > 300.0, "the moves fill the column: {moves:?}");
+    // The bar at the foot of the moves.
     let bar = h.get_by_label("FEN/PGN").rect();
     assert!(bar.min.x > board.max.x && bar.min.y >= moves.max.y - 0.5, "the bar under the moves: {bar:?} {moves:?}");
+    // The column's Diagrams tab, in the moves' place.
+    in_window(&h, "Diagrams").click();
+    h.run_steps(3);
     let scan = h.get_by_label("Detect diagrams").rect();
-    assert!(scan.min.x > moves.max.x, "and the Diagrams tab beside them: {scan:?} {moves:?}");
-    // The set-up view takes the board's place in its own column, and the moves stay beside it.
+    assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
+    assert!(h.query_by(|n| n.label().is_some_and(|l| l == "Moves") && n.role() != egui::accesskit::Role::Tab).is_none(), "one tab at a time");
+    // The set-up view takes the board's place in its own column.
+    in_window(&h, "Moves").click();
+    h.run_steps(2);
     assert!(h.state_mut().execute("chess.tool.setup"));
     h.run_steps(2);
     assert_eq!(h.get_all_by_label("Empty board").count(), 1);
     assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "the set-up board alone");
     assert!(h.query_by_label_contains("Board, ").is_none(), "the analysis board gives it its place");
-    h.get_by_label("Moves");
+    moves_region(&h);
     h.get_by_label("Cancel").click();
     h.run_steps(2);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
@@ -3557,6 +3554,11 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     let board = h.get_by_label_contains("Board, ").rect();
     assert!(board.width() <= 520.0, "{board:?}");
     assert!(h.query_by_label("Detect diagrams").is_none(), "one tab at a time");
+}
+
+/// The notation's region, named Moves (the chess window's column has a tab of that name too).
+fn moves_region<'a>(h: &'a Harness<'static, PdfCraftApp>) -> egui_kittest::Node<'a> {
+    h.get_by(|n| n.label().is_some_and(|l| l == "Moves") && n.role() != egui::accesskit::Role::Tab)
 }
 
 /// The node labelled `label` in the chess window (the Inspector's Chess panel has some of the
@@ -6440,4 +6442,70 @@ fn the_bar_holds_the_game_the_comment_and_the_fields() {
     h.get_by_label("Comment").click();
     h.run_steps(3);
     assert!(h.query_by_label("Comment on this move").is_none());
+}
+
+// ─── Plan A9-I0c: the chess window and the breakpoints ──────────────────────────────────────
+
+/// Plan A9-I0c (§2.8.0, finding R4-13): from 1,920 pt the two columns are 420 pt wide and the
+/// diagram's editor board takes up to 380 pt of them (it stayed at 280 with 400 pt blank under it).
+#[test]
+fn from_1920_the_columns_are_420_and_the_editors_board_380() {
+    let mut h = harness_sized(boards(), egui::vec2(1920.0, 1080.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(4);
+    let (column, second) = (chess_column(&h), chess_second(&h).expect("two columns from 1,600 pt"));
+    assert!((column.width() - 420.0).abs() <= 2.0 && (second.width() - 420.0).abs() <= 2.0, "{column:?} {second:?}");
+    let board = h.get_by_label_contains("Diagram board, ").rect();
+    assert!(second.contains_rect(board) && board.width() >= 379.0, "the editor's board: {board:?}");
+    shot(&mut h, "i0c-1920x1080-editor.png");
+}
+
+/// Plan A9-I0c (§2.8.0 sketch (f), findings A6-12, R4-12): the chess window of 960 × 704 has the
+/// board on the left and a column beside it with the tabs Moves · Diagrams · Text; the moves are
+/// whole in the window (they started under its edge); the Diagrams tab is master-detail as the
+/// Chess column is, the diagram's editor in the list's place in the window (it opened in the main
+/// window), and "‹ Diagrams" goes back to the list.
+#[test]
+fn the_chess_window_has_the_column_and_its_master_detail() {
+    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [960.0, 704.0]})));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    // The scan showed its list in the window's column; the moves are its first tab.
+    in_window(&h, "Moves").click();
+    h.run_steps(2);
+    put_game(&mut h, &dance(80), &[0]);
+    let board = h.get_by_label_contains("Board, ").rect();
+    assert!(board.width() >= 500.0, "the board as large as the window's height allows: {board:?}");
+    let moves = moves_region(&h).rect();
+    let window = h.get_all_by_label("Chess").find(|n| n.query_by_label(BACK).is_some()).expect("the chess window").rect();
+    assert!(moves.min.x > board.max.x && window.contains_rect(moves.shrink(0.5)), "the moves beside the board, whole: {moves:?} {window:?}");
+    in_window(&h, "FEN/PGN");
+    // The Diagrams tab: the list, a diagram opened in its place, and back.
+    in_window(&h, "Diagrams").click();
+    h.run_steps(3);
+    h.get_all_by_label("Chess").find(|n| n.query_by_label(BACK).is_some()).expect("the chess window").get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(4);
+    let editor = in_window(&h, "Back to Diagrams").rect();
+    assert!(window.contains_rect(editor), "the editor in the window: {editor:?}");
+    assert_eq!(h.get_all_by_label_contains("Diagram board, ").count(), 1, "one editor, in the window");
+    assert!(!h.state().chess_diagram_shown(), "not in the main window's column");
+    shot(&mut h, "i0c-window-960x704.png");
+    in_window(&h, "Back to Diagrams").click();
+    h.run_steps(3);
+    assert!(
+        h.get_all_by_label("Chess")
+            .find(|n| n.query_by_label(BACK).is_some())
+            .expect("the chess window")
+            .query_by_label_contains("Diagram 2 · ")
+            .is_some(),
+        "the list again"
+    );
+    // Esc goes back too, from the window's editor.
+    h.get_all_by_label("Chess").find(|n| n.query_by_label(BACK).is_some()).expect("the chess window").get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(4);
+    in_window(&h, "Back to Diagrams");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert!(h.query_by_label("Back to Diagrams").is_none(), "Esc: the list again");
 }
