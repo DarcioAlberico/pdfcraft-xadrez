@@ -3531,3 +3531,16 @@ the move's comment	Move comment	Commentaire du coup
 	The board is in the column beside.	L’échiquier est dans la colonne voisine.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Ajouter des signets d'échecs
+	More board actions	Plus d’actions de l’échiquier
+	Back to the moves	Revenir aux coups
+	Back to the moves (Esc)	Revenir aux coups (Échap)
+	Game	Partie
+	The game starts at move:	La partie commence au coup :
+	Comment	Commentaire
+	The comments of the move shown, under the moves	Les commentaires du coup affiché, sous les coups
+	Edit the FEN and the PGN	Modifier le FEN et le PGN
+	More continuations: {moves}	Autres suites : {moves}
+	Diagram shown	Diagramme affiché
+	Alt+O switches between the board as read and the page's own picture.	Alt+O bascule entre l’échiquier tel qu’il a été lu et l’image de la page elle-même.
+	Original diagram, page {p}, diagram {n}	Diagramme d’origine, page {p}, diagramme {n}
+	The page's picture of this diagram shows once its page is drawn.	L’image de ce diagramme sur la page s’affiche dès que sa page est dessinée.

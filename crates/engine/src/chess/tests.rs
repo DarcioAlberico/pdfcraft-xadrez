@@ -1020,6 +1020,23 @@ fn each_document_keeps_its_own_book_pgn() {
     assert!(s.chess_book_pgn(a).is_none(), "nothing kept for a document that is not open");
 }
 
+/// Plan A9-I3b: a book's PGN is indexed once a session, whoever asks: a worker indexes it through
+/// the session's handle, off the calling thread, and the session then finds that index, not a new
+/// one.
+#[test]
+fn a_book_pgn_is_indexed_once_a_session() {
+    let s = Session::new();
+    let pgn = "[Event \"Ch 1\"]\n\n1.e4 e5 2.Nf3 Nc6 *\n";
+    let first = s.chess_book_index(pgn).unwrap();
+    assert!(Arc::ptr_eq(&first, &s.chess_book_index(pgn).unwrap()));
+    let other = "1.d4 d5 2.c4 *";
+    let handle = s.chess_book_indexes();
+    let made = std::thread::spawn(move || handle.index(other).unwrap()).join().unwrap();
+    assert!(Arc::ptr_eq(&made, &s.chess_book_index(other).unwrap()), "the worker's index is the session's");
+    assert_eq!(s.chess_book_indexes().made(), 2);
+    assert!(s.chess_book_index("*").is_err());
+}
+
 mod capture;
 mod document;
 mod epub;

@@ -3553,3 +3553,16 @@ the move's comment	Move comment	Коментар до ходу
 	The board is in the column beside.	Дошка — у сусідній колонці.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Додати шахові закладки
+	More board actions	Інші дії з дошкою
+	Back to the moves	Назад до ходів
+	Back to the moves (Esc)	Назад до ходів (Esc)
+	Game	Партія
+	The game starts at move:	Партія починається з ходу:
+	Comment	Коментар
+	The comments of the move shown, under the moves	Коментарі до показаного ходу, під ходами
+	Edit the FEN and the PGN	Редагувати FEN і PGN
+	More continuations: {moves}	Інші продовження: {moves}
+	Diagram shown	Показана діаграма
+	Alt+O switches between the board as read and the page's own picture.	Alt+O перемикає між дошкою, як її прочитано, і зображенням самої сторінки.
+	Original diagram, page {p}, diagram {n}	Оригінальна діаграма, сторінка {p}, діаграма {n}
+	The page's picture of this diagram shows once its page is drawn.	Зображення цієї діаграми зі сторінки з’явиться, щойно її сторінку буде намальовано.
