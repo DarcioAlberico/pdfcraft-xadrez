@@ -317,3 +317,65 @@ fn next_rev_is_later_and_higher() {
     assert_eq!(next_rev(u64::MAX, 0), u64::MAX);
     assert_ne!(new_uid(1, b"x"), new_uid(1, b"x"));
 }
+
+#[allow(dead_code)]
+#[path = "../../../tests/compat/games_v2.rs"]
+mod games_v2;
+
+/// A game read on page 1 of three pages (`fnv:a`, `fnv:b`, `fnv:c`), opened from its diagram 0,
+/// anchored to them.
+fn anchored_game() -> GameRecord {
+    let mut g = Game::standard();
+    g.play_uci("e2e4").unwrap();
+    let e4 = g.current();
+    g.set_source(e4, Some(NodeSource { page: 1, rect_user: [1.0, 2.0, 3.0, 4.0] }));
+    let mut r = GameRecord::of_game("a1".into(), 1, &g).unwrap();
+    r.origin = Some(DiagramAt::new(1, 0));
+    let before: Vec<String> = ["fnv:a", "fnv:b", "fnv:c"].map(String::from).to_vec();
+    r.anchor(&before);
+    r
+}
+
+/// Plan A9-G2c (R3-04): the moves read on a page and the diagram a game came from follow their
+/// page when pages are inserted before it, and lose it, never taking another page's, when it
+/// is gone and another took its place.
+#[test]
+fn a_games_pages_follow_inserted_and_removed_pages() {
+    let mut r = anchored_game();
+    let inserted: Vec<String> = ["fnv:new", "fnv:a", "fnv:b", "fnv:c"].map(String::from).to_vec();
+    assert_eq!(r.relocate(&inserted), 0);
+    assert_eq!((r.sources[0].page, r.origin.map(|o| o.page)), (2, Some(2)), "page b is page 2 now");
+    let (game, _) = r.game().unwrap();
+    let e4 = game.node_at(&NodePath::new(vec![0])).unwrap();
+    assert_eq!(game.source(e4).map(|s| s.page), Some(2));
+    // Page b removed: c took its place at index 1; neither the move nor the diagram goes there.
+    let mut r = anchored_game();
+    let removed: Vec<String> = ["fnv:a", "fnv:c"].map(String::from).to_vec();
+    assert_eq!(r.relocate(&removed), 2);
+    assert!(r.sources.is_empty() && r.origin.is_none());
+    // Without an anchor (a file written before G2c) the index stays.
+    let mut old = anchored_game();
+    old.sources[0].at = None;
+    old.origin_at = None;
+    assert_eq!(old.relocate(&inserted), 0);
+    assert_eq!((old.sources[0].page, old.origin.map(|o| o.page)), (1, Some(1)));
+}
+
+/// Plan A9 §2.10 for G2c: the anchors live in version 2; a build of G3b's first PR (frozen in
+/// `tests/compat/games_v2.rs`) reads a file with them and writes it again with them kept, as
+/// fields of a later build; this build then finds the pages by them.
+#[test]
+fn compat_a_g3b_build_keeps_the_anchors() {
+    let mut f = file_of(vec![anchored_game()]);
+    f.doc = DocRecord::new(&keys(), 3);
+    let bytes = f.to_bytes().unwrap();
+    let games_v2::Parsed::File { file: theirs, skipped } = games_v2::GamesFile::parse(&bytes) else { panic!("the G3b build reads it") };
+    assert_eq!(skipped, 0);
+    let again = theirs.to_bytes().unwrap();
+    let Parsed::File { file: mut back, .. } = GamesFile::parse(&again) else { panic!("read back") };
+    assert_eq!(back.games[0].origin_at, f.games[0].origin_at);
+    assert_eq!(back.games[0].sources[0].at, f.games[0].sources[0].at);
+    let inserted: Vec<String> = ["fnv:new", "fnv:a", "fnv:b", "fnv:c"].map(String::from).to_vec();
+    back.relocate(&inserted);
+    assert_eq!(back.games[0].sources[0].page, 2);
+}

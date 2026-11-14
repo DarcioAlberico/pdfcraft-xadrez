@@ -719,26 +719,69 @@ impl CorrectionFile {
     }
 }
 
-/// Where `e`'s diagram is now:
+/// Where `e`'s diagram is now: [`locate_page`], with what its page was when it was written.
+fn locate<F: PageFingerprints + ?Sized>(e: &Correction, fingerprints: &F) -> Located {
+    let anchor = PageAnchor { fp: e.page_fp.clone(), prev: e.prev_fp.clone(), next: e.next_fp.clone(), pages: e.page_count };
+    locate_page(e.page, &anchor, fingerprints)
+}
+
+/// What a page was when something on it was written down (plan A9 §2.4): its fingerprint, its
+/// neighbours' and the document's page count then. The corrections keep it in their own fields;
+/// the games keep one for each move read on a page and for the diagram a game came from (plan
+/// A9-G2c), so all of them are found again by one rule ([`locate_page`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PageAnchor {
+    /// The page's fingerprint ([`page_fingerprint`]).
+    pub fp: String,
+    /// The pages before and after it; `None` where there was none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prev: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+    /// The document's page count then (0: not known).
+    #[serde(default)]
+    pub pages: usize,
+}
+
+impl PageAnchor {
+    /// Page `page` (0-based) of the document whose pages have `fingerprints` now. `None` past the
+    /// last page, or for a page whose fingerprint no file keeps.
+    pub fn of<F: PageFingerprints + ?Sized>(page: usize, fingerprints: &F) -> Option<PageAnchor> {
+        Some(PageAnchor {
+            fp: fingerprint_at(fingerprints, Some(page))?,
+            prev: fingerprint_at(fingerprints, page.checked_sub(1)),
+            next: fingerprint_at(fingerprints, page.checked_add(1)),
+            pages: fingerprints.count(),
+        })
+    }
+
+    /// Whether it is one a file may keep: fingerprints no longer than the corrections'.
+    pub fn ok(&self) -> bool {
+        [Some(&self.fp), self.prev.as_ref(), self.next.as_ref()].into_iter().flatten().all(|f| f.len() <= MAX_TEXT) && !self.fp.is_empty()
+    }
+}
+
+/// Where what was written down on page `page`, anchored by `anchor`, is now (plan A9 §2.4, the
+/// one rule):
 /// - its page, when that page is unchanged ([`Located::Same`]);
 /// - else the one page with its page's fingerprint ([`Located::Moved`]);
 /// - else its page by index, changed ([`Located::Changed`]), unless the document has no such
 ///   page, or a page it recorded as its neighbour is in the document but not beside that index
 ///   (pages were removed or inserted there: the page at the index is another one, A4-01), or, with
-///   no neighbour left to tell (none recorded, version 1; or each one changed too, as an edit to
-///   every page does), the page count is not the one it recorded: then [`Located::Orphan`].
-fn locate<F: PageFingerprints + ?Sized>(e: &Correction, fingerprints: &F) -> Located {
-    if fingerprints.at(e.page) == Some(e.page_fp.as_str()) {
-        return Located::Same(e.page);
+///   no neighbour left to tell (none recorded; or each one changed too, as an edit to every page
+///   does), the page count is not the one it recorded: then [`Located::Orphan`].
+pub fn locate_page<F: PageFingerprints + ?Sized>(page: usize, anchor: &PageAnchor, fingerprints: &F) -> Located {
+    if fingerprints.at(page) == Some(anchor.fp.as_str()) {
+        return Located::Same(page);
     }
-    if let Spot::One(p) = fingerprints.spot(&e.page_fp) {
+    if let Spot::One(p) = fingerprints.spot(&anchor.fp) {
         return Located::Moved(p);
     }
-    if e.page >= fingerprints.count() {
+    if page >= fingerprints.count() {
         return Located::Orphan;
     }
     let mut told = false;
-    for (beside, recorded) in [(e.page.checked_sub(1), &e.prev_fp), (e.page.checked_add(1), &e.next_fp)] {
+    for (beside, recorded) in [(page.checked_sub(1), &anchor.prev), (page.checked_add(1), &anchor.next)] {
         let Some(recorded) = recorded else { continue };
         if beside.and_then(|p| fingerprints.at(p)) == Some(recorded.as_str()) {
             told = true;
@@ -746,7 +789,7 @@ fn locate<F: PageFingerprints + ?Sized>(e: &Correction, fingerprints: &F) -> Loc
             return Located::Orphan;
         }
     }
-    if told || e.page_count == 0 || e.page_count == fingerprints.count() { Located::Changed(e.page) } else { Located::Orphan }
+    if told || anchor.pages == 0 || anchor.pages == fingerprints.count() { Located::Changed(page) } else { Located::Orphan }
 }
 
 /// The fingerprint of page `page` (none past either end), when it is one a file keeps.
