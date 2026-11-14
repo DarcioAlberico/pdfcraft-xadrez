@@ -3480,3 +3480,6 @@ the move's comment	Move comment	A lépés megjegyzése
 	supposes castling is allowed	feltételezi, hogy a sáncolás megengedett
 	Mate in {n}: both sides mate, so who moves stays assumed	Matt {n} lépésben: mindkét fél mattol, így hogy ki lép, feltételezett marad
 	Back to Diagrams	Vissza a diagramokhoz
+	Tools panel collapsed	Eszközök panel összecsukva
+	Show the page (F6)	Az oldal megjelenítése (F6)
+	The board is in the column beside.	A tábla a szomszédos oszlopban van.

@@ -3394,3 +3394,6 @@ the move's comment	Move comment	Комментарий к ходу
 	supposes castling is allowed	предполагает, что рокировка разрешена
 	Mate in {n}: both sides mate, so who moves stays assumed	Мат в {n} хода: матуют обе стороны, поэтому очередь хода остаётся предполагаемой
 	Back to Diagrams	Назад в «Диаграммы»
+	Tools panel collapsed	Панель «Инструменты» свёрнута
+	Show the page (F6)	Показать страницу (F6)
+	The board is in the column beside.	Доска — в соседней колонке.

@@ -178,7 +178,7 @@ impl Workspace {
     }
 
     /// Give `panel`, alone in its group at one side of a split across, `width` points.
-    fn fit_width(&mut self, panel: Panel, width: f32) {
+    pub(crate) fn fit_width(&mut self, panel: Panel, width: f32) {
         // A valid tree has a level per panel at most: the depth only bounds a damaged one.
         fn fit(node: &mut Node<Panel>, panel: Panel, width: f32, depth: usize) -> bool {
             let Node::Split { axis, size, first, second } = node else { return false };
@@ -478,6 +478,16 @@ pub fn command(app: &mut crate::PdfCraftApp, reset: bool, params: &Value) -> Res
     } else {
         sync(&mut workspace, app)?;
         workspace.command(params)?;
+        // The user sized the workspace (a divider dragged, a panel moved or floated, here or by
+        // the control channel): the chess budget leaves it as it is for the session (plan
+        // A9-I0a, decision 3).
+        let sized = |op: &str| matches!(op, "resizeSplit" | "move" | "float" | "moveFloating");
+        let action = params.get("action").and_then(|a| serde_json::from_value::<Action<Panel>>(a.clone()).ok());
+        if params.get("operation").and_then(Value::as_str).is_some_and(sized)
+            || matches!(action, Some(Action::ResizeSplit { .. } | Action::Move { .. } | Action::Float { .. } | Action::MoveFloating { .. }))
+        {
+            app.chess.budget.user_sized = true;
+        }
     }
     publish_visibility(app, &workspace);
     app.docking = workspace;
@@ -555,8 +565,16 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
     style.accent = t.accent;
     style.font = crate::theme::medium(12.0);
     drain_reveals(&mut workspace, app);
+    // The Chess column's width, asked for when a chess surface opened (plan A9-I0a).
+    if let Some(width) = app.chess.budget.pending_width.take() {
+        workspace.fit_width(Panel::Inspector, width);
+    }
     let mut rendered = workspace.layout.clone();
-    if app.active.is_none() && rendered.contains(&Panel::Inspector) {
+    // Under 1,000 pt the Chess column takes the page's place (plan A9-I0a): the Inspector is not
+    // drawn beside it, its place in the layout kept.
+    let in_page_place = app.chess_in_page_place(ui.ctx().content_rect().width());
+    app.chess.budget.alternating = in_page_place || (app.chess.budget.show_page && app.right == Some(crate::RightPanel::Chess));
+    if (app.active.is_none() || in_page_place) && rendered.contains(&Panel::Inspector) {
         // Availability is a render projection: the saved group, selection and width survive Home.
         let _ = rendered.apply(Action::Close { panel: Panel::Inspector });
     }
@@ -576,7 +594,7 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
     publish_visibility(app, &workspace);
     app.docking = workspace;
     for mut action in output.actions {
-        if app.active.is_none()
+        if (app.active.is_none() || in_page_place)
             && let Action::ResizeSplit { path, .. } = &mut action
         {
             let Some(saved_path) = saved_split_path(&app.docking.layout, &rendered, path) else { continue };
@@ -605,6 +623,7 @@ impl DockContent<Panel> for Content<'_> {
                 match app.active {
                     None if app.combine_showing() => crate::combine_ui::page(app, ui),
                     None => crate::home::show(app, ui),
+                    Some(_) if app.chess_in_page_place(ui.ctx().content_rect().width()) => crate::chess_ui::column(app, ui),
                     Some(index) => match crate::compare_ui::side_by_side(app, index) {
                         Some((old, new)) => crate::compare_ui::compare_area(app, old, new, ui),
                         None => crate::canvas::document_area(app, index, ui),

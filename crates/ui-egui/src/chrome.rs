@@ -723,7 +723,11 @@ pub fn right_rail(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                 });
             }
-            if let Some(panel) = chosen {
+            // Under 1,000 pt with the page in the Chess column's place, the chess button shows the
+            // column again instead of closing it (plan A9-I0a).
+            if chosen == Some(None) && app.right == Some(RightPanel::Chess) && app.chess.budget.alternating && app.chess.budget.show_page {
+                app.chess_show_page(false);
+            } else if let Some(panel) = chosen {
                 app.choose_right_panel(panel);
             }
 

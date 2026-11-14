@@ -4581,37 +4581,22 @@ fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
     assert_eq!(h.state().chess.board().game.side_to_move(), pdfcraft_engine::chess::pdfcraft_chess::placement::Color::Black);
 }
 
-/// Plan A8, P5 (finding X4): in a narrow window the chess panel offers once to collapse the tools
-/// panel; the answer is kept in the settings, and a wide window is not asked.
+/// Plan A8, P5 (finding X4), as plan A9-I0a has it: no offer to collapse the tools panel any
+/// more; a chess surface opening in a window under 1,920 pt collapses it, once a session, with a
+/// notice whose Undo brings it back, and a wide window leaves it.
 #[test]
-fn the_chess_panel_offers_once_to_collapse_the_tools_panel() {
-    let offer = "More room for the page: collapse the tools panel?";
+fn the_tools_panel_collapses_once_for_the_chess_column() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
-    assert!(h.state_mut().execute("chess.scan"));
-    h.run_steps(3);
     assert!(h.state().left_open);
-    h.get_by_label(offer);
-    h.get_by_label("Collapse").click();
+    assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert!(!h.state().left_open, "the tools panel is collapsed");
-    assert!(h.query_by_label(offer).is_none());
-    let settings = h.state().persist();
-    assert!(settings.contains("\"chess_tools_offer_answered\":true"), "{settings}");
-    // Asked once: with the panel open again, no offer.
-    h.state_mut().left_open = true;
-    h.run_steps(3);
-    assert!(h.query_by_label(offer).is_none(), "answered already");
-    // Not now is an answer too; a wide window is not asked.
-    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
+    assert!(h.query_by_label("More room for the page: collapse the tools panel?").is_none(), "no offer");
+    h.get_by_label("Tools panel collapsed");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1960.0, 900.0), None);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    h.get_by_label("Not now").click();
-    h.run_steps(3);
-    assert!(h.state().left_open && h.state().chess.tools_offer_answered);
-    let mut h = harness_with(boards(), 0.25, egui::vec2(1700.0, 900.0), None);
-    assert!(h.state_mut().execute("chess.scan"));
-    h.run_steps(3);
-    assert!(h.query_by_label(offer).is_none(), "a wide window has room");
+    assert!(h.state().left_open, "a wide window keeps the tools");
 }
 
 /// Plan A8, P4: the Diagram tab walks what the Diagrams list's chip shows ("1 of 1 · Read"), its
@@ -5901,7 +5886,8 @@ fn the_chess_surfaces_are_one_column_beside_the_page() {
     assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the list gives the editor its place");
     assert!(h.state().chess_diagram_shown());
     // Nothing else beside the page: the window is the Tools, the page, the column and the rail.
-    // What is left is the dividers between them.
+    // What is left is the dividers between them (the Tools collapsed for the column, plan A9-I0a).
+    let tools = if h.state().left_open { tools } else { 0.0 };
     let rest = width - tools - page.width() - column.width() - rail;
     assert!(rest.abs() <= 16.0, "page {page:?}, column {column:?}: {rest} pt of something else");
     assert!(page.max.x <= column.min.x + 0.5, "the page left of the column");
@@ -5959,7 +5945,8 @@ fn the_chess_column_at_the_plans_screens() {
         shot(&mut h, &format!("i0a-{w}x{ht}-list.png"));
         h.get_by_label_contains("Diagram 2 · ").click();
         h.run_steps(4);
-        let column = chess_column(&h);
+        // From 1,600 pt the editor stands in the second column (the second PR of I0a).
+        let column = chess_second(&h).unwrap_or_else(|| chess_column(&h));
         assert!(column.contains_rect(h.get_by_label_contains("Diagram board, ").rect()), "{w}: the editor in the column");
         shot(&mut h, &format!("i0a-{w}x{ht}-editor.png"));
         column_tab(&mut h, "Board");
@@ -5967,4 +5954,133 @@ fn the_chess_column_at_the_plans_screens() {
         assert!(chess_column(&h).contains_rect(h.get_by_label_contains("Board, ").rect()), "{w}: the board in the column");
         shot(&mut h, &format!("i0a-{w}x{ht}-board.png"));
     }
+}
+
+// ─── Plan A9-I0a: the columns the window's width allows ─────────────────────────────────────
+
+/// The second column beside the Chess column, as the last frame drew it (from 1,600 pt).
+fn chess_second(h: &Harness<'static, PdfCraftApp>) -> Option<egui::Rect> {
+    h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-chess-second")))
+}
+
+/// Plan A9-I0a (§2.8.0, finding R4-03): at 1360 × 705 (1366 × 768 less the system's bars), a
+/// diagram opened leaves the page at least 940 pt and the page fitted to its width at 60 % or
+/// more (it had 390 pt and 29 %): the Chess column is 360 pt and the Tools panel is collapsed,
+/// once a session, with a notice whose Undo brings it back. The same window a second time keeps
+/// the Tools open, and a Chess column the user widened keeps its width.
+#[test]
+fn at_1366_a_diagram_opened_leaves_the_page_940_points() {
+    // Opening the column collapses the Tools, with a notice whose Undo brings them back.
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    assert!(h.state().left_open, "the Tools panel shows");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    h.get_by_label("Tools panel collapsed");
+    h.get_by_label("Undo: Tools panel collapsed").click();
+    h.run_steps(3);
+    assert!(h.state().left_open, "Undo brings the Tools back");
+    // Once a session: the column closed and opened again leaves them.
+    h.state_mut().choose_right_panel(None);
+    h.run_steps(2);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!(h.state().left_open, "collapsed once a session");
+    // A diagram opened in a new session: the page keeps 940 pt.
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    scan_and_edit_second(&mut h);
+    h.run_steps(2);
+    let (column, page) = (chess_column(&h), h.state().views[0].viewport_rect());
+    assert!((column.width() - 360.0).abs() <= 2.0, "one column of 360 pt: {column:?}");
+    assert!(page.width() >= 940.0, "the page keeps 940 pt: {page:?}");
+    assert!(chess_second(&h).is_none(), "one column below 1,600 pt");
+    assert!(h.state().chess_diagram_shown(), "the editor in the list's place");
+    assert!(h.state_mut().execute("view.fit_width_scrolling"));
+    h.run_steps(3);
+    let zoom = h.state().views[0].zoom;
+    assert!(zoom >= 0.6, "fitted to its width at {zoom}");
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    shot(&mut h, "i0a-1360x705.png");
+}
+
+/// Plan A9-I0a (decision 3): the budget never undoes what the user did in the session: the
+/// Inspector dragged wider keeps its width when the Chess column opens.
+#[test]
+fn a_column_the_user_sized_keeps_its_width() {
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Comments));
+    h.run_steps(3);
+    // The user drags the Inspector to 500 pt (the workspace's divider sends this action).
+    let size = serde_json::to_value(craft_ui::layout::SplitSize::FixedSecond(500.0)).unwrap();
+    pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "resizeSplit", "path": [true], "size": size})).unwrap();
+    h.run_steps(2);
+    let before = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-inspector-body"))).expect("the Inspector shows").width();
+    assert!((before - 500.0).abs() <= 2.0, "{before}");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!((chess_column(&h).width() - before).abs() <= 2.0, "{before} kept: {:?}", chess_column(&h));
+}
+
+/// Plan A9-I0a: from 1,600 pt the Chess column has a second column beside it, the diagram being
+/// edited, else the board; the list stays in sight beside the editor.
+#[test]
+fn from_1600_the_editor_or_the_board_stands_beside_the_column() {
+    let mut h = harness_sized(boards(), egui::vec2(1700.0, 900.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let second = chess_second(&h).expect("two columns");
+    assert!((chess_column(&h).width() - 360.0).abs() <= 2.0 && (second.width() - 360.0).abs() <= 2.0, "{:?} {second:?}", chess_column(&h));
+    assert!(second.contains_rect(h.get_by_label_contains("Board, ").rect()), "the board beside the list");
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert!(second.contains_rect(h.get_by_label_contains("Diagram board, ").rect()), "the editor beside the list");
+    assert!(chess_column(&h).contains_rect(h.get_by_label_contains("Diagram 1 · ").rect()), "the list stays");
+    assert!(h.state().views[0].viewport_rect().width() >= 1700.0 - 720.0 - 48.0 - 272.0 - 4.0);
+    shot(&mut h, "i0a-1700x900.png");
+}
+
+/// Plan A9-I0a (§2.8.0, findings R5-04): at 200 % of a 1366 × 768 screen (680 × 352 pt) the page
+/// or the Chess column shows, never both: the column takes the page's place, every control of it
+/// inside the window (Export ran off the column's edge), and F6 or its page button switch to the
+/// page and back, the keyboard going along.
+#[test]
+fn under_1000_points_the_page_or_the_column_shows() {
+    no_piece_model();
+    let mut h = Harness::builder().with_size(egui::vec2(680.0, 352.0)).with_pixels_per_point(2.0).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let window = h.ctx.content_rect();
+    assert!(window.width() < 1000.0, "{window:?}");
+    let column = chess_column(&h);
+    assert!(column.width() > window.width() * 0.8, "the column in the page's place: {column:?} in {window:?}");
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_some(), "the list in the column");
+    let focusable: Vec<_> = h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus)).collect();
+    let mut seen = 0;
+    // Across, every control in sight is inside the column and the window; down, the list scrolls
+    // (a row cut by the window's foot is scrolled to).
+    let shown = column.intersect(window);
+    for node in focusable.iter().filter(|n| shown.intersects(n.rect())) {
+        let r = node.rect();
+        let name = node.accesskit_node().label().unwrap_or_default();
+        assert!(column.min.x - 0.5 <= r.min.x && r.max.x <= column.max.x.min(window.max.x) + 0.5, "{name:?} {r:?} out of {column:?}");
+        seen += 1;
+    }
+    assert!(seen >= 5, "the column's controls: {seen}");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::F6);
+    assert!(h.state().chess.budget.show_page, "F6: the page");
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the column gave the page its place");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::F6);
+    assert!(!h.state().chess.budget.show_page, "F6: the column again");
+    h.run_steps(2);
+    assert!(h.ctx.memory(|m| m.focused()).is_some(), "the keyboard went with it");
+    h.get_by_label("Show the page (F6)").click();
+    h.run_steps(3);
+    assert!(h.state().chess.budget.show_page);
 }

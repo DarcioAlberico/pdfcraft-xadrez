@@ -131,10 +131,6 @@ pub struct ChessState {
     /// The review just finished, (checked, of): the Diagram tab says so until another diagram
     /// opens (plan A8, P4).
     pub(crate) review_done: Option<Reviewed>,
-    /// The chess panel offers to collapse the tools panel this frame (plan A8, P5).
-    pub(crate) tools_offer: bool,
-    /// The offer was answered (Collapse or Not now): it is not made again. Kept in the settings.
-    pub tools_offer_answered: bool,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The pieces the analysis board draws with, found once (the user's piece pictures first).
@@ -166,6 +162,8 @@ pub struct ChessState {
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The Chess column's tab: the diagrams, the page's recognised text (S16) or the board.
     pub tab: crate::chess_text_ui::ChessTab,
+    /// The columns the window's width allows the chess surfaces (plan A9-I0a).
+    pub budget: crate::chess_budget::BudgetState,
     /// The Diagrams tab shows the selected diagram's editor in the list's place (plan A9-I0a,
     /// master-detail): opened from the list, Review now or the Text tab, closed by "‹ Diagrams"
     /// and Esc. The editor itself ([`ChessState::editor`]) stays while it is closed.
@@ -671,10 +669,6 @@ pub enum PanelAction {
     /// Mark the page as checked (0-based): its diagrams read with confidence become Verified
     /// (plan A8, P2b).
     VerifyPage(usize),
-    /// The answer to the offer to collapse the tools panel (plan A8, P5).
-    ToolsOffer {
-        collapse: bool,
-    },
     /// The answer to the offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f).
     PgnOffer {
         use_it: bool,
@@ -824,73 +818,118 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let page_now = app.views.get(index).map_or(0, |v| v.current);
     let editor_here = app.chess_editor_in_panel();
     let in_window = app.chess_window.in_window();
-    // The tools panel takes 270 points of a narrow window: the chess panel offers to collapse
-    // it, once (plan A8, P5).
-    let narrow = ui.ctx().content_rect().width() < TOOLS_OFFER_BELOW;
-    app.chess.tools_offer = narrow && app.left_open && app.mode != crate::Mode::Read && !app.chess.tools_offer_answered;
-    let detail = app.chess.tab == ChessTab::Diagrams && app.chess_detail_shown(id);
+    let budget = crate::chess_budget::Budget::of(ui.ctx().content_rect().width());
+    // From 1,600 pt, two columns when the Inspector has the room: the diagram being edited
+    // beside the Chess column, else the board (plan A9-I0a).
+    let whole = ui.max_rect();
+    let two = budget.columns() == 2 && whole.width() >= 2.0 * crate::chess_budget::COLUMN - 1.0;
+    let opened = app.chess_detail_shown(id);
+    let detail = app.chess.tab == ChessTab::Diagrams && opened && !two;
+    let board_beside = two && !opened && !in_window;
+    let second = if two { Some(egui::Rect::from_min_max(egui::pos2(whole.max.x - whole.width() / 2.0, whole.min.y), whole.max)) } else { None };
+    let first = second.map_or(whole, |r| egui::Rect::from_min_max(whole.min, egui::pos2(r.min.x, whole.max.y)));
+    // Under 1,000 pt the column is in the page's place: its header switches to the page.
+    let narrow = budget == crate::chess_budget::Budget::Narrow;
+    let mut to_page = false;
     let count = app.chess.results_of(id).map(ChessResults::count);
     let mut close = false;
     let mut action = None;
-    // Where the column is, for the layout's tests (plan A9-I0a).
-    ui.data_mut(|d| d.insert_temp(egui::Id::new("pdfcraft-chess-column"), ui.max_rect()));
-    egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
-        ui.set_min_size(ui.available_size());
-        egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 12, bottom: 0 }).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Chess")).font(theme::semibold(15.5)));
-                if let Some(c) = count {
-                    ui.label(egui::RichText::new(c.to_string()).font(theme::medium(13.0)).color(t.text_faint));
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if crate::icons::button(ui, "x", 26.0, false, tl!("Close")).clicked() {
-                        close = true;
-                    }
-                });
-            });
-            ui.add_space(6.0);
-            // In the docking workspace's own tab style (plan A8, P6).
-            crate::widgets::dock_tabs(
-                ui,
-                &mut app.chess.tab,
-                &[(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text")), (ChessTab::Board, tl!("Board"))],
-            );
-        });
-        ui.add_space(4.0);
-        let tab = app.chess.tab;
-        if detail {
-            // The diagram's editor in the column, the list's place (plan A9-I0a).
-            let rest = ui.available_rect_before_wrap();
-            ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| crate::chess_diagram_tab::panel(app, ui));
-            ui.advance_cursor_after_rect(rest);
-        } else if tab == ChessTab::Board && !in_window {
-            let rest = ui.available_rect_before_wrap();
-            ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| board_panel(app, ui));
-            ui.advance_cursor_after_rect(rest);
-        } else {
-            let Some(doc) = app.session.get(id) else { return };
-            let info = &doc.info;
-            let chess = &mut app.chess;
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 0, bottom: 8 }).show(ui, |ui| {
-                // A click in the list or the Text tab puts Undo and Redo on the game (D12), and
-                // so does the keyboard focus there (plan A9-I18); the diagram's editor, which has
-                // keys of its own, and the Board tab decide for themselves.
-                if crate::chess_history::pressed_in(ui) {
-                    chess.enter_scope();
-                }
-                chess.mark_surface(ui);
-                if in_window {
+    // Where the columns are, for the layout's tests (plan A9-I0a).
+    ui.data_mut(|d| d.insert_temp(egui::Id::new("pdfcraft-chess-column"), first));
+    if let Some(second) = second {
+        ui.data_mut(|d| d.insert_temp(egui::Id::new("pdfcraft-chess-second"), second));
+        ui.scope_builder(egui::UiBuilder::new().max_rect(second), |ui| {
+            egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
+                ui.set_min_size(ui.available_size());
+                if opened {
+                    crate::chess_diagram_tab::panel(app, ui);
+                } else if board_beside {
+                    board_panel(app, ui);
+                } else {
                     action = in_window_note(ui, &t);
-                    return;
                 }
-                egui::ScrollArea::vertical().id_salt("chess-column").auto_shrink([false, false]).show(ui, |ui| {
-                    action = panel(ui, &t, chess, id, info, now, origin, page_now, editor_here, &pgn);
-                });
             });
-        }
+        });
+    } else {
+        ui.data_mut(|d| d.remove::<egui::Rect>(egui::Id::new("pdfcraft-chess-second")));
+    }
+    let focus_column = app.chess.budget.focus_to.take().is_some();
+    ui.scope_builder(egui::UiBuilder::new().max_rect(first), |ui| {
+        egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
+            ui.set_min_size(ui.available_size());
+            egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 12, bottom: 0 }).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(tl!("Chess")).font(theme::semibold(15.5)));
+                    if let Some(c) = count {
+                        ui.label(egui::RichText::new(c.to_string()).font(theme::medium(13.0)).color(t.text_faint));
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if crate::icons::button(ui, "x", 26.0, false, tl!("Close")).clicked() {
+                            close = true;
+                        }
+                        // Under 1,000 pt: the page in the column's place (F6 too).
+                        if narrow && crate::icons::button(ui, "file-text", 26.0, false, tl!("Show the page (F6)")).clicked() {
+                            to_page = true;
+                        }
+                    });
+                });
+                ui.add_space(6.0);
+                // In the docking workspace's own tab style (plan A8, P6).
+                let tabs = [ChessTab::Diagrams, ChessTab::Text, ChessTab::Board];
+                let strip = ui.id();
+                crate::widgets::dock_tabs(
+                    ui,
+                    &mut app.chess.tab,
+                    &[(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text")), (ChessTab::Board, tl!("Board"))],
+                );
+                // F6 brought the keyboard here: to the tab shown (`dock_tabs` names each by its place).
+                if focus_column && let Some(i) = tabs.iter().position(|t| *t == app.chess.tab) {
+                    ui.memory_mut(|m| m.request_focus(strip.with(("dock-tab", i))));
+                }
+            });
+            ui.add_space(4.0);
+            let tab = app.chess.tab;
+            if detail {
+                // The diagram's editor in the column, the list's place (plan A9-I0a).
+                let rest = ui.available_rect_before_wrap();
+                ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| crate::chess_diagram_tab::panel(app, ui));
+                ui.advance_cursor_after_rect(rest);
+            } else if tab == ChessTab::Board && board_beside {
+                egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 4, bottom: 8 }).show(ui, |ui| {
+                    ui.label(egui::RichText::new(tl!("The board is in the column beside.")).color(t.text_muted));
+                });
+            } else if tab == ChessTab::Board && !in_window {
+                let rest = ui.available_rect_before_wrap();
+                ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| board_panel(app, ui));
+                ui.advance_cursor_after_rect(rest);
+            } else {
+                let Some(doc) = app.session.get(id) else { return };
+                let info = &doc.info;
+                let chess = &mut app.chess;
+                egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 0, bottom: 8 }).show(ui, |ui| {
+                    // A click in the list or the Text tab puts Undo and Redo on the game (D12), and
+                    // so does the keyboard focus there (plan A9-I18); the diagram's editor, which has
+                    // keys of its own, and the Board tab decide for themselves.
+                    if crate::chess_history::pressed_in(ui) {
+                        chess.enter_scope();
+                    }
+                    chess.mark_surface(ui);
+                    if in_window {
+                        action = in_window_note(ui, &t);
+                        return;
+                    }
+                    egui::ScrollArea::vertical().id_salt("chess-column").auto_shrink([false, false]).show(ui, |ui| {
+                        action = panel(ui, &t, chess, id, info, now, origin, page_now, editor_here, &pgn);
+                    });
+                });
+            }
+        });
     });
     if close {
         app.choose_right_panel(None);
+    }
+    if to_page {
+        app.chess_show_page(true);
     }
     if let Some(a) = action {
         app.chess_action(a);
@@ -914,9 +953,8 @@ pub(crate) fn panel(
     pgn: &crate::chess_reference_ui::BookPgnView,
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
-    let offer = if state.tools_offer { tools_offer(ui, t) } else { None };
     let pgn_offer = pgn.offer.as_deref().and_then(|name| pgn_offer(ui, t, name));
-    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, origin, page_now, editor_here, pgn).or(offer).or(pgn_offer)
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, origin, page_now, editor_here, pgn).or(pgn_offer)
 }
 
 /// The offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f): Use it, or Not now,
@@ -945,34 +983,6 @@ fn pgn_offer(ui: &mut egui::Ui, t: &Tokens, name: &str) -> Option<PanelAction> {
                 named(&not_now, &crate::i18n::fmt(tl!("Not now: don't use {name} as the book's PGN"), &[("name", name)]));
                 if not_now.clicked() {
                     action = Some(PanelAction::PgnOffer { use_it: false });
-                }
-            });
-        },
-    );
-    ui.add_space(6.0);
-    action
-}
-
-/// Windows narrower than this, in points, get the offer to collapse the tools panel.
-pub(crate) const TOOLS_OFFER_BELOW: f32 = 1600.0;
-
-/// The offer to collapse the tools panel, for room beside the page (plan A8, P5, finding X4):
-/// Collapse, or Not now; either answer is kept, so it is made once.
-fn tools_offer(ui: &mut egui::Ui, t: &Tokens) -> Option<PanelAction> {
-    let mut action = None;
-    egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.border)).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(
-        ui,
-        |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.add(crate::icons::image("panel-left", 14.0, t.icon));
-                ui.label(egui::RichText::new(tl!("More room for the page: collapse the tools panel?")).small());
-            });
-            ui.horizontal(|ui| {
-                if ui.button(tl!("Collapse")).clicked() {
-                    action = Some(PanelAction::ToolsOffer { collapse: true });
-                }
-                if ui.button(tl!("Not now")).clicked() {
-                    action = Some(PanelAction::ToolsOffer { collapse: false });
                 }
             });
         },
@@ -1585,6 +1595,46 @@ impl PdfCraftApp {
             && self.active_ids().is_some_and(|(_, id)| self.chess_detail_shown(id))
     }
 
+    /// A chess surface opens, the Chess column chosen (plan A9-I0a, [`crate::chess_budget`]): the
+    /// window's width decides the Inspector's width (unless the user sized the workspace this
+    /// session) and, below 1,920 pt, the Tools panel is collapsed, once a session, with a notice
+    /// that brings it back. Under 1,000 pt the column shows, in the page's place.
+    pub(crate) fn open_chess_budget(&mut self) {
+        let Some(width) = self.ctx.as_ref().map(|ctx| ctx.content_rect().width()) else { return };
+        let budget = crate::chess_budget::Budget::of(width);
+        let state = &mut self.chess.budget;
+        state.show_page = false;
+        if self.mode == crate::Mode::Read {
+            return;
+        }
+        if !state.user_sized {
+            state.pending_width = budget.width();
+        }
+        if budget.collapses_tools() && self.left_open && !state.tools_collapsed {
+            state.tools_collapsed = true;
+            self.left_open = false;
+            let undo = (tl!("Undo").to_string(), crate::notice::NoticeAction::ReopenTools);
+            self.post_notice(tl!("Tools panel collapsed").to_string(), Some(undo));
+        }
+    }
+
+    /// Under 1,000 pt: the page (`page`) or the Chess column in its place, the keyboard going
+    /// along (F6, the column's page button; plan A9-I0a).
+    pub fn chess_show_page(&mut self, page: bool) {
+        let state = &mut self.chess.budget;
+        state.show_page = page;
+        state.focus_to = (!page).then_some(crate::chess_budget::FocusTo::Column);
+    }
+
+    /// Whether the Chess column is drawn in the page's place this frame: under 1,000 pt, the
+    /// column chosen and not switched to the page.
+    pub(crate) fn chess_in_page_place(&self, width: f32) -> bool {
+        crate::chess_budget::Budget::of(width) == crate::chess_budget::Budget::Narrow
+            && self.right == Some(crate::RightPanel::Chess)
+            && self.active.is_some()
+            && !self.chess.budget.show_page
+    }
+
     /// Back from a diagram's editor to the list in the Chess column ("‹ Diagrams", Esc): the
     /// keyboard goes to the diagram's row; nothing is discarded (the editor's changes stay a
     /// draft, and the diagram stays selected).
@@ -1660,14 +1710,7 @@ impl PdfCraftApp {
                 self.verify_chess_page(page);
             }
             PanelAction::ReviewNow => self.review_chess_now(),
-            // Either answer is kept: the offer is made once (plan A8, P5).
             PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
-            PanelAction::ToolsOffer { collapse } => {
-                self.chess.tools_offer_answered = true;
-                if collapse {
-                    self.left_open = false;
-                }
-            }
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

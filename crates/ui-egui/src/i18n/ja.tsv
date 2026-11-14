@@ -3483,3 +3483,6 @@ the move's comment	Move comment	手のコメント
 	supposes castling is allowed	キャスリングが許されると仮定
 	Mate in {n}: both sides mate, so who moves stays assumed	{n} 手詰め: 双方とも詰ませるため、手番は仮定のままです
 	Back to Diagrams	局面図に戻る
+	Tools panel collapsed	ツールパネルを折りたたみました
+	Show the page (F6)	ページを表示 (F6)
+	The board is in the column beside.	盤は隣の列にあります。
