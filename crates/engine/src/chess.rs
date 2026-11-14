@@ -1746,6 +1746,7 @@ pub mod collection;
 pub mod corrections;
 pub mod document;
 pub mod epub;
+pub mod evals;
 pub mod export;
 pub mod keys;
 pub mod links;

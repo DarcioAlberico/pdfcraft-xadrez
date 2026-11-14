@@ -51,6 +51,7 @@ pub(crate) struct Kind {
 
 pub(crate) const CORRECTIONS: Kind = Kind { arg: "store", dir: "corrections", legacy: crate::chess_corrections::DEFAULT_STORE };
 pub(crate) const REFERENCE: Kind = Kind { arg: "reference_store", dir: "reference", legacy: crate::chess_reference::DEFAULT_STORE };
+pub(crate) const EVALS: Kind = Kind { arg: "evals_store", dir: "evals", legacy: crate::chess_evals::DEFAULT_STORE };
 
 /// The summary of one kind's migration, for a reply.
 fn migration_reply(to: &str, m: &Migration) -> Value {
