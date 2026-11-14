@@ -14,7 +14,7 @@ use super::*;
 
 /// Helvetica `lines` (text, size, top from the page's top) rendered at `dpi` as an 8-bit gray
 /// image of the whole 600 × 800 pt page.
-fn scan(lines: &[(&str, f32, f32)], extra: &str, dpi: f32) -> (u32, u32, Vec<u8>) {
+pub(super) fn scan(lines: &[(&str, f32, f32)], extra: &str, dpi: f32) -> (u32, u32, Vec<u8>) {
     let mut content = String::from(extra);
     for (text, size, top) in lines {
         content.push_str(&format!("BT /F2 {size} Tf 60 {} Td ({text}) Tj ET\n", 800.0 - top));
@@ -52,7 +52,7 @@ impl GlyphClassifier for Recorder {
 
 /// Nearest template, with confidence falling off with the distance (a reject mass belongs to no
 /// class, so a cell unlike every template is read with little confidence).
-struct Templates {
+pub(super) struct Templates {
     names: Vec<String>,
     cells: Vec<Vec<f32>>,
 }
@@ -60,7 +60,7 @@ struct Templates {
 impl Templates {
     /// One template per character: the cell the glyph reader cuts from it drawn alone, at the
     /// size and resolution the pages are read at.
-    fn learn(chars: &str, size: f32) -> Templates {
+    pub(super) fn learn(chars: &str, size: f32) -> Templates {
         let mut names = Vec::new();
         let mut cells = Vec::new();
         for c in chars.chars() {

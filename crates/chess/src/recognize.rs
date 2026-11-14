@@ -72,7 +72,7 @@ pub const UNCERTAIN_SQUARE_THRESHOLD: f32 = 0.90;
 pub const ACCEPT_MIN_CONFIDENCE: f32 = 0.80;
 
 /// Why a probability matrix was rejected.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ProbabilityError {
     /// Not 64 × 13 values.
     Shape(usize),
@@ -168,7 +168,7 @@ pub fn placement_of(cells: &[u8; 64]) -> Placement {
 }
 
 /// A square the classifier was not sure about.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Uncertain {
     pub square: Square,
     /// The probability of what the reading put there.
