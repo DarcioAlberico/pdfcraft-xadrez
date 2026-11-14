@@ -233,3 +233,86 @@ proptest! {
         }
     }
 }
+
+/// A proof of `n` uses of `symbol` as a queen.
+fn queen_proof(symbol: &str, n: usize) -> Proof {
+    let observations = (0..n)
+        .map(|i| pdfcraft_chess::repair::Observation {
+            symbol: symbol.into(),
+            piece: PieceKind::Queen,
+            raw: format!("{symbol}d{}", i + 1),
+            san: format!("Qd{}", i + 1),
+        })
+        .collect();
+    Proof::Proven { assignment: CipherMap::from([(symbol.into(), PieceKind::Queen)]), observations, plain_plies: 0, plies: n, complete: true }
+}
+
+/// Plan A9-V4a (A3-04): a page's proofs replace what it gave before, so a page read twice counts
+/// once (three uses of a symbol, read twice, settled it: six against the five needed); two pages
+/// add up; a page read again with nothing proved gives nothing.
+#[test]
+fn a_page_read_twice_counts_once() {
+    let mut book = BookCipher::default();
+    book.record(&queen_proof("W", 3), 12);
+    book.record(&queen_proof("W", 3), 12);
+    assert!(book.proven().is_empty(), "{:?}", book.entries());
+    assert_eq!(book.entries()["W"].evidence[&Officer::Q].legality, 3);
+    book.record(&queen_proof("W", 3), 13);
+    assert_eq!(book.proven(), CipherMap::from([("W".into(), PieceKind::Queen)]));
+    assert!(book.proven_without(13).is_empty() && book.proven_without(12).is_empty(), "three of each page's own");
+    book.record(&Proof::NothingToProve, 12);
+    assert!(book.proven().is_empty());
+    assert_eq!(book.entries()["W"].evidence[&Officer::Q].legality, 3);
+}
+
+/// Plan A9-V4a (R3-10): reading a page again reads it the same: the evidence the page gave is
+/// not used to repair it.
+#[test]
+fn reading_a_page_again_reads_the_same() {
+    let read = lines(&OPERA.replace('Q', "W"));
+    let mut book = BookCipher::default();
+    let first = repair_lines(&read, None, Lang::En, &book.proven_without(7));
+    book.record(first.proof.as_ref().unwrap(), 7);
+    assert_eq!(book.proven(), CipherMap::from([("W".into(), PieceKind::Queen)]), "its own five settle it for the other pages");
+    let again = repair_lines(&read, None, Lang::En, &book.proven_without(7));
+    assert_eq!(text(&again.lines), text(&first.lines));
+    assert_eq!(format!("{:?}", again.edits), format!("{:?}", first.edits));
+    assert_eq!(format!("{:?}", again.proof), format!("{:?}", first.proof));
+    book.record(again.proof.as_ref().unwrap(), 7);
+    assert_eq!(book.entries()["W"].evidence[&Officer::Q].legality, 5, "read twice, counted once");
+}
+
+/// The table [`compat_an_earlier_build_reads_the_table_whole`] writes: pinned, so a change to the
+/// format is a change to this test.
+const PAGES_TABLE: &str = r#"{"entries":{"W":{"evidence":{"Q":{"legality":6,"glyph":0}},"examples":[{"page":12,"raw":"Wd1","san":"Qd1"},{"page":12,"raw":"Wd2","san":"Qd2"},{"page":12,"raw":"Wd3","san":"Qd3"},{"page":13,"raw":"Wd1","san":"Qd1"},{"page":13,"raw":"Wd2","san":"Qd2"},{"page":13,"raw":"Wd3","san":"Qd3"}]},"X":{"evidence":{"R":{"legality":0,"glyph":1}},"examples":[]}},"pages":{"12":[["W","Q"],["W","Q"],["W","Q"]],"13":[["W","Q"],["W","Q"],["W","Q"]]}}"#;
+
+/// Plan A9-V4a: the table keeps its format for the builds before this one: `entries` counts every
+/// proof, the pages' too, and a build that knows nothing of `pages` (its `BookCipher`, the rows
+/// alone) settles what this one does; this build takes the pages back out of the counts, so
+/// nothing is counted twice. A table an earlier build wrote reads as its rows, their pages
+/// unknown.
+#[test]
+fn compat_an_earlier_build_reads_the_table_whole() {
+    #[derive(serde::Deserialize, Default)]
+    #[serde(default)]
+    struct Earlier {
+        entries: BTreeMap<String, CipherEntry>,
+    }
+    let mut book = BookCipher::default();
+    book.record(&queen_proof("W", 3), 12);
+    book.record(&queen_proof("W", 3), 13);
+    book.observe("X", PieceKind::Rook, Source::Glyph, None);
+    let json = book.to_json().unwrap();
+    assert_eq!(json, PAGES_TABLE);
+    let earlier: Earlier = serde_json::from_str(&json).unwrap();
+    let settled: CipherMap = earlier.entries.iter().filter_map(|(s, e)| e.settled().map(|p| (s.clone(), p.kind()))).collect();
+    assert_eq!(settled, book.proven());
+    assert_eq!(earlier.entries, book.entries());
+    let back = BookCipher::from_json(&json).unwrap();
+    assert_eq!(back, book);
+    assert_eq!(back.entries()["W"].evidence[&Officer::Q].legality, 6, "counted once");
+    // An earlier build's table: six proofs of no known page, kept whatever page is read.
+    let old = BookCipher::from_json(r#"{"entries":{"W":{"evidence":{"Q":{"legality":6}},"examples":[]}}}"#).unwrap();
+    assert_eq!(old.proven(), CipherMap::from([("W".into(), PieceKind::Queen)]));
+    assert_eq!(old.proven_without(12), old.proven());
+}

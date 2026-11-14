@@ -15,7 +15,11 @@
 //!   comment for it (`Pág. 17 · diagrama 1 de 2`) with the lichess link (plan A8 P9b); a diagram
 //!   that was not read is a `<figure class="diagram unread">` with no `data-fen`;
 //! - each move is a `<span class="move" data-san="…">` (English SAN), with `data-fen` (the
-//!   position after it) when it was replayed, and `data-status` when it was not valid;
+//!   position after it) when it was replayed, and `data-status` when it was not valid; a move the
+//!   reader did not play and a reference linked to the document did (the user's games or the
+//!   book's PGN, [`super::reference::link_all`]; plan A9-N2) has the reference's position as its
+//!   `data-fen`, `data-reference="recovered"`, the reference's move as `data-reference-san` and
+//!   the class `linked`, its printed text and `data-status` the reader's;
 //! - each annotation is a `<span class="nag" data-nag="n">` with the printed glyph, said by its
 //!   name to a screen reader (`role="img"`, `aria-label`; the names are English, so the span says
 //!   `lang="en"` in a book in another language; plan A9-X3);
@@ -35,7 +39,8 @@ use pdfcraft_chess::san::{FigurineSet, Lang, San, Style, figurine_piece};
 use pdfcraft_chess::spoken::{self, Reason};
 use pdfcraft_chess::svg::{UsedPieces, board_described, symbols};
 
-use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus, PageLabel};
+use super::reference::LinkKind;
+use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus, PageLabel, ReviewFlag};
 
 /// How diagrams appear.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -249,13 +254,23 @@ fn inline_markup(inline: &Inline, o: &HtmlOptions<'_>, lang: Lang) -> (String, S
         Inline::Move(m) => {
             let (shown, body) = move_markup(m, o, lang);
             let mut attrs = format!(" data-san=\"{}\"", esc(&m.san));
-            if let Some(fen) = &m.fen {
+            // A move the reader did not play and a reference did (plan A9-N2): the reference's
+            // position, marked as its, the printed move kept.
+            let recovered = m.reference.as_ref().filter(|r| r.kind == LinkKind::Recovered).and_then(|r| r.fen.as_deref()).filter(|_| m.fen.is_none());
+            if let Some(fen) = m.fen.as_deref().or(recovered) {
                 let _ = write!(attrs, " data-fen=\"{}\"", esc(fen));
+            }
+            if recovered.is_some() {
+                attrs.push_str(" data-reference=\"recovered\"");
+                if let Some(san) = m.review.iter().find_map(|f| if let ReviewFlag::FromReference { san } = f { Some(san) } else { None }) {
+                    let _ = write!(attrs, " data-reference-san=\"{}\"", esc(san));
+                }
             }
             if m.status != MoveStatus::Valid {
                 let _ = write!(attrs, " data-status=\"{}\"", status_word(m.status));
             }
-            (format!("<span class=\"move{review}\"{attrs}>{body}</span>"), shown)
+            let linked = if recovered.is_some() { " linked" } else { "" };
+            (format!("<span class=\"move{linked}{review}\"{attrs}>{body}</span>"), shown)
         }
         Inline::Nag { code, .. } => {
             let glyph = pdfcraft_chess::nag::shown(*code);

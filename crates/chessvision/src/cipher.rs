@@ -44,6 +44,11 @@ pub const MAX_ENTRIES: usize = 64;
 const MAX_EXAMPLE_CHARS: usize = 64;
 /// Largest table read back, in bytes.
 pub const MAX_JSON_BYTES: usize = 1 << 20;
+/// Most pages whose proofs a table keeps apart ([`BookCipher::record`]); a page past them adds
+/// nothing.
+pub const MAX_PAGES: usize = 20_000;
+/// Most observations one page's proof keeps.
+pub const MAX_PAGE_OBSERVATIONS: usize = 256;
 /// Ciphered moves a region needs before a book's table rewrites it without a position
 /// (`validate.py:294-296`: two, and a majority of its piece moves).
 pub const MIN_REGION_CIPHERED: usize = 2;
@@ -154,10 +159,56 @@ pub enum CipherError {
 }
 
 /// The symbol → piece table of one book, with the evidence for each row.
+///
+/// The legality proofs are kept by page (plan A9-V4, A3-04): [`BookCipher::record`] replaces a
+/// page's, so reading a page again counts its proofs once, and reading page `p` repairs with the
+/// other pages' evidence only ([`BookCipher::proven_without`]), so it reads the same every time.
+/// `entries` holds the rest: the glyph reader's observations, and the proofs of a table written
+/// before (their pages unknown).
+///
+/// Written, `entries` counts every proof, the pages' too, as builds before this one wrote and
+/// read it, and `pages` lists the pages' proofs: an earlier build reads the same table as this
+/// one (it counts a page read twice twice, as it always did); this one takes the pages' proofs
+/// back out of `entries` when it reads them.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(from = "CipherWire", into = "CipherWire")]
 pub struct BookCipher {
     entries: BTreeMap<String, CipherEntry>,
+    /// Each page's legality proofs: the symbol and the piece of each observation.
+    pages: BTreeMap<u32, Vec<(String, Officer)>>,
+}
+
+/// A [`BookCipher`] as written: `entries` with the pages' proofs counted in.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct CipherWire {
+    entries: BTreeMap<String, CipherEntry>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pages: BTreeMap<u32, Vec<(String, Officer)>>,
+}
+
+impl From<BookCipher> for CipherWire {
+    fn from(c: BookCipher) -> CipherWire {
+        let entries = c.merged(None);
+        CipherWire { entries, pages: c.pages }
+    }
+}
+
+impl From<CipherWire> for BookCipher {
+    fn from(w: CipherWire) -> BookCipher {
+        let mut entries = w.entries;
+        // The pages' proofs come back out of the counts they were written into.
+        for (symbol, officer) in w.pages.values().flatten() {
+            if let Some(c) = entries.get_mut(symbol).and_then(|e| e.evidence.get_mut(officer)) {
+                c.legality = c.legality.saturating_sub(1);
+            }
+        }
+        // A piece whose every proof was a page's has no count of its own left.
+        for e in entries.values_mut() {
+            e.evidence.retain(|_, c| c.total() > 0);
+        }
+        BookCipher { entries, pages: w.pages }
+    }
 }
 
 /// A symbol a table can hold: like the ones `repair::infer` reports.
@@ -171,8 +222,24 @@ fn clip(text: &str) -> String {
 }
 
 impl BookCipher {
-    pub fn entries(&self) -> &BTreeMap<String, CipherEntry> {
-        &self.entries
+    /// Each symbol's evidence, every page's proofs counted in.
+    pub fn entries(&self) -> BTreeMap<String, CipherEntry> {
+        self.merged(None)
+    }
+
+    /// `entries` with every page's proofs counted in but `without`'s.
+    fn merged(&self, without: Option<u32>) -> BTreeMap<String, CipherEntry> {
+        let mut entries = self.entries.clone();
+        for (page, proofs) in &self.pages {
+            if Some(*page) == without {
+                continue;
+            }
+            for (symbol, officer) in proofs {
+                let counts = entries.entry(symbol.clone()).or_default().evidence.entry(*officer).or_default();
+                counts.legality = counts.legality.saturating_add(1);
+            }
+        }
+        entries
     }
 
     /// One observation: `symbol` stood for `piece`. Ignored for a symbol a table cannot hold, a
@@ -196,19 +263,58 @@ impl BookCipher {
         }
     }
 
-    /// Every observation of a proof, as legality evidence from `page`. Anything but
-    /// [`Proof::Proven`] adds nothing.
+    /// The observations of a proof, as `page`'s legality evidence: they replace what `page` gave
+    /// before (a page read again counts once; plan A9-V4, A3-04: each reading added its proofs
+    /// again, and a symbol seen three times was settled by reading its page twice). Anything but
+    /// [`Proof::Proven`] leaves `page` with none. A symbol a table cannot hold, a pawn, a new
+    /// symbol once the table has [`MAX_ENTRIES`], and a page past [`MAX_PAGES`] add nothing.
     pub fn record(&mut self, proof: &Proof, page: u32) {
-        if let Proof::Proven { observations, .. } = proof {
-            for o in observations {
-                self.observe(&o.symbol, o.piece, Source::Legality, Some(Example { page, raw: o.raw.clone(), san: o.san.clone() }));
+        self.pages.remove(&page);
+        let Proof::Proven { observations, .. } = proof else { return };
+        if self.pages.len() >= MAX_PAGES {
+            return;
+        }
+        let mut kept = Vec::new();
+        for o in observations.iter().take(MAX_PAGE_OBSERVATIONS) {
+            let Some(officer) = Officer::from_kind(o.piece) else { continue };
+            if !valid_symbol(&o.symbol) || (self.entries.len() >= MAX_ENTRIES && !self.entries.contains_key(&o.symbol)) {
+                continue;
+            }
+            // A row for the symbol: the table's symbols, and where its examples are kept.
+            self.entries.entry(o.symbol.clone()).or_default();
+            kept.push((o.symbol.clone(), officer, Example { page, raw: clip(&o.raw), san: clip(&o.san) }));
+        }
+        if kept.is_empty() {
+            return;
+        }
+        self.pages.insert(page, kept.iter().map(|(s, o, _)| (s.clone(), *o)).collect());
+        let merged = self.merged(None);
+        for (symbol, officer, example) in kept {
+            let majority = merged.get(&symbol).and_then(CipherEntry::majority).is_some_and(|(p, _, _)| p == officer);
+            if let Some(entry) = self.entries.get_mut(&symbol)
+                && majority
+                && entry.examples.len() < MAX_EXAMPLES
+                && !entry.examples.contains(&example)
+            {
+                entry.examples.push(example);
             }
         }
     }
 
     /// Symbol → piece for the rows the evidence settled.
     pub fn proven(&self) -> CipherMap {
-        self.entries.iter().filter_map(|(s, e)| e.settled().map(|p| (s.clone(), p.kind()))).collect()
+        Self::settled(&self.merged(None))
+    }
+
+    /// [`Self::proven`] from every page's evidence but `page`'s: what reading `page` repairs with,
+    /// so that reading it again reads the same (plan A9-V4, R3-10: a page was repaired with the
+    /// evidence it gave itself).
+    pub fn proven_without(&self, page: u32) -> CipherMap {
+        Self::settled(&self.merged(Some(page)))
+    }
+
+    fn settled(entries: &BTreeMap<String, CipherEntry>) -> CipherMap {
+        entries.iter().filter_map(|(s, e)| e.settled().map(|p| (s.clone(), p.kind()))).collect()
     }
 
     /// Read a table back (from the document's preferences), dropping what a table cannot hold.
@@ -226,7 +332,18 @@ impl BookCipher {
             }
             entries.insert(symbol, entry);
         }
-        Ok(BookCipher { entries })
+        let pages = read
+            .pages
+            .into_iter()
+            .take(MAX_PAGES)
+            .map(|(page, mut proofs)| {
+                proofs.retain(|(s, _)| valid_symbol(s) && entries.contains_key(s));
+                proofs.truncate(MAX_PAGE_OBSERVATIONS);
+                (page, proofs)
+            })
+            .filter(|(_, proofs)| !proofs.is_empty())
+            .collect();
+        Ok(BookCipher { entries, pages })
     }
 
     pub fn to_json(&self) -> Result<String, CipherError> {

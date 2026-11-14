@@ -11,6 +11,7 @@ mod board;
 mod compat;
 mod errata;
 mod fragment;
+mod from_games;
 mod html;
 mod markdown;
 
