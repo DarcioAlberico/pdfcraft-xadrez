@@ -366,6 +366,8 @@ pub(crate) struct ChessCache {
     /// and its book's PGN (plan A9-I1b): [`Session::chess_cipher`], [`Session::chess_origin`],
     /// [`Session::chess_book_pgn`].
     books: std::collections::HashMap<DocId, BookState>,
+    /// The books' PGNs indexed, by their text (plan A9-I3b): [`Session::chess_book_indexes`].
+    indexes: Arc<pdfcraft_chessvision::doc::reference::IndexMemo>,
 }
 
 /// One document's book cipher, as its reads and exports taught it, and its book origin, as the
@@ -1624,6 +1626,22 @@ impl Session {
         if self.get(id).is_some() {
             self.chess.books.entry(id).or_default().pgn = pgn.map(Arc::new);
         }
+    }
+
+    /// The books' PGNs this session indexed, by the SHA-256 of their text (plan A9-I3b): a handle
+    /// to index through on any thread — a worker off the interface's, a reading tool's call —
+    /// whose index the session then finds made, never making it twice.
+    pub fn chess_book_indexes(&self) -> Arc<pdfcraft_chessvision::doc::reference::IndexMemo> {
+        self.chess.indexes.clone()
+    }
+
+    /// `text` indexed as a book's PGN ([`Self::chess_book_indexes`]): the index this session made
+    /// of the same text before, else one made now, on the calling thread.
+    pub fn chess_book_index(
+        &self,
+        text: &str,
+    ) -> Result<Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>, pdfcraft_chessvision::doc::reference::ReferenceError> {
+        self.chess.indexes.index(text)
     }
 
     /// The user said where document `id`'s pages came from: its later reads and exports follow it.
