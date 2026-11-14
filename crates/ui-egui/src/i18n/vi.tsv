@@ -3794,3 +3794,5 @@ the move's comment	Move comment	Bình luận của nước đi
 	Alt+O switches between the board as read and the page's own picture.	Alt+O chuyển giữa bàn cờ như đã đọc và hình của chính trang.
 	Original diagram, page {p}, diagram {n}	Sơ đồ gốc, trang {p}, sơ đồ {n}
 	The page's picture of this diagram shows once its page is drawn.	Hình trên trang của sơ đồ này hiện khi trang của nó đã được vẽ.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Thêm dấu trang cờ vua

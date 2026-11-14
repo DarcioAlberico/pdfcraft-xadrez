@@ -3792,3 +3792,5 @@ the move's comment	Move comment	Ėjimo komentaras
 	Alt+O switches between the board as read and the page's own picture.	Alt+O perjungia nuskaitytą lentą ir paties puslapio paveikslą.
 	Original diagram, page {p}, diagram {n}	Originali diagrama, {p} puslapis, {n} diagrama
 	The page's picture of this diagram shows once its page is drawn.	Šios diagramos puslapio paveikslas parodomas, kai jos puslapis nupiešiamas.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Pridėti šachmatų žymeles

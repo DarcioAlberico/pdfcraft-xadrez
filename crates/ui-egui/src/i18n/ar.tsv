@@ -3816,3 +3816,5 @@ the move's comment	Move comment	تعليق النقلة
 	Alt+O switches between the board as read and the page's own picture.	يبدّل Alt+O بين الرقعة كما قُرئت وصورة الصفحة نفسها.
 	Original diagram, page {p}, diagram {n}	المخطط الأصلي، الصفحة {p}، المخطط {n}
 	The page's picture of this diagram shows once its page is drawn.	تظهر صورة الصفحة لهذا المخطط بعد رسم صفحته.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	إضافة إشارات مرجعية للشطرنج

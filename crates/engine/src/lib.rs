@@ -48,6 +48,7 @@ pub use pdfcraft_organize::{BoxSpec, FieldConflicts, PageBox, SplitBy, Transitio
 
 /// One file produced by a split: (1-based first page, last page, PDF bytes).
 pub use pdfcraft_organize::LabelStyle;
+pub use pdfcraft_organize::OutlineEntry;
 pub use pdfcraft_organize::view::{InitialView, Layout as InitialLayout, Magnification, Navigation};
 
 pub use pdfcraft_cos::Algorithm;
@@ -1374,6 +1375,12 @@ pub enum Edit {
     /// Bookmarks for the tagged headings (H, H1–H6), nested by level under a new first
     /// "Untitled" bookmark (New Bookmarks from Structure).
     BookmarksFromStructure,
+    /// A tree of bookmarks, nested by level, under a new first bookmark `title` (a chess book's
+    /// chapters, games and exercises, plan A9-N6); the bookmarks there stay.
+    AddBookmarkTree {
+        title: String,
+        entries: Vec<OutlineEntry>,
+    },
     /// Label pages `from..=to` (0-based) as Acrobat's "Number pages" does; later pages keep their labels.
     NumberPages {
         from: usize,
@@ -1889,6 +1896,7 @@ pub const EDIT_LABELS: &[&str] = &[
     "Move bookmark",
     "Set bookmark destination",
     "New bookmarks from structure",
+    "Add chess bookmarks",
     "Number pages",
     "Measure distance",
     "Measure perimeter",
@@ -2032,6 +2040,7 @@ impl Edit {
             Edit::MoveBookmark { .. } => Label::of("Move bookmark"),
             Edit::SetBookmarkPage { .. } => Label::of("Set bookmark destination"),
             Edit::BookmarksFromStructure => Label::of("New bookmarks from structure"),
+            Edit::AddBookmarkTree { .. } => Label::of("Add chess bookmarks"),
             Edit::NumberPages { .. } => Label::of("Number pages"),
             // What was measured is part of the wording too, for the same reason.
             Edit::AddMeasurement(m) => Label::of(match m.kind {
@@ -2233,6 +2242,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::MoveBookmark { .. }
         | Edit::SetBookmarkPage { .. }
         | Edit::BookmarksFromStructure
+        | Edit::AddBookmarkTree { .. }
         | Edit::NumberPages { .. } => {
             if p.assemble() {
                 Ok(())
@@ -2480,6 +2490,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
                 .map(|h| pdfcraft_organize::OutlineEntry { level: h.level, title: h.title, page: h.page, element: h.obj })
                 .collect();
             pdfcraft_organize::add_bookmark_tree(doc, "Untitled", &entries)?;
+        }
+        Edit::AddBookmarkTree { title, entries } => {
+            pdfcraft_organize::add_bookmark_tree(doc, title, entries)?;
         }
         Edit::NumberPages { from, to, style, prefix, first } => pdfcraft_organize::number_pages(doc, *from, *to, *style, prefix, *first)?,
         Edit::AddMeasurement(m) => {

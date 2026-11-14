@@ -3542,3 +3542,5 @@ the move's comment	Move comment	Commentaire du coup
 	Alt+O switches between the board as read and the page's own picture.	Alt+O bascule entre l’échiquier tel qu’il a été lu et l’image de la page elle-même.
 	Original diagram, page {p}, diagram {n}	Diagramme d’origine, page {p}, diagramme {n}
 	The page's picture of this diagram shows once its page is drawn.	L’image de ce diagramme sur la page s’affiche dès que sa page est dessinée.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Ajouter des signets d'échecs

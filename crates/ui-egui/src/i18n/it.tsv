@@ -3754,3 +3754,5 @@ the move's comment	Move comment	Commento della mossa
 	Alt+O switches between the board as read and the page's own picture.	Alt+O passa dalla scacchiera così come è stata letta all’immagine della pagina stessa.
 	Original diagram, page {p}, diagram {n}	Diagramma originale, pagina {p}, diagramma {n}
 	The page's picture of this diagram shows once its page is drawn.	L’immagine della pagina di questo diagramma appare non appena la sua pagina è disegnata.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Aggiungi segnalibri degli scacchi
