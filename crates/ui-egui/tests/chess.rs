@@ -442,9 +442,9 @@ fn the_editors_labels_are_not_broken_into_letters() {
     let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
     assert!(black.height() <= white.height() + 0.5, "Black is on one line: {black:?} against {white:?}");
     let board = h.get_by_label_contains("Diagram board, ").rect();
-    let tab = h.get_by_label("Page 1 · diagram 2 of 2").rect();
     let confirm = h.get_by_label("Confirm and next").rect();
-    let (left, right) = (tab.left().min(board.left()) - 12.0, confirm.right() + 12.0);
+    let tab = h.state().chess.diagram_tab_rect().expect("the editor was drawn");
+    let (left, right) = (tab.left(), tab.right());
     for name in ["Move number:", "To move:", "White", "Black", "1 of 1 to review", "Details", "Legal position", "Confirm and next", "More actions"] {
         let r = h.get_by_label(name).rect();
         assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
@@ -618,7 +618,6 @@ fn the_list_follows_its_pages_across_an_edit() {
     let ed = h.state().chess.editor.as_ref().unwrap();
     assert_eq!(((ed.page, ed.index), ed.fen()), ((1, 1), EDITED.to_string()), "the editor follows, its changes kept");
     assert!(h.state().toast.as_ref().is_none_or(|t| !t.0.contains("changed")), "{:?}", h.state().toast);
-    h.get_by_label_contains("Diagram 2 · ");
 
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(3);
@@ -682,8 +681,10 @@ fn the_panel_header_detects_and_sums_up() {
     h.run_steps(3);
     let ed = h.state().chess.editor.as_ref().expect("the first to review opens");
     assert_eq!((ed.page, ed.index), (0, 1));
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "in the Diagram tab");
-    // The main button detects in the whole book.
+    assert!(h.state().chess_diagram_shown(), "in the Chess column, in the list's place");
+    // The main button detects in the whole book: the list again first.
+    h.get_by_label("Back to Diagrams").click();
+    h.run_steps(2);
     h.get_by_label("Detect diagrams").click();
     h.run_steps(3);
     assert!(h.state().chess.results().unwrap().all, "the whole book");
@@ -1482,8 +1483,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     let mut h = harness_stepping(0.05);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let board = pdfcraft_ui_egui::docking::Panel::Board;
-    assert!(!h.state().docking.layout.contains(&board), "the board is not open until a diagram goes onto it");
+    assert!(!h.state().chess_board_shown(), "the board is not open until a diagram goes onto it");
     let at = on_page(&h, 140.0, 660.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -1494,7 +1494,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
         h.step();
     }
     h.run_steps(3);
-    assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
+    assert!(h.state().chess_board_shown(), "the double-click opened the board");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     h.get_by_label("Back to diagram 1 (page 1)");
@@ -1528,7 +1528,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 c5 $5 (1... e5)");
     // Copy FEN, in the FEN section (closed until opened), copies the position on the board.
-    h.get_by_label("FEN").click();
+    h.get_by_label("FEN").click_accesskit();
     h.run_steps(2);
     // The section opens at the panel's foot, partly under the window's edge: by its action.
     h.get_by_label("Copy FEN").click_accesskit();
@@ -1574,14 +1574,13 @@ fn double_click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 /// one that selected a word says nothing (selecting it may be all it was for).
 #[test]
 fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_board() {
-    let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness_stepping(0.05);
     assert!(h.state().chess.results().is_none(), "nothing scanned yet");
     let at = on_page(&h, 140.0, 660.0);
     double_click_at(&mut h, at);
     assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
-    assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
+    assert!(h.state().chess_board_shown(), "the double-click opened the board");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     assert!(h.state().chess.board_at.is_none(), "the double-click was dealt with");
@@ -1592,7 +1591,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     let at = on_page(&h, 450.0, 500.0);
     double_click_at(&mut h, at);
     assert_eq!(diagrams(&h), 2, "the page was scanned");
-    assert!(!h.state().docking.layout.contains(&board), "no diagram there");
+    assert!(!h.state().chess_board_shown(), "no diagram there");
     assert!(h.state().chess.board_at.is_none());
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("No chess diagram was found here."));
 
@@ -1603,7 +1602,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     double_click_at(&mut h, at);
     assert_eq!(h.state().views[0].selected_text().as_deref(), Some("12...e5"), "the double-click selected a word");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
-    assert!(!h.state().docking.layout.contains(&board));
+    assert!(!h.state().chess_board_shown());
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), None);
 }
 
@@ -1671,17 +1670,16 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
 /// brings it forward (T5c: the Board panel is the study board; the panel has no Study tab).
 #[test]
 fn open_on_the_board_from_the_panel() {
-    let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    assert!(h.query_by_label("Study board").is_none(), "the Chess panel's tabs are Diagrams and Text");
-    assert!(!h.state().docking.layout.contains(&board));
+    assert!(h.query_by_label("Study board").is_none(), "the Chess column's tabs are Diagrams, Text and Board");
+    assert!(!h.state().chess_board_shown());
     row_menu(&mut h, "Diagram 1 · ");
     h.get_by_label("Open on the board").click();
     h.run_steps(3);
-    assert!(h.state().docking.layout.contains(&board), "the Board panel opened");
-    assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams", "the Chess panel keeps its tab");
+    assert!(h.state().chess_board_shown(), "the column's Board tab");
+    assert_eq!(format!("{:?}", h.state().chess.tab), "Board");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     // In front: its board is drawn, the rail's set-up tool and the Analysis section with it.
     h.get_by_label("Board, White to move, move 1");
@@ -1740,7 +1738,7 @@ fn open_on_the_board_shows_the_windows_board() {
     h.get_by_label("Open on the board").click();
     h.run_steps(3);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Board);
-    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "not docked");
+    assert!(!h.state().chess_board_shown(), "not in the column");
     assert_eq!(h.get_all_by_label("Board, White to move, move 1").count(), 1, "the window's board, once");
     h.get_by_label("Analysis");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams");
@@ -2125,7 +2123,6 @@ fn the_analysis_section_switches_the_engine() {
 /// its being shown is what counts), and analyses again once it is back.
 #[test]
 fn analysis_pauses_while_the_board_panel_is_hidden() {
-    let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness();
     h.state_mut().show_chess_board();
     h.run_steps(3);
@@ -2134,7 +2131,7 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     let searching = |log: &std::sync::Mutex<Vec<String>>| log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count();
     assert!(wait_for(&mut h, &log, |_| searching(&log) == 1), "the engine analyses the board shown");
     assert!(!log.lock().unwrap().iter().any(|c| c == "stop"));
-    h.state_mut().docking.set_visible(board, false).unwrap();
+    column_tab(&mut h, "Text");
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
     assert!(h.state().chess.study.analysis, "analysis stays on, to go on when the board is back");
     // Back, on the position it was stopped on: it searches on.
@@ -2193,7 +2190,7 @@ fn analyze_in_the_list_opens_the_diagram_analysed() {
     row_menu(&mut h, "Diagram 1 · ");
     h.get_by_label("Analyze").click();
     h.run_steps(3);
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "the Board panel opened");
+    assert!(h.state().chess_board_shown(), "the column's Board tab");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert!(h.state().chess.study.analysis);
     h.get_by_label("Engine analysis");
@@ -2489,7 +2486,7 @@ fn each_diagram_opened_is_a_new_game_and_the_first_is_kept() {
     double_click_diagram(&mut h);
     assert_eq!(games(h.state()), (vec!["1. e4".to_owned(), String::new()], 1));
     // New game adds a blank one.
-    h.get_by_label("New game").click();
+    h.get_by_label("New game").click_accesskit();
     h.run_steps(2);
     assert_eq!(games(h.state()).0.len(), 3);
     h.get_by_label("Game 3");
@@ -3386,16 +3383,16 @@ fn window_settings(window: serde_json::Value) -> String {
 
 /// T13a: the board moves into its own window and back. kittest draws windows inside the main
 /// one, as the web does, so neither the command nor the rail offers it there; the app's own
-/// window (not egui's fallback) holds the board, with a Dock button. Out, the dock tab is gone
-/// and its place kept; docked again, it is back where it was. Opening a diagram on the board
-/// while it is out does not dock it, and closing the window docks it.
+/// window (not egui's fallback) holds the board, with a Dock button. Out, the Chess column only
+/// says where its tabs are; docked again, the column shows the board as it did (plan A9-I0a).
+/// Opening a diagram on the board while it is out does not dock it, and closing the window docks
+/// it.
 #[test]
 fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
-    let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness();
     h.state_mut().show_chess_board();
     h.run_steps(3);
-    let place = h.state().docking.layout.location(&board).expect("the board is docked");
+    assert!(h.state().chess_board_shown(), "in the column");
     assert!(!h.state_mut().execute("chess.window.detach"), "off where windows are drawn inside the main one");
     assert!(h.query_by_label("Chess in its own window").is_none(), "nor on the rail, nor in the Board tab's menu");
     assert!(!h.state().chess_window_detached());
@@ -3403,8 +3400,8 @@ fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
     h.state_mut().set_chess_window_detached(true);
     h.run_steps(3);
     assert!(h.state().chess_window_detached());
-    assert!(!h.state().docking.layout.contains(&board), "the dock tab is gone");
-    assert!(h.state().docking.hidden.iter().any(|(p, _)| *p == board), "its place is kept");
+    assert!(!h.state().chess_board_shown(), "out of the column");
+    h.get_by_label("The chess panel is in its own window.");
     assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "one board, in the window");
     window_back(&h);
     // The board in the window plays.
@@ -3415,7 +3412,7 @@ fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
     window_back(&h).click();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "back where it was");
+    assert!(h.state().chess_board_shown(), "back where it was");
     assert!(h.query_by_label(BACK).is_none());
     assert_eq!(movetext(&h), "1. e4", "the same game");
 
@@ -3426,17 +3423,17 @@ fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
     h.state_mut().show_chess_board();
     h.run_steps(3);
     assert!(h.state().chess_window_detached());
-    assert!(!h.state().docking.layout.contains(&board));
+    assert!(!h.state().chess_board_shown());
     assert!(h.state_mut().execute("chess.window.detach"));
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
-    assert!(h.state().docking.layout.contains(&board));
+    assert!(h.state().chess_board_shown());
     h.state_mut().set_chess_window_detached(true);
     h.run_steps(3);
     h.get_by_label("Close window").click();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached(), "closing the window docks the board");
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
+    assert!(h.state().chess_board_shown());
 }
 
 /// T13a: in Read mode, which draws the board beside the page instead of the workspace, a board
@@ -3471,7 +3468,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     next["docking_detached"]["size"] = serde_json::json!([900.0, 640.0]);
     let h = harness_restoring(next.to_string());
     assert!(h.state().chess_window_detached());
-    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    assert!(!h.state().chess_board_shown());
     window_back(&h);
     let [w, ht] = h.state().chess_window_size();
     assert!((w - 900.0).abs() < 1.0 && (ht - 640.0).abs() < 1.0, "the window kept its size: {w} × {ht}");
@@ -3587,96 +3584,62 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
     assert!(h.query_by_label(BACK).is_none(), "the window is gone");
-    // The board is back in its tab beside the Inspector, behind it (U5: the user is looking at
-    // the Inspector), whose Chess panel has the list again.
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    // The Chess column has the list again (U5: the user is looking at it), the board a tab away.
+    assert!(!h.state().chess_board_shown());
     assert!(h.query_by_label("The chess panel is in its own window.").is_none());
     assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "back in the Inspector");
-    pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
-    h.run_steps(3);
+    column_tab(&mut h, "Board");
     assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1);
 }
 
-/// The tab in front of the dock group that holds `panel`.
-fn front_of(app: &PdfCraftApp, panel: pdfcraft_ui_egui::docking::Panel) -> Option<pdfcraft_ui_egui::docking::Panel> {
-    use craft_ui::docking::Node;
-    let mut nodes: Vec<&Node<_>> = app.docking.layout.root.iter().collect();
-    while let Some(node) = nodes.pop() {
-        match node {
-            Node::Split { first, second, .. } => nodes.extend([&**first, &**second]),
-            Node::Tabs { panels, active } if panels.contains(&panel) => return panels.get(*active).copied(),
-            _ => {}
-        }
-    }
-    None
+/// Choose the Chess column's tab `name` (Diagrams, Text or Board), as a click on it does.
+fn column_tab(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    h.get_by(|n| n.role() == egui::accesskit::Role::Tab && n.label().is_some_and(|l| l == name)).click();
+    h.run_steps(2);
 }
 
-/// Wave 10 U5: docking the board back puts it in its place (its group, and its place in the
-/// group), and in front only where it was in front when it left. Bring it back, pressed in the
-/// Inspector, leaves the Inspector in front, its Chess panel showing the Diagrams again; the
-/// window's Dock puts the board in front as it was; a board that left from behind the
-/// Inspector comes back behind it; a board in another group goes back there, in front.
+/// Wave 10 U5, in the Chess column (plan A9-I0a): docking the board back shows the column's
+/// Board tab only when the board was the tab shown as it left; Bring it back, pressed in the
+/// column where the user is looking, leaves the list there; a board that left from another tab
+/// comes back with that tab in front.
 #[test]
 fn docking_back_returns_the_board_to_its_group_without_covering_the_inspector() {
-    use pdfcraft_ui_egui::docking::{self, Panel};
-    let (board, inspector) = (Panel::Board, Panel::Inspector);
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     h.state_mut().show_chess_board();
     h.run_steps(3);
-    let place = h.state().docking.layout.location(&board).expect("docked");
-    assert_eq!(front_of(h.state(), inspector), Some(board), "the board in front of the Inspector, in its group");
+    assert!(h.state().chess_board_shown());
     let out = |h: &mut Harness<'static, PdfCraftApp>| {
         h.state_mut().set_chess_window_detached(true);
         h.run_steps(3);
         assert!(h.state().chess_window_detached());
-        assert_eq!(front_of(h.state(), inspector), Some(inspector));
+        assert!(!h.state().chess_board_shown());
     };
 
-    // Bring it back, from the Inspector the user is looking at.
+    // Bring it back, from the column the user is looking at: the list.
     out(&mut h);
     inspector_back(&h).click_accesskit();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "in its group, where it was in it");
-    assert_eq!(front_of(h.state(), board), Some(inspector), "behind the Inspector");
-    assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "the Inspector shows the list again");
+    assert!(!h.state().chess_board_shown(), "the list, not the board");
+    assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "the column shows the list again");
     assert!(h.query_by_label_contains("Board, ").is_none());
 
-    // In front, out, the window's Dock: in front again, as it left.
-    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
-    h.run_steps(2);
+    // The board in front, out, the window's Dock: in front again, as it left.
+    column_tab(&mut h, "Board");
     out(&mut h);
     window_back(&h).click();
     h.run_steps(3);
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()));
-    assert_eq!(front_of(h.state(), board), Some(board));
+    assert!(h.state().chess_board_shown());
 
-    // Out from behind the Inspector (the command, or the Board tab's menu on a tab behind):
-    // back behind it.
-    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "inspector"})).unwrap();
-    h.run_steps(2);
+    // Out from the Text tab: back with the Text tab in front.
+    column_tab(&mut h, "Text");
     out(&mut h);
     window_back(&h).click();
     h.run_steps(3);
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
-    assert_eq!(front_of(h.state(), board), Some(inspector));
-
-    // In the Tools' group instead: back there, in front, even by Bring it back, and the
-    // Inspector stays as it is.
-    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "move", "panel": "board", "target": "tools", "zone": "center"})).unwrap();
-    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
-    h.run_steps(2);
-    let place = h.state().docking.layout.location(&board).expect("docked");
-    assert_eq!(front_of(h.state(), Panel::Tools), Some(board));
-    h.state_mut().set_chess_window_detached(true);
-    h.run_steps(3);
-    inspector_back(&h).click_accesskit();
-    h.run_steps(3);
-    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
-    assert_eq!(front_of(h.state(), Panel::Tools), Some(board), "back with the Tools, in front");
-    assert_eq!(front_of(h.state(), inspector), Some(inspector));
+    assert!(!h.state().chess_board_shown());
+    assert_eq!(format!("{:?}", h.state().chess.tab), "Text");
 }
 
 /// Wave 10 U5: the embedded window keeps the size its contents get, as the native one does
@@ -4197,8 +4160,10 @@ fn a_corrected_diagram_opens_and_links_with_its_correction() {
     h.run_steps(3);
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
     // Another diagram in the editor, so the board takes the row's position, not the editor's.
+    to_list(&mut h);
     h.get_all_by_label_contains("Diagram 1 · ").next().unwrap().click();
     h.run_steps(3);
+    to_list(&mut h);
     row_menu(&mut h, "Diagram 2 · ");
     let lichess = h.get_by_label("Open in lichess");
     assert!(!lichess.accesskit_node().is_disabled(), "the corrected diagram links");
@@ -4286,8 +4251,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     {
         let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
         scan_and_edit_second(&mut h);
-        assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "the Diagram tab opened");
-        h.get_by_label_contains("Diagram 1 · ");
+        assert!(h.state().chess_diagram_shown(), "the Diagram tab opened");
         let queue = h.state().chess.results().unwrap().review_queue();
         assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
         h.get_by_label("Confirm and next").click();
@@ -4296,6 +4260,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         // It was the only one to review: the review is done (plan A8, P4).
         assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Review done: 1 of 1 checked"));
         assert!(h.state().chess.results().unwrap().review_queue().is_empty(), "off the review queue");
+        to_list(&mut h);
         h.get_by_label("Diagram 2 · Corrected");
         assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
         let id = h.state().active_ids().unwrap().1;
@@ -4636,7 +4601,7 @@ fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
     h.get_by_label_contains("Diagram 1 · ");
     h.state_mut().show_chess_board();
     h.run_steps(4);
-    assert_eq!(h.query_all_by_label("Chess board").count(), 1, "the tab names it; the panel does not again");
+    assert_eq!(h.query_all_by_label("Chess board").count(), 0, "the column's Board tab names it (plan A9-I0a)");
     let black = h.query_all_by_role_and_label(Role::RadioButton, "Black").count();
     assert_eq!(black, 1, "Black is one segment of who moves");
     h.get_by_role_and_label(Role::RadioButton, "Black").click();
@@ -4644,37 +4609,22 @@ fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
     assert_eq!(h.state().chess.board().game.side_to_move(), pdfcraft_engine::chess::pdfcraft_chess::placement::Color::Black);
 }
 
-/// Plan A8, P5 (finding X4): in a narrow window the chess panel offers once to collapse the tools
-/// panel; the answer is kept in the settings, and a wide window is not asked.
+/// Plan A8, P5 (finding X4), as plan A9-I0a has it: no offer to collapse the tools panel any
+/// more; a chess surface opening in a window under 1,920 pt collapses it, once a session, with a
+/// notice whose Undo brings it back, and a wide window leaves it.
 #[test]
-fn the_chess_panel_offers_once_to_collapse_the_tools_panel() {
-    let offer = "More room for the page: collapse the tools panel?";
+fn the_tools_panel_collapses_once_for_the_chess_column() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
-    assert!(h.state_mut().execute("chess.scan"));
-    h.run_steps(3);
     assert!(h.state().left_open);
-    h.get_by_label(offer);
-    h.get_by_label("Collapse").click();
+    assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert!(!h.state().left_open, "the tools panel is collapsed");
-    assert!(h.query_by_label(offer).is_none());
-    let settings = h.state().persist();
-    assert!(settings.contains("\"chess_tools_offer_answered\":true"), "{settings}");
-    // Asked once: with the panel open again, no offer.
-    h.state_mut().left_open = true;
-    h.run_steps(3);
-    assert!(h.query_by_label(offer).is_none(), "answered already");
-    // Not now is an answer too; a wide window is not asked.
-    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
+    assert!(h.query_by_label("More room for the page: collapse the tools panel?").is_none(), "no offer");
+    h.get_by_label("Tools panel collapsed");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1960.0, 900.0), None);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    h.get_by_label("Not now").click();
-    h.run_steps(3);
-    assert!(h.state().left_open && h.state().chess.tools_offer_answered);
-    let mut h = harness_with(boards(), 0.25, egui::vec2(1700.0, 900.0), None);
-    assert!(h.state_mut().execute("chess.scan"));
-    h.run_steps(3);
-    assert!(h.query_by_label(offer).is_none(), "a wide window has room");
+    assert!(h.state().left_open, "a wide window keeps the tools");
 }
 
 /// Plan A8, P4: the Diagram tab walks what the Diagrams list's chip shows ("1 of 1 · Read"), its
@@ -4695,7 +4645,11 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     h.get_by_label("1 of 1 to review");
     h.get_by_label("Page 1 · diagram 2 of 2, 1 of 1 to review");
     // The chip of the font diagram's state: the drawn board is not among them.
+    to_list(&mut h);
     h.get_by_label("Read (1)").click();
+    h.run_steps(2);
+    // The editor again, on the drawn board the chip leaves out (plan A9-I0a: master-detail).
+    h.state_mut().chess.diagram_open = true;
     h.run_steps(2);
     h.get_by_label("1 · Read");
     h.get_by_label("Next diagram (Page Down)").click();
@@ -4729,9 +4683,9 @@ fn the_board_goes_back_to_its_diagram() {
     if let Some(r) = h.state_mut().chess.results_mut() {
         r.selected = None;
     }
-    h.state_mut().docking.layout.apply(craft_ui::docking::Action::Close { panel: pdfcraft_ui_egui::docking::Panel::Diagram }).unwrap();
+    h.state_mut().chess.diagram_open = false;
     h.run_steps(2);
-    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram));
+    assert!(!h.state().chess_diagram_shown());
     // No button of the title covers the link (the panel is narrow: it goes under the title).
     let link = h.get_by_label("Back to diagram 2 (page 1)").rect();
     for name in ["Board theme", "Move list beside the page", "Analyze", "Stop the analysis"] {
@@ -4742,7 +4696,7 @@ fn the_board_goes_back_to_its_diagram() {
     h.get_by_label("Back to diagram 2 (page 1)").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)), "the diagram is open again");
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "in the Diagram tab");
+    assert!(h.state().chess_diagram_shown(), "in the Chess column");
 }
 
 /// The font diagram confirmed as read is Verified; Ctrl+Enter over the tab confirms too; the
@@ -4766,6 +4720,7 @@ fn a_reading_confirmed_as_it_is_is_verified() {
     assert!(h.get_by_label("Confirmed").accesskit_node().is_disabled(), "nothing left to confirm");
     assert!(h.query_by_label("Only confirm").is_none());
     // Ctrl+Enter with the pointer over the tab: the drawn board, set and confirmed.
+    to_list(&mut h);
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
@@ -4889,6 +4844,8 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
     h.state_mut().choose_right_panel(Some(RightPanel::Chess));
     h.run_steps(2);
+    column_tab(&mut h, "Diagrams");
+    to_list(&mut h);
     g.click(&mut h, "Export book…");
     g.click(&mut h, "PGN — games");
     h.run_steps(3);
@@ -5048,7 +5005,7 @@ fn the_classic_editor_stays_in_the_diagrams_panel() {
     h.run_steps(3);
     h.get_by_label_contains("Diagram 1 · ").click();
     h.run_steps(3);
-    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram));
+    assert!(!h.state().chess_diagram_shown());
     h.get_by_label("Edit Diagram 1, page 1");
     let saved = h.state().persist();
     let mut again = PdfCraftApp::new();
@@ -5056,9 +5013,8 @@ fn the_classic_editor_stays_in_the_diagrams_panel() {
     assert!(again.chess.classic_editor, "kept with the preferences");
 }
 
-/// Read mode draws no docking workspace, so no Diagram tab: picking a diagram there opens its
-/// editor in the Chess diagrams panel, as the classic editor does, where it is confirmed as in the
-/// Diagram tab; leaving Read mode brings out no Diagram tab the user never saw open (plan
+/// Read mode has the same Chess column (plan A9-I0a): picking a diagram there opens its editor in
+/// the list's place, where it is confirmed, and leaving Read mode keeps the column as it is (plan
 /// A9-I15, finding R4-01).
 #[test]
 fn read_mode_corrects_a_diagram_in_the_panel() {
@@ -5073,7 +5029,7 @@ fn read_mode_corrects_a_diagram_in_the_panel() {
         assert_eq!(h.state().right, Some(RightPanel::Chess), "the panel shows in Read mode");
         h.get_by_label_contains("Diagram 1 · ").click();
         h.run_steps(3);
-        h.get_by_label("Edit Diagram 1, page 1");
+        assert!(h.state().chess_diagram_shown(), "{theme}: the editor in the list's place (plan A9-I0a)");
         h.state_mut().chess.confirm_only = true;
         h.run_steps(1);
         shot(&mut h, &format!("read-mode-editor-1366-{theme}.png"));
@@ -5087,7 +5043,7 @@ fn read_mode_corrects_a_diagram_in_the_panel() {
         assert!(h.state_mut().execute("view.read_mode"));
         h.run_steps(3);
         assert_ne!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
-        assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "{theme}: no Diagram tab comes out");
+        assert!(h.state().chess_diagram_shown(), "{theme}: the same column out of Read mode, the editor still there");
     }
 }
 
@@ -5106,10 +5062,12 @@ fn a_draft_is_kept_per_diagram_and_marked() {
     let mut h = harness();
     draft_second(&mut h);
     h.get_by_label("Unconfirmed changes");
+    to_list(&mut h);
     h.get_by_label_contains("Diagram 1 · ").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.drafts.len(), 1, "the drawn board's draft");
     assert!(h.query_by_label("Unconfirmed changes").is_none(), "diagram 1 has none");
+    to_list(&mut h);
     h.get_by_label_contains("· Unconfirmed changes");
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
@@ -5767,6 +5725,7 @@ fn with_nothing_to_review_confirm_has_no_menu_and_then_says_confirmed() {
     h.get_by_label("Confirm and next").click();
     h.run_steps(3);
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    to_list(&mut h);
     h.get_by_label_contains("Diagram 1 · ").click();
     h.run_steps(3);
     assert!(h.query_by_label("More ways to confirm").is_none(), "nothing to go on to");
@@ -5908,6 +5867,250 @@ fn the_app_keeps_its_chess_stores_in_one_place_and_brings_in_the_earlier_ones() 
     assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 2);
     assert_eq!(next.toast.as_ref().map(|t| t.0.as_str()), Some("Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in."));
     let _ = std::fs::remove_dir_all(dir);
+}
+
+// ─── Plan A9-I0a: the Chess column ──────────────────────────────────────────────────────────
+
+/// The Diagrams list again, when a diagram's editor is in its place (plan A9-I0a).
+fn to_list(h: &mut Harness<'static, PdfCraftApp>) {
+    if h.state().chess_diagram_shown() {
+        h.get_by_label("Back to Diagrams").click();
+        h.run_steps(3);
+    }
+}
+
+/// The Chess column as the last frame drew it (plan A9-I0a).
+fn chess_column(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+    h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-chess-column"))).expect("the Chess column is shown")
+}
+
+/// Plan A9-I0a (§2.8.0, findings R4-03, A6-14): at 1366 × 768 the chess surfaces are one
+/// column, the Inspector's, measured region by region as the plan's sketches are: its tabs
+/// Diagrams · Text · Board in a row at its top; a diagram opened puts its editor in the list's
+/// place (it had a 320 pt column of its own beside the page, which fell to 29 %); "‹ Diagrams"
+/// and Esc go back to the list, the diagram's row taking the keyboard; the board is the third
+/// tab; and the page keeps all the column, the Tools and the rail leave it.
+#[test]
+fn the_chess_surfaces_are_one_column_beside_the_page() {
+    let (width, rail, tools) = (1366.0, 48.0, 272.0);
+    let mut h = harness_sized(boards(), egui::vec2(width, 768.0));
+    scan_and_edit_second(&mut h);
+    let column = chess_column(&h);
+    let page = h.state().views[0].viewport_rect();
+    // The tabs, in a row at the column's top.
+    let tabs: Vec<egui::Rect> = ["Diagrams", "Text", "Board"]
+        .iter()
+        .map(|name| h.get_by(|n| n.role() == egui::accesskit::Role::Tab && n.label().is_some_and(|l| l == *name)).rect())
+        .collect();
+    for (tab, next) in tabs.iter().zip(tabs.iter().skip(1)) {
+        assert!(
+            column.contains_rect(*tab) && tab.max.x <= next.min.x + 0.5 && (tab.center().y - next.center().y).abs() < 1.0,
+            "{tabs:?} in {column:?}"
+        );
+    }
+    // The editor in the list's place, in the column.
+    let board = h.get_by_label_contains("Diagram board, ").rect();
+    assert!(column.contains_rect(board) && board.min.y > tabs[0].max.y, "the editor's board {board:?} under the tabs, in {column:?}");
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the list gives the editor its place");
+    assert!(h.state().chess_diagram_shown());
+    // Nothing else beside the page: the window is the Tools, the page, the column and the rail.
+    // What is left is the dividers between them (the Tools collapsed for the column, plan A9-I0a).
+    let tools = if h.state().left_open { tools } else { 0.0 };
+    let rest = width - tools - page.width() - column.width() - rail;
+    assert!(rest.abs() <= 16.0, "page {page:?}, column {column:?}: {rest} pt of something else");
+    assert!(page.max.x <= column.min.x + 0.5, "the page left of the column");
+
+    // Back: the list, the diagram's row with the keyboard.
+    h.get_by_label("Back to Diagrams").click();
+    h.run_steps(3);
+    assert!(!h.state().chess_diagram_shown());
+    assert!(h.get_by_label_contains("Diagram 2 · ").is_focused(), "the row the diagram was opened from");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)), "still selected, its changes kept");
+    // Opened again, and Esc: the list again.
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert!(h.state().chess_diagram_shown());
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert!(!h.state().chess_diagram_shown(), "Esc goes back to the list");
+    h.get_by_label_contains("Diagram 1 · ");
+
+    // The board, the column's third tab: in the column, the page as wide as before.
+    column_tab(&mut h, "Board");
+    let board = h.get_by_label_contains("Board, ").rect();
+    assert!(chess_column(&h).contains_rect(board), "{board:?} in {:?}", chess_column(&h));
+    assert!((h.state().views[0].viewport_rect().width() - page.width()).abs() < 1.0, "the page keeps its width");
+    // With PDFCRAFT_CHESS_SHOTS set, pictures of the column at 1366 × 768.
+    shot(&mut h, "i0a-board-1366.png");
+}
+
+/// Plan A9-I0a: Read mode has the same column, tabs and master-detail.
+#[test]
+fn read_mode_has_the_same_chess_column() {
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("view.read_mode"));
+    h.run_steps(3);
+    scan_and_edit_second(&mut h);
+    assert!(h.state().chess_diagram_shown(), "the editor in the list's place");
+    let column = chess_column(&h);
+    assert!(column.contains_rect(h.get_by_label_contains("Diagram board, ").rect()));
+    h.get_by_label("Back to Diagrams").click();
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 2 · ");
+    column_tab(&mut h, "Board");
+    assert!(h.state().chess_board_shown());
+    assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "one board, in the column");
+}
+
+/// Plan A9-I0a: with PDFCRAFT_CHESS_SHOTS set, pictures of the Chess column at the plan's screens
+/// (1366 × 768, 1360 × 705, 1440 × 900, 1920 × 1080): the list, a diagram's editor in its place,
+/// and the board. At each, the editor and the board are inside the column.
+#[test]
+fn the_chess_column_at_the_plans_screens() {
+    for (w, ht) in [(1366.0, 768.0), (1360.0, 705.0), (1440.0, 900.0), (1920.0, 1080.0)] {
+        let mut h = harness_sized(boards(), egui::vec2(w, ht));
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(4);
+        shot(&mut h, &format!("i0a-{w}x{ht}-list.png"));
+        h.get_by_label_contains("Diagram 2 · ").click();
+        h.run_steps(4);
+        // From 1,600 pt the editor stands in the second column (the second PR of I0a).
+        let column = chess_second(&h).unwrap_or_else(|| chess_column(&h));
+        assert!(column.contains_rect(h.get_by_label_contains("Diagram board, ").rect()), "{w}: the editor in the column");
+        shot(&mut h, &format!("i0a-{w}x{ht}-editor.png"));
+        column_tab(&mut h, "Board");
+        h.run_steps(2);
+        assert!(chess_column(&h).contains_rect(h.get_by_label_contains("Board, ").rect()), "{w}: the board in the column");
+        shot(&mut h, &format!("i0a-{w}x{ht}-board.png"));
+    }
+}
+
+// ─── Plan A9-I0a: the columns the window's width allows ─────────────────────────────────────
+
+/// The second column beside the Chess column, as the last frame drew it (from 1,600 pt).
+fn chess_second(h: &Harness<'static, PdfCraftApp>) -> Option<egui::Rect> {
+    h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-chess-second")))
+}
+
+/// Plan A9-I0a (§2.8.0, finding R4-03): at 1360 × 705 (1366 × 768 less the system's bars), a
+/// diagram opened leaves the page at least 940 pt and the page fitted to its width at 60 % or
+/// more (it had 390 pt and 29 %): the Chess column is 360 pt and the Tools panel is collapsed,
+/// once a session, with a notice whose Undo brings it back. The same window a second time keeps
+/// the Tools open, and a Chess column the user widened keeps its width.
+#[test]
+fn at_1366_a_diagram_opened_leaves_the_page_940_points() {
+    // Opening the column collapses the Tools, with a notice whose Undo brings them back.
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    assert!(h.state().left_open, "the Tools panel shows");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    h.get_by_label("Tools panel collapsed");
+    h.get_by_label("Undo: Tools panel collapsed").click();
+    h.run_steps(3);
+    assert!(h.state().left_open, "Undo brings the Tools back");
+    // Once a session: the column closed and opened again leaves them.
+    h.state_mut().choose_right_panel(None);
+    h.run_steps(2);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!(h.state().left_open, "collapsed once a session");
+    // A diagram opened in a new session: the page keeps 940 pt.
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    scan_and_edit_second(&mut h);
+    h.run_steps(2);
+    let (column, page) = (chess_column(&h), h.state().views[0].viewport_rect());
+    assert!((column.width() - 360.0).abs() <= 2.0, "one column of 360 pt: {column:?}");
+    assert!(page.width() >= 940.0, "the page keeps 940 pt: {page:?}");
+    assert!(chess_second(&h).is_none(), "one column below 1,600 pt");
+    assert!(h.state().chess_diagram_shown(), "the editor in the list's place");
+    assert!(h.state_mut().execute("view.fit_width_scrolling"));
+    h.run_steps(3);
+    let zoom = h.state().views[0].zoom;
+    assert!(zoom >= 0.6, "fitted to its width at {zoom}");
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    shot(&mut h, "i0a-1360x705.png");
+}
+
+/// Plan A9-I0a (decision 3): the budget never undoes what the user did in the session: the
+/// Inspector dragged wider keeps its width when the Chess column opens.
+#[test]
+fn a_column_the_user_sized_keeps_its_width() {
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Comments));
+    h.run_steps(3);
+    // The user drags the Inspector to 500 pt (the workspace's divider sends this action).
+    let size = serde_json::to_value(craft_ui::layout::SplitSize::FixedSecond(500.0)).unwrap();
+    pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "resizeSplit", "path": [true], "size": size})).unwrap();
+    h.run_steps(2);
+    let before = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-inspector-body"))).expect("the Inspector shows").width();
+    assert!((before - 500.0).abs() <= 2.0, "{before}");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    assert!((chess_column(&h).width() - before).abs() <= 2.0, "{before} kept: {:?}", chess_column(&h));
+}
+
+/// Plan A9-I0a: from 1,600 pt the Chess column has a second column beside it, the diagram being
+/// edited, else the board; the list stays in sight beside the editor.
+#[test]
+fn from_1600_the_editor_or_the_board_stands_beside_the_column() {
+    let mut h = harness_sized(boards(), egui::vec2(1700.0, 900.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let second = chess_second(&h).expect("two columns");
+    assert!((chess_column(&h).width() - 360.0).abs() <= 2.0 && (second.width() - 360.0).abs() <= 2.0, "{:?} {second:?}", chess_column(&h));
+    assert!(second.contains_rect(h.get_by_label_contains("Board, ").rect()), "the board beside the list");
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert!(second.contains_rect(h.get_by_label_contains("Diagram board, ").rect()), "the editor beside the list");
+    assert!(chess_column(&h).contains_rect(h.get_by_label_contains("Diagram 1 · ").rect()), "the list stays");
+    assert!(h.state().views[0].viewport_rect().width() >= 1700.0 - 720.0 - 48.0 - 272.0 - 4.0);
+    shot(&mut h, "i0a-1700x900.png");
+}
+
+/// Plan A9-I0a (§2.8.0, findings R5-04): at 200 % of a 1366 × 768 screen (680 × 352 pt) the page
+/// or the Chess column shows, never both: the column takes the page's place, every control of it
+/// inside the window (Export ran off the column's edge), and F6 or its page button switch to the
+/// page and back, the keyboard going along.
+#[test]
+fn under_1000_points_the_page_or_the_column_shows() {
+    no_piece_model();
+    let mut h = Harness::builder().with_size(egui::vec2(680.0, 352.0)).with_pixels_per_point(2.0).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let window = h.ctx.content_rect();
+    assert!(window.width() < 1000.0, "{window:?}");
+    let column = chess_column(&h);
+    assert!(column.width() > window.width() * 0.8, "the column in the page's place: {column:?} in {window:?}");
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_some(), "the list in the column");
+    let focusable: Vec<_> = h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus)).collect();
+    let mut seen = 0;
+    // Across, every control in sight is inside the column and the window; down, the list scrolls
+    // (a row cut by the window's foot is scrolled to).
+    let shown = column.intersect(window);
+    for node in focusable.iter().filter(|n| shown.intersects(n.rect())) {
+        let r = node.rect();
+        let name = node.accesskit_node().label().unwrap_or_default();
+        assert!(column.min.x - 0.5 <= r.min.x && r.max.x <= column.max.x.min(window.max.x) + 0.5, "{name:?} {r:?} out of {column:?}");
+        seen += 1;
+    }
+    assert!(seen >= 5, "the column's controls: {seen}");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::F6);
+    assert!(h.state().chess.budget.show_page, "F6: the page");
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the column gave the page its place");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::F6);
+    assert!(!h.state().chess.budget.show_page, "F6: the column again");
+    h.run_steps(2);
+    assert!(h.ctx.memory(|m| m.focused()).is_some(), "the keyboard went with it");
+    h.get_by_label("Show the page (F6)").click();
+    h.run_steps(3);
+    assert!(h.state().chess.budget.show_page);
 }
 
 // ─── Plan A9, G3b: the games on the engine's store ───────────────────────────────────────────

@@ -3444,3 +3444,52 @@ the move's comment	Move comment	此着法的评论
 	mates in {m}	{m} 步即杀
 	supposes castling is allowed	假定允许王车易位
 	Mate in {n}: both sides mate, so who moves stays assumed	{n} 步杀：双方都能将杀，因此轮到谁走仍是假定的
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	此页绘制的路径多于检查的上限；其余已跳过。
+	Content streams that couldn't be decoded and were skipped: {n}	无法解码而被跳过的内容流：{n}
+	The page's paths couldn't be read: {e}	无法读取页面的路径：{e}
+	The document can't be read for editing, so its images and paths were not looked at.	无法读取文档以供编辑，因此未检查其图像和路径。
+	The page's text couldn't be read: {e}	无法读取页面的文本：{e}
+	Only the first {n} of the page's {total} images were looked at.	只检查了页面 {total} 张图像中的前 {n} 张。
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	因页面图像像素超出扫描预算而未裁剪的图像：{n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	棋图 {d}：双方都能 {n} 步杀，因此轮到谁走仍是假定的。
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	某棋图提供 {offered} dpi；最多以 {max} dpi 读取（max_read_dpi）。
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	页面太大，无法以 {wanted} dpi 渲染；其棋图以 {read} dpi 读取。
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	无法以 {wanted} dpi 渲染页面以供读取（{e}）；已以 {read} dpi 读取。
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	棋图 {d}：自更正以来识别结果已改变（现在为 {fen}）；更正保留。
+	The frames around text were not looked for: {e}	未查找文本周围的边框：{e}
+	The lines set bolder were not looked for: {e}	未查找比正文排得更粗的行：{e}
+	The words set in bold were not looked for: {e}	未查找以粗体排印的词：{e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	页面高度的 {p}% 含有过多细小墨迹，不像文本（图片或有灰尘的扫描）；这些条带未读取。
+	The general OCR failed ({e}); the glyph reader read the prose too.	通用 OCR 失败（{e}）；字形读取器也读取了正文。
+	Chess OCR failed: {e}	国际象棋 OCR 失败：{e}
+	The page couldn't be rendered for chess OCR: {e}	无法为国际象棋 OCR 渲染页面：{e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	请求了国际象棋 OCR，但它需要 chess-glyphs 模型。
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	字体 {font} 看起来像国际象棋字体，但不在目录中；其文本按提取结果保留。
+	The page has no visible area; it is left out.	页面没有可见区域；已略去。
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	无法读取页面的段落（{e}）；其行已按间距分组。
+	The page's diagrams couldn't be read; they are left out.	无法读取页面的棋图；已略去。
+	A correction ({id}) was not used: {e}	未使用一项更正（{id}）：{e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	不支持描述记谱法（{examples}）；其着法未读取。
+	The document holds {n} games, the most it keeps: from here on, no game starts.	文档包含 {n} 个对局，这是它保留的上限：从这里起不再开始新的对局。
+	This page couldn't be read: {e}	无法读取此页：{e}
+	{why} (chess OCR needs the chess-glyphs model)	{why}（国际象棋 OCR 需要 chess-glyphs 模型）
+	the page has no text layer	页面没有文本层
+	the text layer has two-byte codes with no Unicode text	文本层含有没有 Unicode 文本的双字节代码
+	the text layer extracts as replacement characters	文本层提取出来是替换字符
+	the text layer's Unicode map is dead	文本层的 Unicode 映射已失效
+	chess-font glyphs that couldn't be resolved: {n}	无法解析的国际象棋字体字形：{n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	棋子位置是杂散符号的着法（较早的 OCR 层丢失了棋子符号）：{n}
+	the text layer is invisible text over an image of the page: another program's OCR	文本层是页面图像上方的不可见文本：另一个程序的 OCR
+	no piece model is loaded	未加载棋子模型
+	the page raster's resolution is not a positive number	页面栅格的分辨率不是正数
+	the diagram's box or corners are not finite numbers on this page	棋图的边框或角在此页上不是有限数
+	the diagram lies outside the page raster	棋图位于页面栅格之外
+	the diagram's corners do not form a quadrilateral	棋图的角不构成四边形
+	the page has more diagrams than are read on one page	页面上的棋图多于一页读取的上限
+	the piece model failed: {e}	棋子模型失败：{e}
+	the piece model's output is not a probability matrix: {e}	棋子模型的输出不是概率矩阵：{e}
+	Back to Diagrams	返回棋图
+	Tools panel collapsed	工具面板已收起
+	Show the page (F6)	显示页面 (F6)
+	The board is in the column beside.	棋盘在旁边一栏。
