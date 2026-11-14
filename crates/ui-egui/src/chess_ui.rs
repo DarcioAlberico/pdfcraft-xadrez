@@ -98,6 +98,8 @@ pub struct ChessState {
     /// The folder the books' readings are kept in (plan A9-N5b): `chess/reading` in the app's data
     /// folder, so a book opened again reads none of its pages; `None` (the web, a test) keeps none.
     pub reading_dir: Option<std::path::PathBuf>,
+    /// The books' ciphers, and where they are kept (plan A9-G3c).
+    pub ciphers: crate::chess_cipher_ui::Ciphers,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,

@@ -201,7 +201,7 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         let lang = crate::chess_capture::document_lang(&self.chess, Some(id));
         let games = self.chess.games.current_doc();
-        let book = self.session.chess_cipher(id);
+        let book = self.chess_cipher(id);
         let query = AreaQuery { page, rect_user: [user.x0, user.y0, user.x1, user.y1], rect_view: area.rect_view(), lang };
         let reader = self.chess.capture.area.reader.clone();
         let models_dir = self.chess.models.models_dir();
