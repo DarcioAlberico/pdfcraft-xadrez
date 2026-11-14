@@ -36,6 +36,7 @@ mod chess_annotate;
 mod chess_autosave;
 mod chess_board_tab;
 mod chess_board_ui;
+mod chess_bookmarks_ui;
 mod chess_capture;
 mod chess_collection;
 mod chess_correct;
@@ -3516,6 +3517,7 @@ impl eframe::App for PdfCraftApp {
             chess_fixes::forget_prompt(self, &ctx);
             chess_keep::prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
+            chess_bookmarks_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
             widgets::settle_dialogs(&ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
@@ -3585,7 +3587,8 @@ impl eframe::App for PdfCraftApp {
         // The question about a chess diagram's unconfirmed changes (plan A8, P3b3), the one about
         // chess games the autosave doesn't keep (plan A9-G8), the one before the first redraw in
         // the PDF (P3b4), the one before keeping a protected document's chess (plan A9-I1c), the
-        // export's (P9c), and the assistant when Analyze finds no engine (P7).
+        // export's (P9c), the book's bookmarks before they are made (plan A9-N6), and the
+        // assistant when Analyze finds no engine (P7).
         chess_drafts::prompt(self, &ctx);
         chess_unsaved::prompt(self, &ctx);
         chess_collection::cut_prompt(self, &ctx);
@@ -3593,6 +3596,7 @@ impl eframe::App for PdfCraftApp {
         chess_fixes::forget_prompt(self, &ctx);
         chess_keep::prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
+        chess_bookmarks_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
         // A dialog no longer shown gives the keyboard back to where it was (plan A9-I11a).
         widgets::settle_dialogs(&ctx);

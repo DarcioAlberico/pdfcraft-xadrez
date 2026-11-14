@@ -3548,6 +3548,21 @@ the move's comment	Move comment	Comentário do lance
 	The board is in the column beside.	O tabuleiro está na coluna ao lado.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Adicionar marcadores de xadrez
+	Make the book's bookmarks…	Criar os marcadores do livro…
+	Reading the book for its bookmarks…	Lendo o livro para os marcadores…
+	Reading the book for its bookmarks: page {done} of {of}	Lendo o livro para os marcadores: página {done} de {of}
+	Reading was stopped: no bookmark was added.	A leitura foi interrompida: nenhum marcador foi adicionado.
+	The book's bookmarks	Marcadores do livro
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Capítulos: {chapters} · Partidas: {games} · Exercícios: {exercises}
+	Chapters	Capítulos
+	Games	Partidas
+	Exercises	Exercícios
+	Exercise	Exercício
+	Title of the bookmark	Título do marcador
+	No chapter, game or exercise was found in the book.	Nenhum capítulo, partida ou exercício foi encontrado no livro.
+	Add the bookmarks	Adicionar os marcadores
+	The document changed since it was read: make its bookmarks again.	O documento mudou desde que foi lido: crie os marcadores de novo.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Marcadores adicionados sob “{title}”: {n}. Desfazer os tira.
 	More board actions	Mais ações do tabuleiro
 	Back to the moves	Voltar para os lances
 	Back to the moves (Esc)	Voltar para os lances (Esc)

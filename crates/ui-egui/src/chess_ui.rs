@@ -127,6 +127,8 @@ pub struct ChessState {
     pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
+    /// The book's bookmarks, read and shown before they are made (plan A9-N6).
+    pub(crate) bookmarks: Option<crate::chess_bookmarks_ui::BookmarksPreview>,
     /// The file Open folder last showed (what tests see instead of the file manager).
     pub last_revealed: Option<std::path::PathBuf>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
@@ -682,6 +684,8 @@ pub enum PanelAction {
     PgnOffer {
         use_it: bool,
     },
+    /// Make the book's bookmarks… (plan A9-N6).
+    Bookmarks,
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -1729,6 +1733,7 @@ impl PdfCraftApp {
             }
             PanelAction::ReviewNow => self.review_chess_now(),
             PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
+            PanelAction::Bookmarks => self.read_book_for_bookmarks(),
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

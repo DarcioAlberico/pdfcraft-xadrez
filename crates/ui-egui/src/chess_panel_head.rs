@@ -1,7 +1,8 @@
 //! Chess ▸ Diagrams: the panel's header (plan A8, P2a2).
 //!
 //! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export book…
-//! (`file-output`, the menu of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…). While a scan runs, a
+//! (`file-output`, the menu of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…, Make the
+//! book's bookmarks…, plan A9-N6). While a scan runs, a
 //! progress bar (`widgets::progress`) and "Detecting… page 75 of 703" (its width kept for the
 //! longest number, so the text does not jump) with Stop, the diagrams found so far staying. When a scan has
 //! found diagrams, "548 diagrams · 40 to review" with Review now; before any, what detecting does.
@@ -83,6 +84,10 @@ pub(crate) fn header(
                 .clicked()
             {
                 action = Some(PanelAction::Models);
+            }
+            // The book's outline from its reading (plan A9-N6).
+            if widgets::menu_entry(ui, true, egui::Button::new(tl!("Make the book's bookmarks…"))).clicked() {
+                action = Some(PanelAction::Bookmarks);
             }
         });
     });

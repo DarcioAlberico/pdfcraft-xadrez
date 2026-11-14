@@ -109,6 +109,10 @@ pub enum JobKind {
     LinkBook {
         stamp: ScanStamp,
     },
+    /// Every page read for the book's bookmarks, shown before they are made (plan A9-N6).
+    Bookmarks {
+        stamp: ScanStamp,
+    },
     #[cfg(not(target_arch = "wasm32"))]
     Export {
         format: ChessFormat,
@@ -127,6 +131,8 @@ enum JobDone {
     Game(Result<GameSpanRead, String>),
     Export(Result<pdfcraft_engine::chess::export::ChessExport, String>),
     Linked(Result<crate::chess_reference_ui::BookLink, String>),
+    /// The whole book read, for its bookmarks.
+    Outline(Result<ChessDoc, String>),
 }
 
 impl JobKind {
@@ -134,7 +140,7 @@ impl JobKind {
     /// ([`crate::chess_ui::ChessState::long`]); the others read a page or a few, in the page
     /// read's ([`crate::chess_ui::ChessState::reading`]).
     pub fn is_long(&self) -> bool {
-        matches!(self, JobKind::Export { .. } | JobKind::LinkBook { .. })
+        matches!(self, JobKind::Export { .. } | JobKind::LinkBook { .. } | JobKind::Bookmarks { .. })
     }
 
     /// What a job of this kind came to when its work could not run or did not end (`why`).
@@ -144,6 +150,7 @@ impl JobKind {
             JobKind::Game { .. } => JobDone::Game(Err(why)),
             JobKind::Export { .. } => JobDone::Export(Err(why)),
             JobKind::LinkBook { .. } => JobDone::Linked(Err(why)),
+            JobKind::Bookmarks { .. } => JobDone::Outline(Err(why)),
         }
     }
 }
@@ -165,6 +172,7 @@ impl ChessJob {
             JobKind::Game { .. } => tl!("Reading the pages around the game…"),
             JobKind::Export { .. } => tl!("Exporting the chess document…"),
             JobKind::LinkBook { .. } => tl!("Aligning the book to the PGN…"),
+            JobKind::Bookmarks { .. } => tl!("Reading the book for its bookmarks…"),
         }
     }
 
@@ -173,6 +181,7 @@ impl ChessJob {
         let (done, total) = self.job.progress();
         let said = match self.kind {
             JobKind::Export { .. } => tl!("Exporting the chess document: page {done} of {of}"),
+            JobKind::Bookmarks { .. } => tl!("Reading the book for its bookmarks: page {done} of {of}"),
             _ => tl!("Aligning the book to the PGN: page {done} of {of}"),
         };
         // The page it is on, as the scan's row says it: one more than those done, at most the last.
@@ -895,6 +904,46 @@ impl PdfCraftApp {
         });
     }
 
+    /// Chess ▸ Make the book's bookmarks… (plan A9-N6): read every page of the active document as
+    /// the export does, off the interface thread (the diagrams a block of pages at a time, so the
+    /// panel says how far it is), then show the bookmarks it gives before they are made
+    /// ([`crate::chess_bookmarks_ui`]).
+    pub(crate) fn read_book_for_bookmarks(&mut self) {
+        /// Pages read at a time.
+        const BLOCK: usize = 16;
+        let Some((_, id)) = self.active_ids() else { return };
+        if self.chess.long.is_some() {
+            return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
+        if !self.may_copy(id) {
+            return;
+        }
+        let (Some(stamp), Some(pages)) = (self.session.chess_stamp(id), self.session.get(id).map(|d| d.info.pages.len())) else { return };
+        let mode = self.chess_origin(id).ocr_mode();
+        let book = self.chess_cipher(id);
+        let settings = self.chess_scan_settings();
+        self.start_chess_job(id, JobKind::Bookmarks { stamp }, move |s, id, ctl| {
+            let options = OcrOptions::new(mode).with_book(book.as_ref());
+            let all: Vec<usize> = (0..pages).collect();
+            // The diagrams scanned a block at a time, so the panel says how far it is and Stop
+            // works between two blocks; the text is then read whole, its games across pages.
+            ctl.progress(0, pages);
+            let mut done: usize = 0;
+            for block in all.chunks(BLOCK) {
+                // Stopped: the job was dropped, and what it says now is never seen.
+                if ctl.cancelled() {
+                    return JobDone::Outline(Err(String::new()));
+                }
+                if let Err(e) = s.chess_scan(id, block, &settings, true) {
+                    return JobDone::Outline(Err(e));
+                }
+                done = done.saturating_add(block.len());
+                ctl.progress(done, pages);
+            }
+            JobDone::Outline(s.chess_document_with(id, &all, &settings, None, &options).map(|read| read.doc))
+        });
+    }
+
     /// The book cipher document `id`'s reads have taught so far, if any: the session keeps one per
     /// document (plan A9-I1a), so reading another book never takes it.
     pub fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
@@ -960,6 +1009,7 @@ impl PdfCraftApp {
         let Some(job) = self.chess.long.take() else { return };
         let said = match job.kind {
             JobKind::LinkBook { .. } => tl!("Aligning was stopped: the book's link is as it was."),
+            JobKind::Bookmarks { .. } => tl!("Reading was stopped: no bookmark was added."),
             _ => tl!("The export was stopped: nothing was written."),
         };
         // Dropping it asks its work to stop; its thread ends at its next block of pages.
@@ -1100,6 +1150,16 @@ impl PdfCraftApp {
                         }
                         self.chess.doc_mut(job.doc).book_link = Some(link);
                     }
+                    Err(e) => self.notify(e),
+                }
+            }
+            (JobKind::Bookmarks { stamp }, JobDone::Outline(read)) => {
+                // The document changed meanwhile: its pages are not the ones read.
+                if self.session.chess_stamp(job.doc) != Some(stamp) {
+                    return;
+                }
+                match read {
+                    Ok(doc) => self.preview_book_bookmarks(job.doc, doc),
                     Err(e) => self.notify(e),
                 }
             }

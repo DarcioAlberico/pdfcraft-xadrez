@@ -3536,6 +3536,21 @@ the move's comment	Move comment	Komentar k potezi
 	The board is in the column beside.	Šahovnica je v sosednjem stolpcu.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Dodaj šahovske zaznamke
+	Make the book's bookmarks…	Ustvari zaznamke knjige …
+	Reading the book for its bookmarks…	Branje knjige za njene zaznamke …
+	Reading the book for its bookmarks: page {done} of {of}	Branje knjige za njene zaznamke: stran {done} od {of}
+	Reading was stopped: no bookmark was added.	Branje je bilo ustavljeno: noben zaznamek ni bil dodan.
+	The book's bookmarks	Zaznamki knjige
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Poglavja: {chapters} · Partije: {games} · Vaje: {exercises}
+	Chapters	Poglavja
+	Games	Partije
+	Exercises	Vaje
+	Exercise	Vaja
+	Title of the bookmark	Naslov zaznamka
+	No chapter, game or exercise was found in the book.	V knjigi ni bilo najdenega nobenega poglavja, partije ali vaje.
+	Add the bookmarks	Dodaj zaznamke
+	The document changed since it was read: make its bookmarks again.	Dokument se je od branja spremenil: znova ustvarite njegove zaznamke.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Zaznamki dodani pod »{title}«: {n}. Razveljavi jih odstrani.
 	More board actions	Več dejanj s šahovnico
 	Back to the moves	Nazaj na poteze
 	Back to the moves (Esc)	Nazaj na poteze (Esc)

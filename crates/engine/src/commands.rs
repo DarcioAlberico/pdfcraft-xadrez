@@ -391,6 +391,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.reference.clear", "Remove the book's PGN", None, None, Document, "file-x"),
     // Every page read and linked to it: the summary and its games' pages (R6d).
     c("chess.reference.link", "Link the whole book to its PGN", None, None, Copying, "link"),
+    // The book's outline from its reading, shown before it is made (plan A9-N6).
+    c("chess.bookmarks", "Make the book's bookmarks…", None, None, Assembly, "bookmark"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),

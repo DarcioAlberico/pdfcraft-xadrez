@@ -3444,6 +3444,21 @@ the move's comment	Move comment	Комментарий к ходу
 	The board is in the column beside.	Доска — в соседней колонке.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Добавить шахматные закладки
+	Make the book's bookmarks…	Создать закладки книги…
+	Reading the book for its bookmarks…	Чтение книги для закладок…
+	Reading the book for its bookmarks: page {done} of {of}	Чтение книги для закладок: страница {done} из {of}
+	Reading was stopped: no bookmark was added.	Чтение остановлено: закладки не добавлены.
+	The book's bookmarks	Закладки книги
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Главы: {chapters} · Партии: {games} · Упражнения: {exercises}
+	Chapters	Главы
+	Games	Партии
+	Exercises	Упражнения
+	Exercise	Упражнение
+	Title of the bookmark	Название закладки
+	No chapter, game or exercise was found in the book.	В книге не найдено ни глав, ни партий, ни упражнений.
+	Add the bookmarks	Добавить закладки
+	The document changed since it was read: make its bookmarks again.	Документ изменился после чтения: создайте его закладки заново.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Закладки добавлены в «{title}»: {n}. Отменить убирает их.
 	More board actions	Другие действия с доской
 	Back to the moves	Назад к ходам
 	Back to the moves (Esc)	Назад к ходам (Esc)
