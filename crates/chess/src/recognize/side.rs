@@ -20,7 +20,7 @@ use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::rules::{Legality, check_position};
 
 /// Where the side to move came from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SideSource {
     /// Declared in the PDF's text near the diagram.
     Text,
@@ -50,7 +50,7 @@ pub enum SideSource {
 }
 
 /// The side to move, where it came from, and whether the sources disagreed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SideToMove {
     pub color: Color,
     pub source: SideSource,

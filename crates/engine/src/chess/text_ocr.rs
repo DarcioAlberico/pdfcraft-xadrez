@@ -98,7 +98,7 @@ pub const LARGER_LINE_RATIO: f32 = 1.4;
 pub const LARGER_LINE_MIN_GLYPHS: usize = 3;
 
 /// A line set larger than its page's body, in view space, and how many times as tall.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LargerLine {
     pub rect: ViewRect,
     pub ratio: f32,
@@ -212,7 +212,7 @@ pub(crate) fn masked(image: &GrayImage, rects: &[PixelRect]) -> Option<GrayImage
 /// Read one page image (`gray`, the whole displayed page at `dpi`) as chess text. `diagrams`
 /// are the page's diagrams in the same pixels; `ocr` the general OCR's words, if it ran;
 /// `context` the position the page's moves start from; `book` the document's cipher, which
-/// learns from the page.
+/// learns from the page. [`read_page_alone`], then [`finish_page`].
 #[allow(clippy::too_many_arguments)]
 pub fn read_page(
     gray: &GrayImage,
@@ -225,6 +225,42 @@ pub fn read_page(
     book: &mut BookCipher,
     page: u32,
 ) -> Result<OcrText, String> {
+    Ok(finish_page(read_page_alone(gray, dpi, diagrams, glyphs, ocr)?, lang, context, book, page))
+}
+
+/// What chess OCR reads of a page from the page alone (plan A9-N5a, the reading's "local stage"):
+/// everything before the book's cipher and the legality repair, which depend on the other pages
+/// and on where the page's moves start, and run after it ([`finish_page`]). The same page image,
+/// diagrams, models and words give the same `PageAlone`, so it can be kept and used again.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct PageAlone {
+    /// The resolution the page was read at.
+    pub dpi: f32,
+    /// The glyph reader's lines fused with the general OCR's words, top to bottom, in the page
+    /// image's pixels.
+    pub lines: Vec<FusedLine>,
+    /// Whether the general OCR read the prose (otherwise the glyph reader read everything).
+    pub general_ocr: bool,
+    /// [`OcrText::frames`].
+    pub frames: Vec<ViewRect>,
+    /// [`OcrText::larger`].
+    pub larger: Vec<LargerLine>,
+    /// [`OcrText::bolder`].
+    pub bolder: Vec<ViewRect>,
+    /// The words set bolder than the body (view space, `glyphs::bold_words`).
+    pub bold: Vec<ViewRect>,
+    /// [`OcrText::notes`].
+    pub notes: Vec<super::ScanNote>,
+}
+
+/// The page's own reading, [`read_page`] up to the cipher and the repair: see [`PageAlone`].
+pub fn read_page_alone(
+    gray: &GrayImage,
+    dpi: f32,
+    diagrams: &[PixelRect],
+    glyphs: &dyn GlyphClassifier,
+    ocr: Option<&[OcrWord]>,
+) -> Result<PageAlone, String> {
     let image = masked(gray, diagrams).ok_or("the page image could not be prepared")?;
     // The page's ink, once (plan A9-V2): the reading and every layout hint use it.
     let mut ink = PageInk::new(&image, None, None, &[]).map_err(|e| e.to_string())?;
@@ -285,8 +321,16 @@ pub fn read_page(
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),
     };
+    Ok(PageAlone { dpi, lines: fused, general_ocr: ocr.is_some(), frames, larger, bolder, bold, notes })
+}
+
+/// The rest of [`read_page`] over the page's own reading (`alone`): the book's cipher and the
+/// legality repair from `context` (the position the page's moves start from), with the other
+/// pages' evidence in `book`, which learns from this one as page `page`; then the chess text.
+pub fn finish_page(alone: PageAlone, lang: Lang, context: Option<&GameContext>, book: &mut BookCipher, page: u32) -> OcrText {
+    let PageAlone { dpi, lines, general_ocr, frames, larger, bolder, bold, notes } = alone;
     // The other pages' evidence: reading this page again reads the same (plan A9-V4).
-    let repaired = repair_lines(&fused, context, lang, &book.proven_without(page));
+    let repaired = repair_lines(&lines, context, lang, &book.proven_without(page));
     if let Some(proof) = &repaired.proof {
         book.record(proof, page);
     }
@@ -294,18 +338,18 @@ pub fn read_page(
     reviews.extend(repaired.flags.iter().filter_map(|f| TextReview::from_flag(f, dpi)));
     let mut text = to_chess_text(&repaired.lines, dpi, Some(lang));
     set_bold(&mut text, &bold);
-    Ok(OcrText {
+    OcrText {
         text,
         reviews,
         lines: repaired.lines.len(),
         edits: repaired.edits.len(),
         flags: repaired.flags.len(),
-        general_ocr: ocr.is_some(),
+        general_ocr,
         frames,
         larger,
         bolder,
         notes,
-    })
+    }
 }
 
 /// The general OCR's words on `gray`, as the fusion takes them; `None` when its models are not

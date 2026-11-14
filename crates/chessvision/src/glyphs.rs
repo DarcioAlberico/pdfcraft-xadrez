@@ -134,14 +134,14 @@ impl Default for GlyphOptions {
 }
 
 /// Another reading of a glyph and its probability.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Alternative {
     pub text: String,
     pub p: f32,
 }
 
 /// One recognised glyph.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Glyph {
     /// Its box in the raster's pixels.
     pub rect: PixelRect,

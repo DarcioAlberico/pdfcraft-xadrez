@@ -8,7 +8,7 @@
 use std::fmt;
 
 /// A side.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Color {
     White,
     Black,
@@ -33,7 +33,7 @@ impl Color {
 }
 
 /// A kind of piece, without its colour.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum PieceKind {
     Pawn,
     Knight,
@@ -66,7 +66,7 @@ impl PieceKind {
 }
 
 /// A coloured piece.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Piece {
     pub color: Color,
     pub kind: PieceKind,
@@ -317,6 +317,40 @@ impl fmt::Debug for Placement {
     }
 }
 
+/// A square is written by its name (`"e4"`), as everywhere else (plan A9-N5a: a page's reading
+/// kept on disk).
+impl serde::Serialize for Square {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Square {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Square, D::Error> {
+        let name = <std::borrow::Cow<'de, str>>::deserialize(d)?;
+        Square::parse(&name).ok_or_else(|| serde::de::Error::custom(format_args!("not a square: {:.8}", name)))
+    }
+}
+
+/// A placement is written as a FEN placement field (`"rnbqkbnr/pppppppp/8/…"`), which holds an
+/// illegal one too (plan A9-N5a).
+impl serde::Serialize for Placement {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(&crate::fen::format_placement(self))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Placement {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Placement, D::Error> {
+        let field = <std::borrow::Cow<'de, str>>::deserialize(d)?;
+        // 64 pieces and 7 slashes at most: a longer text is no placement field, and is not split.
+        if field.len() > 71 {
+            return Err(serde::de::Error::custom("a placement field has at most 71 characters"));
+        }
+        crate::fen::parse_placement_field(&field).map_err(serde::de::Error::custom)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -407,5 +441,27 @@ mod tests {
         p.set(Square::parse("e4").unwrap(), Some(Piece::new(Color::White, PieceKind::King)));
         assert_eq!(p.king(Color::White), None);
         assert_eq!(Placement::empty().king(Color::Black), None);
+    }
+
+    /// Plan A9-N5a: a placement is written as its FEN field, an illegal one too, and a square by
+    /// its name; anything else is refused, never taken for a board.
+    #[test]
+    fn placements_and_squares_are_written_as_fen_and_names() {
+        let mut odd = Placement::standard();
+        odd.set(Square::parse("e4").unwrap(), Some(Piece::new(Color::White, PieceKind::King)));
+        for p in [Placement::standard(), Placement::empty(), odd] {
+            let json = serde_json::to_string(&p).unwrap();
+            assert_eq!(json, format!("\"{}\"", crate::fen::format_placement(&p)));
+            assert_eq!(serde_json::from_str::<Placement>(&json).unwrap(), p);
+        }
+        assert_eq!(serde_json::to_string(&Square::parse("e4")).unwrap(), "\"e4\"");
+        assert_eq!(serde_json::from_str::<Square>("\"h8\"").unwrap(), Square::parse("h8").unwrap());
+        let long = format!("\"{}\"", "8/".repeat(400));
+        for bad in ["\"e9\"", "\"\"", "12", "\"e44\""] {
+            assert!(serde_json::from_str::<Square>(bad).is_err(), "{bad}");
+        }
+        for bad in ["\"8/8/8\"", "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"", "\"9/8/8/8/8/8/8/8\"", long.as_str(), "[]"] {
+            assert!(serde_json::from_str::<Placement>(bad).is_err(), "{bad:.40}");
+        }
     }
 }

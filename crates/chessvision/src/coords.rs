@@ -24,7 +24,7 @@ pub use pdfcraft_geom::{PageRect, Rotation};
 pub const POINTS_PER_INCH: f32 = 72.0;
 
 /// A rectangle in view space: points, y down, origin at the displayed page's top-left corner.
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct ViewRect {
     pub x0: f32,
     pub y0: f32,
@@ -48,7 +48,7 @@ impl ViewRect {
 }
 
 /// A box of pixels, half-open: columns `x0..x1`, rows `y0..y1`, top row first.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub struct PixelRect {
     pub x0: u32,
     pub y0: u32,
@@ -66,16 +66,68 @@ impl PixelRect {
     }
 }
 
+/// A [`PageRect`] as a page's reading kept on disk writes it (plan A9-N5a): its four sides by
+/// name, as [`ViewRect`] and [`PixelRect`] are written. For `#[serde(with = "PageRectDef")]`.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(remote = "PageRect")]
+pub(crate) struct PageRectDef {
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+}
+
 /// Where a page's visible area sits in user space and how it is turned for display: what every
 /// conversion between user space and view space needs.
 ///
 /// Built only through [`PageGeometry::new`], so the crop box is always finite with a positive
-/// area and the conversions never divide by zero.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// area and the conversions never divide by zero. Read back from a page's reading kept on disk
+/// the same way (plan A9-N5a): a stored geometry that breaks the rule is refused.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(into = "GeometryFields", try_from = "GeometryFields")]
 pub struct PageGeometry {
     crop_box: PageRect,
     rotation: Rotation,
     user_unit: f32,
+}
+
+/// A [`PageGeometry`] as it is written (plan A9-N5a): the crop box, the turn in degrees (0, 90,
+/// 180 or 270) and `/UserUnit`.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub(crate) struct GeometryFields {
+    #[serde(with = "PageRectDef")]
+    crop_box: PageRect,
+    rotation: u16,
+    user_unit: f32,
+}
+
+impl From<PageGeometry> for GeometryFields {
+    fn from(g: PageGeometry) -> GeometryFields {
+        let rotation = match g.rotation {
+            Rotation::R0 => 0,
+            Rotation::R90 => 90,
+            Rotation::R180 => 180,
+            Rotation::R270 => 270,
+        };
+        GeometryFields { crop_box: g.crop_box, rotation, user_unit: g.user_unit }
+    }
+}
+
+impl TryFrom<GeometryFields> for PageGeometry {
+    type Error = &'static str;
+
+    fn try_from(f: GeometryFields) -> Result<PageGeometry, &'static str> {
+        let rotation = match f.rotation {
+            0 => Rotation::R0,
+            90 => Rotation::R90,
+            180 => Rotation::R180,
+            270 => Rotation::R270,
+            _ => return Err("a page turns 0, 90, 180 or 270 degrees"),
+        };
+        PageGeometry::new(f.crop_box, rotation)
+            .and_then(|g| g.with_user_unit(f.user_unit))
+            .ok_or("a page's crop box is finite with an area, and its user unit a finite positive number")
+    }
 }
 
 impl PageGeometry {
