@@ -395,7 +395,7 @@ impl GameContext {
 
     /// A full FEN. `None` when it is not a legal position.
     pub fn from_fen(fen: &str) -> Option<GameContext> {
-        Board::from_fen(fen.trim(), false).ok().map(|board| GameContext { board })
+        crate::fen::board_from_fen(fen.trim()).ok().map(|board| GameContext { board })
     }
 
     pub fn fen(&self) -> String {

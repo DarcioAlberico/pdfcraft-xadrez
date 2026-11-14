@@ -1188,7 +1188,7 @@ pub fn apply<F: PageFingerprints + ?Sized>(pages: &[std::sync::Arc<super::ChessP
             let diverged = e.orig.is_some() && read_fen != made_over;
             if diverged {
                 let now = read_fen.as_deref().unwrap_or("unread");
-                corrected.notes.push(format!("diagram {}: the reading changed since it was corrected (now {now}); the correction is kept", i + 1));
+                corrected.notes.push(super::ScanNote::CorrectionDiverged { diagram: i.saturating_add(1), now: now.to_owned() });
             }
             *reading = BoardReading {
                 index: reading.index,

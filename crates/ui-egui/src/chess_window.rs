@@ -1,10 +1,9 @@
 //! The chess window (PGN toolbar spec T13a, T13b, §4.8, D8 b).
 //!
-//! `chess.window.detach` moves the Board panel out of the docking workspace into a window of its
-//! own and back. While it is out, the panel is closed in the workspace with its place kept (a
-//! hidden `Location`), so its slot collapses and docking it again puts it back where it was, in
-//! front only if it was then (and never in front of the Inspector after its Bring it back); the
-//! Read-mode board panel, which shows only while the panel is in the workspace, is gone too.
+//! `chess.window.detach` moves the chess board out of the Chess column (the Inspector's, plan
+//! A9-I0a) into a window of its own and back. While it is out, the column's tabs only say where
+//! they are; docking it again shows the column's Board tab when the board was the tab shown as it
+//! left (and never after its Bring it back, pressed in the column).
 //!
 //! Geometry (wave 10, U5): the size kept is the inner size in points, what the contents get, for
 //! the native window and the embedded one alike; the native window's place is kept in pixels of
@@ -43,13 +42,11 @@
 //! code panicking inside the window's pass is caught there too (so the pass ends and egui's state
 //! stays whole), and docks the board back with the app's usual "That didn't work" notice.
 
-use craft_ui::docking::Action;
 use egui::{Pos2, Rect, Vec2, ViewportId, vec2};
 use serde_json::{Value, json};
 
 use crate::chess_board_ui::{self, Sizing};
 use crate::chess_text_ui::ChessTab;
-use crate::docking::Panel;
 use crate::theme::Tokens;
 use crate::window_place::{MainWindow, Monitor, Place, Target};
 use crate::{PdfCraftApp, RightPanel};
@@ -334,8 +331,8 @@ impl PdfCraftApp {
         self.chess_window.tab
     }
 
-    /// Show the chess panel's `tab`: in the Inspector, or in the chess window while the panel is
-    /// there. The board is not a tab of the panel: [`PdfCraftApp::show_chess_board`] shows it.
+    /// Show the Chess column's `tab`: in the Inspector, or in the chess window while the board is
+    /// there.
     pub(crate) fn show_chess_tab(&mut self, tab: ChessTab) {
         if !self.chess_window_detached() {
             self.chess.tab = tab;
@@ -344,6 +341,7 @@ impl PdfCraftApp {
         self.chess_window.tab = match tab {
             ChessTab::Diagrams => ChessWindowTab::Diagrams,
             ChessTab::Text => ChessWindowTab::Text,
+            ChessTab::Board => ChessWindowTab::Board,
         };
     }
 
@@ -415,24 +413,15 @@ impl PdfCraftApp {
         if self.chess_window.detached {
             return;
         }
-        let board = Panel::Board;
-        let front = !self.docking.layout.contains(&board) || self.docking.exposed(board);
-        // The panel's place (its group, and where in it) is kept while it is closed, as a hidden
-        // `Location` of the workspace, for docking back.
-        if let Err(error) = self.docking.set_visible(board, false) {
-            self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
-            return;
-        }
-        self.chess_window.docked_front = front;
+        // Whether the column showed the board as it left (plan A9-I0a), for docking back.
+        self.chess_window.docked_front = self.right == Some(RightPanel::Chess) && self.chess.tab == ChessTab::Board;
         self.chess_window.detached = true;
         self.chess_window.opened = None;
     }
 
-    /// The board back in the dock where it was when it left (the workspace's hidden `Location`:
-    /// its group, and its place in it; if that group is gone, at the end of the Inspector's
-    /// group or else right of the page, as when it is first opened). It is the front tab of its
-    /// group again only if it was when it left, and never in front of the Inspector after Bring
-    /// it back (pressed there, where the user is looking); every other group keeps its front tab.
+    /// The board back in the Chess column: its Board tab in front when it was as the board left;
+    /// after Bring it back, pressed in the column where the user is looking, the list in front
+    /// instead of the board; the column keeps its tab otherwise.
     fn dock_chess_board(&mut self) {
         let behind_inspector = std::mem::take(&mut self.chess_window.dock_behind);
         if !self.chess_window.detached {
@@ -441,29 +430,13 @@ impl PdfCraftApp {
         self.chess_window.detached = false;
         self.chess_window.opened = None;
         self.chess_window.last_shown = None;
-        let panel = Panel::Board;
-        let front = self.chess_window.docked_front;
-        // The tabs in front now that keep the front.
-        let keep: Vec<Panel> = Panel::ALL
-            .iter()
-            .copied()
-            .filter(|p| *p != panel && self.docking.exposed(*p) && (!front || (behind_inspector && *p == Panel::Inspector)))
-            .collect();
-        let docking = &mut self.docking;
-        let docked = docking.set_visible(panel, true).and_then(|()| {
-            if front {
-                docking.apply(Action::Activate { panel })?;
+        if behind_inspector {
+            // Pressed in the column, where the user is: the list there, not the board.
+            if self.chess.tab == ChessTab::Board {
+                self.chess.tab = ChessTab::Diagrams;
             }
-            // Restoring makes the board its group's front tab: the front goes back where it stays.
-            for p in keep {
-                if !docking.exposed(p) {
-                    docking.apply(Action::Activate { panel: p })?;
-                }
-            }
-            Ok(())
-        });
-        if let Err(error) = docked {
-            self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
+        } else if self.chess_window.docked_front {
+            self.chess.tab = ChessTab::Board;
         }
     }
 
@@ -517,24 +490,9 @@ impl PdfCraftApp {
         }
     }
 
-    /// Read `docking_detached` from saved settings (after the workspace: a board in a window is
-    /// not also in the dock).
+    /// Read `docking_detached` from saved settings.
     pub(crate) fn restore_chess_window(&mut self, v: &Value) {
         self.chess_window.restore(v);
-        if self.chess_window.detached
-            && let Err(error) = self.docking.set_visible(Panel::Board, false)
-        {
-            log::warn!("the chess board window couldn't be restored: {error}");
-            self.chess_window.detached = false;
-        }
-    }
-}
-
-/// The Board tab's context menu in the docking workspace: its own window.
-pub(crate) fn dock_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, panel: Panel) {
-    if panel == Panel::Board && app.chess_window_available() && ui.button(tl!("Chess in its own window")).clicked() {
-        app.toggle_chess_window();
-        ui.close();
     }
 }
 
@@ -557,15 +515,6 @@ pub(crate) fn frame(app: &mut PdfCraftApp, ctx: &egui::Context) {
     }
     if !app.chess_window.detached {
         app.chess_window.raise = false;
-        return;
-    }
-    // Something opened the Board panel in the dock (a saved layout, the control channel): the
-    // dock wins, so the board is never in two places.
-    if app.docking.layout.contains(&Panel::Board) {
-        app.chess_window.detached = false;
-        app.chess_window.opened = None;
-        app.chess_window.last_shown = None;
-        app.chess_window.dock_behind = false;
         return;
     }
     if ctx.embed_viewports() {
@@ -1150,7 +1099,7 @@ mod tests {
             }
             if round % 20 == 0 {
                 app.restore_chess_window(&v);
-                assert!(!app.chess_window.detached || !app.docking.layout.contains(&Panel::Board), "{v}");
+                assert_eq!(app.chess_window.detached, w.detached, "{v}");
             }
         }
     }
@@ -1173,8 +1122,7 @@ mod tests {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
         app.ctx = Some(ctx.clone());
-        app.docking.set_visible(Panel::Board, true).unwrap();
-        let place = app.docking.layout.location(&Panel::Board).unwrap();
+        app.show_chess_board();
         let asked = std::rc::Rc::new(std::cell::Cell::new(0));
         let counter = std::rc::Rc::clone(&asked);
         app.watch_surface_failures(Box::new(move || {
@@ -1186,7 +1134,7 @@ mod tests {
         pass(&ctx, &mut app);
         assert_eq!(asked.get(), 1, "asked right after the window's pass");
         assert!(!app.chess_window_detached(), "docked back");
-        assert_eq!(app.docking.layout.location(&Panel::Board).ok(), Some(place), "where it was");
+        assert_eq!((app.right, app.chess.tab), (Some(RightPanel::Chess), ChessTab::Board), "the column's Board tab, as it was");
         let notice = app.toast.take().map(|t| t.0).unwrap_or_default();
         assert!(notice.contains("couldn't open in its own window"), "{notice}");
         // No second try in this session: the command is refused and says why.
@@ -1213,7 +1161,6 @@ mod tests {
         pass(&ctx, &mut app);
         pass(&ctx, &mut app);
         assert!(app.chess_window_detached());
-        assert!(!app.docking.layout.contains(&Panel::Board));
         assert!(app.toast.is_none(), "{:?}", app.toast);
     }
 

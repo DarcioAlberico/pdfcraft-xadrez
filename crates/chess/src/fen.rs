@@ -156,7 +156,31 @@ impl Position {
     pub fn to_board(&self, side: Color) -> Result<cozy_chess::Board, cozy_chess::FenParseError> {
         let side = self.side_to_move.unwrap_or(side);
         let fen = format!("{} {}", format_placement(&self.placement), self.tail_with(side));
-        cozy_chess::Board::from_fen(&fen, false)
+        board_from_fen(&fen)
+    }
+}
+
+/// A `cozy-chess` board from FEN text (Shredder castling not read), the one way a board is made
+/// from text: `cozy-chess` takes two kings standing next to each other, and its move generation
+/// then lets one king take the other and panics looking for it on the next move (plan A9-N4's
+/// proptest found it in the mate solver; any FEN from a book, a PGN or a tool is untrusted input),
+/// so that position is refused here, as no position.
+pub fn board_from_fen(text: &str) -> Result<cozy_chess::Board, cozy_chess::FenParseError> {
+    let board = cozy_chess::Board::from_fen(text, false)?;
+    if kings_touch(&board) {
+        return Err(cozy_chess::FenParseError::InvalidBoard);
+    }
+    Ok(board)
+}
+
+/// Whether the two kings stand next to each other (or one is missing, which `cozy-chess` refuses
+/// before this is asked).
+fn kings_touch(board: &cozy_chess::Board) -> bool {
+    use cozy_chess::{Color as C, Piece};
+    let king = |c: C| (board.colors(c) & board.pieces(Piece::King)).next_square();
+    match (king(C::White), king(C::Black)) {
+        (Some(white), Some(black)) => cozy_chess::get_king_moves(white).has(black),
+        _ => true,
     }
 }
 
@@ -464,6 +488,17 @@ mod tests {
     use super::*;
     use crate::placement::PieceKind;
     use proptest::prelude::*;
+
+    /// A board from FEN text refuses kings standing next to each other (`cozy-chess` accepts them,
+    /// and its move generation then panics), and takes a legal position (plan A9-N4's proptest).
+    #[test]
+    fn a_board_with_kings_side_by_side_is_refused() {
+        assert!(super::board_from_fen("8/8/8/8/8/8/8/Kk6 w - - 0 1").is_err());
+        assert!(super::board_from_fen("4k3/3K4/8/8/8/8/8/4N3 b - - 0 1").is_err());
+        assert!(super::board_from_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1").is_ok());
+        let position = super::parse("8/8/8/8/8/8/8/Kk6 w - - 0 1").expect("a placement");
+        assert!(position.to_board(super::Color::White).is_err(), "to_board goes through it");
+    }
 
     const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
