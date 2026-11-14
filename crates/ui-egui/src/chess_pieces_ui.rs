@@ -3,9 +3,14 @@
 //! (`chessvision::pieces::choice`). A pick is applied at once and kept with the preferences.
 //! Sets are imported from folders of images or web pages into the pieces folder (HC3), and chess
 //! fonts (DiagPDF's board fonts, say) into the fonts folder, where each diagram font is a set.
+//!
+//! **Off the interface's thread** (plan A9-V6b, finding A3-07). An import and each set's picture
+//! run in a [`Job`]: the import row says **Importing…** meanwhile, and a frame takes what came
+//! back. A set's pieces are traced once for its check, its picture and the boards drawn with it
+//! (`chessvision::pieces::images`, by each image's bytes).
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use egui::{Color32, Rect, Sense, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
@@ -13,6 +18,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{self, Candida
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, import};
 
 use crate::PdfCraftApp;
+use crate::chess_job::Job;
 use crate::theme::{self, Tokens};
 use crate::widgets;
 
@@ -31,6 +37,17 @@ pub(crate) struct PiecePicker {
     pub(crate) import_note: Option<String>,
     /// An import that found what it would write already there, waiting for Replace.
     pub(crate) import_pending: Option<PendingImport>,
+    /// The import running on a worker (plan A9-V6b).
+    importing: Option<Job<ImportDone>>,
+    /// The picture being made on a worker, by [`preview_key`], and its set (`None`: it can't be
+    /// drawn).
+    previewing: Option<(String, Job<Option<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>)>,
+}
+
+/// What an import on a worker gave back, with what it read and where it wrote.
+enum ImportDone {
+    Pieces { from: PathBuf, into: PathBuf, result: Result<Vec<import::Imported>, import::ImportError> },
+    Fonts { from: Vec<PathBuf>, into: PathBuf, result: Result<Vec<import::ImportedFont>, import::ImportError> },
 }
 
 /// An import waiting for Replace: what it reads, and the folder it writes into.
@@ -49,7 +66,14 @@ impl PiecePicker {
             previews: HashMap::new(),
             import_note: None,
             import_pending: None,
+            importing: None,
+            previewing: None,
         }
+    }
+
+    /// Whether an import is running (plan A9-V6b).
+    pub(crate) fn importing(&self) -> bool {
+        self.importing.is_some()
     }
 }
 
@@ -77,13 +101,29 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     if choice::environment_overrides() {
         ui.label(egui::RichText::new(tl!("PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.")).small().color(t.text_muted));
     }
-    // One picture per frame, so opening Preferences never stalls on a dozen sets.
+    // One picture at a time, made on a worker (plan A9-V6b), so opening Preferences never stalls
+    // on a dozen sets, nor on one of large images.
     let role = picker.role;
-    if let Some(c) = picker.candidates.iter().find(|c| c.missing.is_empty() && !picker.previews.contains_key(&preview_key(&c.choice, role))) {
-        let (set, _, error) = choice::load(&c.choice, role, pdfcraft_platform::app_dirs::AppDirs::current().install());
-        let picture = error.is_none().then(|| crate::chess_board_ui::cut_sprites(ui.ctx(), &set, "chess-piece-preview")).flatten();
-        picker.previews.insert(preview_key(&c.choice, role), picture);
-        ui.ctx().request_repaint();
+    if picker.previewing.is_none()
+        && let Some(c) = picker.candidates.iter().find(|c| c.missing.is_empty() && !picker.previews.contains_key(&preview_key(&c.choice, role)))
+    {
+        let (choice, install) = (c.choice.clone(), pdfcraft_platform::app_dirs::AppDirs::current().install().map(Path::to_path_buf));
+        let job = Job::spawn("pdfcraft-piece-preview", app.run_inline, move |_| {
+            let (set, _, error) = choice::load(&choice, role, install.as_deref());
+            Ok(error.is_none().then_some(set))
+        });
+        picker.previewing = Some((preview_key(&c.choice, role), job));
+    }
+    if let Some((key, job)) = picker.previewing.as_mut() {
+        match job.poll() {
+            Some(set) => {
+                let picture = set.ok().flatten().and_then(|set| crate::chess_board_ui::cut_sprites(ui.ctx(), &set, "chess-piece-preview"));
+                picker.previews.insert(std::mem::take(key), picture);
+                picker.previewing = None;
+                ui.ctx().request_repaint();
+            }
+            None => ui.ctx().request_repaint_after(std::time::Duration::from_millis(100)),
+        }
     }
     // The role's set loaded, so that one that cannot be used says why below.
     app.chess.role_pieces(role);
@@ -110,6 +150,8 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     }
     let action = import_row(ui, t, &picker);
     app.chess.piece_picker = Some(picker);
+    // What an import on a worker gave back (plan A9-V6b).
+    app.poll_piece_import();
     if let Some(choice) = pick {
         app.set_piece_choice(role, choice);
     }
@@ -149,29 +191,11 @@ fn import_row(ui: &mut egui::Ui, t: &Tokens, picker: &PiecePicker) -> Option<Imp
         return None;
     }
     let mut action = None;
+    let busy = picker.importing();
     ui.horizontal_wrapped(|ui| {
-        if ui
-            .button(tl!("Import a folder…"))
-            .on_hover_text(tl!("Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder."))
-            .clicked()
-        {
-            action = Some(ImportAction::Folder);
-        }
-        if ui
-            .button(tl!("Import from a web page…"))
-            .on_hover_text(tl!("Take the piece sets a saved web page carries inside it into the pieces folder."))
-            .clicked()
-        {
-            action = Some(ImportAction::Page);
-        }
-        if ui
-            .button(tl!("Import fonts…"))
-            .on_hover_text(tl!(
-                "Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports."
-            ))
-            .clicked()
-        {
-            action = Some(ImportAction::Fonts);
+        ui.add_enabled_ui(!busy, |ui| import_buttons(ui, &mut action));
+        if busy {
+            ui.label(egui::RichText::new(tl!("Importing…")).small().color(t.text_muted));
         }
     });
     if let Some(note) = &picker.import_note {
@@ -188,6 +212,33 @@ fn import_row(ui: &mut egui::Ui, t: &Tokens, picker: &PiecePicker) -> Option<Imp
         });
     }
     action
+}
+
+/// The three import buttons.
+fn import_buttons(ui: &mut egui::Ui, action: &mut Option<ImportAction>) {
+    if ui
+        .button(tl!("Import a folder…"))
+        .on_hover_text(tl!("Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder."))
+        .clicked()
+    {
+        *action = Some(ImportAction::Folder);
+    }
+    if ui
+        .button(tl!("Import from a web page…"))
+        .on_hover_text(tl!("Take the piece sets a saved web page carries inside it into the pieces folder."))
+        .clicked()
+    {
+        *action = Some(ImportAction::Page);
+    }
+    if ui
+        .button(tl!("Import fonts…"))
+        .on_hover_text(tl!(
+            "Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports."
+        ))
+        .clicked()
+    {
+        *action = Some(ImportAction::Fonts);
+    }
 }
 
 impl PdfCraftApp {
@@ -229,7 +280,58 @@ impl PdfCraftApp {
     /// when `replace`; what happened is shown under the import buttons, the grid lists each
     /// diagram font as a set, and Auto finds its pieces again (it may draw with one now).
     pub fn import_fonts_into(&mut self, from: Vec<PathBuf>, into: PathBuf, replace: bool) {
-        let result = import::import_fonts(&from, &into, replace);
+        self.start_piece_import(move || ImportDone::Fonts { result: import::import_fonts(&from, &into, replace), from, into });
+    }
+
+    /// Run an import on a worker (plan A9-V6b, finding A3-07: it traced every image on the
+    /// interface's thread); in tests and on the web here, and taken at once.
+    fn start_piece_import(&mut self, work: impl FnOnce() -> ImportDone + Send + 'static) {
+        let picker = self.chess.piece_picker.get_or_insert_with(PiecePicker::new);
+        if picker.importing.is_some() {
+            return;
+        }
+        picker.import_pending = None;
+        picker.import_note = None;
+        picker.importing = Some(Job::spawn("pdfcraft-piece-import", self.run_inline, move |_| Ok(work())));
+        if self.run_inline || cfg!(target_arch = "wasm32") {
+            self.poll_piece_import();
+        }
+    }
+
+    /// Whether an import of pieces or fonts is running on a worker (plan A9-V6b): its outcome has
+    /// not been taken by a frame yet.
+    pub fn piece_import_running(&self) -> bool {
+        self.chess.piece_picker.as_ref().is_some_and(PiecePicker::importing)
+    }
+
+    /// Wait until the import running is done, or `timeout` passed; whether it is (or none runs).
+    /// The next frame takes its outcome. The tests wait for the work this way (plan A9-Q4b).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn wait_piece_import(&self, timeout: std::time::Duration) -> bool {
+        self.chess.piece_picker.as_ref().and_then(|p| p.importing.as_ref()).is_none_or(|job| job.wait(timeout))
+    }
+
+    /// What an import on a worker gave back, once it is done: said under the import buttons, the
+    /// grid listing the sets again.
+    pub(crate) fn poll_piece_import(&mut self) {
+        let Some(picker) = self.chess.piece_picker.as_mut() else { return };
+        let Some(job) = picker.importing.as_mut() else { return };
+        let Some(done) = job.poll() else {
+            if let Some(ctx) = &self.ctx {
+                ctx.request_repaint_after(std::time::Duration::from_millis(100));
+            }
+            return;
+        };
+        picker.importing = None;
+        match done {
+            Ok(ImportDone::Pieces { from, into, result }) => self.pieces_imported(from, into, result),
+            Ok(ImportDone::Fonts { from, into, result }) => self.fonts_imported(from, into, result),
+            Err(e) => picker.import_note = Some(crate::i18n::fmt(tl!("The pieces cannot be imported: {reason}"), &[("reason", &e)])),
+        }
+    }
+
+    /// What importing the chess fonts among `from` into `into` gave.
+    fn fonts_imported(&mut self, from: Vec<PathBuf>, into: PathBuf, result: Result<Vec<import::ImportedFont>, import::ImportError>) {
         let picker = self.chess.piece_picker.get_or_insert_with(PiecePicker::new);
         match result {
             Ok(fonts) => {
@@ -266,7 +368,11 @@ impl PdfCraftApp {
     /// Import the sets in `from` into `into`, replacing sets of the same name only when
     /// `replace`; what happened is shown under the import buttons, and the grid lists the sets.
     pub fn import_pieces_into(&mut self, from: PathBuf, into: PathBuf, replace: bool) {
-        let result = import::import(&from, &into, replace);
+        self.start_piece_import(move || ImportDone::Pieces { result: import::import(&from, &into, replace), from, into });
+    }
+
+    /// What importing the sets in `from` into `into` gave.
+    fn pieces_imported(&mut self, from: PathBuf, into: PathBuf, result: Result<Vec<import::Imported>, import::ImportError>) {
         let picker = self.chess.piece_picker.get_or_insert_with(PiecePicker::new);
         let names = |dirs: &mut dyn Iterator<Item = &std::path::Path>| {
             dirs.filter_map(|d| d.file_name()).map(|n| n.to_string_lossy().into_owned()).collect::<Vec<_>>().join(", ")
