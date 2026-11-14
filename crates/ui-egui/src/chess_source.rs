@@ -243,7 +243,8 @@ impl PdfCraftApp {
         if self.active_ids().map(|(_, active)| active) != Some(id) {
             return;
         }
-        let Some(pgn_game) = self.book_pgn_index(id).and_then(|index| index.games().get(game).and_then(|g| g.game.clone())) else {
+        // Read again from its text: the index keeps no game (plan A9-I3b).
+        let Some(pgn_game) = self.book_pgn_index(id).and_then(|index| index.game(game)) else {
             self.notify(tl!("This game of the book's PGN can't be read.").to_string());
             return;
         };

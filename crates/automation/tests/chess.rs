@@ -4083,3 +4083,91 @@ fn chess_bookmarks_shows_then_makes_the_books_outline_in_one_step() {
     assert!(!base.join("outside").join("index.csv").exists());
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Pages each with an `Exercise n` caption in Helvetica over a Merida board and, when it has one,
+/// its solution under it.
+fn exercise_pages(pages: &[(&str, [&str; 8], Option<&str>)]) -> Vec<u8> {
+    let widths = vec!["1000"; 95].join(" ");
+    let n = pages.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
+    let mut objs: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")).into_bytes(),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes(),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec(),
+    ];
+    for (i, (caption, board, solution)) in pages.iter().enumerate() {
+        let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\nBT /F1 20 Tf 60 724 Td ");
+        for (k, line) in board.iter().enumerate() {
+            if k > 0 {
+                c.push_str("0 -20 Td ");
+            }
+            c.push_str(&format!("({line}) Tj "));
+        }
+        c.push_str("ET\n");
+        if let Some(moves) = solution {
+            c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+        }
+        objs.push(
+            format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i).into_bytes(),
+        );
+        objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()).into_bytes());
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// Plan A9-N10 (A8-05, decision D20): `chess_export_exercises` writes the book's numbered exercises
+/// whose solution was read as a standard problem PGN — `SetUp`/`FEN` of the diagram, the solution
+/// as the main line, the statement before the first move — and says which numbered diagram it
+/// left out and why.
+#[test]
+fn chess_export_exercises_writes_a_problem_pgn() {
+    let (base, root) = workdir("exercises");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5 2.Nf3 Nc6")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5 2.c4")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+        ("Exercise 4", board("OoOoOo+o"), None),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let made = ok(&mut a, "chess_export_exercises", json!({ "doc": doc, "lang": "en", "out": "exercises.pgn", "title": "Openings" }));
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3], "{made:#}");
+    assert_eq!(made["exercises_left_out"], json!([{ "page": 4, "diagram": 1, "number": 4, "reason": "no_solution" }]), "{made:#}");
+    let pgn = std::fs::read_to_string(root.join("exercises.pgn")).unwrap();
+    let games: Vec<&str> = pgn.split("\n\n[Event").collect();
+    assert_eq!(games.len(), 3, "{pgn}");
+    for (game, (number, first)) in games.iter().zip([(1, "1. e4 e5 2. Nf3 Nc6"), (2, "1. d4 d5 2. c4"), (3, "1. c4 c5")]) {
+        assert!(game.contains("[SetUp \"1\"]") && game.contains("[FEN \"r"), "{game}");
+        assert!(game.contains(&format!("[Round \"{number}\"]")) && game.contains("Openings\"]"), "{game}");
+        assert!(game.contains(&format!("{{White to move (№ {number}). Page {number}")), "{game}");
+        assert!(game.contains(first), "{game}");
+    }
+    match a.call("chess_export_exercises", &json!({ "doc": doc, "out": "../outside/x.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}

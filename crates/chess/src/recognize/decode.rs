@@ -76,7 +76,7 @@ pub enum Problem {
 }
 
 /// One square change the decoder made.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Change {
     pub square: Square,
     pub from: Option<Piece>,

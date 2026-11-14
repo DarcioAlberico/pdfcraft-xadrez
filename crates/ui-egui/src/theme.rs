@@ -831,6 +831,20 @@ mod tests {
         }
     }
 
+    /// Plan A9-I8 (WCAG 1.4.11, finding A6-17: egui's progress bar was 1.19:1): the part of
+    /// `widgets::progress` done reads at 3:1 against its track and every surface the bar sits on.
+    #[test]
+    fn the_progress_bar_reads_at_three_to_one() {
+        for kind in [ThemeKind::Light, ThemeKind::Dark] {
+            let t = Tokens::for_kind(kind);
+            let (done, track) = crate::widgets::progress_colours(&t);
+            for bg in [track, t.chrome, t.panel, t.card] {
+                let r = contrast(done, bg);
+                assert!(r >= 3.0, "{kind:?} {done:?} on {bg:?}: {r:.2}:1");
+            }
+        }
+    }
+
     #[test]
     fn text_is_readable_on_every_surface() {
         // #76: the faintest text (hints, zoom level, captions) was 3.3:1 in the light theme.

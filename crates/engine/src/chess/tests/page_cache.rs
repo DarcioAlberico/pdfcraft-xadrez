@@ -174,10 +174,63 @@ fn the_keys_and_fingerprints_outlive_an_edit_for_the_pages_it_did_not_touch() {
 
 /// The keys of every page of `cos`, each from a fresh memo when `fresh`, else from one shared.
 fn keys(cos: &pdfcraft_cos::Document, fresh: bool) -> Vec<Option<page_key::PageKey>> {
-    let pages = page_objects(cos, pdfcraft_organize::pages(cos).unwrap().len());
-    let mut shared = page_key::KeyMemo::default();
-    pages.iter().map(|p| if fresh { page_key::KeyMemo::default().page(cos, *p) } else { shared.page(cos, *p) }).collect()
+    keys_with::<page_key::Wide>(cos, fresh)
 }
+
+/// [`keys`], made with the hasher `H`.
+fn keys_with<H: page_key::KeyHasher>(cos: &pdfcraft_cos::Document, fresh: bool) -> Vec<Option<H::Key>> {
+    let pages = page_objects(cos, pdfcraft_organize::pages(cos).unwrap().len());
+    let mut shared = page_key::KeyMemo::<H>::default();
+    pages.iter().map(|p| if fresh { page_key::KeyMemo::<H>::default().page(cos, *p) } else { shared.page(cos, *p) }).collect()
+}
+
+/// Plan A9-N5a: the key a page's reading is kept on disk under (SHA-256) hashes what the
+/// session's key hashes, the same way. Through every change below, the pages the session's keys
+/// tell apart the disk's keys tell apart, and the ones they take for the same page they take for
+/// the same page; the disk's keys are the same with a shared memo or without; and their value is
+/// the same from one build to the next (frozen: a change to what is hashed leaves every reading
+/// kept behind, which only a raised `reading::VERSION` should do).
+#[test]
+fn the_disk_key_hashes_what_the_session_key_hashes() {
+    use pdfcraft_cos::{ObjRef, Object};
+    let variant = |f: &dyn Fn(&mut pdfcraft_cos::Document)| {
+        let mut cos = cos_of(book(6));
+        f(&mut cos);
+        cos
+    };
+    let docs = [
+        cos_of(book(6)),
+        variant(&|c| c.update_dict(ObjRef::new(3, 0), |d| d.set("BaseFont", Object::name("Helvetica"))).unwrap()),
+        variant(&|c| c.update_dict(ObjRef::new(2, 0), |d| d.set("Rotate", Object::Int(90))).unwrap()),
+        variant(&|c| {
+            let content = b"BT /F2 12 Tf 10 40 Td (two) Tj ET".to_vec();
+            c.set(ObjRef::new(8, 0), pdfcraft_cos::Stream::from_raw(pdfcraft_cos::Dict::new(), content));
+        }),
+        variant(&|c| {
+            let resources = c.get(ObjRef::new(5, 0)).as_dict().unwrap().get(b"Resources").unwrap().clone();
+            let r = c.add(resources);
+            c.update_dict(ObjRef::new(5, 0), |d| {
+                d.set("MediaBox", Object::Array([0, 0, 600, 800].map(Object::Int).to_vec()));
+                d.set("Resources", Object::Ref(r));
+            })
+            .unwrap();
+        }),
+    ];
+    let session: Vec<Option<page_key::PageKey>> = docs.iter().flat_map(|c| keys(c, false)).collect();
+    let disk: Vec<Option<page_key::DiskKey>> = docs.iter().flat_map(|c| keys_with::<page_key::Sha>(c, false)).collect();
+    assert!(disk.iter().all(Option::is_some));
+    for i in 0..session.len() {
+        for j in 0..session.len() {
+            assert_eq!(session[i] == session[j], disk[i] == disk[j], "pages {i} and {j}");
+        }
+    }
+    assert_eq!(docs.iter().flat_map(|c| keys_with::<page_key::Sha>(c, true)).collect::<Vec<_>>(), disk);
+    let hex = |k: &page_key::DiskKey| k.iter().map(|b| format!("{b:02x}")).collect::<String>();
+    assert_eq!(hex(&disk[0].unwrap()), FROZEN_PAGE_KEY);
+}
+
+/// The disk key of the first page of `book(6)` as plan A9-N5a made it.
+const FROZEN_PAGE_KEY: &str = "2000d571a6cad1ba5def410d9f6db32c0155769ec3d350d3060052767314af9f";
 
 fn cos_of(bytes: Vec<u8>) -> pdfcraft_cos::Document {
     pdfcraft_cos::Document::open(Arc::new(bytes)).unwrap()
