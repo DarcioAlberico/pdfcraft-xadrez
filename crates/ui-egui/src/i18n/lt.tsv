@@ -3777,3 +3777,6 @@ the move's comment	Move comment	Ėjimo komentaras
 	the piece model failed: {e}	figūrų modelis nepavyko: {e}
 	the piece model's output is not a probability matrix: {e}	figūrų modelio išvestis nėra tikimybių matrica: {e}
 	Back to Diagrams	Atgal į sąrašą „Diagramos“
+	Tools panel collapsed	Įrankių skydelis suskleistas
+	Show the page (F6)	Rodyti puslapį (F6)
+	The board is in the column beside.	Lenta yra gretimame stulpelyje.

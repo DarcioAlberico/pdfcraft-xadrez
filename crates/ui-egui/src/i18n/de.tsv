@@ -3527,3 +3527,6 @@ the move's comment	Move comment	Kommentar des Zugs
 	the piece model failed: {e}	das Figurenmodell ist fehlgeschlagen: {e}
 	the piece model's output is not a probability matrix: {e}	die Ausgabe des Figurenmodells ist keine Wahrscheinlichkeitsmatrix: {e}
 	Back to Diagrams	Zurück zu den Diagrammen
+	Tools panel collapsed	Bereich „Werkzeuge“ eingeklappt
+	Show the page (F6)	Seite zeigen (F6)
+	The board is in the column beside.	Das Brett ist in der Spalte daneben.

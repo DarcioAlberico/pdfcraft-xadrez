@@ -3543,3 +3543,6 @@ the move's comment	Move comment	Comentário do lance
 	the piece model failed: {e}	o modelo de peças falhou: {e}
 	the piece model's output is not a probability matrix: {e}	a saída do modelo de peças não é uma matriz de probabilidades: {e}
 	Back to Diagrams	Voltar para Diagramas
+	Tools panel collapsed	Painel Ferramentas recolhido
+	Show the page (F6)	Mostrar a página (F6)
+	The board is in the column beside.	O tabuleiro está na coluna ao lado.

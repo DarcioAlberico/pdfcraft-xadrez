@@ -64,6 +64,7 @@ mod chess_samples;
 mod chess_theme;
 mod chess_widgets;
 pub use chess_ocr_area::AreaQuery;
+mod chess_budget;
 mod chess_source;
 mod chess_store_ui;
 mod chess_study_ui;
@@ -2318,9 +2319,14 @@ impl PdfCraftApp {
         } else if self.right.is_some() {
             self.right_panel_closed = true;
         }
+        // A chess surface opens: the window's width decides its columns (plan A9-I0a).
+        let chess_opens = panel == Some(RightPanel::Chess) && self.right != panel;
         self.right = panel;
         if panel.is_some() {
             self.pending_panel_reveals.push(docking::Panel::Inspector);
+        }
+        if chess_opens {
+            self.open_chess_budget();
         }
     }
 
@@ -2434,7 +2440,6 @@ impl PdfCraftApp {
         v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
         v["chess_redraw_asked"] = serde_json::Value::Bool(self.chess.redraw_asked);
         v["chess_pgn_bom"] = serde_json::Value::Bool(self.chess.games.pgn_bom);
-        v["chess_tools_offer_answered"] = serde_json::Value::Bool(self.chess.tools_offer_answered);
         // The documents that said Not now to the PGN beside them (plan "Carregar PGN do livro", R6f).
         v["chess_pgn_offers_declined"] = serde_json::json!(self.chess.book_pgns.declined);
         // The chess keys (plan A9-I18): the one-key shortcuts, and how long a typed sign waits.
@@ -2534,9 +2539,6 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_pgn_bom"].as_bool() {
             self.chess.games.pgn_bom = on;
-        }
-        if let Some(on) = v["chess_tools_offer_answered"].as_bool() {
-            self.chess.tools_offer_answered = on;
         }
         if let Some(keys) = v["chess_pgn_offers_declined"].as_array() {
             let max = crate::chess_reference_ui::MAX_DECLINED;
@@ -3534,7 +3536,11 @@ impl eframe::App for PdfCraftApp {
             // Read mode hides the tools, not the navigation panes: the rail stays visible
             // there, so its buttons (Bookmarks, Page thumbnails, ...) must open their panels.
             // Outside Read mode the docking workspace draws the inspector.
-            if self.mode == Mode::Read && self.right.is_some() {
+            let in_page_place = self.chess_in_page_place(ui.ctx().content_rect().width());
+            if self.mode == Mode::Read {
+                self.chess.budget.alternating = in_page_place || (self.chess.budget.show_page && self.right == Some(RightPanel::Chess));
+            }
+            if self.mode == Mode::Read && self.right.is_some() && !in_page_place {
                 // As wide as it is dragged while the page keeps its least width, as when docked:
                 // it holds the Chess column and its board (plan A9-I0a).
                 egui::Panel::right("read_right_panel")
@@ -3562,6 +3568,7 @@ impl eframe::App for PdfCraftApp {
                 match self.active {
                     None if self.combine_showing() => combine_ui::page(self, ui),
                     None => home::show(self, ui),
+                    Some(_) if self.chess_in_page_place(ui.ctx().content_rect().width()) => chess_ui::column(self, ui),
                     Some(index) => match compare_ui::side_by_side(self, index) {
                         Some((old, new)) => compare_ui::compare_area(self, old, new, ui),
                         None => canvas::document_area(self, index, ui),

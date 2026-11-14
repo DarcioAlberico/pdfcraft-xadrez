@@ -3528,3 +3528,6 @@ the move's comment	Move comment	手のコメント
 	the piece model failed: {e}	駒モデルが失敗しました: {e}
 	the piece model's output is not a probability matrix: {e}	駒モデルの出力が確率行列ではありません: {e}
 	Back to Diagrams	局面図に戻る
+	Tools panel collapsed	ツールパネルを折りたたみました
+	Show the page (F6)	ページを表示 (F6)
+	The board is in the column beside.	盤は隣の列にあります。

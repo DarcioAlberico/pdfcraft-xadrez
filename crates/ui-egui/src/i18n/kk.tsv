@@ -3524,3 +3524,6 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	the piece model failed: {e}	фигуралар моделі сәтсіз болды: {e}
 	the piece model's output is not a probability matrix: {e}	фигуралар моделінің шығысы ықтималдықтар матрицасы емес: {e}
 	Back to Diagrams	Диаграммаларға оралу
+	Tools panel collapsed	Құралдар тақтасы жиналды
+	Show the page (F6)	Бетті көрсету (F6)
+	The board is in the column beside.	Тақта көрші бағанда.

@@ -3667,3 +3667,6 @@ the move's comment	Move comment	Comentario de la jugada
 	the piece model failed: {e}	el modelo de piezas falló: {e}
 	the piece model's output is not a probability matrix: {e}	la salida del modelo de piezas no es una matriz de probabilidades: {e}
 	Back to Diagrams	Volver a Diagramas
+	Tools panel collapsed	Panel Herramientas contraído
+	Show the page (F6)	Mostrar la página (F6)
+	The board is in the column beside.	El tablero está en la columna de al lado.

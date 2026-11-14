@@ -3738,3 +3738,6 @@ the move's comment	Move comment	Commento della mossa
 	the piece model failed: {e}	il modello dei pezzi non è riuscito: {e}
 	the piece model's output is not a probability matrix: {e}	l'output del modello dei pezzi non è una matrice di probabilità: {e}
 	Back to Diagrams	Torna ai diagrammi
+	Tools panel collapsed	Pannello Strumenti compresso
+	Show the page (F6)	Mostra la pagina (F6)
+	The board is in the column beside.	La scacchiera è nella colonna accanto.

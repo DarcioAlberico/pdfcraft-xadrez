@@ -3489,3 +3489,6 @@ the move's comment	Move comment	Коментар към хода
 	the piece model failed: {e}	моделът на фигурите се провали: {e}
 	the piece model's output is not a probability matrix: {e}	изходът на модела на фигурите не е матрица от вероятности: {e}
 	Back to Diagrams	Обратно към Диаграми
+	Tools panel collapsed	Панелът „Инструменти“ е свит
+	Show the page (F6)	Показване на страницата (F6)
+	The board is in the column beside.	Дъската е в съседната колона.

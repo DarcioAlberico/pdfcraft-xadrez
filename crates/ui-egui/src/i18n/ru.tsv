@@ -3439,3 +3439,6 @@ the move's comment	Move comment	Комментарий к ходу
 	the piece model failed: {e}	модель фигур дала сбой: {e}
 	the piece model's output is not a probability matrix: {e}	выход модели фигур не является матрицей вероятностей: {e}
 	Back to Diagrams	Назад в «Диаграммы»
+	Tools panel collapsed	Панель «Инструменты» свёрнута
+	Show the page (F6)	Показать страницу (F6)
+	The board is in the column beside.	Доска — в соседней колонке.

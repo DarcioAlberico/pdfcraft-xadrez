@@ -3801,3 +3801,6 @@ the move's comment	Move comment	تعليق النقلة
 	the piece model failed: {e}	فشل نموذج القطع: {e}
 	the piece model's output is not a probability matrix: {e}	مخرجات نموذج القطع ليست مصفوفة احتمالات: {e}
 	Back to Diagrams	العودة إلى المخططات
+	Tools panel collapsed	تم طي لوحة الأدوات
+	Show the page (F6)	إظهار الصفحة (F6)
+	The board is in the column beside.	الرقعة في العمود المجاور.

@@ -3526,3 +3526,6 @@ the move's comment	Move comment	Commentaire du coup
 	the piece model failed: {e}	le modèle de pièces a échoué : {e}
 	the piece model's output is not a probability matrix: {e}	la sortie du modèle de pièces n'est pas une matrice de probabilités : {e}
 	Back to Diagrams	Revenir aux diagrammes
+	Tools panel collapsed	Panneau Outils réduit
+	Show the page (F6)	Afficher la page (F6)
+	The board is in the column beside.	L’échiquier est dans la colonne voisine.

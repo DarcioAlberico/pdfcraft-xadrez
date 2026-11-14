@@ -3600,3 +3600,6 @@ the move's comment	Move comment	Komentář k tahu
 	the piece model failed: {e}	model figur selhal: {e}
 	the piece model's output is not a probability matrix: {e}	výstup modelu figur není matice pravděpodobností: {e}
 	Back to Diagrams	Zpět na Diagramy
+	Tools panel collapsed	Panel Nástroje je sbalen
+	Show the page (F6)	Zobrazit stránku (F6)
+	The board is in the column beside.	Šachovnice je ve vedlejším sloupci.
