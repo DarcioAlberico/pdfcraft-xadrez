@@ -3614,3 +3614,7 @@ the move's comment	Move comment	Komentář k tahu
 	The comments of the move shown, under the moves	Komentáře zobrazeného tahu, pod tahy
 	Edit the FEN and the PGN	Upravit FEN a PGN
 	More continuations: {moves}	Další pokračování: {moves}
+	Diagram shown	Zobrazený diagram
+	Alt+O switches between the board as read and the page's own picture.	Alt+O přepíná mezi šachovnicí, jak byla přečtena, a vlastním obrázkem stránky.
+	Original diagram, page {p}, diagram {n}	Původní diagram, strana {p}, diagram {n}
+	The page's picture of this diagram shows once its page is drawn.	Obrázek stránky s tímto diagramem se ukáže, jakmile se jeho stránka vykreslí.

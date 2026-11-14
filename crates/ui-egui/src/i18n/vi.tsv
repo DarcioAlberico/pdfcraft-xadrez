@@ -3792,3 +3792,7 @@ the move's comment	Move comment	Bình luận của nước đi
 	The comments of the move shown, under the moves	Bình luận của nước đang hiện, bên dưới các nước đi
 	Edit the FEN and the PGN	Sửa FEN và PGN
 	More continuations: {moves}	Các nước tiếp theo khác: {moves}
+	Diagram shown	Sơ đồ đang hiện
+	Alt+O switches between the board as read and the page's own picture.	Alt+O chuyển giữa bàn cờ như đã đọc và hình của chính trang.
+	Original diagram, page {p}, diagram {n}	Sơ đồ gốc, trang {p}, sơ đồ {n}
+	The page's picture of this diagram shows once its page is drawn.	Hình trên trang của sơ đồ này hiện khi trang của nó đã được vẽ.

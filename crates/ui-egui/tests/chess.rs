@@ -6509,3 +6509,39 @@ fn the_chess_window_has_the_column_and_its_master_detail() {
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
     assert!(h.query_by_label("Back to Diagrams").is_none(), "Esc: the list again");
 }
+
+// ─── Plan A9-I0: Original / Read ────────────────────────────────────────────────────────────
+
+/// Plan A9-I0 (§2.8.1, finding A6-14): the Diagram tab's Read | Original puts the page's own
+/// picture of the diagram in the board's square, at the board's place and size, never beside or
+/// under it (the tab had no picture of the original, and the page fell to 29 % to show it); Alt+O
+/// switches back, and the choice stays for the next diagram.
+#[test]
+fn original_shows_the_pages_diagram_in_the_boards_square() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(4);
+    let board = h.get_by_label_contains("Diagram board, ").rect();
+    // The page drawn: its picture is what Original shows.
+    let deadline = std::time::Instant::now() + NET;
+    while h.state().render_pending() && std::time::Instant::now() < deadline {
+        h.run_steps(2);
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Original").click();
+    h.run_steps(4);
+    assert!(h.query_by_label_contains("Diagram board, ").is_none(), "the board gives its square to the picture");
+    let original = h.get_by_label("Original diagram, page 1, diagram 1").rect();
+    assert!((original.min - board.min).length() < 1.0 && (original.size() - board.size()).length() < 1.0, "the same square: {original:?} {board:?}");
+    assert!(h.query_by_label_contains("shows once its page is drawn").is_none(), "the page's picture is there");
+    shot(&mut h, "i0-original.png");
+    // Alt+O, over the tab: the board again.
+    h.hover_at(original.center());
+    h.run_steps(1);
+    host_key(&mut h, egui::Modifiers::ALT, egui::Key::O);
+    h.run_steps(2);
+    assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
+    assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
+}

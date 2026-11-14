@@ -119,11 +119,11 @@ struct TabState {
 
 /// Whether the tab takes `key` pressed with `m`. Ctrl+Z and Ctrl+Shift+Z always: the tab decides
 /// where they go, so they never reach the chess game's history through the app's Undo (finding
-/// A5-06); Page Up and Page Down only with diagrams to review; Esc only while the keyboard is in
-/// the tab, not for the pointer over it.
+/// A5-06); Alt+O (Original / Read) always; Page Up and Page Down only with diagrams to review; Esc
+/// only while the keyboard is in the tab, not for the pointer over it.
 fn tab_key(key: Key, m: Modifiers, s: TabState) -> bool {
     tab_action(key, m).is_some_and(|action| match action {
-        TabKey::ConfirmNext | TabKey::Undo | TabKey::Redo => true,
+        TabKey::ConfirmNext | TabKey::Undo | TabKey::Redo | TabKey::Original => true,
         TabKey::Previous | TabKey::Next => s.queue,
         TabKey::BackToList => s.focus_in,
     })
@@ -138,6 +138,8 @@ pub(crate) enum TabKey {
     Undo,
     Redo,
     BackToList,
+    /// The Original / Read switch (plan A9-I0, finding A6-14).
+    Original,
 }
 
 impl TabKey {
@@ -151,6 +153,7 @@ impl TabKey {
             TabKey::Undo => "diagram-undo",
             TabKey::Redo => "diagram-redo",
             TabKey::BackToList => "back-to-list",
+            TabKey::Original => "original",
         }
     }
 }
@@ -159,13 +162,15 @@ impl TabKey {
 /// diagrams to review, Ctrl+Z and Ctrl+Shift+Z undo and redo the editor's changes and the
 /// document's corrections (plan A9-G10), Esc gives the keyboard back to the list. The chess key
 /// map lists them (plan A9-I18).
-pub(crate) const TAB_KEYS: [(ChessKey, TabKey); 6] = [
+pub(crate) const TAB_KEYS: [(ChessKey, TabKey); 7] = [
     (ChessKey::command(Key::Enter), TabKey::ConfirmNext),
     (ChessKey::plain(Key::PageUp), TabKey::Previous),
     (ChessKey::plain(Key::PageDown), TabKey::Next),
     (ChessKey::command(Key::Z), TabKey::Undo),
     (ChessKey::command_shift(Key::Z), TabKey::Redo),
     (ChessKey::plain(Key::Escape), TabKey::BackToList),
+    // O alone is the rail's OCR area (plan A9-I18's key map).
+    (ChessKey::alt(Key::O), TabKey::Original),
 ];
 
 /// The tab's key as an action (the keys [`take_keys`] takes for the tab).
