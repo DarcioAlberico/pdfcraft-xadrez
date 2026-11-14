@@ -9758,8 +9758,8 @@ milestone = "M3"
 status = "shipped"
 commands = []
 tools = []
-evidence = ["crates/ui-egui/tests/control.rs::inspect_and_click_by_label_and_id", "crates/ui-egui/tests/control.rs::commands_keys_and_typing", "crates/ui-egui/tests/control.rs::loopback_transport_requires_the_token"]
-notes = ""
+evidence = ["crates/ui-egui/tests/control.rs::inspect_and_click_by_label_and_id", "crates/ui-egui/tests/control.rs::commands_keys_and_typing", "crates/ui-egui/tests/control.rs::loopback_transport_requires_the_token", "crates/ui-egui/tests/control.rs::the_control_channel_reaches_the_chess_keyboard", "crates/ui-egui/tests/control.rs::the_control_channel_steps_the_board"]
+notes = "Plan A9-Q5 (finding A6-19): the keys and events the channel injects into the main window go through the app's raw_input_hook, as the keyboard's do, so the chess key scope takes them (the Diagram tab's board, the Diagrams list, the board's rail and moves); ui.inspect also says live, modal, expanded, has_popup and active_descendant when a node has them. The chess window's pass never goes through raw_input_hook: its keys are read inside its pass, where injected ones arrive too."
 
 [[feature]]
 id = "misc.ui-screenshots"
