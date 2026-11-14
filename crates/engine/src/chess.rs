@@ -101,6 +101,21 @@ pub struct ChessScanSettings {
     /// for a folder itself (plan A9-T3): the frontends pass the one [`ChessModels::locate`] finds
     /// from the folder chosen in the app, `$PDFCRAFT_MODELS` and the install folder.
     pub models_dir: Option<PathBuf>,
+    /// Where pages' readings are kept on disk and taken from (plan A9-N5b, [`reading`]): a page
+    /// read once, with the same settings and models, is not read again by any session, after
+    /// the document is closed and opened again too. `None`: this session's cache alone. What
+    /// may be kept of a document follows [`store::persist_policy`].
+    pub cache: Option<ReadingCache>,
+}
+
+/// The folder pages' readings are kept in ([`ChessScanSettings::cache`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ReadingCache {
+    /// The folder: the app's data folder's `chess/reading`, or the one a tool was given.
+    pub dir: PathBuf,
+    /// The caller may keep an encrypted document's reading, unencrypted (a tool's
+    /// `allow_encrypted`); the app says so per document instead ([`Session::set_chess_keep`]).
+    pub encrypted: bool,
 }
 
 impl Default for ChessScanSettings {
@@ -112,6 +127,7 @@ impl Default for ChessScanSettings {
             max_diagrams: MAX_DIAGRAMS_PER_PAGE,
             allow_unverified_fonts: false,
             models_dir: None,
+            cache: None,
         }
     }
 }
@@ -362,6 +378,12 @@ pub(crate) struct ChessCache {
     keys_hashed: usize,
     /// Pages [`Session::chess_scan`] has scanned (not answered from here): [`Session::chess_scanned`].
     scanned: usize,
+    /// What this session's scans and readings took from the disk and kept there (plan A9-N5b):
+    /// [`Session::chess_disk`].
+    disk: DiskUse,
+    /// The encrypted documents whose reading the user said may be kept on disk
+    /// ([`Session::set_chess_keep`]).
+    keep: std::collections::HashSet<DocId>,
     /// What each open document's reads taught and what the user said of its pages (plan A9-I1a),
     /// and its book's PGN (plan A9-I1b): [`Session::chess_cipher`], [`Session::chess_origin`],
     /// [`Session::chess_book_pgn`].
@@ -498,6 +520,7 @@ impl ChessCache {
 
     /// Forget every result for `doc` (it was closed).
     pub(crate) fn forget(&mut self, doc: DocId) {
+        self.keep.remove(&doc);
         self.docs.remove(&doc);
         self.keys.retain(|k| k.doc != doc);
         self.corrections.retain(|(d, _)| *d != doc);
@@ -655,6 +678,67 @@ struct PageInputs {
     notes: Vec<ScanNote>,
     /// The page's content key when the job was made.
     key: Option<page_key::PageKey>,
+    /// Its content key on disk, when the job keeps its pages there ([`ChessScanJob::disk`]).
+    disk: Option<page_key::DiskKey>,
+}
+
+/// Where a job takes its pages' readings from and keeps them (plan A9-N5b).
+struct JobDisk {
+    store: Arc<reading::ReadingStore>,
+    doc: DocKeys,
+    pages: usize,
+    /// Only take readings from it: the document's reading may not be kept.
+    take_only: bool,
+    used: DiskCounts,
+}
+
+/// What a job took from the disk and kept there, counted across its workers.
+#[derive(Default)]
+struct DiskCounts {
+    read: AtomicUsize,
+    kept: AtomicUsize,
+    not_kept: AtomicUsize,
+    set_aside: AtomicUsize,
+}
+
+impl DiskCounts {
+    fn add(counter: &AtomicUsize) {
+        counter.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn report(&self) -> DiskUse {
+        DiskUse {
+            read: self.read.load(Ordering::Relaxed),
+            kept: self.kept.load(Ordering::Relaxed),
+            not_kept: self.not_kept.load(Ordering::Relaxed),
+            set_aside: self.set_aside.load(Ordering::Relaxed),
+        }
+    }
+}
+
+/// What pages' readings kept on disk did for a scan or a session (plan A9-N5b).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DiskUse {
+    /// Pages taken from the disk: not read.
+    pub read: usize,
+    /// Pages read and kept there.
+    pub kept: usize,
+    /// Pages read and not kept: the disk nearly full, the book alone past the budget, the folder
+    /// not writable.
+    pub not_kept: usize,
+    /// Entries that could not be trusted, set aside: their pages were read again.
+    pub set_aside: usize,
+}
+
+impl DiskUse {
+    fn plus(self, o: DiskUse) -> DiskUse {
+        DiskUse {
+            read: self.read.saturating_add(o.read),
+            kept: self.kept.saturating_add(o.kept),
+            not_kept: self.not_kept.saturating_add(o.not_kept),
+            set_aside: self.set_aside.saturating_add(o.set_aside),
+        }
+    }
 }
 
 /// Most threads one scan runs on ([`ChessScanJob::run_parallel`]).
@@ -670,6 +754,8 @@ pub struct ChessScanJob {
     /// Read the diagrams, or only find them.
     read: bool,
     pub settings: ChessScanSettings,
+    /// Where the pages' readings are taken from and kept on disk (plan A9-N5b).
+    disk: Option<JobDisk>,
 }
 
 /// Scan results taken from a session's cache for a document's state ([`Session::chess_cached`]),
@@ -708,6 +794,8 @@ pub struct ChessScan {
     pub pages: Vec<Arc<ChessPage>>,
     /// Each page's content key when the job was made, by page.
     keys: Vec<(usize, Option<page_key::PageKey>)>,
+    /// What its pages' readings kept on disk did (plan A9-N5b).
+    pub disk: DiskUse,
 }
 
 impl ChessScanJob {
@@ -790,14 +878,7 @@ impl ChessScanJob {
                     while !stop.load(Ordering::Relaxed) {
                         let i = next.fetch_add(1, Ordering::Relaxed);
                         let Some(input) = job.inputs.get(i) else { break };
-                        // The same last-resort guard as a page at a time ([`ChessScanSteps::step`]).
-                        let scanned = catch_unwind(AssertUnwindSafe(|| {
-                            scan_page(&mut renderer, input, settings, job.read, model.map(|m| m as &dyn SquareClassifier))
-                        }));
-                        let page = scanned.unwrap_or_else(|_| {
-                            renderer = PageRenderer::new(job.bytes.clone(), job.render_config());
-                            failed_page(input, "scanning the page failed unexpectedly")
-                        });
+                        let page = job.page_of(&mut renderer, input, settings, model.map(|m| m as &dyn SquareClassifier));
                         if tx.send((i, page)).is_err() {
                             break;
                         }
@@ -826,7 +907,50 @@ impl ChessScanJob {
         // The pages scanned from the first: a stop leaves the rest unscanned, as a page at a time.
         let pages: Vec<Arc<ChessPage>> = slots.into_iter().map_while(|p| p).collect();
         let keys = self.inputs.iter().map(|i| (i.page, i.key)).collect();
-        ChessScan { doc: self.doc, params: self.params, pages, keys }
+        let disk = self.disk.as_ref().map(|d| d.used.report()).unwrap_or_default();
+        ChessScan { doc: self.doc, params: self.params, pages, keys, disk }
+    }
+
+    /// Page `input`: taken from the disk when it keeps it (plan A9-N5b), else scanned and, when
+    /// it scanned whole, kept there. A last-resort guard around the scan (AGENTS.md §4): the
+    /// detectors and the reader return values for every input, but this is untrusted-document
+    /// code, and one bad page must not take the scan down; the renderer's state is unknown after
+    /// a panic, so a fresh one is started.
+    fn page_of(
+        &self,
+        renderer: &mut PageRenderer,
+        input: &PageInputs,
+        settings: &ChessScanSettings,
+        model: Option<&dyn SquareClassifier>,
+    ) -> ChessPage {
+        let entry = self
+            .disk
+            .as_ref()
+            .zip(input.disk)
+            .and_then(|(disk, content)| Some((disk, reading::scan_key_of(&content, settings, self.params.model.as_ref())?)));
+        if let Some((disk, key)) = &entry {
+            match disk.store.get::<ChessPage>(&disk.doc, key) {
+                reading::Found::Hit(page) => {
+                    DiskCounts::add(&disk.used.read);
+                    return ChessPage { page: input.page, ..page };
+                }
+                reading::Found::SetAside(_) => DiskCounts::add(&disk.used.set_aside),
+                reading::Found::Miss => {}
+            }
+        }
+        let scanned = catch_unwind(AssertUnwindSafe(|| scan_page(renderer, input, settings, self.read, model)));
+        let page = scanned.unwrap_or_else(|_| {
+            *renderer = PageRenderer::new(self.bytes.clone(), self.render_config());
+            failed_page(input, "scanning the page failed unexpectedly")
+        });
+        // A page that could not be scanned is not kept: what failed may not fail next time.
+        if let Some((disk, key)) = entry.filter(|(d, _)| !d.take_only && page.error.is_none()) {
+            match disk.store.put(&disk.doc, disk.pages, &key, &page) {
+                Ok(reading::Kept::Yes) => DiskCounts::add(&disk.used.kept),
+                _ => DiskCounts::add(&disk.used.not_kept),
+            }
+        }
+        page
     }
 
     fn run_inner(self, model: Option<&dyn SquareClassifier>, key: ModelKey, mut progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
@@ -879,16 +1003,7 @@ impl ChessScanSteps {
 
     fn step_with(&mut self, model: Option<&dyn SquareClassifier>) -> Option<Arc<ChessPage>> {
         let input = self.job.inputs.get(self.pages.len())?;
-        // A last-resort guard (AGENTS.md §4): the detectors and the reader return values for
-        // every input, but this is untrusted-document code, and one bad page must not take the
-        // scan down.
-        let (renderer, settings, read) = (&mut self.renderer, &self.settings, self.job.read);
-        let scanned = catch_unwind(AssertUnwindSafe(|| scan_page(renderer, input, settings, read, model)));
-        let page = Arc::new(scanned.unwrap_or_else(|_| {
-            // The renderer's state is unknown after a panic: start a fresh one.
-            self.renderer = PageRenderer::new(self.job.bytes.clone(), self.job.render_config());
-            failed_page(input, "scanning the page failed unexpectedly")
-        }));
+        let page = Arc::new(self.job.page_of(&mut self.renderer, input, &self.settings, model));
         self.pages.push(page.clone());
         Some(page)
     }
@@ -906,7 +1021,8 @@ impl ChessScanSteps {
     /// What it found, the pages scanned so far (all of them once [`Self::step`] gave `None`).
     pub fn finish(self) -> ChessScan {
         let keys = self.job.inputs.iter().map(|i| (i.page, i.key)).collect();
-        ChessScan { doc: self.job.doc, params: self.job.params, pages: self.pages, keys }
+        let disk = self.job.disk.as_ref().map(|d| d.used.report()).unwrap_or_default();
+        ChessScan { doc: self.job.doc, params: self.job.params, pages: self.pages, keys, disk }
     }
 }
 
@@ -1363,12 +1479,64 @@ impl Session {
                         Vec::new()
                     }
                 };
-                PageInputs { page, info: doc.info.pages.get(page).cloned(), images, boxes, notes, key }
+                PageInputs { page, info: doc.info.pages.get(page).cloned(), images, boxes, notes, key, disk: None }
             })
-            .collect();
+            .collect::<Vec<PageInputs>>();
         let params =
             ScanParams { generation: doc.generation, bytes: doc.bytes.len(), pages: doc.info.pages.len(), settings: settings.clone(), model: None };
-        Some(ChessScanJob { doc: id, bytes: doc.bytes.clone(), password: doc.password.clone(), inputs, params, read, settings })
+        let mut inputs = inputs;
+        let disk = self.chess_job_disk(id, &settings);
+        if disk.is_some() {
+            let keys = self.chess_disk_keys(id, pages);
+            for (input, key) in inputs.iter_mut().zip(keys) {
+                input.disk = key;
+            }
+        }
+        Some(ChessScanJob { doc: id, bytes: doc.bytes.clone(), password: doc.password.clone(), inputs, params, read, settings, disk })
+    }
+
+    /// Where a job for document `id` with `settings` takes its pages' readings from and keeps
+    /// them (plan A9-N5b): nowhere without [`ChessScanSettings::cache`] or a document that is not
+    /// open; only taken from, for a document whose reading may not be kept now
+    /// ([`Self::chess_may_keep`]).
+    fn chess_job_disk(&self, id: DocId, settings: &ChessScanSettings) -> Option<JobDisk> {
+        let cache = settings.cache.as_ref()?;
+        let doc = self.get(id)?;
+        Some(JobDisk {
+            store: reading::store_for(&cache.dir),
+            doc: doc.doc_keys(),
+            pages: doc.info.pages.len(),
+            take_only: !self.chess_may_keep(id, cache.encrypted),
+            used: DiskCounts::default(),
+        })
+    }
+
+    /// Whether document `id`'s reading may be kept on disk ([`store::persist_policy`]): never for
+    /// a document that does not allow copying; for an encrypted one only when the user said so
+    /// ([`Self::set_chess_keep`]) or the caller may (`encrypted`, a tool's `allow_encrypted`).
+    pub fn chess_may_keep(&self, id: DocId, encrypted: bool) -> bool {
+        match self.get(id).map(store::persist_policy) {
+            Some(store::Persist::Yes) => true,
+            Some(store::Persist::Ask) => encrypted || self.chess.keep.contains(&id),
+            Some(store::Persist::Never) | None => false,
+        }
+    }
+
+    /// The user said whether document `id`'s chess work, its reading on disk among it, may be kept
+    /// although the document is encrypted (plan A9-I1c's question; N5b). For the rest of the
+    /// session; closing the document forgets it.
+    pub fn set_chess_keep(&mut self, id: DocId, keep: bool) {
+        if keep && self.get(id).is_some() {
+            self.chess.keep.insert(id);
+        } else {
+            self.chess.keep.remove(&id);
+        }
+    }
+
+    /// What this session's scans and readings took from the disk and kept there, since it began
+    /// (plan A9-N5b): for tests and measures.
+    pub fn chess_disk(&self) -> DiskUse {
+        self.chess.disk
     }
 
     /// Keep what [`ChessScanJob::run`] found. When the document changed since the job was made,
@@ -1376,6 +1544,7 @@ impl Session {
     /// (a page that moved since is scanned again); the others describe a state that is gone.
     /// Returns whether any page was kept.
     pub fn store_chess_scan(&mut self, scan: &ChessScan) -> bool {
+        self.chess.disk = self.chess.disk.plus(scan.disk);
         if scan.params.model == Some(ModelKey::Supplied) {
             return false;
         }
@@ -1503,7 +1672,6 @@ impl Session {
         let (missing, missing_keys): (Vec<usize>, Vec<Option<page_key::PageKey>>) =
             pages.iter().zip(&keys).zip(&found).filter(|(_, f)| f.is_none()).map(|((p, k), _)| (*p, *k)).unzip();
         if !missing.is_empty() {
-            self.chess.scanned = self.chess.scanned.saturating_add(missing.len());
             let job = self.chess_scan_job_keyed(id, &missing, &missing_keys, &settings, read).ok_or("no such document")?;
             // On the cores (plan A9-V10a): the command line and the agents scan whole books here.
             let workers = ChessScanJob::default_workers();
@@ -1511,6 +1679,8 @@ impl Session {
                 Some(m) => job.run_parallel(m, workers, |_, _| true),
                 None => job.run_parallel_with(None, workers, |_, _| true),
             };
+            // What was read now, not what the disk gave (plan A9-N5b).
+            self.chess.scanned = self.chess.scanned.saturating_add(missing.len().saturating_sub(scan.disk.read));
             self.store_chess_scan(&scan);
             for page in scan.pages {
                 if let Some(slot) = pages.iter().position(|p| *p == page.page).and_then(|i| found.get_mut(i)) {

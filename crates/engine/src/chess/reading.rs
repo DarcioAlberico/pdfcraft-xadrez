@@ -198,10 +198,15 @@ pub fn alone_key(
     k.finish()
 }
 
-/// The name of a document's folder: the hash the stores name its file by. `None` when no key is
-/// known.
+/// The name of a document's folder: the hash the stores name its file by, its identifier's when it
+/// has one, but by its name and size before its path (plan A9-N5b): a job's session opens the
+/// document from its bytes, under its name and with no path, and finds the same folder. Entries
+/// are found by their own keys, so two files that share a name and a size only share a folder.
+/// `None` when no key is known.
 pub fn book_folder(keys: &DocKeys) -> Option<String> {
-    super::store::legacy_file_name(keys)?.strip_suffix(".json").map(str::to_owned)
+    let named = keys.id().is_none() && keys.name.is_some() && keys.size.is_some();
+    let keys = if named { DocKeys { path: None, ..keys.clone() } } else { keys.clone() };
+    super::store::legacy_file_name(&keys)?.strip_suffix(".json").map(str::to_owned)
 }
 
 /// Whether `name` is a document's folder: 32 hexadecimal digits.
@@ -274,6 +279,45 @@ pub enum Kept {
 /// A probe of the free space on the disk holding a folder (the frontend's: the engine does not
 /// ask the system).
 pub type FreeSpace = Arc<dyn Fn(&Path) -> Option<u64> + Send + Sync>;
+
+/// The probe the frontend gave ([`set_free_space`]).
+static FREE_SPACE: Mutex<Option<FreeSpace>> = Mutex::new(None);
+
+/// The process's stores, one per folder, the most recent last ([`store_for`]).
+static STORES: Mutex<Vec<(PathBuf, Arc<ReadingStore>)>> = Mutex::new(Vec::new());
+
+/// Most folders whose stores are kept; the oldest goes first.
+const MAX_STORES: usize = 8;
+
+/// How the frontend asks the free space on a disk (plan A9-N5b): every store made from now on
+/// keeps nothing while the disk holding its folder has less than [`MIN_FREE_BYTES`] free.
+pub fn set_free_space(probe: FreeSpace) {
+    *FREE_SPACE.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(probe);
+}
+
+/// The store in `dir`, one for each folder in the process (its count of the books is shared by
+/// the scans that keep pages there), with the free-space probe the frontend gave.
+pub fn store_for(dir: &Path) -> Arc<ReadingStore> {
+    // A list of shared stores: a panic elsewhere while it was held leaves it whole.
+    let mut stores = STORES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(at) = stores.iter().position(|(d, _)| d == dir) {
+        let found = stores.remove(at);
+        let store = found.1.clone();
+        stores.push(found);
+        return store;
+    }
+    let probe = FREE_SPACE.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
+    let store = ReadingStore::new(dir);
+    let store = Arc::new(match probe {
+        Some(p) => store.with_free_space(p, MIN_FREE_BYTES),
+        None => store,
+    });
+    if stores.len() >= MAX_STORES {
+        stores.remove(0);
+    }
+    stores.push((dir.to_path_buf(), store.clone()));
+    store
+}
 
 /// One document's folder as the store last counted it.
 #[derive(Clone, Copy, Debug)]

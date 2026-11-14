@@ -85,6 +85,13 @@ pub trait GlyphClassifier {
     fn max_batch(&self) -> usize {
         MAX_BATCH
     }
+
+    /// What the classifier is, when it can say: two with the same digest read alike. A page read
+    /// with one is kept on disk under it (plan A9-N5b); `None` (a stand-in, a classifier that
+    /// can't say) keeps nothing.
+    fn digest(&self) -> Option<[u8; 32]> {
+        None
+    }
 }
 
 impl GlyphClassifier for GlyphModel {
@@ -94,6 +101,10 @@ impl GlyphClassifier for GlyphModel {
 
     fn classify(&self, cells: &[f32], count: usize) -> Result<Vec<f32>, ModelError> {
         self.probabilities(cells, count)
+    }
+
+    fn digest(&self) -> Option<[u8; 32]> {
+        Some(*GlyphModel::digest(self))
     }
 }
 

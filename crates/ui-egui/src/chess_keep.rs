@@ -86,6 +86,8 @@ impl PdfCraftApp {
             return;
         }
         self.chess.doc_mut(id).keep = Some(yes);
+        // The book's reading kept on disk follows the same answer (plan A9-N5b).
+        self.session.set_chess_keep(id, yes);
         self.chess.capture.samples.answer(id, yes);
         let keeping = self.chess_keeping(id);
         self.chess.games.keep_games(id, keeping);

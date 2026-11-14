@@ -133,7 +133,7 @@ fn a_scanned_page_is_read_by_chess_ocr_and_its_moves_replay() {
 }
 
 /// The scan of `lines` as an image argument for [`pdf`].
-fn scan_image(lines: &[(&str, f32, f32)]) -> (u32, u32, &'static [u8]) {
+pub(super) fn scan_image(lines: &[(&str, f32, f32)]) -> (u32, u32, &'static [u8]) {
     let (w, h, data) = scan(lines, "", 150.0);
     (w, h, Box::leak(data.into_boxed_slice()))
 }

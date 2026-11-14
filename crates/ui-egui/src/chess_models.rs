@@ -225,9 +225,10 @@ pub(crate) fn section(ui: &mut egui::Ui, t: &Tokens, pref: &ModelsPref) -> Optio
 
 impl PdfCraftApp {
     /// The chess scan settings the app scans and reads with: the defaults, with the models folder
-    /// chosen (or found).
+    /// chosen (or found), keeping the pages' readings in the app's data folder (plan A9-N5b).
     pub(crate) fn chess_scan_settings(&self) -> pdfcraft_engine::chess::ChessScanSettings {
-        pdfcraft_engine::chess::ChessScanSettings { models_dir: self.chess.models.models_dir(), ..Default::default() }
+        let cache = self.chess.reading_dir.clone().map(|dir| pdfcraft_engine::chess::ReadingCache { dir, encrypted: false });
+        pdfcraft_engine::chess::ChessScanSettings { models_dir: self.chess.models.models_dir(), cache, ..Default::default() }
     }
 
     /// What a click in the models section asked for.

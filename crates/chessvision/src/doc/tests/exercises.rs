@@ -2,7 +2,8 @@
 //! the main line, `Result` and the statement before the first move.
 
 use super::*;
-use crate::doc::exercises::{ExercisesPgn, LeftOut, LeftOutReason, exercises_pgn};
+use crate::doc::anki::{AnkiDeck, Card, MAX_PREFIX, anki_deck, image_name, media_prefix};
+use crate::doc::exercises::{Exercise, ExercisesPgn, LeftOut, LeftOutReason, exercises_pgn};
 use crate::doc::markdown::PgnBook;
 use pdfcraft_chess::fen::Fen;
 use pdfcraft_chess::game::{Game as PgnGame, split_pgn};
@@ -100,4 +101,108 @@ fn a_diagram_without_a_number_is_no_exercise() {
     assert_eq!(doc.games.len(), 1);
     let made = written(&doc);
     assert!(made.exercises.is_empty() && made.left_out.is_empty() && made.pgn.is_empty(), "{made:?}");
+}
+
+/// The book's exercises as Anki's cards (plan A9-N10b): the same three as the problem PGN, each
+/// with its picture's name, the statement, the solution in SAN and the side it is printed from,
+/// and the same numbered diagram left out.
+#[test]
+fn the_anki_cards_are_the_exercises_with_their_picture_statement_and_solution() {
+    let mut doc = puzzle_book();
+    // The third diagram is printed from Black's side: its picture is drawn so.
+    for block in doc.pages.iter_mut().flat_map(|p| &mut p.blocks) {
+        if let Block::Diagram(d) = block
+            && d.puzzle == Some(3)
+            && let Some(r) = d.reading.as_mut()
+        {
+            r.orientation = Some(Color::Black);
+        }
+    }
+    let book = PgnBook { title: Some("Puzzles".into()), labels: vec!["7".into(), "8".into(), "9".into()] };
+    let deck = anki_deck(&doc, &book);
+    assert_eq!(deck.prefix, "puzzles");
+    assert_eq!(deck.exercises(), written(&doc).exercises, "the PGN's exercises, in the same order");
+    assert_eq!(deck.left_out, written(&doc).left_out);
+    let cards: Vec<(&str, &str, bool)> = deck.cards.iter().map(|c| (c.image.as_str(), c.solution.as_str(), c.flipped)).collect();
+    assert_eq!(
+        cards,
+        [("puzzles-p0001-1.png", SCHOLAR_MATE, false), ("puzzles-p0001-2.png", ROOK_CHECKS, false), ("puzzles-p0001-3.png", "1...Qf1#", true),]
+    );
+    for (card, fen) in deck.cards.iter().zip([SCHOLAR, ROOK, QUEEN]) {
+        assert_eq!(Fen::parse(&card.fen).unwrap().book_key(), Fen::parse(fen).unwrap().book_key(), "the solution's start");
+    }
+    let tsv = deck.tsv(|_| true);
+    // For the check by an external process: the file, and each card's position and solution.
+    println!("ANKI-TSV-BEGIN\n{tsv}ANKI-TSV-END");
+    let cards: String = deck.cards.iter().map(|c| format!("{}\t{}\n", c.fen, c.solution)).collect();
+    println!("ANKI-CARDS-BEGIN\n{cards}ANKI-CARDS-END");
+    let lines: Vec<&str> = tsv.lines().collect();
+    assert_eq!(lines.get(..3), Some(["#separator:tab", "#html:true", "#tags:puzzles"].as_slice()), "{tsv}");
+    assert_eq!(lines.len(), 6, "the headers and a line per card: {tsv}");
+    let fronts = [
+        "<img src=\"puzzles-p0001-1.png\"><br>White to move (№ 1). Page 7 · diagram 1 of 3",
+        "<img src=\"puzzles-p0001-2.png\"><br>White to move (№ 2). Page 7 · diagram 2 of 3",
+        "<img src=\"puzzles-p0001-3.png\"><br>Black to move (№ 3). Page 7 · diagram 3 of 3",
+    ];
+    for ((line, front), back) in lines.iter().skip(3).zip(fronts).zip([SCHOLAR_MATE, ROOK_CHECKS, "1...Qf1#"]) {
+        let fields: Vec<&str> = line.split('\t').collect();
+        assert_eq!(fields.len(), 2, "front and back: {line}");
+        assert!(fields.first().is_some_and(|f| f.starts_with(front)), "{line}");
+        assert_eq!(fields.get(1), Some(&back), "{line}");
+    }
+    assert_eq!(anki_deck(&doc, &book).tsv(|_| true), tsv, "the same file on every run");
+}
+
+/// A field never breaks Anki's line or its HTML: the book's `<`, `&` and `"` are entities, a tab
+/// or a line break a space; a card whose picture was not drawn shows its FEN in its place.
+#[test]
+fn an_anki_field_keeps_to_its_line_and_its_text() {
+    let card = Card {
+        exercise: Exercise { at: DiagramAt::on(4, 1), number: 12, moves: 1 },
+        image: image_name("book", 4, 1),
+        fen: ROOK.into(),
+        flipped: false,
+        statement: "White to move (№ 12).\tA <b>bold</b> & \"quoted\"\nline".into(),
+        solution: "1.Rh6+".into(),
+    };
+    let deck = AnkiDeck { prefix: "book".into(), cards: vec![card], left_out: Vec::new() };
+    let tsv = deck.tsv(|_| true);
+    let row = tsv.lines().nth(3).unwrap_or_default();
+    assert_eq!(
+        row, "<img src=\"book-p0005-2.png\"><br>White to move (№ 12). A &lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot; line\t1.Rh6+",
+        "{tsv}"
+    );
+    assert_eq!(tsv.lines().count(), 4, "{tsv}");
+    let undrawn = deck.tsv(|_| false);
+    assert!(undrawn.lines().nth(3).is_some_and(|l| l.starts_with(&format!("FEN {ROOK}<br>White to move"))), "{undrawn}");
+}
+
+/// The pictures' names are safe file names on every system, and the same on every run: the
+/// title's ASCII letters and digits; with other letters, or past the cap, a hash of the title
+/// keeps two books apart in Anki's one media folder.
+#[test]
+fn the_pictures_names_are_safe_and_the_same_on_every_run() {
+    let hashed = |p: &str, head: &str| {
+        p.strip_prefix(head).and_then(|h| h.strip_prefix('-')).is_some_and(|h| h.len() == 8 && h.chars().all(|c| c.is_ascii_hexdigit()))
+    };
+    assert_eq!(media_prefix("My Book: Vol. 2"), "my-book-vol-2");
+    assert_eq!(media_prefix("  ../..\\CON*?<>|  "), "con");
+    assert_eq!(media_prefix(""), "exercises");
+    assert_eq!(media_prefix("---"), "exercises");
+    let russian = media_prefix("Шахматы");
+    assert!(hashed(&russian, "exercises"), "{russian}");
+    assert_ne!(russian, media_prefix("Шахматы 2"), "two titles in other letters stay apart");
+    let mixed = media_prefix("Xadrez Básico");
+    assert!(hashed(&mixed, "xadrez-b-sico"), "{mixed}");
+    let long = media_prefix(&"a".repeat(60));
+    assert!(hashed(&long, &"a".repeat(MAX_PREFIX)), "{long}");
+    assert_ne!(long, media_prefix(&"a".repeat(61)), "titles past the cap stay apart");
+    for title in ["My Book: Vol. 2", "  ../..\\CON*?<>|  ", "Шахматы", "Xadrez Básico", "\u{0}\t.\n", "a/b\\c:d"] {
+        let prefix = media_prefix(title);
+        assert_eq!(prefix, media_prefix(title), "the same on every run");
+        let name = image_name(&prefix, 0, 0);
+        assert!(name.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'.'), "{name}");
+        assert!(!name.starts_with(['-', '.']) && name.ends_with("-p0001-1.png"), "{name}");
+    }
+    assert_eq!(image_name("x", usize::MAX, usize::MAX), format!("x-p{}-{}.png", usize::MAX, usize::MAX), "no overflow");
 }

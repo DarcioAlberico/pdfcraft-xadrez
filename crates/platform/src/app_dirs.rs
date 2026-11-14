@@ -72,6 +72,15 @@ impl AppDirs {
     }
 }
 
+/// The bytes free for this user on the disk holding `path`, or its nearest folder that is there
+/// (plan A9-N5b: the books' readings kept on disk stop below a free gigabyte). `None` when the
+/// system can't say.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn free_space(path: &Path) -> Option<u64> {
+    let there = path.ancestors().find(|p| p.is_dir())?;
+    fs4::available_space(there).ok()
+}
+
 /// Make the folder `dir` (with its parents) and, where the system has permissions (Unix), open
 /// to its owner alone (0700), as the user's data in it is: the chess stores keep what was read
 /// from the books, unencrypted. Elsewhere it is made as the system makes folders.

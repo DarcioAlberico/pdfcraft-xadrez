@@ -87,8 +87,17 @@ pub(crate) struct ExportLook {
     pub fonts: pdfcraft_engine::chess::pdfcraft_chessvision::text_font::UserFonts,
 }
 
-/// Markdown's diagram images written into `folder` (created when there are any), each by its file
-/// name; `image_dir` names the folder in an error.
+/// What a chess export of a document writes: the document as its format, or its exercises alone
+/// (plan A9-N10) as a problem PGN or as Anki's cards (A9-N10b).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Exercises {
+    No,
+    Pgn,
+    Anki,
+}
+
+/// Markdown's and Anki's diagram images written into `folder` (created when there are any), each
+/// by its file name; `image_dir` names the folder in an error.
 pub(crate) fn write_images(folder: Option<&std::path::Path>, image_dir: &str, images: &[(String, Vec<u8>)]) -> Result<()> {
     let Some(dir) = folder.filter(|_| !images.is_empty()) else { return Ok(()) };
     std::fs::create_dir_all(dir).map_err(|e| failed(format!("{image_dir}: {e}")))?;
@@ -381,6 +390,12 @@ impl Automation {
             s.allow_unverified_fonts = b;
         }
         s.models_dir = self.models_dir(a)?;
+        // Pages' readings kept on disk (plan A9-N5b): only where `cache` names a folder, confined
+        // like any written path; without it every page is read, as before.
+        if let Some(dir) = a.opt_str("cache")? {
+            let encrypted = a.opt_bool("allow_encrypted")?.unwrap_or(false);
+            s.cache = Some(chess::ReadingCache { dir: self.resolve(dir, true)?, encrypted });
+        }
         Ok(s)
     }
 
@@ -547,6 +562,7 @@ impl Automation {
     /// document as JSON and the games as PGN inline (`include`) or written to `out` / `pgn_out`.
     pub(crate) fn chess_document(&mut self, a: &Args) -> Result<Value> {
         let settings = self.chess_settings(a)?;
+        let disk_before = self.session.chess_disk();
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let lang = match a.opt_str("lang")? {
             None => None,
@@ -618,6 +634,7 @@ impl Automation {
             "corrections": corrections,
             "reference": reference,
             "reference_kept": reference_kept,
+            "cache": self.cache_reply(settings.cache.as_ref(), disk_before),
         });
         if let Some((shown, path)) = out {
             crate::write_atomic(&path, json_text.as_bytes())?;
@@ -713,15 +730,22 @@ impl Automation {
     /// diagrams whose solution was read, each with `SetUp`/`FEN`, its solution as the main line
     /// and its statement before it.
     pub(crate) fn chess_export_exercises(&mut self, a: &Args) -> Result<Value> {
-        self.chess_export_as(a, ChessFormat::Pgn, true)
+        self.chess_export_as(a, ChessFormat::Pgn, Exercises::Pgn)
+    }
+
+    /// The book's exercises as Anki's cards (plan A9-N10b): a text file at `out` that Anki's
+    /// File ▸ Import reads, and the diagrams' pictures in a folder beside it.
+    pub(crate) fn chess_export_anki(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export_as(a, ChessFormat::Pgn, Exercises::Anki)
     }
 
     fn chess_export(&mut self, a: &Args, format: ChessFormat) -> Result<Value> {
-        self.chess_export_as(a, format, false)
+        self.chess_export_as(a, format, Exercises::No)
     }
 
-    /// An export of the document as `format`; with `exercises`, its exercises alone, as PGN.
-    fn chess_export_as(&mut self, a: &Args, format: ChessFormat, exercises: bool) -> Result<Value> {
+    /// An export of the document as `format`; with `exercises`, its exercises alone, as PGN or as
+    /// Anki's cards.
+    fn chess_export_as(&mut self, a: &Args, format: ChessFormat, exercises: Exercises) -> Result<Value> {
         let lang = a.opt_str("lang")?.map(|t| lang_of("lang", t)).transpose()?;
         let pgn_style = crate::chess_pgn::pgn_style(a)?;
         let positions = match a.opt_str("positions")? {
@@ -731,6 +755,7 @@ impl Automation {
         let ocr = ocr_options(a)?.mode;
         let (book, cipher_out) = self.cipher_args(a)?;
         let scan = self.chess_settings(a)?;
+        let (cache, disk_before) = (scan.cache.clone(), self.session.chess_disk());
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
@@ -749,7 +774,11 @@ impl Automation {
             None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
         let (mut options, look) = self.export_look(a, &title, lang.unwrap_or(Lang::En))?;
-        let (image_dir, folder) = self.image_folder(&shown, format, &options)?;
+        let (image_dir, mut folder) = self.image_folder(&shown, format, &options)?;
+        // Anki's cards have their pictures beside them, as Markdown has (plan A9-N10b).
+        if exercises == Exercises::Anki {
+            folder = Some(self.resolve(&std::path::Path::new(&shown).with_file_name(&image_dir).to_string_lossy(), true)?);
+        }
         let mut outputs: Vec<(&str, &std::path::Path)> = vec![("out", path.as_path())];
         outputs.extend(cipher_out.as_ref().map(|(_, p)| ("cipher_out", p.as_path())));
         outputs.extend(folder.as_ref().map(|f| ("image_dir", f.as_path())));
@@ -765,12 +794,13 @@ impl Automation {
         options.pgn_style = pgn_style;
         options.reference = reference.as_ref().map(|(_, index)| index.clone());
         options.games = games.as_ref().map(|(_, index)| index.clone());
-        options.exercises = exercises;
+        options.exercises = exercises != Exercises::No;
+        options.anki = exercises == Exercises::Anki;
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         write_images(folder.as_deref(), &image_dir, &made.images)?;
         // A PGN starts with a byte order mark only when asked (decision D18).
-        let bom = format == ChessFormat::Pgn && a.opt_bool("bom")?.unwrap_or(false);
+        let bom = format == ChessFormat::Pgn && exercises != Exercises::Anki && a.opt_bool("bom")?.unwrap_or(false);
         let bytes: std::borrow::Cow<[u8]> = if bom { [pgn::BOM, &made.bytes].concat().into() } else { made.bytes.as_slice().into() };
         crate::write_atomic(&path, &bytes)?;
         let (all, positioned) = made.diagram_counts();
@@ -783,7 +813,7 @@ impl Automation {
         let reference_linked = reference.as_ref().and_then(|_| linked.next());
         // PGN: what the PGN written was given (the book's, else the user's games), as before, with
         // its links; the other formats: the links, as chess_document says them.
-        let reference_json = if format == ChessFormat::Pgn && !exercises {
+        let reference_json = if format == ChessFormat::Pgn && exercises == Exercises::No {
             let written = reference.as_ref().map(|r| (r, reference_linked)).or(games.as_ref().map(|g| (g, games_linked)));
             written.zip(made.annotated.as_ref()).map(|(((p, index), l), n)| {
                 json!({
@@ -831,6 +861,7 @@ impl Automation {
             "reference": reference_json,
             "games_reference": games_json,
             "reference_kept": reference_kept,
+            "cache": self.cache_reply(cache.as_ref(), disk_before),
             // The exercises written and the numbered diagrams left out, pages and diagrams from 1
             // (plan A9-N10); null for the other exports.
             "exercises": made.exercises.as_ref().map(|e| e.exercises.iter().map(|x| json!({
@@ -846,6 +877,22 @@ impl Automation {
                 "reason": x.reason.name(),
             })).collect::<Vec<_>>()),
         }))
+    }
+
+    /// What the pages' readings kept on disk did for this call (plan A9-N5b): the folder, the
+    /// pages taken from it (not read), read and kept, read and not kept (the disk nearly full, the
+    /// book alone past the budget, an encrypted document without allow_encrypted), and the entries
+    /// set aside (their pages read again). `null` without `cache`.
+    fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
+        let Some(cache) = cache else { return Value::Null };
+        let now = self.session.chess_disk();
+        json!({
+            "folder": self.shown_path(&cache.dir).0,
+            "read": now.read.saturating_sub(before.read),
+            "kept": now.kept.saturating_sub(before.kept),
+            "not_kept": now.not_kept.saturating_sub(before.not_kept),
+            "set_aside": now.set_aside.saturating_sub(before.set_aside),
+        })
     }
 
     /// How a chess export looks, from the call (plan A9-N9: the one reading of these arguments for

@@ -482,6 +482,12 @@ impl Session {
         let mut needs_ocr = Vec::new();
         let mut ocr_pages = Vec::new();
         let mut cipher = ocr.book.cloned().unwrap_or_default();
+        // The pages' own readings kept on disk (plan A9-N5b): where, and their content keys,
+        // worked out only for the pages chess OCR reads.
+        let disk = if glyphs.is_some() { self.chess_job_disk(id, settings) } else { None };
+        let cos = doc.editor.as_ref().map(|e| &e.cos);
+        let objects = cos.map(|c| super::page_objects(c, doc.info.pages.len())).unwrap_or_default();
+        let mut memo = super::page_key::KeyMemo::<super::page_key::Sha>::default();
         // The last legal, accepted position seen: the moves of a page without a diagram go on from it.
         let mut last_fen: Option<String> = None;
         // Every page's reading blocks, and the body size of them all.
@@ -527,57 +533,87 @@ impl Session {
                 .find(|p| p.accepted && p.legality.allows(p.side.color) && !p.repaired())
                 .map(|p| p.fen.clone());
             match (wanted, glyphs, doc.info.pages.get(page.page), page.geometry) {
-                (true, Some(g), Some(info), Some(geometry)) => match super::render_gray(&mut renderer, page.page, info, OCR_DPI) {
-                    Ok((gray, dpi)) => {
-                        let boxes: Vec<_> = page
-                            .diagrams
-                            .iter()
-                            .filter_map(|d| geometry.user_to_view(d.candidate.bbox_user))
-                            .filter_map(|v| pdfcraft_chessvision::coords::view_to_pixels(v, dpi))
-                            .collect();
-                        let words = match if ocr.general { text_ocr::general_ocr_words(&gray) } else { None } {
-                            Some(Ok(w)) => Some(w),
-                            Some(Err(e)) => {
-                                notes.push((page.page, ScanNote::GeneralOcrFailed { error: e.to_string() }));
-                                None
-                            }
-                            None => None,
-                        };
-                        let context = here_fen.as_deref().or(last_fen.as_deref()).and_then(GameContext::from_fen);
-                        let index = u32::try_from(page.page).unwrap_or(u32::MAX);
-                        match text_ocr::read_page(&gray, dpi, &boxes, g, words.as_deref(), chosen.lang, context.as_ref(), &mut cipher, index) {
-                            Ok(read) => {
-                                ocr_pages.push(OcrPage {
-                                    page: page.page,
-                                    lines: read.lines,
-                                    edits: read.edits,
-                                    flags: read.flags,
-                                    general_ocr: read.general_ocr,
-                                });
-                                reviews = read.reviews;
-                                ocr_frames = read.frames;
-                                ocr_larger = read.larger;
-                                ocr_bolder = read.bolder;
-                                // What the reading left out, said with the page (plan A9-V2).
-                                notes.extend(read.notes.into_iter().map(|n| (page.page, n)));
-                                ocr_text = read.text;
-                                text = &ocr_text;
-                            }
-                            Err(e) => {
-                                notes.push((page.page, ScanNote::ChessOcrFailed { error: e.to_string() }));
-                                if let Some(layer) = &poor {
-                                    needs_ocr.push((page.page, NeedsOcr { layer: layer.clone(), no_glyph_model: false }));
+                (true, Some(g), Some(info), Some(geometry)) => {
+                    let boxes: Vec<ViewRect> = page.diagrams.iter().filter_map(|d| geometry.user_to_view(d.candidate.bbox_user)).collect();
+                    // Kept on disk (plan A9-N5b) under its content, the diagrams painted out and
+                    // the models, when the glyph classifier can say what it is.
+                    let general = if ocr.general && disk.is_some() { text_ocr::general_ocr_digest() } else { None };
+                    let entry = disk.as_ref().zip(cos).and_then(|(d, cos)| {
+                        let content = memo.page(cos, *objects.get(page.page)?)?;
+                        let key = super::reading::alone_key(&content, OCR_DPI, &boxes, &g.digest()?, general.as_ref());
+                        Some((d, key))
+                    });
+                    let kept = entry.as_ref().and_then(|(d, key)| match d.store.get::<text_ocr::PageAlone>(&d.doc, key) {
+                        super::reading::Found::Hit(alone) => {
+                            super::DiskCounts::add(&d.used.read);
+                            Some(alone)
+                        }
+                        super::reading::Found::SetAside(_) => {
+                            super::DiskCounts::add(&d.used.set_aside);
+                            None
+                        }
+                        super::reading::Found::Miss => None,
+                    });
+                    let alone = match kept {
+                        Some(alone) => Ok(alone),
+                        None => match super::render_gray(&mut renderer, page.page, info, OCR_DPI) {
+                            Ok((gray, dpi)) => {
+                                let pixels: Vec<_> = boxes.iter().filter_map(|v| pdfcraft_chessvision::coords::view_to_pixels(*v, dpi)).collect();
+                                let words = match if ocr.general { text_ocr::general_ocr_words(&gray) } else { None } {
+                                    Some(Ok(w)) => Some(w),
+                                    Some(Err(e)) => {
+                                        notes.push((page.page, ScanNote::GeneralOcrFailed { error: e.to_string() }));
+                                        None
+                                    }
+                                    None => None,
+                                };
+                                let alone = text_ocr::read_page_alone(&gray, dpi, &pixels, g, words.as_deref())
+                                    .map_err(|e| ScanNote::ChessOcrFailed { error: e.to_string() });
+                                // Kept only as its key says it was read: with the general OCR when
+                                // the key names it (a run where it failed is not).
+                                if let (Ok(a), Some((d, key))) = (&alone, &entry)
+                                    && !d.take_only
+                                    && a.general_ocr == general.is_some()
+                                {
+                                    match d.store.put(&d.doc, d.pages, key, a) {
+                                        Ok(super::reading::Kept::Yes) => super::DiskCounts::add(&d.used.kept),
+                                        _ => super::DiskCounts::add(&d.used.not_kept),
+                                    }
                                 }
+                                alone
+                            }
+                            Err(error) => Err(ScanNote::OcrRenderFailed { error }),
+                        },
+                    };
+                    match alone {
+                        Ok(alone) => {
+                            let context = here_fen.as_deref().or(last_fen.as_deref()).and_then(GameContext::from_fen);
+                            let index = u32::try_from(page.page).unwrap_or(u32::MAX);
+                            let read = text_ocr::finish_page(alone, chosen.lang, context.as_ref(), &mut cipher, index);
+                            ocr_pages.push(OcrPage {
+                                page: page.page,
+                                lines: read.lines,
+                                edits: read.edits,
+                                flags: read.flags,
+                                general_ocr: read.general_ocr,
+                            });
+                            reviews = read.reviews;
+                            ocr_frames = read.frames;
+                            ocr_larger = read.larger;
+                            ocr_bolder = read.bolder;
+                            // What the reading left out, said with the page (plan A9-V2).
+                            notes.extend(read.notes.into_iter().map(|n| (page.page, n)));
+                            ocr_text = read.text;
+                            text = &ocr_text;
+                        }
+                        Err(note) => {
+                            notes.push((page.page, note));
+                            if let Some(layer) = &poor {
+                                needs_ocr.push((page.page, NeedsOcr { layer: layer.clone(), no_glyph_model: false }));
                             }
                         }
                     }
-                    Err(error) => {
-                        notes.push((page.page, ScanNote::OcrRenderFailed { error }));
-                        if let Some(layer) = &poor {
-                            needs_ocr.push((page.page, NeedsOcr { layer: layer.clone(), no_glyph_model: false }));
-                        }
-                    }
-                },
+                }
                 _ => {
                     if wanted && glyphs.is_none() && poor.is_none() {
                         notes.push((page.page, ScanNote::OcrNeedsGlyphModel));
@@ -623,6 +659,9 @@ impl Session {
             notes.push((u.page, ScanNote::CorrectionUnused { uid: u.uid.chars().take(8).collect(), reason: u.reason.clone() }));
         }
         let doc = builder.finish();
+        if let Some(d) = &disk {
+            self.chess.disk = self.chess.disk.plus(d.used.report());
+        }
         // What the page's reading could not do, said on the page (plan A9-L7).
         for page in &doc.pages {
             let index = usize::try_from(page.index).unwrap_or(usize::MAX);
