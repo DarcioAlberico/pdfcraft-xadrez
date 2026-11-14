@@ -265,6 +265,33 @@ fn a_page_read_twice_counts_once() {
     assert_eq!(book.entries()["W"].evidence[&Officer::Q].legality, 3);
 }
 
+/// Plan A9-G3c, V4b: two copies of a book's cipher (kept by two processes, or one kept and one
+/// read since) merge by page: a page only the other read brings its proofs, a page both read keeps
+/// this copy's, and the evidence that is no page's is the larger count, never the sum, so a copy
+/// merged with itself, or with what it grew from, is what it was.
+#[test]
+fn two_copies_merge_by_page_and_never_count_twice() {
+    let mut a = BookCipher::default();
+    a.record(&queen_proof("W", 3), 12);
+    a.observe("X", PieceKind::Rook, Source::Glyph, None);
+    let mut b = a.clone();
+    b.record(&queen_proof("W", 3), 13);
+    b.record(&queen_proof("W", 2), 12);
+    b.observe("X", PieceKind::Rook, Source::Glyph, None);
+    let mut same = a.clone();
+    same.merge(&a);
+    assert_eq!(same, a);
+    let mut merged = a.clone();
+    merged.merge(&b);
+    assert_eq!(merged.entries()["W"].evidence[&Officer::Q].legality, 6, "page 12 as this copy read it, page 13 from the other");
+    assert_eq!(merged.proven(), CipherMap::from([("W".into(), PieceKind::Queen)]));
+    assert_eq!(merged.entries()["X"].evidence[&Officer::R].glyph, 2, "the larger count, not 1 + 2");
+    let mut back = b.clone();
+    back.merge(&a);
+    assert_eq!(back.entries()["W"].evidence[&Officer::Q].legality, 5, "the other copy keeps its own reading of page 12");
+    assert!(BookCipher::default().is_empty() && !merged.is_empty());
+}
+
 /// Plan A9-V4a (R3-10): reading a page again reads it the same: the evidence the page gave is
 /// not used to repair it.
 #[test]
