@@ -131,7 +131,7 @@ for i in range(s32, e32):
             # "L7 (+ G7b)", "G3c + V4b", "I15 (com I7a)", "G11 (motor)"
             for m2 in ID_RE.finditer(part):
                 sid = norm(m2.group(1))
-                if sid in ("N11", "N12", "N15", "N18"):
+                if sid in ("N11", "N15", "N18"):
                     continue
                 key = sid
                 if key in waves and key == "G11":
