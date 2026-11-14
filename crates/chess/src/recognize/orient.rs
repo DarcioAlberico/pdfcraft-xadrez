@@ -78,7 +78,7 @@ fn direction<T: Ord>(run: &[T]) -> Option<bool> {
 }
 
 /// The rule that decided.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Rule {
     /// The printed coordinates.
     Coordinates,
@@ -99,7 +99,7 @@ pub enum Rule {
 pub const CASCADE: [Rule; 5] = [Rule::Coordinates, Rule::SingleLegal, Rule::ConfidenceMargin, Rule::PawnPrior, Rule::Fallback];
 
 /// What a rule concluded.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Verdict {
     pub rule: Rule,
     /// `true`: the reading as printed; `false`: the reading turned half a circle.

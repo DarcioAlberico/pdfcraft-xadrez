@@ -726,9 +726,9 @@ impl Automation {
         // games (games_pgn), for every format since plan A9-N2, indexed before the pages are read.
         let id = self.doc(a)?.id;
         let (book_pgn, reference_kept) = self.book_pgn(a, id)?;
-        let reference = book_pgn.map(|r| (r.shown, std::sync::Arc::new(r.index)));
+        let reference = book_pgn.map(|r| (r.shown, r.index));
         let games = match a.opt_str("games_pgn")? {
-            Some(p) => Some((p.to_owned(), std::sync::Arc::new(read_reference(&self.resolve(p, false)?, p)?))),
+            Some(p) => Some((p.to_owned(), self.read_reference(&self.resolve(p, false)?, p)?)),
             None => None,
         };
         let title = match a.opt_str("title")? {
@@ -1198,12 +1198,24 @@ impl Automation {
     }
 }
 
-/// A book's PGN at `path` (`shown` as the caller named it), indexed. Refused past
-/// [`reference::MAX_REFERENCE_BYTES`] before it is read; read as `pgn::decode` reads it (a line
-/// that is not UTF-8 as Windows-1252, a byte order mark dropped).
-pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
-    let (text, _, _) = read_reference_text(path, shown)?;
-    reference::ReferenceIndex::from_pgn(&text).map_err(|e| failed(format!("{shown}: {e}")))
+impl Automation {
+    /// A book's PGN at `path` (`shown` as the caller named it), indexed once a session for the same
+    /// text (plan A9-I3b). Refused past [`reference::MAX_REFERENCE_BYTES`] before it is read; read
+    /// as `pgn::decode` reads it (a line that is not UTF-8 as Windows-1252, a byte order mark
+    /// dropped).
+    pub(crate) fn read_reference(&self, path: &std::path::Path, shown: &str) -> Result<std::sync::Arc<reference::ReferenceIndex>> {
+        let (text, _, _) = read_reference_text(path, shown)?;
+        self.session.chess_book_index(&text).map_err(|e| failed(format!("{shown}: {e}")))
+    }
+}
+
+/// The name a reply gives the cap past which an index left the rest of its PGN out.
+pub(crate) fn cut_name(cut: reference::Cut) -> &'static str {
+    match cut {
+        reference::Cut::Games => "games",
+        reference::Cut::Moves => "moves",
+        reference::Cut::Memory => "memory",
+    }
 }
 
 /// The text of the book's PGN at `path`, as [`read_reference`] reads it, how it was decoded, and
@@ -1241,6 +1253,8 @@ pub(crate) fn reference_reply(shown: &str, index: &reference::ReferenceIndex, li
             })
             .collect::<Vec<_>>(),
         "linked": a.counts,
+        // Past a cap of the index, which one (plan A9-I3b); the warnings say what was left out.
+        "cut": index.cut().map(cut_name),
         "diagrams": {
             "linked": a.diagrams.iter().filter(|d| d.node.is_some()).count(),
             "confirmed": linked.diagrams.confirmed,

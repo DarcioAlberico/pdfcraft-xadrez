@@ -13,7 +13,7 @@ use pdfcraft_chess::placement::Placement;
 use pdfcraft_geom::PageRect;
 
 /// Which detector found a candidate.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Source {
     /// An image the PDF embeds on the page ([`embedded`]).
     Embedded,
@@ -26,9 +26,10 @@ pub enum Source {
 }
 
 /// A region of a page that a detector believes holds one chess diagram.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DiagramCandidate {
     /// The diagram's box in PDF user space (points, y up): the space of page images and links.
+    #[serde(with = "crate::coords::PageRectDef")]
     pub bbox_user: PageRect,
     /// The detector that found it.
     pub source: Source,
