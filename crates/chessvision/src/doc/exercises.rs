@@ -20,6 +20,9 @@
 //! A numbered diagram whose solution was not read, or that has no position to start from, is left
 //! out and listed ([`LeftOut`]). ChessBase's training command (`%tqu`) is not written: decision
 //! D20 waits for it to be tried in ChessBase first.
+//!
+//! The same exercises, by the same rule ([`find`]), are also Anki's cards: [`super::anki`] (plan
+//! A9-N10b).
 
 use pdfcraft_chess::describe;
 use pdfcraft_chess::pgn_style::PgnStyle;
@@ -78,11 +81,22 @@ pub struct ExercisesPgn {
     pub warnings: Vec<GameWarning>,
 }
 
-/// The exercises of `doc` as a problem PGN, from `book` (its title, its pages' labels), the moves
-/// written as `style` says (see the module documentation).
-pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> ExercisesPgn {
-    let mut made = ExercisesPgn::default();
-    let mut games: Vec<GameScore> = Vec::new();
+/// An exercise found, as [`exercises_pgn`] writes it and as Anki's cards show it
+/// ([`super::anki`]).
+pub(crate) struct Found {
+    pub(crate) exercise: Exercise,
+    /// Its game, with the origin's tags, the title as its `Event`, its number as its `Round` and
+    /// the statement as its first comment.
+    pub(crate) score: GameScore,
+    /// The side the book prints the diagram from.
+    pub(crate) orientation: Color,
+}
+
+/// The exercises of `doc` in the book's order, and the numbered diagrams left out (see the module
+/// documentation): the one rule both forms of the exercises follow.
+pub(crate) fn find(doc: &ChessDoc, book: &PgnBook) -> (Vec<Found>, Vec<LeftOut>) {
+    let mut found = Vec::new();
+    let mut left_out = Vec::new();
     for page in &doc.pages {
         let lang = page.text_language();
         for block in &page.blocks {
@@ -92,11 +106,11 @@ pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> Exercis
             let solution =
                 doc.games.iter().find(|g| matches!(g.origin, GameOrigin::Diagram { page: p, diagram, .. } if p == page.index && diagram == d.number));
             let Some(game) = solution.filter(|g| !g.score.mainline().is_empty()) else {
-                made.left_out.push(LeftOut { at, number, reason: LeftOutReason::NoSolution });
+                left_out.push(LeftOut { at, number, reason: LeftOutReason::NoSolution });
                 continue;
             };
             let Some(start) = game.score.start_board() else {
-                made.left_out.push(LeftOut { at, number, reason: LeftOutReason::NoPosition });
+                left_out.push(LeftOut { at, number, reason: LeftOutReason::NoPosition });
                 continue;
             };
             let side = if start.side_to_move() == cozy_chess::Color::Black { Color::Black } else { Color::White };
@@ -108,13 +122,19 @@ pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> Exercis
             }
             score.roster.round = number.to_string();
             score.comment = statement(side, number, lang, &score.comment);
-            made.exercises.push(Exercise { at, number, moves: score.mainline().len() });
-            games.push(score);
+            let exercise = Exercise { at, number, moves: score.mainline().len() };
+            found.push(Found { exercise, score, orientation: d.orientation() });
         }
     }
-    let written = super::pgn::write_report(games.iter(), style);
-    (made.pgn, made.warnings) = (written.pgn, written.warnings);
-    made
+    (found, left_out)
+}
+
+/// The exercises of `doc` as a problem PGN, from `book` (its title, its pages' labels), the moves
+/// written as `style` says (see the module documentation).
+pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> ExercisesPgn {
+    let (found, left_out) = find(doc, book);
+    let written = super::pgn::write_report(found.iter().map(|f| &f.score), style);
+    ExercisesPgn { pgn: written.pgn, exercises: found.iter().map(|f| f.exercise).collect(), left_out, warnings: written.warnings }
 }
 
 /// The statement before an exercise's first move: the side to move and its number, then `rest`

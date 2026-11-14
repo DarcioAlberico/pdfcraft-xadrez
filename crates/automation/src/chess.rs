@@ -87,8 +87,17 @@ pub(crate) struct ExportLook {
     pub fonts: pdfcraft_engine::chess::pdfcraft_chessvision::text_font::UserFonts,
 }
 
-/// Markdown's diagram images written into `folder` (created when there are any), each by its file
-/// name; `image_dir` names the folder in an error.
+/// What a chess export of a document writes: the document as its format, or its exercises alone
+/// (plan A9-N10) as a problem PGN or as Anki's cards (A9-N10b).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Exercises {
+    No,
+    Pgn,
+    Anki,
+}
+
+/// Markdown's and Anki's diagram images written into `folder` (created when there are any), each
+/// by its file name; `image_dir` names the folder in an error.
 pub(crate) fn write_images(folder: Option<&std::path::Path>, image_dir: &str, images: &[(String, Vec<u8>)]) -> Result<()> {
     let Some(dir) = folder.filter(|_| !images.is_empty()) else { return Ok(()) };
     std::fs::create_dir_all(dir).map_err(|e| failed(format!("{image_dir}: {e}")))?;
@@ -712,15 +721,22 @@ impl Automation {
     /// diagrams whose solution was read, each with `SetUp`/`FEN`, its solution as the main line
     /// and its statement before it.
     pub(crate) fn chess_export_exercises(&mut self, a: &Args) -> Result<Value> {
-        self.chess_export_as(a, ChessFormat::Pgn, true)
+        self.chess_export_as(a, ChessFormat::Pgn, Exercises::Pgn)
+    }
+
+    /// The book's exercises as Anki's cards (plan A9-N10b): a text file at `out` that Anki's
+    /// File ▸ Import reads, and the diagrams' pictures in a folder beside it.
+    pub(crate) fn chess_export_anki(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export_as(a, ChessFormat::Pgn, Exercises::Anki)
     }
 
     fn chess_export(&mut self, a: &Args, format: ChessFormat) -> Result<Value> {
-        self.chess_export_as(a, format, false)
+        self.chess_export_as(a, format, Exercises::No)
     }
 
-    /// An export of the document as `format`; with `exercises`, its exercises alone, as PGN.
-    fn chess_export_as(&mut self, a: &Args, format: ChessFormat, exercises: bool) -> Result<Value> {
+    /// An export of the document as `format`; with `exercises`, its exercises alone, as PGN or as
+    /// Anki's cards.
+    fn chess_export_as(&mut self, a: &Args, format: ChessFormat, exercises: Exercises) -> Result<Value> {
         let lang = a.opt_str("lang")?.map(|t| lang_of("lang", t)).transpose()?;
         let pgn_style = crate::chess_pgn::pgn_style(a)?;
         let positions = match a.opt_str("positions")? {
@@ -748,7 +764,11 @@ impl Automation {
             None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
         let (mut options, look) = self.export_look(a, &title, lang.unwrap_or(Lang::En))?;
-        let (image_dir, folder) = self.image_folder(&shown, format, &options)?;
+        let (image_dir, mut folder) = self.image_folder(&shown, format, &options)?;
+        // Anki's cards have their pictures beside them, as Markdown has (plan A9-N10b).
+        if exercises == Exercises::Anki {
+            folder = Some(self.resolve(&std::path::Path::new(&shown).with_file_name(&image_dir).to_string_lossy(), true)?);
+        }
         let mut outputs: Vec<(&str, &std::path::Path)> = vec![("out", path.as_path())];
         outputs.extend(cipher_out.as_ref().map(|(_, p)| ("cipher_out", p.as_path())));
         outputs.extend(folder.as_ref().map(|f| ("image_dir", f.as_path())));
@@ -764,12 +784,13 @@ impl Automation {
         options.pgn_style = pgn_style;
         options.reference = reference.as_ref().map(|(_, index)| index.clone());
         options.games = games.as_ref().map(|(_, index)| index.clone());
-        options.exercises = exercises;
+        options.exercises = exercises != Exercises::No;
+        options.anki = exercises == Exercises::Anki;
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         write_images(folder.as_deref(), &image_dir, &made.images)?;
         // A PGN starts with a byte order mark only when asked (decision D18).
-        let bom = format == ChessFormat::Pgn && a.opt_bool("bom")?.unwrap_or(false);
+        let bom = format == ChessFormat::Pgn && exercises != Exercises::Anki && a.opt_bool("bom")?.unwrap_or(false);
         let bytes: std::borrow::Cow<[u8]> = if bom { [pgn::BOM, &made.bytes].concat().into() } else { made.bytes.as_slice().into() };
         crate::write_atomic(&path, &bytes)?;
         let (all, positioned) = made.diagram_counts();
@@ -782,7 +803,7 @@ impl Automation {
         let reference_linked = reference.as_ref().and_then(|_| linked.next());
         // PGN: what the PGN written was given (the book's, else the user's games), as before, with
         // its links; the other formats: the links, as chess_document says them.
-        let reference_json = if format == ChessFormat::Pgn && !exercises {
+        let reference_json = if format == ChessFormat::Pgn && exercises == Exercises::No {
             let written = reference.as_ref().map(|r| (r, reference_linked)).or(games.as_ref().map(|g| (g, games_linked)));
             written.zip(made.annotated.as_ref()).map(|(((p, index), l), n)| {
                 json!({

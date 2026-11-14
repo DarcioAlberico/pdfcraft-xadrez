@@ -251,6 +251,27 @@ fn chess_export_exercises_schema() -> Value {
     s
 }
 
+/// [`chess_export_schema`] for Anki's cards of the book's exercises (plan A9-N10b): the pictures
+/// are always drawn (no diagrams, figurines, links or review marks), and the book's PGN only
+/// links the pages.
+fn chess_export_anki_schema() -> Value {
+    let mut s = chess_export_schema();
+    if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
+        for name in ["diagrams", "figurines", "letters_lang", "links", "link_text", "review_marks"] {
+            props.remove(name);
+        }
+        props.insert(
+            "diagram_px".into(),
+            json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "The pictures' side in pixels (default 900)." }),
+        );
+        props.insert(
+            "reference_pgn".into(),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference): the pages read are linked to it first, so a diagram it confirms gives its card the PGN's position." }),
+        );
+    }
+    s
+}
+
 /// The book's PGN kept for the document, which a reading tool takes when it is not given
 /// reference_pgn (plan "Carregar PGN do livro", R5).
 fn insert_kept_reference(o: &mut serde_json::Map<String, Value>) {
@@ -1508,6 +1529,8 @@ pub fn tools() -> Vec<ToolDef> {
             .with(chess_export_pgn_schema()),
         t("chess_export_exercises", "Export a chess book's exercises as PGN", "Chess ▸ Export ▸ Exercises (plan A9-N10, decision D20): read pages (default all) as chess_export_pgn does (corrections, scan settings, OCR and the book's PGN alike) and write the book's exercises to out as a standard problem PGN, the one ChessBase's Replay training, lichess studies, Chessable private courses and the Anki add-ons that take PGN read. An exercise is a diagram the book numbers (its caption's number: №185, 1675, Exercise 12) whose solution was read, from the moves after it or from a solution that names its number pages later. Each is a game with SetUp \"1\" and FEN (the position its solution starts from), its solution as the main line with the book's variations and comments, Result as printed (else 1-0 or 0-1 when the main line ends in mate, else *), Event the title when the game has none, Round its number, the origin's tags (PdfPage, PdfPageLabel, PdfDiagram, PdfPuzzle, SourceTitle), and before the first move the statement in the book's language: the side to move and the number, then where it is (White to move (№ 185). Page 275 · diagram 1 of 6). ChessBase's training command (%tqu) is not written. Reply as chess_export_pgn, plus exercises (each written: page and diagram from 1, number, moves of its main line) and exercises_left_out (each numbered diagram not written: page, diagram, number, reason no_solution, no solution read, or no_position, none to start from). The document is not changed.")
             .with(chess_export_exercises_schema()),
+        t("chess_export_anki", "Export a chess book's exercises as Anki cards", "Chess ▸ Export ▸ Exercises for Anki (plan A9-N10b): the exercises chess_export_exercises writes (the same rule, the same reading of pages, corrections, OCR and the book's PGN), as a text file at out that Anki's File ▸ Import reads, in the form Anki's manual gives for text files: the headers #separator:tab, #html:true and #tags: with the pictures' prefix, then a line per exercise, its two fields separated by a tab. Front: the diagram's picture as <img src=\"…\">, a line break and the statement (White to move (№ 185). Page 275 · diagram 1 of 6. …); back: the solution's main line in SAN (1.Qh5 Nf6 2.Qxf7#, 1...Qf1# when Black moves first). The book's &, <, > and \" are written as entities and a tab or line break as a space, so no field is quoted. The pictures, a PNG per exercise of diagram_px pixels drawn from the position its solution starts from and from the side the book prints it, with the export's pieces and board_theme, go to the folder <out's name>_diagrams beside out: the user copies them into Anki's collection.media folder, with no subfolder. Their names are the same on every run and safe everywhere: the title's ASCII letters and digits in lower case (other characters as -, at most 40; a title with other letters or longer adds 8 hex digits of its SHA-256), the page and the diagram (puzzles-p0007-1.png). Anki matches an imported line to its notes by the front, so importing the file again updates the cards. No note type or deck is named: Anki's import dialog asks. A picture that cannot be drawn leaves its card with the FEN, said in notes. Reply as chess_export_exercises, plus image_dir (the pictures' folder, relative as out) and diagrams_drawn (the pictures written). The document is not changed.")
+            .with(chess_export_anki_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, a pieces folder of images beside the executable, an installed Chess Merida, or plain geometric pieces), and piece_leftovers: folders a replaced piece set left beside the sets in that pieces folder (an import's .<name>.import-… staging folder that stopped, or an old .<name>.old-… set kept aside because it held a folder of its own), never offered as sets. Diagrams in chess fonts are read without any model. version and build say which PdfCraft answers (build: the short commit and date the release script built, or dev), so builds kept side by side can be told apart.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
