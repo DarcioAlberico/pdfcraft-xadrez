@@ -58,7 +58,7 @@ impl UiStore<CorrectionsKind> {
     /// The document's corrections, with its own entries of a file several books shared (plan
     /// A9-G1b; `fingerprints`: its pages').
     fn load(&self, keys: &DocKeys, fingerprints: &[String]) -> Result<Loaded, StoreError> {
-        in_store!(&self.place, s => s.load_with(keys, fingerprints).map(|(l, _)| l))
+        in_store!(self.reading(keys), s => s.load_with(keys, fingerprints).map(|(l, _)| l))
     }
 
     /// A change, after the document's entries are taken out of a file several books shared (plan
@@ -72,14 +72,10 @@ impl UiStore<CorrectionsKind> {
         fingerprints: &[String],
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
     ) -> Result<(R, Loaded), String> {
-        if write {
-            self.writable()?;
-        }
-        let out = in_store!(self.at(write), s => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l))).map_err(|e| e.to_string())?;
-        if write {
-            self.wrote();
-        }
-        Ok(out)
+        // Never waiting for another writer (plan A9-G3b): held in memory and merged in later.
+        self.change(write, keys, fingerprints.len(), |place| {
+            in_store!(place, s => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l))).map_err(|e| e.to_string())
+        })
     }
 
     fn rekey(&mut self, write: bool, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
