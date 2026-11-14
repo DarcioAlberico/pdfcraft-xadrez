@@ -26,7 +26,7 @@
 //! Read-only: nothing here changes a document.
 
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, ProseTally, TextQuality};
+use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, ProseTally};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
 use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, LangTag, PageInput, ReviewFlag, trailing_label};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
@@ -37,6 +37,7 @@ use pdfcraft_chessvision::doc::TextReview;
 use pdfcraft_chessvision::glyphs::GlyphClassifier;
 
 use super::ChessScanSettings;
+use super::notes::{LayerProblem, NeedsOcr, ScanNote};
 use super::text_ocr::{self, LargerLine, OCR_DPI};
 use crate::{DocId, Session};
 
@@ -61,14 +62,14 @@ pub struct ChessDocument {
     pub text_lang: LangTag,
     /// Pages (0-based) whose text layer is poor or missing and that chess OCR did not read (no
     /// glyph model, or OCR off), with the reason.
-    pub needs_ocr: Vec<(usize, String)>,
+    pub needs_ocr: Vec<(usize, NeedsOcr)>,
     /// Pages chess OCR read instead of their text layer.
     pub ocr_pages: Vec<OcrPage>,
     /// The book's cipher as the pages taught it (keep it with the document to read more pages
     /// the same way).
     pub cipher: BookCipher,
     /// What the scan and the text reading noted, page by page (0-based), never silent.
-    pub notes: Vec<(usize, String)>,
+    pub notes: Vec<(usize, ScanNote)>,
     /// The document's diagram corrections that replaced readings ([`Session::set_chess_corrections`]).
     pub corrections: Vec<super::corrections::Applied>,
     /// Its corrections on the pages read whose diagram was not found.
@@ -369,30 +370,12 @@ pub fn page_hints(
     blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
     body: Option<f64>,
     read_by_ocr: bool,
-) -> (Vec<BlockHint>, Option<String>) {
+) -> (Vec<BlockHint>, Option<ScanNote>) {
     match blocks {
         _ if read_by_ocr => (Vec::new(), None),
         Some(Ok(blocks)) => (block_hints(blocks, body), None),
-        Some(Err(e)) => (Vec::new(), Some(format!("the page's paragraphs could not be read ({e}); lines were grouped by spacing"))),
+        Some(Err(e)) => (Vec::new(), Some(ScanNote::ParagraphsUnreadable { error: e.clone() })),
         None => (Vec::new(), None),
-    }
-}
-
-fn poor_reason(quality: &TextQuality) -> Option<String> {
-    use pdfcraft_chessvision::chess_text::PoorReason;
-    match quality {
-        TextQuality::Good => None,
-        TextQuality::Missing => Some("the page has no text layer".into()),
-        TextQuality::Poor { reason } => Some(match reason {
-            PoorReason::Type0WithoutUnicode { .. } => "the text layer has two-byte codes with no Unicode text".into(),
-            PoorReason::ReplacementChars { .. } => "the text layer extracts as replacement characters".into(),
-            PoorReason::DeadMap { .. } => "the text layer's Unicode map is dead".into(),
-            PoorReason::UnresolvedChessCodes { glyphs } => format!("{glyphs} chess-font glyphs could not be resolved"),
-            PoorReason::GarbledPieces { words } => {
-                format!("{words} moves have a stray symbol for their piece: an earlier OCR layer lost the figurines")
-            }
-            PoorReason::HiddenOcrLayer { .. } => "the text layer is invisible text over an image of the page: another program's OCR".into(),
-        }),
     }
 }
 
@@ -435,14 +418,14 @@ impl Session {
         let doc = self.get(id).ok_or("no such document")?;
         let config = RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
         let mut renderer = PageRenderer::new(doc.bytes.clone(), config);
-        let mut notes: Vec<(usize, String)> = Vec::new();
+        let mut notes: Vec<(usize, ScanNote)> = Vec::new();
 
         // The text layers, then one language for the whole document from all of their letters.
         let mut texts = Vec::with_capacity(scanned.len());
         for page in &scanned {
             let r = renderer.render(RenderRequest { page: page.page, kind: RequestKind::Text, scale: 1.0, ..Default::default() });
             if let Some(e) = &r.error {
-                notes.push((page.page, format!("the page's text could not be read: {e}")));
+                notes.push((page.page, ScanNote::TextUnreadable { error: e.clone() }));
             }
             texts.push(r.text);
         }
@@ -529,9 +512,9 @@ impl Session {
             let mut ocr_bolder: Vec<ViewRect> = Vec::new();
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
-                notes.push((page.page, e.clone()));
+                notes.push((page.page, ScanNote::ScanFailed { error: e.clone() }));
             }
-            let poor = poor_reason(&text.quality);
+            let poor = LayerProblem::of(&text.quality);
             let wanted = match ocr.mode {
                 OcrMode::Off => false,
                 OcrMode::Auto => poor.is_some(),
@@ -555,7 +538,7 @@ impl Session {
                         let words = match if ocr.general { text_ocr::general_ocr_words(&gray) } else { None } {
                             Some(Ok(w)) => Some(w),
                             Some(Err(e)) => {
-                                notes.push((page.page, format!("the general OCR failed ({e}); the glyph reader read the prose too")));
+                                notes.push((page.page, ScanNote::GeneralOcrFailed { error: e.to_string() }));
                                 None
                             }
                             None => None,
@@ -581,27 +564,26 @@ impl Session {
                                 text = &ocr_text;
                             }
                             Err(e) => {
-                                notes.push((page.page, format!("chess OCR failed: {e}")));
-                                if let Some(why) = &poor {
-                                    needs_ocr.push((page.page, why.clone()));
+                                notes.push((page.page, ScanNote::ChessOcrFailed { error: e.to_string() }));
+                                if let Some(layer) = &poor {
+                                    needs_ocr.push((page.page, NeedsOcr { layer: layer.clone(), no_glyph_model: false }));
                                 }
                             }
                         }
                     }
-                    Err(e) => {
-                        notes.push((page.page, format!("the page could not be rendered for chess OCR: {e}")));
-                        if let Some(why) = &poor {
-                            needs_ocr.push((page.page, why.clone()));
+                    Err(error) => {
+                        notes.push((page.page, ScanNote::OcrRenderFailed { error }));
+                        if let Some(layer) = &poor {
+                            needs_ocr.push((page.page, NeedsOcr { layer: layer.clone(), no_glyph_model: false }));
                         }
                     }
                 },
                 _ => {
                     if wanted && glyphs.is_none() && poor.is_none() {
-                        notes.push((page.page, "chess OCR was asked for, but it needs the chess-glyphs model".into()));
+                        notes.push((page.page, ScanNote::OcrNeedsGlyphModel));
                     }
-                    if let Some(why) = poor {
-                        let why = if wanted && glyphs.is_none() { format!("{why} (chess OCR needs the chess-glyphs model)") } else { why };
-                        needs_ocr.push((page.page, why));
+                    if let Some(layer) = poor {
+                        needs_ocr.push((page.page, NeedsOcr { layer, no_glyph_model: wanted && glyphs.is_none() }));
                     }
                 }
             }
@@ -609,13 +591,10 @@ impl Session {
                 last_fen = here_fen;
             }
             for font in &text.unknown_chess_fonts {
-                notes.push((
-                    page.page,
-                    format!("the font {font} looks like a chess font but is not in the catalogue; its text was kept as it extracts"),
-                ));
+                notes.push((page.page, ScanNote::UnknownChessFont { font: font.to_string() }));
             }
             let Some(geometry) = page.geometry else {
-                notes.push((page.page, "the page has no visible area; it is left out".into()));
+                notes.push((page.page, ScanNote::NoVisibleArea));
                 continue;
             };
             let read_by_ocr = !std::ptr::eq(text, layer_text);
@@ -629,7 +608,7 @@ impl Session {
             notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;
             if page.readings.is_none() && !page.diagrams.is_empty() {
-                notes.push((page.page, "the page's diagrams could not be read; they are left out".into()));
+                notes.push((page.page, ScanNote::DiagramsUnreadable));
             }
             let index = u32::try_from(page.page).unwrap_or(u32::MAX);
             if let Some(&(prev, label)) = carried.iter().find(|(prev, _)| prev.checked_add(1) == Some(page.page)) {
@@ -641,7 +620,7 @@ impl Session {
             builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews, ocr });
         }
         for u in &corrected.unmatched {
-            notes.push((u.page, format!("a correction ({}) was not used: {}", u.uid.chars().take(8).collect::<String>(), u.reason)));
+            notes.push((u.page, ScanNote::CorrectionUnused { uid: u.uid.chars().take(8).collect(), reason: u.reason.clone() }));
         }
         let doc = builder.finish();
         // What the page's reading could not do, said on the page (plan A9-L7).
@@ -650,11 +629,9 @@ impl Session {
             for flag in &page.review {
                 match flag {
                     ReviewFlag::DescriptiveNotation { examples, .. } => {
-                        notes.push((index, format!("descriptive notation ({}): not supported; its moves were not read", examples.join(", "))))
+                        notes.push((index, ScanNote::DescriptiveNotation { examples: examples.clone() }))
                     }
-                    ReviewFlag::TooManyGames { max } => {
-                        notes.push((index, format!("the document holds {max} games, the most it keeps: from here on, no game starts")))
-                    }
+                    ReviewFlag::TooManyGames { max } => notes.push((index, ScanNote::TooManyGames { max: *max })),
                     _ => {}
                 }
             }

@@ -3733,3 +3733,48 @@ the move's comment	Move comment	Bình luận của nước đi
 	mates in {m}	chiếu hết sau {m} nước
 	supposes castling is allowed	giả định được phép nhập thành
 	Mate in {n}: both sides mate, so who moves stays assumed	Chiếu hết sau {n} nước: cả hai bên đều chiếu hết, nên bên đi vẫn là giả định
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Trang vẽ nhiều đường hơn số được xem xét; phần còn lại đã bị bỏ qua.
+	Content streams that couldn't be decoded and were skipped: {n}	Luồng nội dung không giải mã được và đã bị bỏ qua: {n}
+	The page's paths couldn't be read: {e}	Không thể đọc các đường của trang: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Không thể đọc tài liệu để chỉnh sửa, nên ảnh và đường của nó không được xem xét.
+	The page's text couldn't be read: {e}	Không thể đọc văn bản của trang: {e}
+	Only the first {n} of the page's {total} images were looked at.	Chỉ {n} ảnh đầu tiên trong {total} ảnh của trang được xem xét.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Ảnh không được cắt, vì điểm ảnh của các ảnh trong trang vượt quá ngân sách quét: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Sơ đồ {d}: cả hai bên đều chiếu hết sau {n} nước, nên bên đi vẫn là giả định.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Một sơ đồ có {offered} dpi; nó được đọc ở tối đa {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Trang quá lớn để kết xuất ở {wanted} dpi; các sơ đồ của nó được đọc ở {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Không thể kết xuất trang ở {wanted} dpi để đọc ({e}); trang được đọc ở {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Sơ đồ {d}: kết quả đọc đã thay đổi kể từ khi được chỉnh sửa (giờ là {fen}); chỉnh sửa được giữ lại.
+	The frames around text were not looked for: {e}	Chưa tìm khung quanh văn bản: {e}
+	The lines set bolder were not looked for: {e}	Chưa tìm các dòng in đậm hơn phần thân văn bản: {e}
+	The words set in bold were not looked for: {e}	Chưa tìm các từ in đậm: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% chiều cao trang có quá nhiều mực nhỏ để là văn bản (một hình ảnh, hoặc bản quét bụi); các dải đó không được đọc.
+	The general OCR failed ({e}); the glyph reader read the prose too.	OCR chung thất bại ({e}); trình đọc glyph cũng đã đọc phần văn xuôi.
+	Chess OCR failed: {e}	OCR cờ vua thất bại: {e}
+	The page couldn't be rendered for chess OCR: {e}	Không thể kết xuất trang cho OCR cờ vua: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Đã yêu cầu OCR cờ vua, nhưng nó cần mô hình chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Phông {font} trông giống phông cờ vua nhưng không có trong danh mục; văn bản của nó được giữ nguyên như khi trích xuất.
+	The page has no visible area; it is left out.	Trang không có vùng hiển thị; nó bị bỏ ra ngoài.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Không thể đọc các đoạn của trang ({e}); các dòng của nó được nhóm theo khoảng cách.
+	The page's diagrams couldn't be read; they are left out.	Không thể đọc các sơ đồ của trang; chúng bị bỏ ra ngoài.
+	A correction ({id}) was not used: {e}	Một chỉnh sửa ({id}) không được dùng: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Không hỗ trợ ký hiệu mô tả ({examples}); các nước đi của nó không được đọc.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Tài liệu có {n} ván, số tối đa mà nó giữ: từ đây trở đi không ván nào bắt đầu.
+	This page couldn't be read: {e}	Không thể đọc trang này: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (OCR cờ vua cần mô hình chess-glyphs)
+	the page has no text layer	trang không có lớp văn bản
+	the text layer has two-byte codes with no Unicode text	lớp văn bản có mã hai byte không có văn bản Unicode
+	the text layer extracts as replacement characters	lớp văn bản được trích xuất thành ký tự thay thế
+	the text layer's Unicode map is dead	bản đồ Unicode của lớp văn bản đã hỏng
+	chess-font glyphs that couldn't be resolved: {n}	glyph của phông cờ vua không phân giải được: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	nước đi có ký hiệu lạc thay cho quân, nơi một lớp OCR trước đó làm mất ký hiệu quân: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	lớp văn bản là văn bản ẩn phủ trên ảnh của trang: OCR của một chương trình khác
+	no piece model is loaded	chưa tải mô hình quân cờ nào
+	the page raster's resolution is not a positive number	độ phân giải của ảnh raster trang không phải số dương
+	the diagram's box or corners are not finite numbers on this page	khung hoặc các góc của sơ đồ không phải số hữu hạn trên trang này
+	the diagram lies outside the page raster	sơ đồ nằm ngoài ảnh raster của trang
+	the diagram's corners do not form a quadrilateral	các góc của sơ đồ không tạo thành tứ giác
+	the page has more diagrams than are read on one page	trang có nhiều sơ đồ hơn số được đọc trên một trang
+	the piece model failed: {e}	mô hình quân cờ thất bại: {e}
+	the piece model's output is not a probability matrix: {e}	đầu ra của mô hình quân cờ không phải ma trận xác suất: {e}

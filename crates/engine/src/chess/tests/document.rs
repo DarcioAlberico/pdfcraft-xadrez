@@ -575,6 +575,6 @@ fn a_page_in_descriptive_notation_says_so_in_its_notes() {
     let (mut s, id) = open(two_font_pdf(&content));
     let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
     let said = "descriptive notation (P-K4, P-K4, N-KB3): not supported; its moves were not read";
-    assert!(read.notes.iter().any(|(p, n)| *p == 0 && n == said), "{:?}", read.notes);
+    assert!(read.notes.iter().any(|(p, n)| *p == 0 && n.to_string() == said), "{:?}", read.notes);
     assert!(read.doc.games.is_empty());
 }

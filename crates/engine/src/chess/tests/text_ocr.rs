@@ -149,7 +149,8 @@ fn without_a_glyph_model_or_with_ocr_off_the_page_needs_ocr() {
     std::fs::create_dir_all(&dir).unwrap();
     let settings = ChessScanSettings { models_dir: Some(dir.clone()), ..no_model() };
     let auto = s.chess_document(id, &[], &settings, None).unwrap();
-    assert!(auto.needs_ocr.first().is_some_and(|(_, why)| why.contains("chess-glyphs model")), "{:?}", auto.needs_ocr);
+    assert!(auto.needs_ocr.first().is_some_and(|(_, why)| why.no_glyph_model), "{:?}", auto.needs_ocr);
+    assert!(!off.needs_ocr[0].1.no_glyph_model, "OCR off asks for no model: {:?}", off.needs_ocr);
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -198,7 +199,11 @@ fn a_digital_book_reads_even_a_hidden_layer_and_notes_it() {
     assert!(read.ocr_pages.is_empty(), "{:?}", read.ocr_pages);
     assert_eq!(sans(&read), ["e4", "e5", "Nf3", "Nc6"], "read from the text layer");
     assert_eq!(read.needs_ocr.len(), 1);
-    assert!(read.needs_ocr[0].1.contains("invisible text over an image"), "{:?}", read.needs_ocr);
+    assert!(
+        matches!(read.needs_ocr[0].1.layer, crate::chess::LayerProblem::Poor(pdfcraft_chessvision::chess_text::PoorReason::HiddenOcrLayer { .. })),
+        "{:?}",
+        read.needs_ocr
+    );
     let review = &read.doc.pages[0].review;
     assert!(review.iter().any(|r| format!("{r:?}").contains("invisible text over an image")), "{review:?}");
     // Scanned reads every page with chess OCR, a clean visible layer too.
@@ -722,5 +727,5 @@ fn a_page_with_a_halftone_is_read_and_says_what_it_left_out() {
     let read = crate::chess::text_ocr::read_page(&image, dpi, &[], &templates, None, pdfcraft_chess::san::Lang::En, None, &mut book, 0)
         .unwrap_or_else(|e| panic!("the page is read: {e}"));
     assert_eq!(read.lines, 1, "the moves' line");
-    assert!(read.notes.iter().any(|n| n.contains("were not read")), "{:?}", read.notes);
+    assert!(read.notes.iter().any(|n| matches!(n, crate::chess::ScanNote::InkSkipped { .. })), "{:?}", read.notes);
 }

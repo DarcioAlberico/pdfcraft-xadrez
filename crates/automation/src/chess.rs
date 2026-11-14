@@ -223,6 +223,18 @@ fn reading(r: &BoardReading, geometry: Option<&PageGeometry>) -> Value {
     out
 }
 
+/// A reading's notes as the tools give them: the page (from 1) and the note's English sentence
+/// (plan A9-I5: the engine's notes are typed; the interface translates them).
+pub(crate) fn notes_reply(notes: &[(usize, pdfcraft_engine::chess::ScanNote)]) -> Vec<Value> {
+    notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n.to_string() })).collect()
+}
+
+/// The pages whose text layer was not believed and that chess OCR did not read, with why in
+/// English.
+pub(crate) fn needs_ocr_reply(pages: &[(usize, pdfcraft_engine::chess::NeedsOcr)]) -> Vec<Value> {
+    pages.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why.to_string() })).collect()
+}
+
 fn page(p: &ChessPage) -> Value {
     let g = p.geometry.as_ref();
     let mut out = json!({
@@ -231,7 +243,7 @@ fn page(p: &ChessPage) -> Value {
         "diagrams": p.diagrams.iter().enumerate().map(|(i, d)| diagram(i, d, g)).collect::<Vec<_>>(),
         "truncated": p.truncated,
         "error": p.error,
-        "notes": p.notes,
+        "notes": p.notes.iter().map(ToString::to_string).collect::<Vec<_>>(),
     });
     if let (Some(o), Some(readings)) = (out.as_object_mut(), &p.readings) {
         o.insert("readings".into(), readings.iter().map(|r| reading(r, g)).collect());
@@ -573,10 +585,10 @@ impl Automation {
             "valid_moves": moves.iter().filter(|m| m.status == MoveStatus::Valid).count(),
             "flagged_moves": moves.iter().filter(|m| matches!(m.status, MoveStatus::Illegal | MoveStatus::Ambiguous)).count(),
             "caption_moves": moves.iter().filter(|m| m.status == MoveStatus::Caption).count(),
-            "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "needs_ocr": needs_ocr_reply(&read.needs_ocr),
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "cipher": cipher,
-            "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
+            "notes": notes_reply(&read.notes),
             "corrections": corrections,
             "reference": reference,
             "reference_kept": reference_kept,
@@ -785,7 +797,7 @@ impl Automation {
         crate::write_atomic(&path, &bytes)?;
         let (all, positioned) = made.diagram_counts();
         let read = &made.read;
-        let mut notes: Vec<Value> = read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect();
+        let mut notes: Vec<Value> = notes_reply(&read.notes);
         notes.extend(made.notes.iter().map(|n| json!({ "note": n })));
         // The links, in the order given to the engine: the user's games, then the book's PGN.
         let mut linked = made.linked.iter();
@@ -828,7 +840,7 @@ impl Automation {
                 PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
-            "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "needs_ocr": needs_ocr_reply(&read.needs_ocr),
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,

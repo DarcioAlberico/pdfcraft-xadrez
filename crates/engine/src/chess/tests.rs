@@ -604,8 +604,9 @@ fn a_mate_asked_under_a_diagram_is_solved() {
     let (read, notes, review, doc_notes) = scan("3r2k1/5ppp/8/8/8/8/5PPP/3R2K1", "#1");
     assert_eq!(read.side.source, SideSource::Default);
     assert_eq!(read.mate, Some(MateFinding::BothSides { n: 1 }));
-    assert!(notes.iter().any(|n| n.contains("both sides mate in 1")), "{notes:?}");
-    assert!(doc_notes.iter().any(|(_, n)| n.contains("both sides mate in 1")), "{doc_notes:?}");
+    let both = crate::chess::ScanNote::BothSidesMate { diagram: 1, n: 1 };
+    assert!(notes.contains(&both), "{notes:?}");
+    assert!(doc_notes.iter().any(|(_, n)| *n == both), "{doc_notes:?}");
     assert!(review.contains(&ReviewFlag::SideAssumed), "{review:?}");
     // No mate, and two keys: both for review.
     let (_, _, review, _) = scan("8/8/8/4k3/8/8/8/K6R", "White to play. Mate in 2");
