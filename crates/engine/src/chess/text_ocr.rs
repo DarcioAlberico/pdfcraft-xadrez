@@ -352,6 +352,21 @@ pub fn finish_page(alone: PageAlone, lang: Lang, context: Option<&GameContext>, 
     }
 }
 
+/// Largest general OCR model file read for its digest.
+const MAX_OCR_MODEL_BYTES: usize = 256 << 20;
+
+/// What the general OCR's models are (plan A9-N5b): [`pdfcraft_chessvision::models::model_digest`]
+/// of the two files [`general_ocr_words`] reads with, taken once a process. `None` when they are
+/// not installed or can't be read: then the general OCR does not run either.
+pub fn general_ocr_digest() -> Option<[u8; 32]> {
+    static DIGEST: std::sync::OnceLock<Option<[u8; 32]>> = std::sync::OnceLock::new();
+    *DIGEST.get_or_init(|| {
+        let models = crate::ocr::Models::find()?;
+        let read = |p: &Path| super::corrections::read_capped(p, MAX_OCR_MODEL_BYTES).ok().filter(|b| b.len() <= MAX_OCR_MODEL_BYTES);
+        Some(pdfcraft_chessvision::models::model_digest(&read(&models.detection)?, &read(&models.recognition)?))
+    })
+}
+
 /// The general OCR's words on `gray`, as the fusion takes them; `None` when its models are not
 /// installed (the glyph reader then reads everything).
 pub fn general_ocr_words(gray: &GrayImage) -> Option<Result<Vec<OcrWord>, String>> {

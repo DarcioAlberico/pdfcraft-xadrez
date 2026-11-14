@@ -381,6 +381,12 @@ impl Automation {
             s.allow_unverified_fonts = b;
         }
         s.models_dir = self.models_dir(a)?;
+        // Pages' readings kept on disk (plan A9-N5b): only where `cache` names a folder, confined
+        // like any written path; without it every page is read, as before.
+        if let Some(dir) = a.opt_str("cache")? {
+            let encrypted = a.opt_bool("allow_encrypted")?.unwrap_or(false);
+            s.cache = Some(chess::ReadingCache { dir: self.resolve(dir, true)?, encrypted });
+        }
         Ok(s)
     }
 
@@ -547,6 +553,7 @@ impl Automation {
     /// document as JSON and the games as PGN inline (`include`) or written to `out` / `pgn_out`.
     pub(crate) fn chess_document(&mut self, a: &Args) -> Result<Value> {
         let settings = self.chess_settings(a)?;
+        let disk_before = self.session.chess_disk();
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let lang = match a.opt_str("lang")? {
             None => None,
@@ -617,6 +624,7 @@ impl Automation {
             "corrections": corrections,
             "reference": reference,
             "reference_kept": reference_kept,
+            "cache": self.cache_reply(settings.cache.as_ref(), disk_before),
         });
         if let Some((shown, path)) = out {
             crate::write_atomic(&path, json_text.as_bytes())?;
@@ -718,6 +726,7 @@ impl Automation {
         let ocr = ocr_options(a)?.mode;
         let (book, cipher_out) = self.cipher_args(a)?;
         let scan = self.chess_settings(a)?;
+        let (cache, disk_before) = (scan.cache.clone(), self.session.chess_disk());
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
@@ -815,7 +824,24 @@ impl Automation {
             "reference": reference_json,
             "games_reference": games_json,
             "reference_kept": reference_kept,
+            "cache": self.cache_reply(cache.as_ref(), disk_before),
         }))
+    }
+
+    /// What the pages' readings kept on disk did for this call (plan A9-N5b): the folder, the
+    /// pages taken from it (not read), read and kept, read and not kept (the disk nearly full, the
+    /// book alone past the budget, an encrypted document without allow_encrypted), and the entries
+    /// set aside (their pages read again). `null` without `cache`.
+    fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
+        let Some(cache) = cache else { return Value::Null };
+        let now = self.session.chess_disk();
+        json!({
+            "folder": self.shown_path(&cache.dir).0,
+            "read": now.read.saturating_sub(before.read),
+            "kept": now.kept.saturating_sub(before.kept),
+            "not_kept": now.not_kept.saturating_sub(before.not_kept),
+            "set_aside": now.set_aside.saturating_sub(before.set_aside),
+        })
     }
 
     /// How a chess export looks, from the call (plan A9-N9: the one reading of these arguments for

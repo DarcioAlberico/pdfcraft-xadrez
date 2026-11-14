@@ -100,6 +100,14 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// The folder a tool that reads pages keeps their readings in and takes them from (plan A9-N5b).
+fn insert_cache(props: &mut Value) {
+    if let Some(o) = props.as_object_mut() {
+        o.insert("cache".into(), json!({ "type": "string", "description": "A file path to a folder (relative to --root when set) to keep the pages' readings in and take them from: a page read before with the same settings and models (by what they are, not where) is not read again, across calls and processes; the app keeps its own in chess/reading of its data folder (chess_cache_status). Each entry holds its key and is checked when read: one that does not check out is set aside and its page read again. At most 512 MiB, the books used longest ago leaving first; nothing is kept while the disk has less than 1 GB free. Default: none, every page is read." }));
+        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": "With cache: keep an encrypted document's readings there too, unencrypted (default false: they are only taken from it). Never a document that does not allow copying." }));
+    }
+}
+
 /// The diagram corrections a reading tool takes from the corrections folder (plan A8, P3a3).
 fn insert_corrections(props: &mut Value) {
     if let Some(o) = props.as_object_mut() {
@@ -153,6 +161,7 @@ fn chess_export_schema() -> Value {
     schema(
         {
             let mut props = chess_props(true);
+            insert_cache(&mut props);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
                 o.insert("overwrite".into(), json!({ "type": "boolean", "description": "Write an output even when it is the file of an open document or a file this call reads (default false: refused, so a book or its PGN is never replaced unasked). Two outputs of one call never share a file." }));
@@ -1416,6 +1425,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN (a course's or an e-book's games), at most 32 MiB and 4,096 games (without it, the one kept for doc, see reference): each move of the text is linked to it as confirmed, recovered (the reader could not play it, the PGN did: its status is kept and it gets a from_reference review flag with the PGN's move), conflict (played to a position the PGN does not have) or absent, and each move of the document JSON gets reference {kind, game, node}, its game counting from 0. The reply's reference field sums it up: games, moves, stopped_games, linked counts, cut (null, or games, moves or memory: the cap past which the index left the rest of the PGN out, at most 4,096 games, a million moves and 22 MiB of index, about 250,000 moves; plan A9-I3b), diagrams placed on a PGN move, the game each page discusses (pages and games from 1) and warnings, one of them when under 30% of the moves on the first 20 pages read are in the PGN and one when it was cut. The PGN is indexed once a session for the same text. Diagrams (R3): one whose pieces are those of the PGN move it was aligned with is confirmed, and shows that move's position, side to move, castling and move number (reference.fen; its reading stays what was printed); when one shows another position than its reading (or its reading only assumed the side), the moves after it are walked again from it and aligned once more, and reference.walked_again is true (plan A9-L8); one 1 or 2 squares from a position linked on its page or the pages beside it gets a suggestion, its reading left alone (reference {kind: suggested, fen, changes: [{square, from, to}]}); a position a person set is never changed, and nothing is written to the corrections. reference.diagrams counts linked, confirmed and suggested. The text is not changed." }));
                         insert_kept_reference(o);
                     }
+                    insert_cache(&mut props);
                     insert_corrections(&mut props);
                     props
                 },
@@ -1438,6 +1448,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB and 4,096 games (relative to --root when set; without it, the one kept for doc, see reference): its moves decide the book_pgn rows." }));
                         insert_kept_reference(o);
                     }
+                    insert_cache(&mut props);
                     insert_corrections(&mut props);
                     props
                 },
@@ -1694,6 +1705,12 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["from"],
             )),
+        t("chess_cache_status", "Show the books' readings kept on disk", "Chess ▸ the books' readings kept on disk (plan A9-N5): what scanning and chess OCR read of each page, kept so that a page read once is not read again when its document is opened again. The folder cache (the app's own by default, chess/reading in its data folder, as the app keeps them; confined to --root, and with --root or the automation roots outside them the reply says outside_root), or only doc's. Returns cache, books (folder, name: the document's file name, id0, pages, entries: page readings kept, set_aside: entries that did not check out, left beside them, bytes, used: its last use, seconds since 1970; most recently used first), entries, set_aside, bytes and max_bytes (512 MiB: past it the books used longest ago leave first). Nothing is changed: read access is enough, and a folder that is not there keeps none.")
+            .ro()
+            .with(schema(json!({ "doc": doc(), "cache": { "type": "string", "description": "A file path to the readings' folder (relative to --root when set). Default: the app's own." } }), &[])),
+        t("chess_cache_clear", "Clear the books' readings kept on disk", "Chess ▸ take out the books' readings kept on disk (plan A9-N5): every book's, or only doc's, in the folder cache (the app's own by default; confined to --root, and refused when the app's folder is outside the folders the tools are confined to: give cache). Only the files the store makes are removed (each book's record, its page readings and those set aside), and a book's folder once nothing else is in it; anything else in the folder stays. The pages are read again the next time. Returns cache, books, files and bytes removed.")
+            .destructive()
+            .with(schema(json!({ "doc": doc(), "cache": { "type": "string", "description": "A file path to the readings' folder (relative to --root when set). Default: the app's own." } }), &[])),
         t("chess_reference_clear", "Remove the book's PGN kept for a document", "Chess ▸ Remove the book's PGN, without the interface: remove the copy of the book's PGN kept for doc in the folder store (the app's own by default, as the app keeps them; confined to --root): its file stays, saying when the PGN was removed, so an earlier build's copy, older, does not bring it back. Refused for a file of a newer version, which is left as it is. Returns cleared: whether one was kept. The document is not changed.")
             .destructive()
             .with(schema(json!({ "doc": doc(), "reference_store": { "type": "string", "description": "A file path to the folder of the books' PGNs, one file per document (relative to --root when set). Default: the app's own folder of the books' PGNs (chess/reference in its data folder, where the app keeps them); with --root or the automation roots it must be inside them, else reading finds none (outside_root) and changing is refused: give reference_store." }, }), &["doc"])),

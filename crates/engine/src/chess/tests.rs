@@ -1040,6 +1040,7 @@ fn a_book_pgn_is_indexed_once_a_session() {
 mod capture;
 mod document;
 mod epub;
+mod kept;
 mod links;
 mod office;
 mod page_cache;

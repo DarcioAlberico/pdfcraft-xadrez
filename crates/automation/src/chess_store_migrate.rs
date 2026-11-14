@@ -78,6 +78,10 @@ impl Automation {
     /// root or working folder, as before plan A9-G5a.
     pub fn with_chess_data(mut self, dir: Option<PathBuf>, earlier: Option<PathBuf>) -> Self {
         self.chess_data = ChessData { dir, earlier, migrated: AtomicBool::new(false) };
+        // The books' readings kept on disk stop below a free gigabyte (plan A9-N5b): the disk's
+        // free space, asked of the system here, since the engine does not ask it.
+        #[cfg(not(target_arch = "wasm32"))]
+        pdfcraft_engine::chess::reading::set_free_space(std::sync::Arc::new(pdfcraft_platform::app_dirs::free_space));
         self
     }
 

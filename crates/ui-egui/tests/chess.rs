@@ -6545,3 +6545,27 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
 }
+
+/// Plan A9-N5b (finding A8-06): the app keeps what detecting read of each page in its data
+/// folder's `chess/reading`, so the book opened again (another app, as after a restart) reads
+/// none of its pages again.
+#[test]
+fn a_book_opened_again_in_the_app_reads_none_of_its_pages() {
+    use pdfcraft_engine::chess::DiskUse;
+    let dir = corrections_dir("chess-reading");
+    let data = dir.join("data").join("chess");
+    let detect = || {
+        let mut h = harness_on(boards(), 0.25);
+        h.state_mut().use_chess_data(data.clone(), None);
+        h.state_mut().start_chess_scan(true);
+        h.run_steps(3);
+        let id = h.state().views[0].id;
+        assert!(h.state().chess.results_of(id).is_some_and(|r| r.diagram(0, 0).is_some()), "detected");
+        h.state().session.chess_disk()
+    };
+    let first = detect();
+    assert!(first.kept > 0 && first.read == 0, "{first:?}");
+    assert_eq!(detect(), DiskUse { read: first.kept, ..Default::default() }, "nothing read again");
+    assert!(data.join("reading").is_dir());
+    let _ = std::fs::remove_dir_all(dir);
+}

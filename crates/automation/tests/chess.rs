@@ -4083,3 +4083,47 @@ fn chess_bookmarks_shows_then_makes_the_books_outline_in_one_step() {
     assert!(!base.join("outside").join("index.csv").exists());
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N5b: a reading tool given `cache` keeps the pages' readings there, a second call (in
+/// another process, here a new `Automation`) reads none of them again, `chess_cache_status` says
+/// what is kept and `chess_cache_clear` takes it out, all confined to the root; without `cache`
+/// nothing is kept.
+#[test]
+fn the_pages_readings_are_kept_in_cache_listed_and_cleared_inside_the_root() {
+    let (base, root) = workdir("cache");
+    let (mut a, doc) = opened(&root);
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "cache": "reading" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 0, "kept": 1, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    let (mut again, doc) = opened(&root);
+    let read = ok(&mut again, "chess_export_html", json!({ "doc": doc, "models_dir": "models", "cache": "reading", "out": "book.html" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 1, "kept": 0, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    assert_eq!(read["diagrams"], 3, "{read:#}");
+    let status = ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }));
+    assert_eq!((status["entries"].as_u64(), status["books"].as_array().map(Vec::len)), (Some(1), Some(1)), "{status:#}");
+    assert_eq!(status["books"][0]["name"], "board.pdf");
+    assert_eq!(status["books"][0]["pages"], 1);
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading", "doc": doc }))["entries"], 1);
+    // Without cache: nothing taken or kept.
+    let plain = ok(&mut again, "chess_document", json!({ "doc": doc }));
+    assert!(plain["cache"].is_null(), "{plain:#}");
+    // Confined to the root, as every written path is.
+    for tool in ["chess_document", "chess_cache_clear"] {
+        let outside = base.join("outside").join("reading").to_string_lossy().into_owned();
+        match again.call(tool, &json!({ "doc": doc, "cache": outside })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
+            other => panic!("{tool} accepted a folder outside the root: {other:?}"),
+        }
+    }
+    let cleared = ok(&mut again, "chess_cache_clear", json!({ "cache": "reading" }));
+    assert_eq!((cleared["books"].as_u64(), cleared["files"].as_u64()), (Some(1), Some(2)), "{cleared:#}");
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }))["entries"], 0);
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    // With the app's folder outside the root, the status says so and clearing is refused.
+    let app = base.join("app-data");
+    let mut confined = Automation::new().with_chess_data(Some(app.clone()), None).with_root(&root).unwrap();
+    let status = ok(&mut confined, "chess_cache_status", json!({}));
+    assert_eq!(status["outside_root"], true, "{status:#}");
+    assert!(confined.call("chess_cache_clear", &json!({})).is_err());
+    assert!(!app.exists(), "the app's folder was not made");
+    let _ = std::fs::remove_dir_all(base);
+}

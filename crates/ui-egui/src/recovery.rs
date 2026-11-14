@@ -331,6 +331,9 @@ impl PdfCraftApp {
         self.chess.corrections.use_folder(corrections);
         self.chess.book_pgns.use_folder(reference);
         self.chess.games.use_games_folder(dir.join("games"), earlier.as_deref());
+        // The books' readings beside them (plan A9-N5b), which stop below a free gigabyte.
+        pdfcraft_engine::chess::reading::set_free_space(std::sync::Arc::new(pdfcraft_platform::app_dirs::free_space));
+        self.chess.reading_dir = Some(dir.join(pdfcraft_engine::chess::reading::KIND));
     }
 
     /// [`PdfCraftApp::use_chess_data`] with the app's own folders: `chess` in its data folder,
