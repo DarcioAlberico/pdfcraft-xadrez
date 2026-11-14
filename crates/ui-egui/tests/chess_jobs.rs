@@ -266,6 +266,70 @@ fn the_web_refuses_a_whole_book_export_above_twenty_pages() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan A9-I3b (R8-06): the book's PGN is indexed on a worker, never on the interface's thread.
+/// Choosing one returns at once with nothing kept yet and the Text tab saying it is being indexed;
+/// the frame after the index came keeps it in the store and says so. Opened again, the PGN the
+/// store kept is indexed on a worker too, and the session holds it once a frame takes it.
+#[test]
+fn the_books_pgn_is_indexed_on_a_worker_and_kept_once_indexed() {
+    let dir = temp_dir("index-worker");
+    let store = dir.join("reference");
+    let pgn: String = (1..=600).map(|n| format!("[Event \"Game {n}\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 *\n\n")).collect();
+    // The same bytes both times: a book saved again would be another document (its own /ID).
+    let bytes = book();
+    let open = |store: std::path::PathBuf| {
+        let bytes = bytes.clone();
+        let mut h = Harness::builder().with_size(egui::vec2(1366.0, 768.0)).build_eframe(move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.chess.book_pgns.use_folder(store);
+            app.open_bytes("book.pdf", None, bytes).unwrap();
+            app
+        });
+        h.run_steps(4);
+        h.state_mut().choose_right_panel(Some(pdfcraft_ui_egui::RightPanel::Chess));
+        h.run_steps(2);
+        h.get_by_label("Text").click();
+        h.run_steps(4);
+        h
+    };
+    let mut h = open(store.clone());
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
+    // Back at once: indexing, nothing kept, nothing said.
+    assert!(h.state().book_pgn_indexing(id), "indexed on a worker");
+    assert_eq!(h.state_mut().book_pgn_summary(id), None, "kept only once indexed");
+    let kept = |store: &std::path::Path| {
+        std::fs::read_dir(store).map_or(0, |d| d.flatten().filter(|e| e.file_name().to_string_lossy().ends_with(".reference.json")).count())
+    };
+    assert_eq!(kept(&store), 0, "nothing in the store yet");
+    // The work is waited for, not the clock (plan A9-Q4b).
+    assert!(h.state().wait_book_pgn_indexing(std::time::Duration::from_secs(120)), "the index came");
+    h.run_steps(2);
+    assert!(!h.state().book_pgn_indexing(id));
+    let summary = h.state_mut().book_pgn_summary(id).expect("kept once indexed");
+    assert_eq!((summary.games, summary.moves), (600, 6000));
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(said.starts_with("Book's PGN book.pgn: 600 games, 6000 moves."), "{said}");
+    // The page is read again, linked to it, on its own worker: waited for too.
+    assert!(h.state().chess.reading.as_ref().is_none_or(|job| job.wait(std::time::Duration::from_secs(60))), "the page is read");
+    h.run_steps(2);
+    h.get_by_label("Book's PGN: book.pgn (600 games)");
+    assert_eq!(kept(&store), 1, "kept in the store");
+    drop(h);
+    // Opened again: the kept PGN is indexed on a worker, the Text tab saying so meanwhile.
+    let mut h = open(store);
+    let id = h.state().views[0].id;
+    if h.state().book_pgn_indexing(id) {
+        h.get_by_label("Indexing the book's PGN…");
+        assert!(h.query_by_label("Load the book's PGN…").is_none(), "no PGN offered while one is indexed");
+    }
+    assert!(h.state().wait_book_pgn_indexing(std::time::Duration::from_secs(120)), "the index came");
+    h.run_steps(2);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert_eq!(h.state_mut().book_pgn_summary(id).map(|s| (s.games, s.moves)), Some((600, 6000)), "held once indexed: {said}");
+    let _ = std::fs::remove_dir_all(dir);
+}
 /// `bytes` open in the app with no piece model, its scan on `workers` threads (its jobs inline:
 /// the scan's workers are threads still), every page scanned: the pages found, and how long the
 /// scan took.

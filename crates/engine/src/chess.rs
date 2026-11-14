@@ -2017,6 +2017,7 @@ impl ChessScan {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod analysis;
 pub mod capture;
+pub mod cipher_store;
 pub mod collection;
 pub mod corrections;
 pub mod document;
