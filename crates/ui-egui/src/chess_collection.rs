@@ -416,6 +416,10 @@ pub struct ChessCollection {
     trash_seen: HashSet<String>,
     /// The trash items taken out, by id.
     taken: Vec<String>,
+    /// The document's page fingerprints its games' pages refer to (plan A9-G2c): the moves read
+    /// on a page and the diagrams follow their pages when the document changes
+    /// ([`ChessGames::use_fingerprints`]), and are written anchored to them.
+    anchored: Option<std::sync::Arc<pdfcraft_engine::chess::corrections::Fingerprints>>,
     autosave: Autosave,
     /// The games as they were before moves left them, kept with the games (plan A8 §7, V5).
     trash: crate::chess_trash::Trash,
@@ -452,6 +456,7 @@ impl ChessCollection {
             known: HashMap::new(),
             trash_seen: HashSet::new(),
             taken: Vec::new(),
+            anchored: None,
             autosave: Autosave::default(),
             trash: crate::chess_trash::Trash::default(),
             labels: std::sync::Arc::from(Vec::new()),
@@ -486,8 +491,9 @@ impl ChessCollection {
         file: &pdfcraft_engine::chess::games_store::GamesFile,
         name: String,
         doc: Option<DocId>,
+        fingerprints: Option<std::sync::Arc<pdfcraft_engine::chess::corrections::Fingerprints>>,
     ) -> (ChessCollection, usize) {
-        let (boards, lost) = chess_autosave::decode(file, doc);
+        let (boards, lost) = chess_autosave::decode(file, doc, fingerprints.as_deref());
         let active = file.active.as_deref().and_then(|a| boards.iter().position(|(_, s)| s.uid == a)).unwrap_or(0);
         let mut c = ChessCollection::from_boards(keys, cid, boards.into_iter().map(|(b, s)| (b, Some(s))).collect(), active);
         c.trash = crate::chess_trash::Trash::from_stored(file.trash.clone());
@@ -495,9 +501,58 @@ impl ChessCollection {
         c.known = file.games.iter().map(|g| (g.uid.clone(), (g.rev, g.deleted))).collect();
         c.file = Some(name);
         c.doc = doc;
+        c.anchored = fingerprints;
         c.autosave.stored = true;
         c.settle();
         (c, lost)
+    }
+
+    /// The document's pages are `now` (plan A9-G2c): every move read on a page and every diagram a
+    /// game came from is taken to where its page is now, by the one rule of the corrections
+    /// ([`pdfcraft_engine::chess::corrections::locate_page`]), the page they were on being what
+    /// `before` says; one whose page is gone, or another page took the place of, loses its page
+    /// rather than point at another one. How many did.
+    fn follow_pages(
+        &mut self,
+        before: &pdfcraft_engine::chess::corrections::Fingerprints,
+        now: &pdfcraft_engine::chess::corrections::Fingerprints,
+    ) -> usize {
+        use pdfcraft_engine::chess::corrections::{PageAnchor, locate_page};
+        let to = |page: usize| PageAnchor::of(page, before).and_then(|a| locate_page(page, &a, now).page());
+        let mut lost = 0usize;
+        for e in self.games.iter_mut() {
+            let b = &mut e.board;
+            if let Some(s) = b.source {
+                match to(s.page) {
+                    Some(p) if p == s.page => {}
+                    Some(p) => b.source = Some(Source { page: p, ..s }),
+                    None => {
+                        b.source = None;
+                        lost = lost.saturating_add(1);
+                    }
+                }
+            }
+            let nodes: Vec<NodeId> = std::iter::once(0)
+                .chain(b.game.tokens().into_iter().filter_map(|t| match t {
+                    pdfcraft_engine::chess::pdfcraft_chess::game::Token::Move { node, .. } => Some(node),
+                    _ => None,
+                }))
+                .collect();
+            for node in nodes {
+                let Some(src) = b.game.source(node) else { continue };
+                match usize::try_from(src.page).ok().and_then(to).and_then(|p| u32::try_from(p).ok()) {
+                    Some(p) if p == src.page => {}
+                    Some(p) => {
+                        b.game.set_source(node, Some(pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource { page: p, ..src }));
+                    }
+                    None => {
+                        b.game.set_source(node, None);
+                        lost = lost.saturating_add(1);
+                    }
+                }
+            }
+        }
+        lost
     }
 
     /// Take in the games the store had and this collection did not (plan A9-G3b: a tool imported
@@ -1453,7 +1508,7 @@ impl ChessGames {
         let keys = DocKeys { name: Some(NO_DOCUMENT.to_owned()), size: Some(0), ..DocKeys::default() };
         let found = self.store.find(&keys);
         if let Some(file) = found.games {
-            let (mut c, lost) = ChessCollection::from_file(DocKeys::default(), NO_DOCUMENT.to_owned(), &file, found.name, None);
+            let (mut c, lost) = ChessCollection::from_file(DocKeys::default(), NO_DOCUMENT.to_owned(), &file, found.name, None, None);
             self.read_only(&mut c, found.newer);
             self.none = c;
             if lost > 0 {
@@ -1484,7 +1539,13 @@ impl ChessGames {
 
     /// Give document `id` (named by `keys`) its collection: one kept from earlier this session,
     /// else the one stored for it, else a blank one (or the one made before its keys were known).
-    fn attach(&mut self, id: DocId, keys: DocKeys, keeping: Keeping) {
+    fn attach(
+        &mut self,
+        id: DocId,
+        keys: DocKeys,
+        keeping: Keeping,
+        fingerprints: &mut dyn FnMut() -> Option<std::sync::Arc<pdfcraft_engine::chess::corrections::Fingerprints>>,
+    ) {
         let pending = self.docs.remove(&id);
         let blank = pending.as_ref().is_none_or(|c| !c.has_content());
         let mut restored = None;
@@ -1495,7 +1556,7 @@ impl ChessGames {
                 let taken = self.taken();
                 let found = self.store.find(&keys);
                 if let Some(file) = found.games.filter(|_| !taken.contains(&found.name)) {
-                    let (mut c, lost) = ChessCollection::from_file(keys.clone(), new_cid(), &file, found.name, Some(id));
+                    let (mut c, lost) = ChessCollection::from_file(keys.clone(), new_cid(), &file, found.name, Some(id), fingerprints());
                     self.read_only(&mut c, found.newer);
                     restored = Some((c, lost));
                 }
@@ -1519,6 +1580,24 @@ impl ChessGames {
         c.doc = Some(id);
         c.autosave.keeping = keeping;
         self.docs.insert(id, c);
+    }
+
+    /// Document `id`'s pages are `now` (plan A9-G2c): its games' pages follow them when the
+    /// document changed since they were anchored ([`ChessCollection::follow_pages`]), and are
+    /// written anchored to them.
+    pub(crate) fn use_fingerprints(&mut self, id: DocId, now: std::sync::Arc<pdfcraft_engine::chess::corrections::Fingerprints>) {
+        let Some(c) = self.docs.get_mut(&id) else { return };
+        if let Some(before) = c.anchored.clone()
+            && !std::sync::Arc::ptr_eq(&before, &now)
+        {
+            c.follow_pages(&before, &now);
+        }
+        c.anchored = Some(now);
+    }
+
+    /// Whether document `id`'s collection has games whose pages matter (plan A9-G2c).
+    pub(crate) fn has_pages(&self, id: DocId) -> bool {
+        self.docs.get(&id).is_some_and(|c| c.anchored.is_some() || c.kept_content())
     }
 
     /// Whether document `id`'s games may be written now (plan A9-I1c); once they may, the games
@@ -1677,10 +1756,13 @@ impl Writer<'_> {
         c.taken.drain(..over);
         c.trash_seen = trash_now;
         let trash = c.trash.stored();
+        let c_anchored = c.anchored.clone();
         let ChessCollection { games, known, taken, cid, .. } = &mut *c;
         let entries: Vec<(&mut Option<chess_autosave::Stored>, &BoardState)> =
             games.iter_mut().filter(|e| !e.ephemeral()).map(|e| (&mut e.stored, &e.board)).collect();
-        let collected = chess_autosave::Collected { cid: cid.as_str(), keys: &keys, games: entries, active, known, trash, taken: taken.clone() };
+        let fingerprints = c_anchored;
+        let collected =
+            chess_autosave::Collected { cid: cid.as_str(), keys: &keys, games: entries, active, known, trash, taken: taken.clone(), fingerprints };
         match self.store.write(collected) {
             Ok(chess_autosave::Written::Now(synced)) => self.landed(c, fp, Ok(synced)),
             Ok(chess_autosave::Written::Queued(generation)) => {
@@ -2700,7 +2782,16 @@ impl PdfCraftApp {
                 continue;
             }
             if let Some((keys, keeping)) = self.chess_doc_state(id) {
-                self.chess.games.attach(id, keys, keeping);
+                let session = &mut self.session;
+                self.chess.games.attach(id, keys, keeping, &mut || session.chess_fingerprints(id));
+            }
+        }
+        // The games' pages follow their document's (plan A9-G2c), for the documents that have
+        // games: the session keeps the fingerprints of each document state.
+        let paged: Vec<DocId> = self.chess.games.docs.keys().copied().filter(|id| self.chess.games.has_pages(*id)).collect();
+        for id in paged {
+            if let Some(f) = self.session.chess_fingerprints(id) {
+                self.chess.games.use_fingerprints(id, f);
             }
         }
         // The page labels the games' names say, taken again when the document changed.

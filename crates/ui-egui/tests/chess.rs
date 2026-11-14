@@ -6187,3 +6187,43 @@ fn the_games_an_earlier_build_autosaved_come_back() {
     assert!(h.state().chess.board().flipped);
     assert_eq!(std::fs::read_to_string(dir.join("18c2f-1a-0.games")).unwrap(), v1, "left as it was");
 }
+
+/// Plan A9-G2c (R3-04): a page inserted before the page a game came from takes the game's
+/// diagram and the moves read on it along (Show in PDF goes to the page that moved), and the
+/// next session finds them there too.
+#[test]
+fn a_page_inserted_before_takes_the_games_pages_along() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource;
+    let s = store("anchors");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(2);
+    {
+        let b = h.state_mut().chess.board_mut();
+        b.play_uci_line(&["e2e4".into()]);
+        let e4 = b.game.current();
+        assert!(b.game.set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
+    }
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
+    h.run_steps(3);
+    let pages = |h: &Harness<'static, PdfCraftApp>| {
+        let b = h.state().chess.board();
+        let e4 = b.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
+        (b.source.map(|s| s.page), b.game.source(e4).map(|s| s.page))
+    };
+    assert_eq!(pages(&h), (Some(1), Some(1)), "the diagram and the move follow their page");
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let app = h.state_mut();
+    app.save_override = Some(path.clone());
+    assert!(app.save_active(pdfcraft_ui_egui::SaveTarget::InPlace));
+    drop(h);
+    let bytes = std::fs::read(&path).unwrap();
+    let h = session(&s, "book.pdf", Some(&path), bytes);
+    assert_eq!(pages(&h), (Some(1), Some(1)), "and come back there");
+}

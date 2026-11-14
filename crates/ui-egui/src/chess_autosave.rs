@@ -35,6 +35,7 @@ use std::path::PathBuf;
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
+use pdfcraft_engine::chess::corrections::{Fingerprints, PageAnchor};
 use pdfcraft_engine::chess::games_store::{self, GameRecord, Games, GamesFile, GamesStoreError, Owner};
 #[cfg(test)]
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
@@ -146,10 +147,12 @@ pub(crate) fn board_stamp(board: &BoardState) -> u64 {
 /// `part` (what [`GameRecord::of_game`] stores of the board's game) as game `uid` at `rev`, with
 /// what the board adds: the move shown, the side the board is seen from, an illegal position and
 /// the diagram it came from.
-fn with_board(mut part: GameRecord, board: &BoardState, uid: &str, rev: u64) -> GameRecord {
+fn with_board(mut part: GameRecord, board: &BoardState, uid: &str, rev: u64, fingerprints: Option<&Fingerprints>) -> GameRecord {
     part.uid = uid.to_owned();
     part.rev = rev;
     part.origin = board.source.map(|s| pdfcraft_engine::chess::DiagramAt::new(s.page, s.index));
+    // What the diagram's page is now (plan A9-G2c), so it is found again after pages move.
+    part.origin_at = part.origin.zip(fingerprints).and_then(|(o, f)| PageAnchor::of(o.page, f));
     part.flipped = board.flipped;
     if let Some((_, fen)) = &board.illegal {
         // An empty game: only the position, as given.
@@ -173,6 +176,10 @@ const MAX_CACHED_COLLECTIONS: usize = 64;
 #[derive(Default)]
 pub(crate) struct RecordCache {
     by_cid: HashMap<String, HashMap<u64, Option<GameRecord>>>,
+    /// The page fingerprints each collection's records were anchored to (plan A9-G2c), by the
+    /// address of the session's copy, which a change of the document replaces: a collection
+    /// whose document changed is encoded again.
+    anchored: HashMap<String, usize>,
     /// Games encoded, not taken from the cache, so far (for tests).
     pub(crate) encoded: usize,
 }
@@ -185,13 +192,19 @@ impl RecordCache {
         before: &HashMap<u64, Option<GameRecord>>,
         now: &mut HashMap<u64, Option<GameRecord>>,
         board: &BoardState,
+        fingerprints: Option<&Fingerprints>,
     ) -> Option<GameRecord> {
         let revision = board.game.revision();
         let part = match now.get(&revision).or_else(|| before.get(&revision)) {
             Some(part) => part.clone(),
             None => {
                 self.encoded = self.encoded.saturating_add(1);
-                GameRecord::of_game(String::new(), 0, &board.game)
+                GameRecord::of_game(String::new(), 0, &board.game).map(|mut p| {
+                    if let Some(f) = fingerprints {
+                        p.anchor(f);
+                    }
+                    p
+                })
             }
         };
         now.insert(revision, part.clone());
@@ -214,6 +227,9 @@ pub(crate) struct Collected<'a> {
     pub known: &'a mut HashMap<String, (u64, bool)>,
     pub trash: Vec<games_store::Trashed>,
     pub taken: Vec<String>,
+    /// The document's page fingerprints now (plan A9-G2c): the moves and the diagram are anchored
+    /// to their pages. `None` for no document, or none known.
+    pub fingerprints: Option<std::sync::Arc<Fingerprints>>,
 }
 
 /// Seconds since 1970, now.
@@ -237,7 +253,13 @@ fn encode(cache: &mut RecordCache, c: Collected<'_>) -> Result<GamesFile, Blocke
         return Err(Blocked::TooBig);
     }
     let at = now();
-    let before = cache.by_cid.remove(c.cid).unwrap_or_default();
+    let fps = c.fingerprints.as_deref();
+    let anchored_to = c.fingerprints.as_ref().map_or(0, |f| std::sync::Arc::as_ptr(f) as usize);
+    let mut before = cache.by_cid.remove(c.cid).unwrap_or_default();
+    // Anchored to the document as it was: encoded again.
+    if cache.anchored.get(c.cid).is_some_and(|was| *was != anchored_to) {
+        before.clear();
+    }
     let mut parts = HashMap::with_capacity(c.games.len());
     let mut file = GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(c.keys, 0));
     let mut whole = true;
@@ -256,10 +278,10 @@ fn encode(cache: &mut RecordCache, c: Collected<'_>) -> Result<GamesFile, Blocke
                 s
             }
         };
-        let part = if board.illegal.is_some() { Some(blank_record()) } else { cache.part(&before, &mut parts, board) };
+        let part = if board.illegal.is_some() { Some(blank_record()) } else { cache.part(&before, &mut parts, board, fps) };
         match part {
             Some(part) => {
-                let record = with_board(part, board, &s.uid, s.rev);
+                let record = with_board(part, board, &s.uid, s.rev, fps);
                 if i == c.active {
                     file.active = Some(s.uid.clone());
                 }
@@ -272,8 +294,10 @@ fn encode(cache: &mut RecordCache, c: Collected<'_>) -> Result<GamesFile, Blocke
     }
     if cache.by_cid.len() >= MAX_CACHED_COLLECTIONS {
         cache.by_cid.clear();
+        cache.anchored.clear();
     }
     cache.by_cid.insert(c.cid.to_owned(), parts);
+    cache.anchored.insert(c.cid.to_owned(), anchored_to);
     if !whole {
         return Err(Blocked::TooBig);
     }
@@ -321,8 +345,19 @@ pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardSt
 }
 
 /// The games of a file, each with the document's diagrams and its [`Stored`]; and how many
-/// couldn't be read.
-pub(crate) fn decode(file: &GamesFile, doc: Option<DocId>) -> (Vec<(BoardState, Stored)>, usize) {
+/// couldn't be read. Its pages are taken first to where they are in the document now
+/// (`fingerprints`, plan A9-G2c: [`GamesFile::relocate`]).
+pub(crate) fn decode(file: &GamesFile, doc: Option<DocId>, fingerprints: Option<&Fingerprints>) -> (Vec<(BoardState, Stored)>, usize) {
+    let relocated;
+    let file = match fingerprints {
+        Some(f) => {
+            let mut copy = file.clone();
+            copy.relocate(f);
+            relocated = copy;
+            &relocated
+        }
+        None => file,
+    };
     let mut boards = Vec::new();
     let mut lost = 0usize;
     for (i, g) in file.live().enumerate() {
@@ -568,7 +603,7 @@ fn blank_record() -> GameRecord {
 #[cfg(test)]
 pub(crate) fn record(board: &BoardState) -> Option<GameRecord> {
     let part = if board.illegal.is_some() { blank_record() } else { GameRecord::of_game(String::new(), 0, &board.game)? };
-    Some(with_board(part, board, "test", 1))
+    Some(with_board(part, board, "test", 1, None))
 }
 
 /// Every move of `game`, the start first (for the tests).
@@ -759,7 +794,7 @@ pub(crate) mod tests {
     ) -> Collected<'a> {
         stored.resize(boards.len(), None);
         let games = stored.iter_mut().zip(boards).collect();
-        Collected { cid, keys, games, active: 0, known, trash: Vec::new(), taken: Vec::new() }
+        Collected { cid, keys, games, active: 0, known, trash: Vec::new(), taken: Vec::new(), fingerprints: None }
     }
 
     #[test]
@@ -843,7 +878,7 @@ pub(crate) mod tests {
         let (mut m, bad) = MemoryStore::load(None, Some(&v1));
         assert!(!bad);
         let file = m.find_for_test(&v1_keys());
-        let (boards, lost) = decode(&file, Some(DocId(7)));
+        let (boards, lost) = decode(&file, Some(DocId(7)), None);
         assert_eq!((boards.len(), lost), (3, 0));
         let sample = v1_sample_boards();
         for ((b, _), a) in boards.iter().zip(&sample) {
@@ -968,7 +1003,7 @@ pub(crate) mod tests {
             let (mut m, _) = MemoryStore::load(Some(&value), None);
             let found = m.find_for_test(&keys());
             read += usize::from(found.live().count() > 0);
-            let _ = decode(&found, Some(DocId(3)));
+            let _ = decode(&found, Some(DocId(3)), None);
         }
         assert!(read > 50, "the games were read back {read} times");
     }
