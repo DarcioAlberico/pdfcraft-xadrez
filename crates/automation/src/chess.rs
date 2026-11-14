@@ -75,6 +75,31 @@ fn pieces_expected() -> String {
 }
 
 /// Two decimals: enough for points, and stable in test output.
+/// A piece-letter language by its tag, or what `key` takes.
+fn lang_of(key: &str, tag: &str) -> Result<Lang> {
+    Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"))
+}
+
+/// What a chess export's reply says of how it looked ([`Automation::export_look`]): the piece set
+/// and the user's fonts.
+pub(crate) struct ExportLook {
+    pub pieces: Value,
+    pub fonts: pdfcraft_engine::chess::pdfcraft_chessvision::text_font::UserFonts,
+}
+
+/// Markdown's diagram images written into `folder` (created when there are any), each by its file
+/// name; `image_dir` names the folder in an error.
+pub(crate) fn write_images(folder: Option<&std::path::Path>, image_dir: &str, images: &[(String, Vec<u8>)]) -> Result<()> {
+    let Some(dir) = folder.filter(|_| !images.is_empty()) else { return Ok(()) };
+    std::fs::create_dir_all(dir).map_err(|e| failed(format!("{image_dir}: {e}")))?;
+    for (rel, png) in images {
+        // `rel` is `<image_dir>/<name>`, a name made here: only its file name is used.
+        let name = std::path::Path::new(rel).file_name().ok_or_else(|| failed("an image has no file name"))?;
+        crate::write_atomic(&dir.join(name), png)?;
+    }
+    Ok(())
+}
+
 fn round(v: f32) -> f64 {
     (f64::from(v) * 100.0).round() / 100.0
 }
@@ -672,39 +697,7 @@ impl Automation {
     }
 
     fn chess_export(&mut self, a: &Args, format: ChessFormat) -> Result<Value> {
-        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{DiagramMode, Figurines};
-        let lang_of = |key: &str, tag: &str| Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"));
         let lang = a.opt_str("lang")?.map(|t| lang_of("lang", t)).transpose()?;
-        let diagrams = match a.opt_str("diagrams")? {
-            None | Some("svg") => DiagramMode::Svg,
-            Some("fen") => DiagramMode::Fen,
-            Some(_) => return Err(Args::wrong("diagrams", "\"svg\" or \"fen\"")),
-        };
-        let figurines = match a.opt_str("figurines")? {
-            None | Some("unicode") => Figurines::Unicode,
-            Some("printed") => Figurines::AsPrinted,
-            Some("letters") => Figurines::Letters(match a.opt_str("letters_lang")? {
-                Some(t) => lang_of("letters_lang", t)?,
-                None => lang.unwrap_or(Lang::En),
-            }),
-            Some(_) => return Err(Args::wrong("figurines", "\"unicode\", \"letters\" or \"printed\"")),
-        };
-        let (pieces, source, error) = match a.opt_str("pieces")? {
-            None | Some("installed") => pieces::find(self.install_dir()),
-            Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
-            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
-        };
-        let link_text = a.opt_str("link_text")?.unwrap_or(chess::links::DEFAULT_TEXT).to_owned();
-        if link_text.trim().is_empty() || link_text.chars().count() > 80 {
-            return Err(Args::wrong("link_text", "1 to 80 characters"));
-        }
-        let diagram_px = match a.opt_int("diagram_px")? {
-            None => chess::office::DEFAULT_DIAGRAM_PX,
-            Some(n) => u32::try_from(n)
-                .ok()
-                .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
-                .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
-        };
         let pgn_style = crate::chess_pgn::pgn_style(a)?;
         let positions = match a.opt_str("positions")? {
             None => markdown::PgnPositions::default(),
@@ -726,59 +719,30 @@ impl Automation {
             Some(p) => Some((p.to_owned(), std::sync::Arc::new(read_reference(&self.resolve(p, false)?, p)?))),
             None => None,
         };
-        // Markdown's images go in a folder beside the file: `book.md` → `book_diagrams/`.
-        let out = std::path::Path::new(&shown);
-        let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
-        let image_dir = markdown::image_folder(&stem);
-        let folder = if format == ChessFormat::Markdown && diagrams == DiagramMode::Svg {
-            Some(self.resolve(&out.with_file_name(&image_dir).to_string_lossy(), true)?)
-        } else {
-            None
+        let title = match a.opt_str("title")? {
+            Some(t) => t.to_owned(),
+            None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
+        let (mut options, look) = self.export_look(a, &title, lang.unwrap_or(Lang::En))?;
+        let (image_dir, folder) = self.image_folder(&shown, format, &options)?;
         let mut outputs: Vec<(&str, &std::path::Path)> = vec![("out", path.as_path())];
         outputs.extend(cipher_out.as_ref().map(|(_, p)| ("cipher_out", p.as_path())));
         outputs.extend(folder.as_ref().map(|f| ("image_dir", f.as_path())));
         self.check_outputs(a, &outputs, &self.input_paths(a)?.iter().map(|p| p.as_path()).collect::<Vec<_>>())?;
         let id = self.doc(a)?.id;
-        let title = match a.opt_str("title")? {
-            Some(t) => t.to_owned(),
-            None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
-        };
-        // HTML and EPUB show figurines with the user's font when there is one.
-        let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts(self.install_dir());
-        let mut options = ChessExportOptions::new(&title, self.install_dir());
         options.pages = pages;
         options.scan = scan;
         options.lang = lang;
         options.ocr = ocr;
-        options.diagrams = diagrams;
-        options.figurines = figurines;
-        options.links = a.opt_bool("links")?.unwrap_or(true);
-        options.link_text = link_text;
-        options.pieces = std::sync::Arc::new(pieces);
-        options.text_font = fonts.figurines.clone().map(std::sync::Arc::new);
-        options.sign_font = fonts.signs.clone().map(std::sync::Arc::new);
-        options.diagram_px = diagram_px;
         options.image_dir = image_dir.clone();
         options.book = book;
-        options.style = theme_style(a)?;
         options.positions = positions;
         options.pgn_style = pgn_style;
-        options.review_marks = a.opt_bool("review_marks")?;
         options.reference = reference.as_ref().map(|(_, index)| index.clone());
         options.games = games.as_ref().map(|(_, index)| index.clone());
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
-        if let Some(dir) = &folder
-            && !made.images.is_empty()
-        {
-            std::fs::create_dir_all(dir).map_err(|e| failed(format!("{image_dir}: {e}")))?;
-            for (rel, png) in &made.images {
-                // `rel` is `<image_dir>/<name>`, a name made here: only its file name is used.
-                let name = std::path::Path::new(rel).file_name().ok_or_else(|| failed("an image has no file name"))?;
-                crate::write_atomic(&dir.join(name), png)?;
-            }
-        }
+        write_images(folder.as_deref(), &image_dir, &made.images)?;
         // A PGN starts with a byte order mark only when asked (decision D18).
         let bom = format == ChessFormat::Pgn && a.opt_bool("bom")?.unwrap_or(false);
         let bytes: std::borrow::Cow<[u8]> = if bom { [pgn::BOM, &made.bytes].concat().into() } else { made.bytes.as_slice().into() };
@@ -820,14 +784,9 @@ impl Automation {
             "diagrams_drawn": made.drawn,
             "diagrams_unread": all - positioned,
             "games": read.doc.games.len(),
-            "text_font": self.font_json(fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &fonts.errors),
-            "sign_font": self.font_json(fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
-            "pieces": match source {
-                PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
-                PieceSource::Images { dir } => json!({ "source": "images", "family": self.path_json(&dir), "error": Value::Null }),
-                PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
-                PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
-            },
+            "text_font": self.font_json(look.fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &look.fonts.errors),
+            "sign_font": self.font_json(look.fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
+            "pieces": look.pieces,
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
@@ -845,6 +804,83 @@ impl Automation {
             "games_reference": games_json,
             "reference_kept": reference_kept,
         }))
+    }
+
+    /// How a chess export looks, from the call (plan A9-N9: the one reading of these arguments for
+    /// the exports of a document and of games): diagrams as SVG or FEN, figurines (letters in
+    /// `letters_lang`, else in `letters`), the piece set, the lichess links and their text, the
+    /// diagram images' size, the board's colours, the review marks and the user's fonts, set on
+    /// export options titled `title`. With what the reply says of the pieces and the fonts.
+    pub(crate) fn export_look(&self, a: &Args, title: &str, letters: Lang) -> Result<(ChessExportOptions, ExportLook)> {
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{DiagramMode, Figurines};
+        let mut options = ChessExportOptions::new(title, self.install_dir());
+        options.diagrams = match a.opt_str("diagrams")? {
+            None | Some("svg") => DiagramMode::Svg,
+            Some("fen") => DiagramMode::Fen,
+            Some(_) => return Err(Args::wrong("diagrams", "\"svg\" or \"fen\"")),
+        };
+        options.figurines = match a.opt_str("figurines")? {
+            None | Some("unicode") => Figurines::Unicode,
+            Some("printed") => Figurines::AsPrinted,
+            Some("letters") => Figurines::Letters(match a.opt_str("letters_lang")? {
+                Some(t) => lang_of("letters_lang", t)?,
+                None => letters,
+            }),
+            Some(_) => return Err(Args::wrong("figurines", "\"unicode\", \"letters\" or \"printed\"")),
+        };
+        let (pieces, source, error) = match a.opt_str("pieces")? {
+            None | Some("installed") => pieces::find(self.install_dir()),
+            Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
+            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
+        };
+        options.pieces = Arc::new(pieces);
+        let link_text = a.opt_str("link_text")?.unwrap_or(chess::links::DEFAULT_TEXT).to_owned();
+        if link_text.trim().is_empty() || link_text.chars().count() > 80 {
+            return Err(Args::wrong("link_text", "1 to 80 characters"));
+        }
+        options.link_text = link_text;
+        options.links = a.opt_bool("links")?.unwrap_or(true);
+        options.diagram_px = match a.opt_int("diagram_px")? {
+            None => chess::office::DEFAULT_DIAGRAM_PX,
+            Some(n) => u32::try_from(n)
+                .ok()
+                .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
+                .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
+        };
+        options.style = theme_style(a)?;
+        options.review_marks = a.opt_bool("review_marks")?;
+        // HTML and EPUB show figurines with the user's font when there is one.
+        let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts(self.install_dir());
+        options.text_font = fonts.figurines.clone().map(Arc::new);
+        options.sign_font = fonts.signs.clone().map(Arc::new);
+        let pieces = match source {
+            PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
+            PieceSource::Images { dir } => json!({ "source": "images", "family": self.path_json(&dir), "error": Value::Null }),
+            PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
+            PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
+        };
+        Ok((options, ExportLook { pieces, fonts }))
+    }
+
+    /// Where Markdown's images go: a folder beside the file named `shown` (`book.md` →
+    /// `book_diagrams/`), as the Markdown links it, and resolved in the root when the export writes
+    /// images (Markdown with drawn diagrams).
+    pub(crate) fn image_folder(
+        &self,
+        shown: &str,
+        format: ChessFormat,
+        options: &ChessExportOptions,
+    ) -> Result<(String, Option<std::path::PathBuf>)> {
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::DiagramMode;
+        let out = std::path::Path::new(shown);
+        let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
+        let image_dir = markdown::image_folder(&stem);
+        let folder = if format == ChessFormat::Markdown && options.diagrams == DiagramMode::Svg {
+            Some(self.resolve(&out.with_file_name(&image_dir).to_string_lossy(), true)?)
+        } else {
+            None
+        };
+        Ok((image_dir, folder))
     }
 
     /// `cipher_in`: a book cipher saved by an earlier run (JSON), to start from; `cipher_out`:
@@ -1133,7 +1169,7 @@ impl Automation {
 
 impl Automation {
     /// What an export says about one of the user's fonts (`chessvision::text_font`).
-    fn font_json(
+    pub(crate) fn font_json(
         &self,
         font: Option<&pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFont>,
         exported: bool,

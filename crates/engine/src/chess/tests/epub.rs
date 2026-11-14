@@ -535,3 +535,43 @@ fn an_author_named_unknown_is_left_out() {
     let files = entries(&doc, &options(&pieces), &EpubMeta { creator: Some("Unknown Soldier".into()), ..meta() }).unwrap();
     assert!(file(&files, "OEBPS/content.opf").contains("<dc:creator>Unknown Soldier</dc:creator>"));
 }
+
+/// Plan A9-N9 (A8-12): two games, each with a diagram marked (`$220`), make an EPUB of a page per
+/// game with a diagram each, of the position after the marked move; the package's pages are
+/// well-formed XHTML. The same games make the same book, and PGN is refused (the games are their
+/// own PGN). epubcheck is not run: it is not installed here.
+#[test]
+fn two_games_with_a_diagram_mark_make_a_book_of_two_diagrams() {
+    use crate::chess::export::{GamesBookMeta, games_book};
+    use pdfcraft_chess::game::{Game, split_pgn};
+    let pgn = "[White \"Morphy\"]\n[Black \"Duke\"]\n\n1.e4 e5 2.Nf3 d6 $220 3.d4 Bg4 1-0\n\n\
+               [White \"Anderssen\"]\n[Black \"Kieseritzky\"]\n\n1.e4 e5 2.f4 exf4 $220 3.Bc4 *\n";
+    let games: Vec<Game> = split_pgn(pgn, 8).into_iter().map(|g| Game::from_pgn(g).unwrap().0).collect();
+    let mut o = ChessExportOptions::new("Two games", None);
+    o.pieces = std::sync::Arc::new(PieceSet::geometric());
+    let meta = GamesBookMeta { identity: pgn.as_bytes().to_vec(), now_secs: 1_800_000_000, ..GamesBookMeta::default() };
+    let book = games_book(&games, ChessFormat::Epub, &o, &meta).unwrap();
+    assert_eq!((book.doc.pages.len(), book.drawn), (2, 2));
+    let after = |moves: &[&str]| {
+        let mut g = Game::standard();
+        for m in moves {
+            g.play_san(m).unwrap();
+        }
+        g.fen()
+    };
+    for (n, marked) in [(1, after(&["e4", "e5", "Nf3", "d6"])), (2, after(&["e4", "e5", "f4", "exf4"]))] {
+        let page = super::office::zip_part(&book.bytes, &format!("OEBPS/page-{n:05}.xhtml"));
+        roxmltree::Document::parse_with_options(&page, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
+        assert_eq!(page.matches("<figure class=\"diagram\"").count(), 1, "{page}");
+        let figure = page.split("<figure class=\"diagram\"").nth(1).and_then(|r| r.split('>').next()).unwrap_or_default();
+        assert!(figure.contains(&format!("data-fen=\"{marked}\"")), "{page}");
+    }
+    let opf = super::office::zip_part(&book.bytes, "OEBPS/content.opf");
+    assert!(opf.contains(&identifier(pgn.as_bytes())) && opf.contains("<dc:title>Two games</dc:title>"), "{opf}");
+    assert_eq!(games_book(&games, ChessFormat::Epub, &o, &meta).unwrap().bytes, book.bytes, "the same games make the same book");
+    assert!(games_book(&games, ChessFormat::Pgn, &o, &meta).is_err());
+    // Word too: a heading per game and a picture per diagram, said in words.
+    let word = games_book(&games, ChessFormat::Docx, &o, &meta).unwrap();
+    let xml = super::office::zip_part(&word.bytes, "word/document.xml");
+    assert_eq!((word.drawn, xml.matches("Morphy – Duke").count(), xml.matches("<wp:docPr").count()), (2, 1, 2), "{xml}");
+}

@@ -287,7 +287,8 @@ pub fn read_page(
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),
     };
-    let repaired = repair_lines(&fused, context, lang, &book.proven());
+    // The other pages' evidence: reading this page again reads the same (plan A9-V4).
+    let repaired = repair_lines(&fused, context, lang, &book.proven_without(page));
     if let Some(proof) = &repaired.proof {
         book.record(proof, page);
     }

@@ -195,7 +195,7 @@ fn the_users_fonts_are_named_on_the_runs_that_need_them() {
 }
 
 /// One part of a package the export crate's `Zip` wrote, inflated.
-fn zip_part(zip: &[u8], name: &str) -> String {
+pub(super) fn zip_part(zip: &[u8], name: &str) -> String {
     let at = |i: usize, n: usize| zip[i..i + n].iter().rev().fold(0usize, |v, b| v << 8 | *b as usize);
     let mut i = 0;
     while zip[i..].starts_with(b"PK\x03\x04") {
