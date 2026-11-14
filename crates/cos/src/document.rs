@@ -5,7 +5,7 @@
 //! Edits never touch the original bytes; the writer appends them (incremental save) or rewrites
 //! the file (full save).
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::{Arc, Mutex, Weak};
 
 use crate::CosError;
@@ -368,6 +368,29 @@ impl ReadState {
                         _ => false,
                     }
             })
+    }
+
+    /// The objects `doc` reads differently from this state: each one changed, added or freed on
+    /// either side, by number. `None` when `doc` reads another source (a saved file read again,
+    /// another document), where nothing can be told object by object. A trailer that changed
+    /// changes no object, and is not said here.
+    pub fn changed(&self, doc: &Document) -> Option<BTreeSet<u32>> {
+        if self.source != doc.source_identity() {
+            return None;
+        }
+        let same = |x: &Slot, y: &Slot| match (x, y) {
+            (Slot::Set(g, o), Slot::Set(h, p)) => g == h && Arc::ptr_eq(o, p),
+            (Slot::Freed(g), Slot::Freed(h)) => g == h,
+            _ => false,
+        };
+        let mut out = BTreeSet::new();
+        for (num, slot) in &self.overlay {
+            if !doc.overlay.get(num).is_some_and(|s| same(slot, s)) {
+                out.insert(*num);
+            }
+        }
+        out.extend(doc.overlay.keys().filter(|num| !self.overlay.contains_key(num)));
+        Some(out)
     }
 }
 
@@ -2080,6 +2103,29 @@ mod tests {
         let mut other = Document::new_empty();
         other.add(Object::Int(1));
         assert!(!other.read_state().matches(&snapshot));
+    }
+
+    /// A state tells which objects a later state of the same document reads differently: set,
+    /// added or freed since, on either side (an undo goes back), and nothing of another document.
+    #[test]
+    fn a_read_state_says_which_objects_changed() {
+        let mut doc = Document::new_empty();
+        let a = doc.add(Object::Int(1));
+        let b = doc.add(Object::Int(2));
+        let state = doc.read_state();
+        let snapshot = doc.clone();
+        assert_eq!(state.changed(&doc), Some(BTreeSet::new()));
+        doc.set(a, Object::Int(3));
+        let c = doc.add(Object::Int(4));
+        assert_eq!(state.changed(&doc), Some(BTreeSet::from([a.num, c.num])));
+        doc.free(b);
+        assert_eq!(state.changed(&doc), Some(BTreeSet::from([a.num, b.num, c.num])));
+        // Back to the snapshot (an undo): what the edits changed, seen from the later state.
+        assert_eq!(doc.read_state().changed(&snapshot), Some(BTreeSet::from([a.num, b.num, c.num])));
+        assert_eq!(state.changed(&snapshot), Some(BTreeSet::new()));
+        let mut other = Document::new_empty();
+        other.add(Object::Int(1));
+        assert_eq!(state.changed(&other), None);
     }
 
     /// Build a classic-xref file from object bodies (object i+1 = bodies[i]).

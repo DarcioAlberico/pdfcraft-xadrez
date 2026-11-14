@@ -125,6 +125,39 @@ fn a_scan_that_outlived_an_edit_keeps_the_pages_it_did_not_touch() {
     assert!(Arc::ptr_eq(&pages[4], &scan.pages[4]));
 }
 
+/// Plan A9-I3b (§2.4, R8-05): the memo of page keys and page fingerprints outlives an edit for
+/// what the edit did not touch. A new Title hashes no page again, of either; turning one page
+/// hashes that page, once each; an undo hashes nothing. What comes out is what a fresh memo
+/// gives, every time.
+#[test]
+fn the_keys_and_fingerprints_outlive_an_edit_for_the_pages_it_did_not_touch() {
+    const N: usize = 40;
+    let (mut s, id) = open(book(N));
+    let all: Vec<usize> = (0..N).collect();
+    let fresh = |s: &Session| {
+        let doc = s.get(id).unwrap();
+        (keys(&doc.editor.as_ref().unwrap().cos, true), doc.page_fingerprints())
+    };
+    let now = |s: &mut Session| (s.chess_page_keys(id, &all), s.chess_fingerprints(id).unwrap().pages().to_vec());
+    let counts = |s: &Session| (s.chess.keys_hashed, s.chess.fingerprints_made);
+    assert_eq!(now(&mut s), fresh(&s));
+    assert_eq!(counts(&s), (N, N));
+
+    s.apply(id, Edit::SetInfo { key: "Title".into(), value: "A book of games".into() }).unwrap();
+    assert_eq!(now(&mut s), fresh(&s));
+    assert_eq!(counts(&s), (N, N), "the Title: no page hashed again");
+
+    s.apply(id, Edit::RotatePages { pages: vec![7], degrees: 90 }).unwrap();
+    let turned = now(&mut s);
+    assert_eq!(turned, fresh(&s));
+    assert_eq!(counts(&s), (N + 1, N + 1), "one page turned: that page hashed again");
+
+    s.undo(id).unwrap();
+    assert_eq!(now(&mut s), fresh(&s));
+    let (k, f) = counts(&s);
+    assert!(k <= N + 2 && f <= N + 2, "an undo hashes at most the page it gives back: {k}, {f}");
+}
+
 /// The keys of every page of `cos`, each from a fresh memo when `fresh`, else from one shared.
 fn keys(cos: &pdfcraft_cos::Document, fresh: bool) -> Vec<Option<page_key::PageKey>> {
     let pages = page_objects(cos, pdfcraft_organize::pages(cos).unwrap().len());
