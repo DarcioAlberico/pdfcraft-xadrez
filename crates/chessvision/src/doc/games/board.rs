@@ -82,8 +82,8 @@ impl Built {
 /// SAN was edited into something no move is written is named again, never written `--` (PGN's
 /// null move, another move altogether, plan A8 P8a).
 fn san_by_position(game: &ChessGame, at: NodeId, fen: &str) -> Option<String> {
-    let before = Board::from_fen(&game.fen_at(at)?.to_string(), false).ok()?;
-    let after = Board::from_fen(fen.trim(), false).ok()?;
+    let before = pdfcraft_chess::fen::board_from_fen(&game.fen_at(at)?.to_string()).ok()?;
+    let after = pdfcraft_chess::fen::board_from_fen(fen.trim()).ok()?;
     let key = |b: &Board| pdfcraft_chess::fen::Fen::from_board(b).full_key();
     let want = key(&after);
     let mut found = None;

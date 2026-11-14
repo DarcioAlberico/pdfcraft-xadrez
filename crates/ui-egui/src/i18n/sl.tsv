@@ -3485,3 +3485,52 @@ the move's comment	Move comment	Komentar k potezi
 	mates in {m}	matira v {m}
 	supposes castling is allowed	predpostavlja, da je rokada dovoljena
 	Mate in {n}: both sides mate, so who moves stays assumed	Mat v {n}: matirata obe strani, zato ostane, kdo je na potezi, predpostavljeno
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Stran riše več poti, kot se jih pregleda; preostale so bile preskočene.
+	Content streams that couldn't be decoded and were skipped: {n}	Tokovi vsebine, ki jih ni bilo mogoče dekodirati in so bili preskočeni: {n}
+	The page's paths couldn't be read: {e}	Poti strani ni bilo mogoče prebrati: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Dokumenta ni mogoče prebrati za urejanje, zato njegove slike in poti niso bile pregledane.
+	The page's text couldn't be read: {e}	Besedila strani ni bilo mogoče prebrati: {e}
+	Only the first {n} of the page's {total} images were looked at.	Pregledanih je bilo le prvih {n} od {total} slik strani.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Neobrezane slike, ker slikovne pike slik strani presegajo proračun iskanja: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagram {d}: obe strani matirata v {n}, zato ostane, kdo je na potezi, predpostavljeno.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Diagram ponuja {offered} dpi; prebran je bil pri največ {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Stran je prevelika za izris pri {wanted} dpi; njeni diagrami so bili prebrani pri {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Strani ni bilo mogoče izrisati pri {wanted} dpi za branje ({e}); prebrana je bila pri {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagram {d}: branje se je od popravka spremenilo (zdaj {fen}); popravek ostane.
+	The frames around text were not looked for: {e}	Okvirji okoli besedila niso bili iskani: {e}
+	The lines set bolder were not looked for: {e}	Vrstice, stavljene krepkeje od osnovnega besedila, niso bile iskane: {e}
+	The words set in bold were not looked for: {e}	Besede v krepkem tisku niso bile iskane: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p} % višine strani vsebuje preveč drobnega črnila, da bi bilo besedilo (slika ali prašen sken); ti pasovi niso bili prebrani.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Splošni OCR ni uspel ({e}); bralnik glifov je prebral tudi prozo.
+	Chess OCR failed: {e}	Šahovski OCR ni uspel: {e}
+	The page couldn't be rendered for chess OCR: {e}	Strani ni bilo mogoče izrisati za šahovski OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Zahtevan je bil šahovski OCR, vendar potrebuje model chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Pisava {font} je videti kot šahovska, a je ni v katalogu; njeno besedilo je ostalo, kot se izlušči.
+	The page has no visible area; it is left out.	Stran nima vidnega območja; izpuščena je.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Odstavkov strani ni bilo mogoče prebrati ({e}); njene vrstice so bile združene po razmikih.
+	The page's diagrams couldn't be read; they are left out.	Diagramov strani ni bilo mogoče prebrati; izpuščeni so.
+	A correction ({id}) was not used: {e}	Popravek ({id}) ni bil uporabljen: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Opisna notacija ({examples}) ni podprta; njene poteze niso bile prebrane.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Dokument vsebuje {n} partij, največ, kolikor jih hrani: od tu naprej se ne začne nobena partija.
+	This page couldn't be read: {e}	Te strani ni bilo mogoče prebrati: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (šahovski OCR potrebuje model chess-glyphs)
+	the page has no text layer	stran nima besedilne plasti
+	the text layer has two-byte codes with no Unicode text	besedilna plast ima dvobajtne kode brez besedila Unicode
+	the text layer extracts as replacement characters	besedilna plast se izlušči kot nadomestni znaki
+	the text layer's Unicode map is dead	preslikava Unicode besedilne plasti ne deluje
+	chess-font glyphs that couldn't be resolved: {n}	glifi šahovskih pisav, ki jih ni bilo mogoče razrešiti: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	poteze z odvečnim simbolom namesto figure, kjer je prejšnja plast OCR izgubila figurice: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	besedilna plast je nevidno besedilo nad sliko strani: OCR drugega programa
+	no piece model is loaded	noben model figur ni naložen
+	the page raster's resolution is not a positive number	ločljivost rastra strani ni pozitivno število
+	the diagram's box or corners are not finite numbers on this page	okvir ali koti diagrama na tej strani niso končna števila
+	the diagram lies outside the page raster	diagram leži zunaj rastra strani
+	the diagram's corners do not form a quadrilateral	koti diagrama ne tvorijo štirikotnika
+	the page has more diagrams than are read on one page	stran ima več diagramov, kot se jih prebere na eni strani
+	the piece model failed: {e}	model figur ni uspel: {e}
+	the piece model's output is not a probability matrix: {e}	izhod modela figur ni matrika verjetnosti: {e}
+	Back to Diagrams	Nazaj na »Diagrami«
+	Tools panel collapsed	Plošča Orodja je strnjena
+	Show the page (F6)	Pokaži stran (F6)
+	The board is in the column beside.	Šahovnica je v sosednjem stolpcu.

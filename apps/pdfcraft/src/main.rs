@@ -409,13 +409,14 @@ fn app_creator<'a>(
             let client = app.attach_control(&cc.egui_ctx);
             open_control_channel(file, pdfcraft_ui_egui::control::serve(client))?;
         }
+        // The diagram corrections, the books' PGNs and the documents' games where the command
+        // line keeps them too (plans A9-G5a and A9-G3b, decision D17), with what earlier builds
+        // kept in the recovery folder merged in: first, so the games' autosave starts there.
+        app.use_default_chess_data();
         // Autosave unsaved changes; offer to recover documents a crashed session left behind.
         if let Some(dir) = pdfcraft_ui_egui::RecoveryStore::default_dir() {
             app.enable_recovery(pdfcraft_ui_egui::RecoveryStore::new(dir));
         }
-        // The diagram corrections and the books' PGNs where the command line keeps them too (plan
-        // A9-G5a, decision D17), with what earlier builds kept in the recovery folder merged in.
-        app.use_default_chess_data();
         if let Some(state) = &cc.wgpu_render_state {
             let adapter = state.adapter.get_info();
             let max_texture_dimension_2d = state.device.limits().max_texture_dimension_2d;

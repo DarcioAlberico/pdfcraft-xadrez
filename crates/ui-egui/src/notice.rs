@@ -28,6 +28,8 @@ pub enum NoticeAction {
     /// ([`crate::chess_history::next_seq`]), while it is still the one Undo would take there
     /// (plan A9-G10).
     UndoCorrection { doc: DocId, seq: u64 },
+    /// Open the Tools panel again, collapsed for a chess surface (plan A9-I0a).
+    ReopenTools,
 }
 
 /// A notice, while it is shown.
@@ -67,6 +69,7 @@ impl PdfCraftApp {
     fn notice_action(&mut self, action: NoticeAction) {
         match action {
             NoticeAction::UndoCorrection { doc, seq } => self.undo_chess_fix_at(doc, seq),
+            NoticeAction::ReopenTools => self.left_open = true,
         }
     }
 }

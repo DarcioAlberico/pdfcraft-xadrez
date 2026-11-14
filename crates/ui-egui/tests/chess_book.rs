@@ -103,11 +103,10 @@ fn notation_move<'a>(h: &'a Harness<'static, PdfCraftApp>, san: &'a str) -> egui
     h.get_all_by_label(san).find(|n| n.accesskit_node().role() != Role::Label).unwrap_or_else(|| panic!("{san} in the notation"))
 }
 
-/// The Inspector's Chess panel in front again (opening a game brought the Board panel, a tab
-/// beside it, to the front).
+/// The Chess column's Text tab in front again (opening a game brought its Board tab to the
+/// front; plan A9-I0a).
 fn back_to_text(h: &mut Harness<'static, PdfCraftApp>) {
-    let panel = pdfcraft_ui_egui::docking::Panel::Inspector;
-    h.state_mut().docking.apply(craft_ui::docking::Action::Activate { panel }).expect("the Inspector comes to the front");
+    h.get_by(|n| n.role() == Role::Tab && n.label().is_some_and(|l| l == "Text")).click();
     h.run_steps(3);
     h.get_by_label("Recognised text of page 1");
 }

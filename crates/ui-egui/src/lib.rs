@@ -57,12 +57,14 @@ mod chess_moves_tree;
 mod chess_ocr_area;
 mod chess_panel_head;
 mod chess_pieces_ui;
+mod chess_reasons;
 mod chess_redraw;
 mod chess_reference_ui;
 mod chess_samples;
 mod chess_theme;
 mod chess_widgets;
 pub use chess_ocr_area::AreaQuery;
+mod chess_budget;
 mod chess_source;
 mod chess_store_ui;
 mod chess_study_ui;
@@ -2279,7 +2281,10 @@ impl PdfCraftApp {
             self.mode = mode;
         }
         if mode == Mode::Read && !was_read {
-            self.right_before_read = self.right.take();
+            // The Chess column stays: Read mode has the same chess surfaces (plan A9-I0a).
+            if self.right != Some(RightPanel::Chess) {
+                self.right_before_read = self.right.take();
+            }
             // An editing tool is put down so its open paragraph is applied, as `select_mode` does.
             if matches!(self.quick_tool, QuickTool::EditText | QuickTool::AddText) {
                 self.put_down_edit_text();
@@ -2314,9 +2319,14 @@ impl PdfCraftApp {
         } else if self.right.is_some() {
             self.right_panel_closed = true;
         }
+        // A chess surface opens: the window's width decides its columns (plan A9-I0a).
+        let chess_opens = panel == Some(RightPanel::Chess) && self.right != panel;
         self.right = panel;
         if panel.is_some() {
             self.pending_panel_reveals.push(docking::Panel::Inspector);
+        }
+        if chess_opens {
+            self.open_chess_budget();
         }
     }
 
@@ -2430,7 +2440,6 @@ impl PdfCraftApp {
         v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
         v["chess_redraw_asked"] = serde_json::Value::Bool(self.chess.redraw_asked);
         v["chess_pgn_bom"] = serde_json::Value::Bool(self.chess.games.pgn_bom);
-        v["chess_tools_offer_answered"] = serde_json::Value::Bool(self.chess.tools_offer_answered);
         // The documents that said Not now to the PGN beside them (plan "Carregar PGN do livro", R6f).
         v["chess_pgn_offers_declined"] = serde_json::json!(self.chess.book_pgns.declined);
         // The chess keys (plan A9-I18): the one-key shortcuts, and how long a typed sign waits.
@@ -2457,13 +2466,22 @@ impl PdfCraftApp {
             self.chess.typed_wait = wait;
         }
         if let Some(saved) = v.get("docking")
-            && let Ok(workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
-            && workspace.validate().is_ok()
+            && let Ok(mut workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
         {
-            self.docking = workspace;
-            self.left_open =
-                v.get("docking_left_open").and_then(serde_json::Value::as_bool).unwrap_or(self.docking.layout.contains(&docking::Panel::Tools));
-            self.right = v.get("docking_right").and_then(|value| serde_json::from_value(value.clone()).ok()).flatten();
+            // A layout saved before the Chess column (plan A9-I0a): the board's and the Diagram
+            // tab's panels go, and the column opens on the tab that showed.
+            let (board, diagram) = workspace.migrate();
+            if workspace.validate().is_ok() {
+                self.docking = workspace;
+                self.left_open =
+                    v.get("docking_left_open").and_then(serde_json::Value::as_bool).unwrap_or(self.docking.layout.contains(&docking::Panel::Tools));
+                self.right = v.get("docking_right").and_then(|value| serde_json::from_value(value.clone()).ok()).flatten();
+                if board || diagram {
+                    self.chess.tab = if board { chess_text_ui::ChessTab::Board } else { chess_text_ui::ChessTab::Diagrams };
+                    self.chess.diagram_open = diagram;
+                    self.right = Some(RightPanel::Chess);
+                }
+            }
         }
         // After the workspace: a board in its own window is not also in the dock.
         self.restore_chess_window(&v["docking_detached"]);
@@ -2521,9 +2539,6 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_pgn_bom"].as_bool() {
             self.chess.games.pgn_bom = on;
-        }
-        if let Some(on) = v["chess_tools_offer_answered"].as_bool() {
-            self.chess.tools_offer_answered = on;
         }
         if let Some(keys) = v["chess_pgn_offers_declined"].as_array() {
             let max = crate::chess_reference_ui::MAX_DECLINED;
@@ -3521,23 +3536,19 @@ impl eframe::App for PdfCraftApp {
             // Read mode hides the tools, not the navigation panes: the rail stays visible
             // there, so its buttons (Bookmarks, Page thumbnails, ...) must open their panels.
             // Outside Read mode the docking workspace draws the inspector.
-            if self.mode == Mode::Read && self.right.is_some() {
+            let in_page_place = self.chess_in_page_place(ui.ctx().content_rect().width());
+            if self.mode == Mode::Read {
+                self.chess.budget.alternating = in_page_place || (self.chess.budget.show_page && self.right == Some(RightPanel::Chess));
+            }
+            if self.mode == Mode::Read && self.right.is_some() && !in_page_place {
+                // As wide as it is dragged while the page keeps its least width, as when docked:
+                // it holds the Chess column and its board (plan A9-I0a).
                 egui::Panel::right("read_right_panel")
                     .resizable(true)
                     .default_size(330.0)
-                    .size_range(260.0..=520.0)
-                    .frame(egui::Frame::NONE)
-                    .show(ui, |ui| panels::right_panel(self, ui));
-            }
-            // The chess board panel too, when it is open (Read mode has no docking workspace), as
-            // wide as it is dragged while the page keeps its least width, as when docked.
-            if self.mode == Mode::Read && self.docking.exposed(docking::Panel::Board) {
-                egui::Panel::right("read_board_panel")
-                    .resizable(true)
-                    .default_size(docking::SIDE_WIDTH)
                     .size_range(260.0..=docking::widest_beside_page(ui.available_width(), 260.0))
                     .frame(egui::Frame::NONE)
-                    .show(ui, |ui| chess_ui::board_panel(self, ui));
+                    .show(ui, |ui| panels::right_panel(self, ui));
             }
             // The Move list last, so it stands against the page, on the side it was put.
             if self.mode == Mode::Read && self.chess.moves_beside {
@@ -3557,6 +3568,7 @@ impl eframe::App for PdfCraftApp {
                 match self.active {
                     None if self.combine_showing() => combine_ui::page(self, ui),
                     None => home::show(self, ui),
+                    Some(_) if self.chess_in_page_place(ui.ctx().content_rect().width()) => chess_ui::column(self, ui),
                     Some(index) => match compare_ui::side_by_side(self, index) {
                         Some((old, new)) => compare_ui::compare_area(self, old, new, ui),
                         None => canvas::document_area(self, index, ui),
