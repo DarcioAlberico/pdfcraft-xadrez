@@ -3731,3 +3731,48 @@ the move's comment	Move comment	Ėjimo komentaras
 	mates in {m}	matuoja per {m}
 	supposes castling is allowed	laikoma, kad rokiruotė leidžiama
 	Mate in {n}: both sides mate, so who moves stays assumed	Matas per {n}: matuoja abi pusės, todėl kieno ėjimas lieka spėjamas
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Puslapis braižo daugiau kontūrų, nei peržiūrima; likusieji praleisti.
+	Content streams that couldn't be decoded and were skipped: {n}	Turinio srautai, kurių nepavyko iškoduoti ir kurie praleisti: {n}
+	The page's paths couldn't be read: {e}	Nepavyko nuskaityti puslapio kontūrų: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Dokumento negalima nuskaityti redagavimui, todėl jo vaizdai ir kontūrai nebuvo peržiūrėti.
+	The page's text couldn't be read: {e}	Nepavyko nuskaityti puslapio teksto: {e}
+	Only the first {n} of the page's {total} images were looked at.	Peržiūrėti tik pirmieji {n} iš {total} puslapio vaizdų.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Neapkirpti vaizdai, nes puslapio vaizdų pikseliai viršija paieškos biudžetą: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagrama {d}: abi pusės matuoja per {n}, todėl kieno ėjimas lieka spėjamas.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Diagrama siūlo {offered} dpi; ji nuskaityta daugiausia {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Puslapis per didelis atvaizduoti {wanted} dpi; jo diagramos nuskaitytos {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Nepavyko atvaizduoti puslapio {wanted} dpi skaitymui ({e}); jis nuskaitytas {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagrama {d}: nuskaitymas pasikeitė nuo pataisymo (dabar {fen}); pataisymas paliekamas.
+	The frames around text were not looked for: {e}	Rėmelių aplink tekstą nebuvo ieškota: {e}
+	The lines set bolder were not looked for: {e}	Eilučių, surinktų pastoriau nei pagrindinis tekstas, nebuvo ieškota: {e}
+	The words set in bold were not looked for: {e}	Paryškintų žodžių nebuvo ieškota: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p} % puslapio aukščio turi per daug smulkaus rašalo, kad būtų tekstas (paveikslėlis ar dulkėtas skenavimas); tos juostos nebuvo skaitytos.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Bendrasis OCR nepavyko ({e}); glifų skaitytuvas perskaitė ir prozą.
+	Chess OCR failed: {e}	Šachmatų OCR nepavyko: {e}
+	The page couldn't be rendered for chess OCR: {e}	Nepavyko atvaizduoti puslapio šachmatų OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Paprašyta šachmatų OCR, bet jam reikia chess-glyphs modelio.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Šriftas {font} atrodo kaip šachmatų šriftas, bet jo nėra kataloge; jo tekstas paliktas toks, koks išgaunamas.
+	The page has no visible area; it is left out.	Puslapis neturi matomos srities; jis praleidžiamas.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Nepavyko nuskaityti puslapio pastraipų ({e}); jo eilutės sugrupuotos pagal tarpus.
+	The page's diagrams couldn't be read; they are left out.	Nepavyko nuskaityti puslapio diagramų; jos praleidžiamos.
+	A correction ({id}) was not used: {e}	Pataisymas ({id}) nepanaudotas: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Aprašomoji notacija ({examples}) nepalaikoma; jos ėjimai nenuskaityti.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Dokumente yra {n} partijų, tiek daugiausia jis saugo: nuo čia nė viena partija neprasideda.
+	This page couldn't be read: {e}	Nepavyko nuskaityti šio puslapio: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (šachmatų OCR reikia chess-glyphs modelio)
+	the page has no text layer	puslapis neturi teksto sluoksnio
+	the text layer has two-byte codes with no Unicode text	teksto sluoksnyje yra dvibaičių kodų be Unicode teksto
+	the text layer extracts as replacement characters	teksto sluoksnis išgaunamas kaip pakaitos simboliai
+	the text layer's Unicode map is dead	teksto sluoksnio Unicode žemėlapis neveikia
+	chess-font glyphs that couldn't be resolved: {n}	šachmatų šriftų glifai, kurių nepavyko atpažinti: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	ėjimai su pašaliniu simboliu vietoj figūros, kur ankstesnis OCR sluoksnis prarado figūrėles: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	teksto sluoksnis yra nematomas tekstas virš puslapio vaizdo: kitos programos OCR
+	no piece model is loaded	neįkeltas joks figūrų modelis
+	the page raster's resolution is not a positive number	puslapio rastro skyra nėra teigiamas skaičius
+	the diagram's box or corners are not finite numbers on this page	diagramos rėmelis ar kampai šiame puslapyje nėra baigtiniai skaičiai
+	the diagram lies outside the page raster	diagrama yra už puslapio rastro ribų
+	the diagram's corners do not form a quadrilateral	diagramos kampai nesudaro keturkampio
+	the page has more diagrams than are read on one page	puslapyje yra daugiau diagramų, nei nuskaitoma viename puslapyje
+	the piece model failed: {e}	figūrų modelis nepavyko: {e}
+	the piece model's output is not a probability matrix: {e}	figūrų modelio išvestis nėra tikimybių matrica: {e}

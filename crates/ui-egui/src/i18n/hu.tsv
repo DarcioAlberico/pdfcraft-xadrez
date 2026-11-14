@@ -3479,3 +3479,48 @@ the move's comment	Move comment	A lépés megjegyzése
 	mates in {m}	{m} lépésben mattol
 	supposes castling is allowed	feltételezi, hogy a sáncolás megengedett
 	Mate in {n}: both sides mate, so who moves stays assumed	Matt {n} lépésben: mindkét fél mattol, így hogy ki lép, feltételezett marad
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Az oldal több útvonalat rajzol, mint amennyit megvizsgálunk; a többi kimaradt.
+	Content streams that couldn't be decoded and were skipped: {n}	Tartalomfolyamok, amelyeket nem lehetett dekódolni, és kimaradtak: {n}
+	The page's paths couldn't be read: {e}	Az oldal útvonalait nem lehetett beolvasni: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	A dokumentum nem olvasható be szerkesztésre, ezért a képeit és útvonalait nem vizsgáltuk meg.
+	The page's text couldn't be read: {e}	Az oldal szövegét nem lehetett beolvasni: {e}
+	Only the first {n} of the page's {total} images were looked at.	Az oldal {total} képéből csak az első {n} lett megvizsgálva.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Körbe nem vágott képek, mert az oldal képeinek képpontjai meghaladják a keresés keretét: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	{d}. diagram: mindkét fél mattot ad {n} lépésben, így hogy ki lép, feltételezett marad.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Egy diagram {offered} dpi-t kínál; legfeljebb {max} dpi-vel lett beolvasva (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Az oldal túl nagy ahhoz, hogy {wanted} dpi-vel jelenjen meg; a diagramjai {read} dpi-vel lettek beolvasva.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Az oldalt nem lehetett {wanted} dpi-vel megjeleníteni az olvasáshoz ({e}); {read} dpi-vel lett beolvasva.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	{d}. diagram: a beolvasás megváltozott a javítás óta (most {fen}); a javítás megmarad.
+	The frames around text were not looked for: {e}	A szöveg körüli kereteket nem kerestük: {e}
+	The lines set bolder were not looked for: {e}	A törzsszövegnél vastagabban szedett sorokat nem kerestük: {e}
+	The words set in bold were not looked for: {e}	A félkövéren szedett szavakat nem kerestük: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	Az oldal magasságának {p}%-a túl sok finom festéket tartalmaz ahhoz, hogy szöveg legyen (kép vagy poros szkennelés); ezeket a sávokat nem olvastuk be.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Az általános OCR nem sikerült ({e}); a glifaolvasó a prózát is beolvasta.
+	Chess OCR failed: {e}	A sakk-OCR nem sikerült: {e}
+	The page couldn't be rendered for chess OCR: {e}	Az oldalt nem lehetett megjeleníteni a sakk-OCR-hez: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Sakk-OCR-t kértek, de ehhez a chess-glyphs modell kell.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	A(z) {font} betűtípus sakkbetűtípusnak tűnik, de nincs a katalógusban; a szövegét úgy hagytuk, ahogy kinyerhető.
+	The page has no visible area; it is left out.	Az oldalnak nincs látható területe; kimarad.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Az oldal bekezdéseit nem lehetett beolvasni ({e}); a sorait a térköz szerint csoportosítottuk.
+	The page's diagrams couldn't be read; they are left out.	Az oldal diagramjait nem lehetett beolvasni; kimaradnak.
+	A correction ({id}) was not used: {e}	Egy javítás ({id}) nem lett felhasználva: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	A leíró jelölés ({examples}) nem támogatott; a lépéseit nem olvastuk be.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	A dokumentum {n} játszmát tartalmaz, ennyit őriz meg legfeljebb: innentől egyetlen játszma sem kezdődik.
+	This page couldn't be read: {e}	Ez az oldal nem olvasható be: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (a sakk-OCR-hez a chess-glyphs modell kell)
+	the page has no text layer	az oldalnak nincs szövegrétege
+	the text layer has two-byte codes with no Unicode text	a szövegrétegben kétbájtos kódok vannak Unicode-szöveg nélkül
+	the text layer extracts as replacement characters	a szövegréteg helyettesítő karakterekként nyerhető ki
+	the text layer's Unicode map is dead	a szövegréteg Unicode-leképezése nem működik
+	chess-font glyphs that couldn't be resolved: {n}	sakkbetűtípusok jelei, amelyeket nem lehetett feloldani: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	lépések, amelyekben a bábu helyén kósza jel áll, ahol egy korábbi OCR-réteg elvesztette a figurákat: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	a szövegréteg láthatatlan szöveg az oldal képe fölött: egy másik program OCR-je
+	no piece model is loaded	nincs betöltve bábumodell
+	the page raster's resolution is not a positive number	az oldal raszterének felbontása nem pozitív szám
+	the diagram's box or corners are not finite numbers on this page	a diagram kerete vagy sarkai nem véges számok ezen az oldalon
+	the diagram lies outside the page raster	a diagram az oldal raszterén kívül esik
+	the diagram's corners do not form a quadrilateral	a diagram sarkai nem alkotnak négyszöget
+	the page has more diagrams than are read on one page	az oldalon több diagram van, mint amennyi egy oldalon beolvasható
+	the piece model failed: {e}	a bábumodell hibát adott: {e}
+	the piece model's output is not a probability matrix: {e}	a bábumodell kimenete nem valószínűségi mátrix: {e}
