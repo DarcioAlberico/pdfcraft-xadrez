@@ -714,7 +714,7 @@ fn a_correction_replaces_its_diagrams_reading_whatever_it_reads_now() {
     let out = apply(&[reread], &f, &fps);
     assert_eq!(fen_of(&out.pages[0], 0).as_deref(), Some(QUEEN));
     assert!(
-        out.applied[0].diverged && out.pages[0].notes.iter().any(|n| n.contains("diagram 1") && n.contains("changed")),
+        out.applied[0].diverged && out.pages[0].notes.iter().any(|n| matches!(n, crate::chess::ScanNote::CorrectionDiverged { diagram: 1, .. })),
         "{:?}",
         out.pages[0].notes
     );
