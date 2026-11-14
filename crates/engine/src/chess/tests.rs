@@ -790,11 +790,23 @@ fn a_job_scanned_a_page_at_a_time_finds_what_it_finds_at_once() {
     assert_eq!(shape(&steps.finish()), [(0, 3)], "stopped after a page");
 }
 
+/// A scan asked to stop after its first page gives that page, read whole, and none of the others
+/// (plan A9-Q4b, finding A7-18: the test asked it to stop before the first page and saw nothing
+/// scanned, which a scanner that reads nothing gives too).
 #[test]
 fn progress_can_stop_a_scan() {
-    let (s, id) = open(three_boards(400));
-    let scan = s.chess_scan_job(id, &[], &no_model(), false).unwrap().run_with(None, |done, _| done == 0 && false);
-    assert!(scan.pages.is_empty());
+    let (mut s, id) = open(three_boards(400));
+    for _ in 0..2 {
+        s.apply(id, Edit::InsertBlankPage { at: 1, width: 600.0, height: 800.0 }).unwrap();
+    }
+    let mut asked = Vec::new();
+    let scan = s.chess_scan_job(id, &[], &no_model(), false).unwrap().run_with(None, |done, total| {
+        asked.push((done, total));
+        done < 1
+    });
+    assert_eq!(scan.pages.iter().map(|p| p.page).collect::<Vec<_>>(), [0], "the first page and no other");
+    assert_eq!(scan.pages[0].diagrams.len(), 3, "the page scanned is found whole");
+    assert_eq!(asked, [(0, 3), (1, 3), (3, 3)], "asked before each page, then told it ended");
 }
 
 #[test]

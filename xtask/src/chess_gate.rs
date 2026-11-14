@@ -24,9 +24,10 @@
 //!    Then **4b, performance** (when the walker, the vision, the stores or the games' autosave
 //!    changed): the `perf_` tests in release (`--ignored`), each of which asserts a count first
 //!    and prints `PERF <name> <ms>`; a time above twice the baseline's fails.
-//! 5. **Full** (`--full` only): `cargo xtask chess-bench` on the 38 books against the baseline's
-//!    run (`--allow-lost 0`), and `cargo xtask fuzz` (with the models given, also the hostile ones
-//!    it builds; plan A9-Q3a).
+//! 5. **Full** (`--full` only): the engine's ignored scan-cache test on a book of 703 pages
+//!    (plan A9-Q4b), `cargo xtask chess-bench` on the 38 books against the baseline's run
+//!    (`--allow-lost 0`), and `cargo xtask fuzz` (with the models given, also the hostile ones it
+//!    builds; plan A9-Q3a).
 //!
 //! **The gate's folder** (`--gate-dir`, `PDFCRAFT_CHESS_GATE_DIR`, else `gate` beside the target
 //! folder, `C:/Python-Chess2/cargo-targets/gate`): `bench/*.json`, the chess documents walked
