@@ -3803,3 +3803,4 @@ progress bar	Progress	Tiến độ
 	The games of the list as a book, a page each, with their diagrams.	Các ván trong danh sách thành sách, mỗi ván một trang, kèm sơ đồ.
 	Nothing to export: an illegal position has no game.	Không có gì để xuất: thế cờ không hợp lệ không có ván.
 	Games left out (an illegal position has no game): {n}	Các ván bị bỏ qua (thế cờ không hợp lệ không có ván): {n}
+	Importing…	Đang nhập…

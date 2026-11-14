@@ -3464,3 +3464,4 @@ progress bar	Progress	Ход выполнения
 	The games of the list as a book, a page each, with their diagrams.	Партии списка в виде книги, по странице на каждую, с их диаграммами.
 	Nothing to export: an illegal position has no game.	Нечего экспортировать: у недопустимой позиции нет партии.
 	Games left out (an illegal position has no game): {n}	Пропущенные партии (у недопустимой позиции нет партии): {n}
+	Importing…	Импорт…
