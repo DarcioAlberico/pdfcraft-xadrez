@@ -469,50 +469,17 @@ fn approx_closed(points: &[PointF], epsilon: f32) -> Vec<PointF> {
     for (from, to) in [(a, b), (b, a)] {
         let steps = (to + n - from) % n;
         let arc: Vec<PointF> = (0..=steps).map(|k| point(from + k)).collect();
-        let kept = simplify_open(&arc, epsilon);
+        let kept = simplify_points(&arc, epsilon);
         out.extend(kept.iter().take(kept.len().saturating_sub(1)));
     }
     out
 }
 
-/// Douglas-Peucker on an open polyline, with an explicit stack. Keeps both ends.
-fn simplify_open(points: &[PointF], epsilon: f32) -> Vec<PointF> {
-    let Some(last) = points.len().checked_sub(1) else { return Vec::new() };
-    let mut keep = vec![false; points.len()];
-    for i in [0, last] {
-        if let Some(slot) = keep.get_mut(i) {
-            *slot = true;
-        }
-    }
-    let mut stack = vec![(0, last)];
-    while let Some((start, end)) = stack.pop() {
-        if end <= start + 1 {
-            continue;
-        }
-        let (Some(&p), Some(&q)) = (points.get(start), points.get(end)) else { continue };
-        let (best, distance) = (start + 1..end).fold((start, -1.0_f32), |(best, d), i| {
-            let dist = points.get(i).map_or(0.0, |r| line_distance(*r, p, q));
-            if dist > d { (i, dist) } else { (best, d) }
-        });
-        if distance > epsilon {
-            if let Some(slot) = keep.get_mut(best) {
-                *slot = true;
-            }
-            stack.push((start, best));
-            stack.push((best, end));
-        }
-    }
-    points.iter().zip(&keep).filter(|(_, k)| **k).map(|(p, _)| *p).collect()
-}
-
-/// Distance from `r` to the line through `p` and `q` (to `p` when they coincide).
-fn line_distance(r: PointF, p: PointF, q: PointF) -> f32 {
-    let (dx, dy) = (q.x - p.x, q.y - p.y);
-    let length = (dx * dx + dy * dy).sqrt();
-    if length <= f32::EPSILON {
-        return r.distance(p);
-    }
-    ((r.x - p.x) * dy - (r.y - p.y) * dx).abs() / length
+/// Douglas-Peucker on an open polyline of points ([`crate::imageops::simplify_open`]). Keeps both
+/// ends.
+fn simplify_points(points: &[PointF], epsilon: f32) -> Vec<PointF> {
+    let xy: Vec<(f32, f32)> = points.iter().map(|p| (p.x, p.y)).collect();
+    crate::imageops::simplify_open(&xy, epsilon).into_iter().map(|(x, y)| PointF::from_yx(y, x)).collect()
 }
 
 /// Size and squareness of a quad, in 0..=1; 0 when it is too small or too elongated

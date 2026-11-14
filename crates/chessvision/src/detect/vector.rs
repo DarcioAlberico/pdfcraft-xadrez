@@ -7,6 +7,8 @@
 //! ranks. The position is not read here: the pieces are drawn separately, and reading them is
 //! the board reader's job.
 
+use std::collections::HashMap;
+
 use pdfcraft_geom::PageRect;
 
 use super::{DiagramCandidate, Source};
@@ -84,24 +86,58 @@ pub fn candidates(boxes: &[FilledBox]) -> Vec<DiagramCandidate> {
     kept
 }
 
+/// The cell of a grid of `reach`-sided cells that holds `(x, y)`; a coordinate too large for
+/// the grid's numbers falls in its last cell.
+fn grid_cell(x: f32, y: f32, reach: f32) -> (i64, i64) {
+    // `as` saturates a float into an integer, and makes a NaN 0.
+    ((x / reach).floor() as i64, (y / reach).floor() as i64)
+}
+
+/// The squares not `used` within `reach` of `anchor` (both ways, by their corners), in their
+/// order, looked for in `grid` (the squares' indexes by [`grid_cell`]): in the anchor's cell and
+/// the cells two around it (one would do but for a division's rounding), not among all the page's
+/// squares (plan A9-V7, A3-08: every anchor looked at every square, and a table of 50,000 took
+/// 3 s).
+fn near(squares: &[FilledBox], used: &[bool], anchor: &FilledBox, reach: f32, grid: &HashMap<(i64, i64), Vec<usize>>) -> Vec<usize> {
+    let within = |j: usize| {
+        !used.get(j).copied().unwrap_or(true)
+            && squares
+                .get(j)
+                .is_some_and(|b| (b.bbox_user.x0 - anchor.bbox_user.x0).abs() < reach && (b.bbox_user.y0 - anchor.bbox_user.y0).abs() < reach)
+    };
+    let (cx, cy) = grid_cell(anchor.bbox_user.x0, anchor.bbox_user.y0, reach);
+    let mut near: Vec<usize> = (-2..=2)
+        .flat_map(|dy| (-2..=2).map(move |dx| (cx.saturating_add(dx), cy.saturating_add(dy))))
+        .filter_map(|cell| grid.get(&cell))
+        .flatten()
+        .copied()
+        .filter(|&j| within(j))
+        .collect();
+    // A cell met twice at the grid's edge is counted once.
+    near.sort_unstable();
+    near.dedup();
+    near
+}
+
 /// 8×8 lattices among same-size, same-shade squares.
 fn lattices(squares: &[FilledBox], side: f32) -> Vec<DiagramCandidate> {
     let mut used = vec![false; squares.len()];
     let mut out = Vec::new();
+    // A board's reach, and the squares by cell of a grid of that side. With no reach, no square
+    // is near another, and the grid stays empty.
+    let reach = 8.0 * side;
+    let mut grid: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
+    if reach > 0.0 && reach.is_finite() {
+        for (j, b) in squares.iter().enumerate() {
+            grid.entry(grid_cell(b.bbox_user.x0, b.bbox_user.y0, reach)).or_default().push(j);
+        }
+    }
     for (i, anchor) in squares.iter().enumerate() {
         if used.get(i).copied().unwrap_or(true) {
             continue;
         }
         // The squares near this one, within a board's reach.
-        let reach = 8.0 * side;
-        let near: Vec<usize> = (0..squares.len())
-            .filter(|&j| {
-                !used.get(j).copied().unwrap_or(true)
-                    && squares
-                        .get(j)
-                        .is_some_and(|b| (b.bbox_user.x0 - anchor.bbox_user.x0).abs() < reach && (b.bbox_user.y0 - anchor.bbox_user.y0).abs() < reach)
-            })
-            .collect();
+        let near = near(squares, &used, anchor, reach, &grid);
         if near.len() < MIN_SQUARES {
             continue;
         }
@@ -165,6 +201,71 @@ fn lattices(squares: &[FilledBox], side: f32) -> Vec<DiagramCandidate> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use proptest::prelude::*;
+
+    /// [`lattices`]' search for the squares near an anchor before plan A9-V7: every square.
+    fn near_one_by_one(squares: &[FilledBox], used: &[bool], anchor: &FilledBox, reach: f32) -> Vec<usize> {
+        (0..squares.len())
+            .filter(|&j| {
+                !used.get(j).copied().unwrap_or(true)
+                    && squares
+                        .get(j)
+                        .is_some_and(|b| (b.bbox_user.x0 - anchor.bbox_user.x0).abs() < reach && (b.bbox_user.y0 - anchor.bbox_user.y0).abs() < reach)
+            })
+            .collect()
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+
+        /// Plan A9-V7 (A3-08): for every anchor, the grid finds the squares a look at every square
+        /// finds, on boards (whole or cut) among stray squares anywhere, some used; the rest of
+        /// the lattice search is as it was.
+        #[test]
+        fn lattices_are_those_a_look_at_every_square_finds(
+            boards in proptest::collection::vec((0.0f32..400.0, 0.0f32..600.0, 0usize..2, 20usize..33), 0..3),
+            strays in proptest::collection::vec((-50.0f32..700.0, -50.0f32..900.0), 0..80),
+            side in 6.0f32..24.0,
+        ) {
+            let mut squares: Vec<FilledBox> = Vec::new();
+            for &(x, y, parity, keep) in &boards {
+                squares.extend(board(x, y, side, parity, 0.5).into_iter().take(keep));
+            }
+            for &(x, y) in &strays {
+                squares.push(FilledBox { bbox_user: PageRect::new(x, y, x + side, y + side), gray: Some(0.5) });
+            }
+            let reach = 8.0 * side;
+            let mut grid: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
+            for (j, b) in squares.iter().enumerate() {
+                grid.entry(grid_cell(b.bbox_user.x0, b.bbox_user.y0, reach)).or_default().push(j);
+            }
+            let used: Vec<bool> = (0..squares.len()).map(|j| j % 7 == 3).collect();
+            for anchor in &squares {
+                prop_assert_eq!(near(&squares, &used, anchor, reach, &grid), near_one_by_one(&squares, &used, anchor, reach));
+            }
+        }
+    }
+
+    /// Plan A9-V7 (A3-08, probe c04): a table of 50,000 equal squares, the most a page is read
+    /// for, is looked through in under a second in release (3 s before).
+    /// `cargo test --release -p pdfcraft-chessvision --lib perf_vector_table -- --ignored`.
+    #[test]
+    #[ignore = "a timing, in release"]
+    fn perf_vector_table_of_squares() {
+        let boxes: Vec<FilledBox> = (0..MAX_BOXES)
+            .map(|k| {
+                let (x, y) = ((k % 250) as f32 * 12.0, (k / 250) as f32 * 12.0);
+                FilledBox { bbox_user: PageRect::new(x, y, x + 10.0, y + 10.0), gray: Some(0.5) }
+            })
+            .collect();
+        let t = std::time::Instant::now();
+        let found = candidates(&boxes);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        println!("PERF vector_table_50k {ms:.0}");
+        assert!(found.is_empty(), "a table is no board");
+        assert!(ms < 1000.0, "{ms:.0} ms");
+    }
 
     /// The 32 squares of one colour of a board at (x, y) with side s, gray g.
     fn board(x: f32, y: f32, s: f32, parity: usize, gray: f32) -> Vec<FilledBox> {

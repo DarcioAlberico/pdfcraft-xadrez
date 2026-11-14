@@ -361,8 +361,16 @@ fn simplify_closed(points: &[(f32, f32)], tolerance: f32) -> Vec<(f32, f32)> {
     out
 }
 
-/// Douglas–Peucker on an open polyline; keeps both ends.
+/// Douglas–Peucker on an open polyline; keeps both ends ([`crate::imageops::simplify_open`],
+/// plan A9-V9: this one recursed without a bound).
 fn simplify_open(points: &[(f32, f32)], tolerance: f32) -> Vec<(f32, f32)> {
+    crate::imageops::simplify_open(points, tolerance)
+}
+
+/// The recursive Douglas–Peucker this file had before plan A9-V9: the reference the shared one is
+/// held to.
+#[cfg(test)]
+fn simplify_open_recursive(points: &[(f32, f32)], tolerance: f32) -> Vec<(f32, f32)> {
     let (Some(&a), Some(&b)) = (points.first(), points.last()) else { return Vec::new() };
     if points.len() < 3 {
         return points.to_vec();
@@ -382,15 +390,41 @@ fn simplify_open(points: &[(f32, f32)], tolerance: f32) -> Vec<(f32, f32)> {
     if worst <= tolerance {
         return vec![a, b];
     }
-    let mut left = simplify_open(points.get(..=index).unwrap_or_default(), tolerance);
+    let mut left = simplify_open_recursive(points.get(..=index).unwrap_or_default(), tolerance);
     left.pop();
-    left.extend(simplify_open(points.get(index..).unwrap_or_default(), tolerance));
+    left.extend(simplify_open_recursive(points.get(index..).unwrap_or_default(), tolerance));
     left
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(256))]
+
+        /// Plan A9-V9 (A3-11): the one Douglas–Peucker (iterative, in `imageops`) keeps the points
+        /// the piece tracer's recursive one kept, on polylines of grid points (ties among the farthest come up) and at any tolerance; the
+        /// traces of the tests below are unchanged with it.
+        #[test]
+        fn the_shared_simplification_keeps_what_the_recursive_one_kept(
+            grid in proptest::collection::vec((-8i32..8, -8i32..8), 0..80),
+            tolerance in 0.0f32..6.0,
+        ) {
+            // On a coarse grid, so points as far from a chord as each other (ties) come up often.
+            let points: Vec<(f32, f32)> = grid.iter().map(|&(x, y)| (x as f32, y as f32)).collect();
+            proptest::prop_assert_eq!(simplify_open(&points, tolerance), simplify_open_recursive(&points, tolerance));
+        }
+    }
+
+    /// Plan A9-V9: a staircase of 10,000 points, each the farthest from the chord of what is left,
+    /// is simplified on a small stack (the recursive one went as deep as the steps).
+    #[test]
+    fn a_long_staircase_is_simplified_on_a_small_stack() {
+        let points: Vec<(f32, f32)> = (0..10_000).map(|i| (i as f32, ((i / 2) % 2) as f32 * 3.0)).collect();
+        let kept = std::thread::Builder::new().stack_size(64 * 1024).spawn(move || simplify_open(&points, 0.5).len()).unwrap().join().unwrap();
+        assert!(kept > 2);
+    }
 
     fn square_image(size: usize, from: usize, to: usize, rgba: [u8; 4]) -> Rgba {
         let pixels = (0..size * size)
