@@ -3561,3 +3561,10 @@ the move's comment	Move comment	Komentar k potezi
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} je pregled druge knjige ({pages} strani; ta ima {here}). Ga vseeno uvozim v ta dokument?
 	Another book's review	Pregled druge knjige
 	Import anyway	Vseeno uvozi
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Ni potrjeno
+progress bar	Progress	Napredek
+	Export as book	Izvozi kot knjigo
+	The games of the list as a book, a page each, with their diagrams.	Partije s seznama kot knjiga, vsaka na svoji strani, z diagrami.
+	Nothing to export: an illegal position has no game.	Ničesar ni za izvoz: nedovoljen položaj nima partije.
+	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}

@@ -3519,3 +3519,10 @@ the move's comment	Move comment	Коментар към хода
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} е преглед на друга книга ({pages} страници; тази има {here}). Да се импортира ли въпреки това в този документ?
 	Another book's review	Преглед на друга книга
 	Import anyway	Импортиране въпреки това
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Непотвърдено
+progress bar	Progress	Напредък
+	Export as book	Експорт като книга
+	The games of the list as a book, a page each, with their diagrams.	Партиите от списъка като книга, по страница за всяка, с диаграмите им.
+	Nothing to export: an illegal position has no game.	Няма какво да се експортира: непозволена позиция няма партия.
+	Games left out (an illegal position has no game): {n}	Пропуснати партии (непозволена позиция няма партия): {n}

@@ -9,8 +9,11 @@
 //! in one answers for the other, at whatever index the page has now: an edit elsewhere, an undo,
 //! inserting or removing pages before it keep its scan.
 //!
-//! A key is only ever compared within a session (the cache is never written anywhere), so the
-//! standard library's hasher is enough; two of them seeded apart make it 128 bits. A page nested
+//! The session's key ([`PageKey`]) is only ever compared within a session, so the standard
+//! library's hasher is enough; two of them seeded apart make it 128 bits. Its value is not the same
+//! from one build of Rust to the next, so nothing kept on disk is keyed by it: a page's reading kept
+//! on disk (plan A9-N5a) is keyed by SHA-256 over the same inputs, fed the same way ([`Sha`]), made
+//! only when the disk is read or written. A page nested
 //! deeper than [`MAX_DEPTH`], or reached once [`MAX_OBJECTS`] objects were hashed for the document
 //! state, gets no key, and its scan lasts only as long as the document state it was made in, as
 //! every scan did before.
@@ -37,13 +40,32 @@ const INHERITED: [&[u8]; 4] = [b"Resources", b"MediaBox", b"CropBox", b"Rotate"]
 /// The catalog's `/AcroForm` entries that may change how a field's widget is drawn.
 const FORM_DRAWING: [&[u8]; 4] = [b"NeedAppearances", b"DA", b"DR", b"Q"];
 
-/// A page's content key.
+/// A page's content key in the session.
 pub(crate) type PageKey = u128;
 
-/// Two hashers seeded apart, fed the same bytes: a 128-bit hash.
-struct Wide(DefaultHasher, DefaultHasher);
+/// A page's content key on disk (plan A9-N5a): the SHA-256 of what [`PageKey`] hashes.
+pub(crate) type DiskKey = [u8; 32];
 
-impl Wide {
+/// What a content key is made with. Every input goes in through these, so the two kinds of key
+/// hash the same inputs the same way.
+pub(crate) trait KeyHasher: Sized {
+    type Key: Copy + Eq + std::hash::Hash + std::fmt::Debug;
+    fn new(seed: &[u8]) -> Self;
+    fn tag(&mut self, t: u8);
+    fn u64(&mut self, v: u64);
+    /// The key of a part (an object's content, the catalog's).
+    fn key(&mut self, k: Self::Key);
+    /// `b` with its length first, so no two sequences of byte strings feed the same input.
+    fn bytes(&mut self, b: &[u8]);
+    fn finish(self) -> Self::Key;
+}
+
+/// Two hashers seeded apart, fed the same bytes: a 128-bit hash, the session's.
+pub(crate) struct Wide(DefaultHasher, DefaultHasher);
+
+impl KeyHasher for Wide {
+    type Key = PageKey;
+
     fn new(seed: &[u8]) -> Wide {
         let mut w = Wide(DefaultHasher::new(), DefaultHasher::new());
         w.0.write(b"pdfcraft-chess-page-key-a");
@@ -62,30 +84,65 @@ impl Wide {
         self.1.write_u64(v);
     }
 
-    fn u128(&mut self, v: u128) {
+    fn key(&mut self, v: u128) {
         self.0.write_u128(v);
         self.1.write_u128(v);
     }
 
-    /// `b` with its length first, so no two sequences of byte strings feed the same input.
     fn bytes(&mut self, b: &[u8]) {
         self.u64(u64::try_from(b.len()).unwrap_or(u64::MAX));
         self.0.write(b);
         self.1.write(b);
     }
 
-    fn finish(&self) -> u128 {
+    fn finish(self) -> u128 {
         (u128::from(self.0.finish()) << 64) | u128::from(self.1.finish())
+    }
+}
+
+/// SHA-256, the same from one build to the next: the key of a page's reading kept on disk.
+pub(crate) struct Sha(sha2::Sha256);
+
+impl KeyHasher for Sha {
+    type Key = DiskKey;
+
+    fn new(seed: &[u8]) -> Sha {
+        use sha2::Digest as _;
+        let mut h = Sha(sha2::Sha256::new());
+        h.0.update(b"pdfcraft-chess-page-key-sha256");
+        h.bytes(seed);
+        h
+    }
+
+    fn tag(&mut self, t: u8) {
+        sha2::Digest::update(&mut self.0, [t]);
+    }
+
+    fn u64(&mut self, v: u64) {
+        sha2::Digest::update(&mut self.0, v.to_le_bytes());
+    }
+
+    fn key(&mut self, k: DiskKey) {
+        sha2::Digest::update(&mut self.0, k);
+    }
+
+    fn bytes(&mut self, b: &[u8]) {
+        self.u64(u64::try_from(b.len()).unwrap_or(u64::MAX));
+        sha2::Digest::update(&mut self.0, b);
+    }
+
+    fn finish(self) -> DiskKey {
+        sha2::Digest::finalize(self.0).into()
     }
 }
 
 /// What hashing a document's pages has learned so far: every indirect object's hash is computed
 /// once and shared by the pages that use it (a font on every page is hashed once), and each
 /// page's key. Valid for the document state it was made in, and, once told what an edit changed
-/// ([`KeyMemo::forget`]), for the next.
-#[derive(Default)]
-pub(crate) struct KeyMemo {
-    objects: HashMap<u32, Option<u128>>,
+/// ([`KeyMemo::forget`]), for the next. The session's keys by default; with [`Sha`], the keys of
+/// what is kept on disk.
+pub(crate) struct KeyMemo<H: KeyHasher = Wide> {
+    objects: HashMap<u32, Option<H::Key>>,
     /// Objects being hashed: a reference back to one of them is a cycle, hashed by number.
     open: HashSet<u32>,
     /// The objects (a page, the catalog, an object) being hashed, innermost last: the one a
@@ -96,18 +153,34 @@ pub(crate) struct KeyMemo {
     uses: HashMap<u32, HashSet<u32>>,
     hashed: usize,
     /// The catalog's hash, with the catalog it was made from.
-    catalog: Option<(Option<ObjRef>, Option<u128>)>,
+    catalog: Option<(Option<ObjRef>, Option<H::Key>)>,
     /// Each page's key, by its object, all made with the catalog's hash `pages_catalog`.
-    pages: HashMap<u32, Option<PageKey>>,
-    pages_catalog: Option<u128>,
+    pages: HashMap<u32, Option<H::Key>>,
+    pages_catalog: Option<H::Key>,
     /// Pages whose key was worked out rather than taken from here (plan A9-I3b's measure).
     pub(crate) pages_hashed: usize,
 }
 
-impl KeyMemo {
+impl<H: KeyHasher> Default for KeyMemo<H> {
+    fn default() -> Self {
+        KeyMemo {
+            objects: HashMap::new(),
+            open: HashSet::new(),
+            path: Vec::new(),
+            uses: HashMap::new(),
+            hashed: 0,
+            catalog: None,
+            pages: HashMap::new(),
+            pages_catalog: None,
+            pages_hashed: 0,
+        }
+    }
+}
+
+impl<H: KeyHasher> KeyMemo<H> {
     /// The key of the page whose object is `page`, or `None` when it can't be told (not a page,
     /// too many or too deep objects).
-    pub(crate) fn page(&mut self, cos: &Cos, page: ObjRef) -> Option<PageKey> {
+    pub(crate) fn page(&mut self, cos: &Cos, page: ObjRef) -> Option<H::Key> {
         let catalog = self.catalog(cos)?;
         if self.pages_catalog != Some(catalog) {
             self.pages.clear();
@@ -123,17 +196,17 @@ impl KeyMemo {
         key
     }
 
-    fn page_key(&mut self, cos: &Cos, page: ObjRef, catalog: u128) -> Option<PageKey> {
+    fn page_key(&mut self, cos: &Cos, page: ObjRef, catalog: H::Key) -> Option<H::Key> {
         let object = cos.get(page);
         let dict = object.as_dict()?;
-        let mut h = Wide::new(b"page");
+        let mut h = H::new(b"page");
         self.open.insert(page.num);
         self.path.push(page.num);
         let hashed = self.page_dict(cos, page.num, dict, &mut h);
         self.path.pop();
         self.open.remove(&page.num);
         hashed?;
-        h.u128(catalog);
+        h.key(catalog);
         Some(h.finish())
     }
 
@@ -178,7 +251,7 @@ impl KeyMemo {
     /// ancestor's: restructuring the page tree copies inherited attributes onto the pages, which
     /// changes nothing they draw. The page-tree nodes looked through are the page's to hash again
     /// when one changes.
-    fn page_dict(&mut self, cos: &Cos, num: u32, page: &Dict, h: &mut Wide) -> Option<()> {
+    fn page_dict(&mut self, cos: &Cos, num: u32, page: &Dict, h: &mut H) -> Option<()> {
         for (k, v) in page.iter() {
             if k.as_slice() == b"Parent" || INHERITED.contains(&k.as_slice()) {
                 continue;
@@ -202,7 +275,7 @@ impl KeyMemo {
     }
 
     /// The catalog entries every page's drawing depends on.
-    fn catalog(&mut self, cos: &Cos) -> Option<u128> {
+    fn catalog(&mut self, cos: &Cos) -> Option<H::Key> {
         let root = cos.root();
         if let Some((made_from, known)) = self.catalog
             && made_from == root
@@ -213,7 +286,7 @@ impl KeyMemo {
             self.uses.remove(&r.num);
             self.path.push(r.num);
         }
-        let mut h = Wide::new(b"catalog");
+        let mut h = H::new(b"catalog");
         let found = (|| {
             let Some(root) = root else { return Some(()) };
             let catalog = cos.get(root);
@@ -245,7 +318,7 @@ impl KeyMemo {
     /// `o` into `h`. An array, dictionary or stream goes in as the hash of its content, and a
     /// reference as the hash of what it refers to, so the same dictionary given directly or by
     /// reference (as copying an inherited attribute may give it) hashes the same.
-    fn object(&mut self, cos: &Cos, o: &Object, h: &mut Wide, depth: usize) -> Option<()> {
+    fn object(&mut self, cos: &Cos, o: &Object, h: &mut H, depth: usize) -> Option<()> {
         if depth > MAX_DEPTH {
             return None;
         }
@@ -273,11 +346,11 @@ impl KeyMemo {
             }
             Object::Array(_) | Object::Dict(_) | Object::Stream(_) => {
                 h.tag(7);
-                h.u128(self.composite(cos, o, depth)?);
+                h.key(self.composite(cos, o, depth)?);
             }
             Object::Ref(r) => {
                 h.tag(7);
-                h.u128(self.indirect(cos, *r, depth.saturating_add(1))?);
+                h.key(self.indirect(cos, *r, depth.saturating_add(1))?);
             }
         }
         Some(())
@@ -285,8 +358,8 @@ impl KeyMemo {
 
     /// The hash of an array's, dictionary's or stream's content (each stream's bytes in full),
     /// or of any other object as [`Self::object`] puts it.
-    fn composite(&mut self, cos: &Cos, o: &Object, depth: usize) -> Option<u128> {
-        let mut h = Wide::new(b"value");
+    fn composite(&mut self, cos: &Cos, o: &Object, depth: usize) -> Option<H::Key> {
+        let mut h = H::new(b"value");
         let inner = depth.saturating_add(1);
         match o {
             Object::Array(items) => {
@@ -311,7 +384,7 @@ impl KeyMemo {
     }
 
     /// `d`'s entries in order.
-    fn dict(&mut self, cos: &Cos, d: &Dict, h: &mut Wide, depth: usize) -> Option<()> {
+    fn dict(&mut self, cos: &Cos, d: &Dict, h: &mut H, depth: usize) -> Option<()> {
         h.u64(u64::try_from(d.iter().count()).unwrap_or(u64::MAX));
         for (k, v) in d.iter() {
             h.bytes(k);
@@ -321,14 +394,14 @@ impl KeyMemo {
     }
 
     /// The hash of what `r` refers to ([`Self::composite`]), computed once per document state.
-    fn indirect(&mut self, cos: &Cos, r: ObjRef, depth: usize) -> Option<u128> {
+    fn indirect(&mut self, cos: &Cos, r: ObjRef, depth: usize) -> Option<H::Key> {
         self.used(r.num);
         if let Some(known) = self.objects.get(&r.num) {
             return *known;
         }
         if self.open.contains(&r.num) {
             // A cycle back to an object being hashed: its content is in the hash already.
-            let mut h = Wide::new(b"cycle");
+            let mut h = H::new(b"cycle");
             h.u64(u64::from(r.num));
             return Some(h.finish());
         }
@@ -340,7 +413,7 @@ impl KeyMemo {
         // Another page (a link's destination, a field's widget elsewhere) or the page tree does
         // not change how this page is drawn: it stands as its number.
         if object.as_dict().is_some_and(|d| matches!(d.get(b"Type"), Some(Object::Name(t)) if t == b"Page" || t == b"Pages")) {
-            let mut h = Wide::new(b"page-ref");
+            let mut h = H::new(b"page-ref");
             h.u64(u64::from(r.num));
             let key = Some(h.finish());
             self.objects.insert(r.num, key);

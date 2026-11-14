@@ -3554,3 +3554,10 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} — басқа кітаптың тексеру нәтижесі ({pages} бет; бұл кітапта {here}). Бәрібір осы құжатқа импорттау керек пе?
 	Another book's review	Басқа кітаптың тексеру нәтижесі
 	Import anyway	Бәрібір импорттау
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Расталмаған
+progress bar	Progress	Орындалу барысы
+	Export as book	Кітап ретінде экспорттау
+	The games of the list as a book, a page each, with their diagrams.	Тізімдегі партиялар кітап ретінде, әрқайсысы бір беттен, диаграммаларымен.
+	Nothing to export: an illegal position has no game.	Экспорттайтын ештеңе жоқ: заңсыз позицияның партиясы болмайды.
+	Games left out (an illegal position has no game): {n}	Тысқары қалған партиялар (заңсыз позицияның партиясы болмайды): {n}

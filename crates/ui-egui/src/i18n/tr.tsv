@@ -3552,3 +3552,10 @@ the move's comment	Move comment	Hamlenin yorumu
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} başka bir kitabın incelemesi ({pages} sayfa; bu kitapta {here}). Yine de bu belgeye içe aktarılsın mı?
 	Another book's review	Başka bir kitabın incelemesi
 	Import anyway	Yine de içe aktar
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Onaylanmadı
+progress bar	Progress	İlerleme
+	Export as book	Kitap olarak dışa aktar
+	The games of the list as a book, a page each, with their diagrams.	Listedeki oyunlar kitap olarak, her biri bir sayfada, diyagramlarıyla.
+	Nothing to export: an illegal position has no game.	Dışa aktarılacak bir şey yok: kural dışı bir konumun oyunu olmaz.
+	Games left out (an illegal position has no game): {n}	Dışarıda bırakılan oyunlar (kural dışı bir konumun oyunu olmaz): {n}

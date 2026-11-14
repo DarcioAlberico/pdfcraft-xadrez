@@ -4083,3 +4083,196 @@ fn chess_bookmarks_shows_then_makes_the_books_outline_in_one_step() {
     assert!(!base.join("outside").join("index.csv").exists());
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N5b: a reading tool given `cache` keeps the pages' readings there, a second call (in
+/// another process, here a new `Automation`) reads none of them again, `chess_cache_status` says
+/// what is kept and `chess_cache_clear` takes it out, all confined to the root; without `cache`
+/// nothing is kept.
+#[test]
+fn the_pages_readings_are_kept_in_cache_listed_and_cleared_inside_the_root() {
+    let (base, root) = workdir("cache");
+    let (mut a, doc) = opened(&root);
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "cache": "reading" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 0, "kept": 1, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    let (mut again, doc) = opened(&root);
+    let read = ok(&mut again, "chess_export_html", json!({ "doc": doc, "models_dir": "models", "cache": "reading", "out": "book.html" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 1, "kept": 0, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    assert_eq!(read["diagrams"], 3, "{read:#}");
+    let status = ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }));
+    assert_eq!((status["entries"].as_u64(), status["books"].as_array().map(Vec::len)), (Some(1), Some(1)), "{status:#}");
+    assert_eq!(status["books"][0]["name"], "board.pdf");
+    assert_eq!(status["books"][0]["pages"], 1);
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading", "doc": doc }))["entries"], 1);
+    // Without cache: nothing taken or kept.
+    let plain = ok(&mut again, "chess_document", json!({ "doc": doc }));
+    assert!(plain["cache"].is_null(), "{plain:#}");
+    // Confined to the root, as every written path is.
+    for tool in ["chess_document", "chess_cache_clear"] {
+        let outside = base.join("outside").join("reading").to_string_lossy().into_owned();
+        match again.call(tool, &json!({ "doc": doc, "cache": outside })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
+            other => panic!("{tool} accepted a folder outside the root: {other:?}"),
+        }
+    }
+    let cleared = ok(&mut again, "chess_cache_clear", json!({ "cache": "reading" }));
+    assert_eq!((cleared["books"].as_u64(), cleared["files"].as_u64()), (Some(1), Some(2)), "{cleared:#}");
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }))["entries"], 0);
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    // With the app's folder outside the root, the status says so and clearing is refused.
+    let app = base.join("app-data");
+    let mut confined = Automation::new().with_chess_data(Some(app.clone()), None).with_root(&root).unwrap();
+    let status = ok(&mut confined, "chess_cache_status", json!({}));
+    assert_eq!(status["outside_root"], true, "{status:#}");
+    assert!(confined.call("chess_cache_clear", &json!({})).is_err());
+    assert!(!app.exists(), "the app's folder was not made");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Pages each with an `Exercise n` caption in Helvetica over a Merida board and, when it has one,
+/// its solution under it.
+fn exercise_pages(pages: &[(&str, [&str; 8], Option<&str>)]) -> Vec<u8> {
+    let widths = vec!["1000"; 95].join(" ");
+    let n = pages.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
+    let mut objs: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")).into_bytes(),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes(),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec(),
+    ];
+    for (i, (caption, board, solution)) in pages.iter().enumerate() {
+        let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\nBT /F1 20 Tf 60 724 Td ");
+        for (k, line) in board.iter().enumerate() {
+            if k > 0 {
+                c.push_str("0 -20 Td ");
+            }
+            c.push_str(&format!("({line}) Tj "));
+        }
+        c.push_str("ET\n");
+        if let Some(moves) = solution {
+            c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+        }
+        objs.push(
+            format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i).into_bytes(),
+        );
+        objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()).into_bytes());
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// Plan A9-N10 (A8-05, decision D20): `chess_export_exercises` writes the book's numbered exercises
+/// whose solution was read as a standard problem PGN — `SetUp`/`FEN` of the diagram, the solution
+/// as the main line, the statement before the first move — and says which numbered diagram it
+/// left out and why.
+#[test]
+fn chess_export_exercises_writes_a_problem_pgn() {
+    let (base, root) = workdir("exercises");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5 2.Nf3 Nc6")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5 2.c4")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+        ("Exercise 4", board("OoOoOo+o"), None),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let made = ok(&mut a, "chess_export_exercises", json!({ "doc": doc, "lang": "en", "out": "exercises.pgn", "title": "Openings" }));
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3], "{made:#}");
+    assert_eq!(made["exercises_left_out"], json!([{ "page": 4, "diagram": 1, "number": 4, "reason": "no_solution" }]), "{made:#}");
+    let pgn = std::fs::read_to_string(root.join("exercises.pgn")).unwrap();
+    let games: Vec<&str> = pgn.split("\n\n[Event").collect();
+    assert_eq!(games.len(), 3, "{pgn}");
+    for (game, (number, first)) in games.iter().zip([(1, "1. e4 e5 2. Nf3 Nc6"), (2, "1. d4 d5 2. c4"), (3, "1. c4 c5")]) {
+        assert!(game.contains("[SetUp \"1\"]") && game.contains("[FEN \"r"), "{game}");
+        assert!(game.contains(&format!("[Round \"{number}\"]")) && game.contains("Openings\"]"), "{game}");
+        assert!(game.contains(&format!("{{White to move (№ {number}). Page {number}")), "{game}");
+        assert!(game.contains(first), "{game}");
+    }
+    match a.call("chess_export_exercises", &json!({ "doc": doc, "out": "../outside/x.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-N10b (A8-05): `chess_export_anki` writes the same exercises as Anki's cards — a text
+/// file in the form Anki's manual gives (its headers, a tab between front and back, HTML on) and
+/// a picture per card in a folder beside it — named and drawn the same on every run, and says
+/// which numbered diagram it left out.
+#[test]
+fn chess_export_anki_writes_cards_and_their_pictures_the_same_on_every_run() {
+    let (base, root) = workdir("anki");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5 2.Nf3 Nc6")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5 2.c4")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+        ("Exercise 4", board("OoOoOo+o"), None),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "lang": "en", "out": "exercises.txt", "title": "Openings: Vol. 1", "diagram_px": 64 });
+    let made = ok(&mut a, "chess_export_anki", args.clone());
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3], "{made:#}");
+    assert_eq!(made["exercises_left_out"], json!([{ "page": 4, "diagram": 1, "number": 4, "reason": "no_solution" }]), "{made:#}");
+    assert_eq!((made["image_dir"].as_str(), made["diagrams_drawn"].as_u64()), (Some("exercises_diagrams"), Some(3)), "{made:#}");
+    let tsv = std::fs::read_to_string(root.join("exercises.txt")).unwrap();
+    let lines: Vec<&str> = tsv.lines().collect();
+    assert_eq!(lines.get(..3), Some(["#separator:tab", "#html:true", "#tags:openings-vol-1"].as_slice()), "{tsv}");
+    assert_eq!(lines.len(), 6, "{tsv}");
+    let folder = root.join("exercises_diagrams");
+    let mut pictures = Vec::new();
+    for (line, (n, back)) in lines.iter().skip(3).zip([(1, "1.e4 e5 2.Nf3 Nc6"), (2, "1.d4 d5 2.c4"), (3, "1.c4 c5")]) {
+        let name = format!("openings-vol-1-p{n:04}-1.png");
+        let front = format!(r#"<img src="{name}"><br>White to move (№ {n}). Page {n}"#);
+        let fields: Vec<&str> = line.split('\t').collect();
+        assert_eq!(fields.len(), 2, "{line}");
+        assert!(fields.first().is_some_and(|f| f.starts_with(&front)), "{line}");
+        assert_eq!(fields.get(1), Some(&back), "{line}");
+        let png = std::fs::read(folder.join(&name)).unwrap();
+        assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"), "{name} is a PNG");
+        assert_eq!(png.get(16..24), Some([0, 0, 0, 64, 0, 0, 0, 64].as_slice()), "{name}: diagram_px square");
+        pictures.push(png);
+    }
+    assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 3, "a picture per card, nothing else");
+    // Again: the same file, the same names, the same pictures (Anki updates the cards).
+    ok(&mut a, "chess_export_anki", args);
+    assert_eq!(std::fs::read_to_string(root.join("exercises.txt")).unwrap(), tsv);
+    for (n, png) in (1..).zip(&pictures) {
+        assert_eq!(&std::fs::read(folder.join(format!("openings-vol-1-p{n:04}-1.png"))).unwrap(), png);
+    }
+    assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 3);
+    match a.call("chess_export_anki", &json!({ "doc": doc, "out": "../outside/x.txt" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}

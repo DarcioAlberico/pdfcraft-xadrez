@@ -13,6 +13,10 @@ workspace = true
 [dependencies]
 # MIT. `pext` stays off: it is x86-only and the crate must build for wasm32.
 cozy-chess = { version = "0.3.4", default-features = false, features = ["std"] }
+# MIT OR Apache-2.0. A diagram's reading kept on disk (plan A9-N5a): its positions, legality
+# and mate reports are written as JSON by the engine. Already in the graph through chessvision.
+serde = { workspace = true }
 
 [dev-dependencies]
 proptest.workspace = true
+serde_json.workspace = true

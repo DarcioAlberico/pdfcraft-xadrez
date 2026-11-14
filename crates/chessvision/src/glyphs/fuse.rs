@@ -33,14 +33,14 @@ pub struct OcrWord {
 }
 
 /// Which reader a fused word comes from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum WordSource {
     Glyphs,
     Ocr,
 }
 
 /// A word of the fused line.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FusedWord {
     pub text: String,
     pub rect: PixelRect,
@@ -53,7 +53,7 @@ pub struct FusedWord {
 }
 
 /// A recognised line.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FusedLine {
     pub words: Vec<FusedWord>,
     pub rect: PixelRect,

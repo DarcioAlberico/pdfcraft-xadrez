@@ -3,12 +3,14 @@
 //! it is. The page read, the scan, the long jobs (Export, Link the whole book), the capture's
 //! plan and the OCR area all run as one.
 //!
-//! **The result always comes back.** The worker's first act is to set a guard ([`Guard`]) that,
-//! dropped last when the work returns or unwinds, marks the slot when the work left nothing
-//! there: a panic in the work never leaves the app waiting for ever (A5-03). The guard never
-//! panics and allocates nothing: the lock is taken even poisoned, and nothing of the work's data
-//! is formatted. [`Job::poll`] then joins the thread, so a panic is said with its message. A
-//! thread that can't be started gives its error at once.
+//! **The result always comes back.** The worker's first act is to set a guard ([`Guard`]): the
+//! work's result goes to the slot through it, and, dropped last without one (the work unwound),
+//! it marks the slot as ended without a result: a panic in the work never leaves the app waiting
+//! for ever (A5-03). It goes by whether it gave the result, never by the slot being empty, which
+//! it also is once a poll took the result. The guard never panics and allocates nothing: the lock
+//! is taken even poisoned, and nothing of the work's data is formatted. [`Job::poll`] then joins
+//! the thread, so a panic is said with its message. A thread that can't be started gives its
+//! error at once.
 //!
 //! **Stop and progress.** The work is given a [`JobCtl`]: it looks at [`JobCtl::cancelled`]
 //! between its steps and reports [`JobCtl::progress`]. Dropping a job asks it to stop; its thread
@@ -43,13 +45,9 @@ impl<T> Default for Slot<T> {
 }
 
 impl<T> Slot<T> {
-    /// Leave `outcome` there, unless `keep` and one is there already, and wake whoever waits.
-    fn put(&self, outcome: Outcome<T>, keep: bool) {
-        let mut out = lock(&self.out);
-        if !(keep && out.is_some()) {
-            *out = Some(outcome);
-        }
-        drop(out);
+    /// Leave `outcome` there, and wake whoever waits.
+    fn put(&self, outcome: Outcome<T>) {
+        *lock(&self.out) = Some(outcome);
         self.came.notify_all();
     }
 }
@@ -81,15 +79,32 @@ impl JobCtl {
     }
 }
 
-/// Marks the slot, when it is dropped and the work left nothing there, as ended without a result.
-/// Set first in the worker, so it is dropped last.
+/// Gives the work's result to the slot ([`Guard::done`]), or, dropped without one (the work
+/// unwound), marks the slot as ended without a result. Set first in the worker, so it is dropped
+/// last.
+///
+/// Whether the work gave its result is the guard's own state, never read from the slot: a slot
+/// found empty may be one whose result a poll already took, between the result written and the
+/// guard dropped (the "internal error" a second poll used to give).
 struct Guard<T> {
-    slot: Arc<Slot<T>>,
+    /// The slot, until the result is given.
+    slot: Option<Arc<Slot<T>>>,
+}
+
+impl<T> Guard<T> {
+    /// The work gave `out`: it goes to the slot, and the guard has nothing left to mark.
+    fn done(&mut self, out: Result<T, String>) {
+        if let Some(slot) = self.slot.take() {
+            slot.put(Outcome::Done(out));
+        }
+    }
 }
 
 impl<T> Drop for Guard<T> {
     fn drop(&mut self) {
-        self.slot.put(Outcome::Lost, true);
+        if let Some(slot) = self.slot.take() {
+            slot.put(Outcome::Lost);
+        }
     }
 }
 
@@ -104,20 +119,32 @@ impl<T: Send + 'static> Job<T> {
     /// Run `work` on a thread of its own named `name`, or on this one when `inline` (tests; the
     /// web always, which has no threads).
     pub(crate) fn spawn(name: &str, inline: bool, work: impl FnOnce(&JobCtl) -> Result<T, String> + Send + 'static) -> Job<T> {
+        Self::spawn_then(name, inline, work, |_| ())
+    }
+
+    /// [`Job::spawn`], with `then` run on the worker after the result is written and before the
+    /// guard is dropped (the tests hold the worker there).
+    fn spawn_then(
+        name: &str,
+        inline: bool,
+        work: impl FnOnce(&JobCtl) -> Result<T, String> + Send + 'static,
+        then: impl FnOnce(&Slot<T>) + Send + 'static,
+    ) -> Job<T> {
         let mut job = Job { slot: Arc::default(), ctl: JobCtl::default(), handle: None };
         let (slot, ctl) = (job.slot.clone(), job.ctl.clone());
         let run = move || {
-            // First, so it is dropped last, the result already written when there is one.
-            let _guard = Guard { slot: slot.clone() };
+            // First, so it is dropped last; the result goes through it.
+            let mut guard = Guard { slot: Some(slot.clone()) };
             let out = work(&ctl);
-            slot.put(Outcome::Done(out), false);
+            guard.done(out);
+            then(&slot);
         };
         if inline || cfg!(target_arch = "wasm32") {
             run();
         } else {
             match std::thread::Builder::new().name(name.to_owned()).spawn(run) {
                 Ok(handle) => job.handle = Some(handle),
-                Err(e) => job.slot.put(Outcome::Done(Err(e.to_string())), false),
+                Err(e) => job.slot.put(Outcome::Done(Err(e.to_string()))),
             }
         }
         job
@@ -220,6 +247,32 @@ mod tests {
         assert_eq!(wait(&mut failed), Err("no such page".into()), "an error the work gives is its own");
     }
 
+    /// A result taken before the worker's guard is dropped is not marked lost after it: polling
+    /// again gives nothing. The worker is held after it wrote the result until the poll has taken
+    /// it (the race that made `a_panicking_job_comes_back_with_its_message` fail now and then: the
+    /// guard found the slot empty, taken, and wrote "the work stopped on an internal error").
+    #[test]
+    fn a_result_taken_before_the_guard_is_dropped_stays_taken() {
+        let (written_tx, written) = std::sync::mpsc::channel();
+        let mut job: Job<u8> = Job::spawn_then(
+            "job-test",
+            false,
+            |_| Ok(5),
+            move |slot| {
+                let _ = written_tx.send(());
+                // Until the poll took the result (a net, not a clock: 60 s only against a hang).
+                let net = std::time::Instant::now() + std::time::Duration::from_secs(60);
+                while lock(&slot.out).is_some() && std::time::Instant::now() < net {
+                    std::thread::yield_now();
+                }
+            },
+        );
+        assert_eq!(written.recv_timeout(std::time::Duration::from_secs(60)), Ok(()), "the worker wrote its result");
+        assert_eq!(job.poll(), Some(Ok(5)));
+        assert_eq!(job.poll(), None, "taken, and nothing came after");
+        assert!(!job.wait(std::time::Duration::from_millis(1)), "nothing to wait for");
+    }
+
     /// Inline (tests, the web): the work is done when `spawn` returns.
     #[test]
     fn an_inline_job_is_done_at_once() {
@@ -255,14 +308,17 @@ mod tests {
         assert_eq!(rx.recv_timeout(std::time::Duration::from_secs(60)), Ok(true), "the work saw the stop");
     }
 
-    /// The guard marks a slot the work left empty, and never touches a result written.
+    /// The guard marks the slot of a work that gave no result, and never touches the slot after
+    /// it gave one, even taken meanwhile.
     #[test]
     fn the_guard_marks_what_left_no_result() {
         let slot: Arc<Slot<u8>> = Arc::default();
-        drop(Guard { slot: slot.clone() });
+        drop(Guard { slot: Some(slot.clone()) });
         assert!(matches!(lock(&slot.out).take(), Some(Outcome::Lost)));
-        *lock(&slot.out) = Some(Outcome::Done(Ok(1)));
-        drop(Guard { slot: slot.clone() });
-        assert!(matches!(lock(&slot.out).take(), Some(Outcome::Done(Ok(1)))), "a result written is kept");
+        let mut guard = Guard { slot: Some(slot.clone()) };
+        guard.done(Ok(1));
+        assert!(matches!(lock(&slot.out).take(), Some(Outcome::Done(Ok(1)))), "the result is there");
+        drop(guard);
+        assert!(lock(&slot.out).is_none(), "taken, and nothing marked after");
     }
 }

@@ -35,9 +35,11 @@
 //! The data model takes ideas from the Caïssa IR and `export/fidelity.py` (the author's own code,
 //! relicensed MIT/Apache, `docs/chess/provenance.md`); the code is written here.
 
+pub mod anki;
 pub mod bookmarks;
 mod build;
 pub mod errata;
+pub mod exercises;
 pub mod fragment;
 pub mod from_games;
 pub mod games;

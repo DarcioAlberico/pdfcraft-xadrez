@@ -3630,3 +3630,10 @@ the move's comment	Move comment	Komentář k tahu
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} je revize jiné knihy ({pages} stran; tato má {here}). Přesto ji importovat do tohoto dokumentu?
 	Another book's review	Revize jiné knihy
 	Import anyway	Přesto importovat
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Nepotvrzeno
+progress bar	Progress	Průběh
+	Export as book	Exportovat jako knihu
+	The games of the list as a book, a page each, with their diagrams.	Partie ze seznamu jako kniha, každá na stránce, s diagramy.
+	Nothing to export: an illegal position has no game.	Není co exportovat: neplatná pozice nemá partii.
+	Games left out (an illegal position has no game): {n}	Vynechané partie (neplatná pozice nemá partii): {n}

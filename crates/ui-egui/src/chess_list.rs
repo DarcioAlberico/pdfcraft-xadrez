@@ -466,18 +466,24 @@ fn row(
         // Its ⋯ with the keyboard keeps the row's ⋯ built.
         focused |= button.has_focus();
     }
-    let state_text = if draft { format!("{} · {}", state.name(), tl!("Unconfirmed changes")) } else { state.name().to_owned() };
-    let galley = ui.painter().layout_no_wrap(state_text, theme::regular(12.0), t.text_muted);
-    let state_left = (right - galley.size().x).max(rect.min.x + 90.0);
-    ui.painter().galley(pos2(state_left, rect.center().y - galley.size().y / 2.0), galley, t.text_muted);
-    crate::widgets::paint_left(
-        ui,
-        pos2(rect.min.x + 32.0, rect.center().y),
-        &title,
-        theme::regular(13.0),
-        t.text,
-        (state_left - rect.min.x - 38.0).max(0.0),
-    );
+    // The state as a short word ("Corrected", "PGN"), "Not confirmed" alone with a draft (its dot
+    // is on the icon); measured before it is drawn, and cut short, never the title (plan A9-I8,
+    // finding A6-13: it ran under the ⋯ and the title became "Diagra…").
+    let state_text = if draft { tl!("Not confirmed") } else { state.short_name() };
+    let (title_font, state_font) = (theme::regular(13.0), theme::regular(12.0));
+    let width = |s: &str, font: &egui::FontId| crate::widgets::text_width(ui, s, font);
+    let lay = row_layout(rect, width(&title, &title_font), right, state_text, |s| width(s, &state_font));
+    crate::widgets::paint_left(ui, pos2(lay.title.min.x, rect.center().y), &title, title_font, t.text, lay.title.width());
+    if !lay.state.is_empty() {
+        crate::widgets::paint_left(
+            ui,
+            pos2(lay.state_rect.min.x, rect.center().y),
+            &lay.state,
+            state_font,
+            t.text_muted,
+            lay.state_rect.width() + 1.0,
+        );
+    }
 
     let tip = match fen {
         Some(fen) => format!("{name}\n{fen}\n{}", state.hint()),
@@ -489,6 +495,34 @@ fn row(
     resp.context_menu(|ui| menu(ui, key, position, fen, &mut action));
     theme::hand(resp).on_hover_text(tip);
     RowOut { action, focused, menu_open }
+}
+
+/// Where a list row's title and state go (plan A9-I8, finding A6-13).
+#[derive(Debug, PartialEq)]
+struct RowLayout {
+    title: Rect,
+    /// The state's words as they fit (cut short with "…", or none at all), and their place.
+    state: String,
+    state_rect: Rect,
+}
+
+/// The title and the state of a row in `rect`, the state ending at `right` (left of the ⋯ when it
+/// shows): the title (`title_width` wide) is never cut while the row holds it; the state, `state`
+/// as `width_of` measures it, takes the room the title leaves, cut short with "…" (or left out)
+/// when it has less. They never overlap.
+fn row_layout(rect: Rect, title_width: f32, right: f32, state: &str, width_of: impl Fn(&str) -> f32) -> RowLayout {
+    const TITLE_LEFT: f32 = 32.0;
+    const GAP: f32 = 8.0;
+    let finite = |v: f32| if v.is_finite() { v } else { 0.0 };
+    let left = finite(rect.min.x) + TITLE_LEFT;
+    let right = finite(right).clamp(left, finite(rect.max.x).max(left));
+    let title_end = (left + finite(title_width).max(0.0)).min(right);
+    let room = (right - title_end - GAP).max(0.0);
+    let state = crate::widgets::fit_line(state, room, &width_of);
+    let shown = if state.is_empty() { 0.0 } else { finite(width_of(&state)).clamp(0.0, room) };
+    let title = Rect::from_min_max(pos2(left, rect.min.y), pos2(title_end, rect.max.y));
+    let state_rect = Rect::from_min_max(pos2(right - shown, rect.min.y), pos2(right, rect.max.y));
+    RowLayout { title, state, state_rect }
 }
 
 /// A row's menu: Open on the board, Analyze, Copy FEN and Open in lichess, for a diagram with a

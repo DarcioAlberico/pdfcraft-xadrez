@@ -100,6 +100,14 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// The folder a tool that reads pages keeps their readings in and takes them from (plan A9-N5b).
+fn insert_cache(props: &mut Value) {
+    if let Some(o) = props.as_object_mut() {
+        o.insert("cache".into(), json!({ "type": "string", "description": "A file path to a folder (relative to --root when set) to keep the pages' readings in and take them from: a page read before with the same settings and models (by what they are, not where) is not read again, across calls and processes; the app keeps its own in chess/reading of its data folder (chess_cache_status). Each entry holds its key and is checked when read: one that does not check out is set aside and its page read again. At most 512 MiB, the books used longest ago leaving first; nothing is kept while the disk has less than 1 GB free. Default: none, every page is read." }));
+        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": "With cache: keep an encrypted document's readings there too, unencrypted (default false: they are only taken from it). Never a document that does not allow copying." }));
+    }
+}
+
 /// The diagram corrections a reading tool takes from the corrections folder (plan A8, P3a3).
 fn insert_corrections(props: &mut Value) {
     if let Some(o) = props.as_object_mut() {
@@ -153,6 +161,7 @@ fn chess_export_schema() -> Value {
     schema(
         {
             let mut props = chess_props(true);
+            insert_cache(&mut props);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
                 o.insert("overwrite".into(), json!({ "type": "boolean", "description": "Write an output even when it is the file of an open document or a file this call reads (default false: refused, so a book or its PGN is never replaced unasked). Two outputs of one call never share a file." }));
@@ -232,6 +241,41 @@ fn chess_export_pgn_schema() -> Value {
         props.insert(
             "reference_pgn".into(),
             json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference; without either, games_pgn's games are written so). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only, diagrams and linked (how the text linked to it: confirmed, recovered, conflict, absent)." }),
+        );
+    }
+    s
+}
+
+/// [`chess_export_pgn_schema`] for the exercises alone (plan A9-N10): no positions, and the
+/// book's PGN only links the pages.
+fn chess_export_exercises_schema() -> Value {
+    let mut s = chess_export_pgn_schema();
+    if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
+        props.remove("positions");
+        props.insert(
+            "reference_pgn".into(),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference): the pages read are linked to it first, so a diagram it confirms gives its solution the PGN's position. The PGN written is still the exercises alone." }),
+        );
+    }
+    s
+}
+
+/// [`chess_export_schema`] for Anki's cards of the book's exercises (plan A9-N10b): the pictures
+/// are always drawn (no diagrams, figurines, links or review marks), and the book's PGN only
+/// links the pages.
+fn chess_export_anki_schema() -> Value {
+    let mut s = chess_export_schema();
+    if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
+        for name in ["diagrams", "figurines", "letters_lang", "links", "link_text", "review_marks"] {
+            props.remove(name);
+        }
+        props.insert(
+            "diagram_px".into(),
+            json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "The pictures' side in pixels (default 900)." }),
+        );
+        props.insert(
+            "reference_pgn".into(),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference): the pages read are linked to it first, so a diagram it confirms gives its card the PGN's position." }),
         );
     }
     s
@@ -1416,6 +1460,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN (a course's or an e-book's games), at most 32 MiB and 4,096 games (without it, the one kept for doc, see reference): each move of the text is linked to it as confirmed, recovered (the reader could not play it, the PGN did: its status is kept and it gets a from_reference review flag with the PGN's move), conflict (played to a position the PGN does not have) or absent, and each move of the document JSON gets reference {kind, game, node}, its game counting from 0. The reply's reference field sums it up: games, moves, stopped_games, linked counts, cut (null, or games, moves or memory: the cap past which the index left the rest of the PGN out, at most 4,096 games, a million moves and 22 MiB of index, about 250,000 moves; plan A9-I3b), diagrams placed on a PGN move, the game each page discusses (pages and games from 1) and warnings, one of them when under 30% of the moves on the first 20 pages read are in the PGN and one when it was cut. The PGN is indexed once a session for the same text. Diagrams (R3): one whose pieces are those of the PGN move it was aligned with is confirmed, and shows that move's position, side to move, castling and move number (reference.fen; its reading stays what was printed); when one shows another position than its reading (or its reading only assumed the side), the moves after it are walked again from it and aligned once more, and reference.walked_again is true (plan A9-L8); one 1 or 2 squares from a position linked on its page or the pages beside it gets a suggestion, its reading left alone (reference {kind: suggested, fen, changes: [{square, from, to}]}); a position a person set is never changed, and nothing is written to the corrections. reference.diagrams counts linked, confirmed and suggested. The text is not changed." }));
                         insert_kept_reference(o);
                     }
+                    insert_cache(&mut props);
                     insert_corrections(&mut props);
                     props
                 },
@@ -1438,6 +1483,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB and 4,096 games (relative to --root when set; without it, the one kept for doc, see reference): its moves decide the book_pgn rows." }));
                         insert_kept_reference(o);
                     }
+                    insert_cache(&mut props);
                     insert_corrections(&mut props);
                     props
                 },
@@ -1492,6 +1538,10 @@ pub fn tools() -> Vec<ToolDef> {
             .with(chess_export_schema()),
         t("chess_export_pgn", "Export chess games as PGN", "Chess ▸ Export ▸ PGN: every game found in the text (roster, SetUp/FEN from the diagram it starts at, NAGs, comments, variations), for each legal, unrepaired diagram positions asks for a game with no moves holding its position (unused, the default: those no game starts from or reprints; all; none), and $220 on the move whose position a diagram reprints, all with PdfPage (the physical page, from 1) and PdfDiagram tags, PdfPageLabel when the page's printed number differs, SourceTitle (the export title), and a first comment naming the page and diagram in the book's language (Page xvii · diagram 1 of 2); a position's game has the title as its Event and Round -; in the order of the book, written to out. A position whose reading did not pass review says so in a comment. Reply as chess_export_html, plus position_games (how many such games were added) and positions_skipped (each diagram positions asked a game for that got none: page from 1, diagram from 1, reason not_read, illegal or repaired) and pgn_warnings (what writing left out of a game, never in silence: game from 1, kind moves_left_out, a move no legal move explains with the moves after it, game_left_out, a game whose start is no position, comment_cut, tag_cut or tags_dropped). With the book's PGN (reference) its games come first, with the book's text as comments, then the diagrams' games positions asks for (unused: those linked to no move of it). Every PGN is written the same way: lines of at most 79 characters (a longer word alone on its line), a comment printed after a move's variations right before the next move, figurines in comments as letters. variations, comments and nags leave things out of the moves (all kept by default; the tags are always written). The document is not changed.")
             .with(chess_export_pgn_schema()),
+        t("chess_export_exercises", "Export a chess book's exercises as PGN", "Chess ▸ Export ▸ Exercises (plan A9-N10, decision D20): read pages (default all) as chess_export_pgn does (corrections, scan settings, OCR and the book's PGN alike) and write the book's exercises to out as a standard problem PGN, the one ChessBase's Replay training, lichess studies, Chessable private courses and the Anki add-ons that take PGN read. An exercise is a diagram the book numbers (its caption's number: №185, 1675, Exercise 12) whose solution was read, from the moves after it or from a solution that names its number pages later. Each is a game with SetUp \"1\" and FEN (the position its solution starts from), its solution as the main line with the book's variations and comments, Result as printed (else 1-0 or 0-1 when the main line ends in mate, else *), Event the title when the game has none, Round its number, the origin's tags (PdfPage, PdfPageLabel, PdfDiagram, PdfPuzzle, SourceTitle), and before the first move the statement in the book's language: the side to move and the number, then where it is (White to move (№ 185). Page 275 · diagram 1 of 6). ChessBase's training command (%tqu) is not written. Reply as chess_export_pgn, plus exercises (each written: page and diagram from 1, number, moves of its main line) and exercises_left_out (each numbered diagram not written: page, diagram, number, reason no_solution, no solution read, or no_position, none to start from). The document is not changed.")
+            .with(chess_export_exercises_schema()),
+        t("chess_export_anki", "Export a chess book's exercises as Anki cards", "Chess ▸ Export ▸ Exercises for Anki (plan A9-N10b): the exercises chess_export_exercises writes (the same rule, the same reading of pages, corrections, OCR and the book's PGN), as a text file at out that Anki's File ▸ Import reads, in the form Anki's manual gives for text files: the headers #separator:tab, #html:true and #tags: with the pictures' prefix, then a line per exercise, its two fields separated by a tab. Front: the diagram's picture as <img src=\"…\">, a line break and the statement (White to move (№ 185). Page 275 · diagram 1 of 6. …); back: the solution's main line in SAN (1.Qh5 Nf6 2.Qxf7#, 1...Qf1# when Black moves first). The book's &, <, > and \" are written as entities and a tab or line break as a space, so no field is quoted. The pictures, a PNG per exercise of diagram_px pixels drawn from the position its solution starts from and from the side the book prints it, with the export's pieces and board_theme, go to the folder <out's name>_diagrams beside out: the user copies them into Anki's collection.media folder, with no subfolder. Their names are the same on every run and safe everywhere: the title's ASCII letters and digits in lower case (other characters as -, at most 40; a title with other letters or longer adds 8 hex digits of its SHA-256), the page and the diagram (puzzles-p0007-1.png). Anki matches an imported line to its notes by the front, so importing the file again updates the cards. No note type or deck is named: Anki's import dialog asks. A picture that cannot be drawn leaves its card with the FEN, said in notes. Reply as chess_export_exercises, plus image_dir (the pictures' folder, relative as out) and diagrams_drawn (the pictures written). The document is not changed.")
+            .with(chess_export_anki_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, a pieces folder of images beside the executable, an installed Chess Merida, or plain geometric pieces), and piece_leftovers: folders a replaced piece set left beside the sets in that pieces folder (an import's .<name>.import-… staging folder that stopped, or an old .<name>.old-… set kept aside because it held a folder of its own), never offered as sets. Diagrams in chess fonts are read without any model. version and build say which PdfCraft answers (build: the short commit and date the release script built, or dev), so builds kept side by side can be told apart.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
@@ -1694,6 +1744,12 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["from"],
             )),
+        t("chess_cache_status", "Show the books' readings kept on disk", "Chess ▸ the books' readings kept on disk (plan A9-N5): what scanning and chess OCR read of each page, kept so that a page read once is not read again when its document is opened again. The folder cache (the app's own by default, chess/reading in its data folder, as the app keeps them; confined to --root, and with --root or the automation roots outside them the reply says outside_root), or only doc's. Returns cache, books (folder, name: the document's file name, id0, pages, entries: page readings kept, set_aside: entries that did not check out, left beside them, bytes, used: its last use, seconds since 1970; most recently used first), entries, set_aside, bytes and max_bytes (512 MiB: past it the books used longest ago leave first). Nothing is changed: read access is enough, and a folder that is not there keeps none.")
+            .ro()
+            .with(schema(json!({ "doc": doc(), "cache": { "type": "string", "description": "A file path to the readings' folder (relative to --root when set). Default: the app's own." } }), &[])),
+        t("chess_cache_clear", "Clear the books' readings kept on disk", "Chess ▸ take out the books' readings kept on disk (plan A9-N5): every book's, or only doc's, in the folder cache (the app's own by default; confined to --root, and refused when the app's folder is outside the folders the tools are confined to: give cache). Only the files the store makes are removed (each book's record, its page readings and those set aside), and a book's folder once nothing else is in it; anything else in the folder stays. The pages are read again the next time. Returns cache, books, files and bytes removed.")
+            .destructive()
+            .with(schema(json!({ "doc": doc(), "cache": { "type": "string", "description": "A file path to the readings' folder (relative to --root when set). Default: the app's own." } }), &[])),
         t("chess_reference_clear", "Remove the book's PGN kept for a document", "Chess ▸ Remove the book's PGN, without the interface: remove the copy of the book's PGN kept for doc in the folder store (the app's own by default, as the app keeps them; confined to --root): its file stays, saying when the PGN was removed, so an earlier build's copy, older, does not bring it back. Refused for a file of a newer version, which is left as it is. Returns cleared: whether one was kept. The document is not changed.")
             .destructive()
             .with(schema(json!({ "doc": doc(), "reference_store": { "type": "string", "description": "A file path to the folder of the books' PGNs, one file per document (relative to --root when set). Default: the app's own folder of the books' PGNs (chess/reference in its data folder, where the app keeps them); with --root or the automation roots it must be inside them, else reading finds none (outside_root) and changing is refused: give reference_store." }, }), &["doc"])),

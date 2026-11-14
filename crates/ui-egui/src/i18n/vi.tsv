@@ -3808,3 +3808,10 @@ the move's comment	Move comment	Bình luận của nước đi
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} là bản rà soát của một cuốn sách khác ({pages} trang; cuốn này có {here}). Vẫn nhập vào tài liệu này?
 	Another book's review	Bản rà soát của sách khác
 	Import anyway	Vẫn nhập
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Chưa xác nhận
+progress bar	Progress	Tiến độ
+	Export as book	Xuất thành sách
+	The games of the list as a book, a page each, with their diagrams.	Các ván trong danh sách thành sách, mỗi ván một trang, kèm sơ đồ.
+	Nothing to export: an illegal position has no game.	Không có gì để xuất: thế cờ không hợp lệ không có ván.
+	Games left out (an illegal position has no game): {n}	Các ván bị bỏ qua (thế cờ không hợp lệ không có ván): {n}

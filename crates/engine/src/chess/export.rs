@@ -111,6 +111,16 @@ pub struct ChessExportOptions {
     /// §2.9): linked first, so they outrank [`ChessExportOptions::reference`], and the reading
     /// comes last. PGN: without `reference`, the PGN written is these games with the book's text.
     pub games: Option<Arc<ReferenceIndex>>,
+    /// PGN: the book's exercises alone, as a standard problem PGN (plan A9-N10,
+    /// [`pdfcraft_chessvision::doc::exercises::exercises_pgn`]): `SetUp`/`FEN`, the solution as
+    /// the main line, the statement before it; in place of the games, the positions and a
+    /// reference's annotated PGN (the references still link the pages first).
+    pub exercises: bool,
+    /// With [`ChessExportOptions::exercises`]: the exercises as Anki's cards instead (plan
+    /// A9-N10b, [`pdfcraft_chessvision::doc::anki`]): the bytes are the text file Anki imports,
+    /// and [`ChessExport::images`] the diagrams' pictures, `diagram_px` wide, in
+    /// [`ChessExportOptions::image_dir`], each drawn from the side the book prints it.
+    pub anki: bool,
 }
 
 impl ChessExportOptions {
@@ -142,6 +152,8 @@ impl ChessExportOptions {
             review_marks: None,
             reference: None,
             games: None,
+            exercises: false,
+            anki: false,
         }
     }
 }
@@ -150,7 +162,7 @@ impl ChessExportOptions {
 #[derive(Clone, Debug)]
 pub struct ChessExport {
     pub bytes: Vec<u8>,
-    /// Markdown: the images, as (path relative to the Markdown file, PNG bytes).
+    /// Markdown and Anki's cards: the images, as (path relative to the file written, PNG bytes).
     pub images: Vec<(String, Vec<u8>)>,
     pub read: ChessDocument,
     /// Diagrams drawn (SVG boards or images).
@@ -165,6 +177,10 @@ pub struct ChessExport {
     /// PGN was given.
     /// Boxed: the export's result travels in the interface's job messages, which it would make large.
     pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
+    /// PGN with [`ChessExportOptions::exercises`]: the exercises written and the numbered
+    /// diagrams left out (with [`ChessExportOptions::anki`], the cards, and an empty `pgn`: the
+    /// bytes are Anki's file). Boxed, as [`ChessExport::annotated`].
+    pub exercises: Option<Box<pdfcraft_chessvision::doc::exercises::ExercisesPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
     /// The links to [`ChessExportOptions::games`] and [`ChessExportOptions::reference`], in that
@@ -299,6 +315,47 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
     Ok(Written { bytes, images, drawn })
 }
 
+/// The exercises of `doc` as Anki's cards (plan A9-N10b): the text file, and a picture per card
+/// drawn by [`super::office::diagram_png`] from the side the book prints the diagram, in
+/// `o.image_dir`. A card whose picture cannot be drawn shows its FEN instead, said in `notes`.
+fn anki_cards(
+    doc: &ChessDoc,
+    book: &markdown::PgnBook,
+    o: &ChessExportOptions,
+    labels: &[String],
+    notes: &mut Vec<String>,
+) -> (Written, pdfcraft_chessvision::doc::exercises::ExercisesPgn) {
+    use pdfcraft_chessvision::doc::anki::anki_deck;
+    let deck = anki_deck(doc, book);
+    let mut images = Vec::with_capacity(deck.cards.len());
+    let mut drawn = std::collections::HashSet::new();
+    for card in &deck.cards {
+        let style = BoardStyle { flipped: card.flipped, ..o.style };
+        let png = pdfcraft_chess::fen::Fen::parse(&card.fen)
+            .map_err(|e| e.to_string())
+            .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &style, o.diagram_px));
+        match png {
+            Ok(png) => {
+                images.push((format!("{}/{}", o.image_dir, card.image), png));
+                drawn.insert(card.image.clone());
+            }
+            Err(e) => {
+                let at = card.exercise.at;
+                let page = PageLabel::of(labels, u32::try_from(at.page).unwrap_or(u32::MAX));
+                notes.push(format!("page {page}, diagram {}: {e}; its card shows the FEN", at.index.saturating_add(1)));
+            }
+        }
+    }
+    let bytes = deck.tsv(|c| drawn.contains(&c.image)).into_bytes();
+    let made = pdfcraft_chessvision::doc::exercises::ExercisesPgn {
+        pgn: String::new(),
+        exercises: deck.exercises(),
+        left_out: deck.left_out,
+        warnings: Vec::new(),
+    };
+    (Written { bytes, drawn: images.len(), images }, made)
+}
+
 impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
@@ -318,6 +375,7 @@ impl Session {
         let mut positions_skipped = Vec::new();
         let mut pgn_warnings = Vec::new();
         let mut annotated = None;
+        let mut exercises = None;
         let written = match format {
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).
@@ -326,22 +384,34 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                let bytes = if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
-                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
-                    let bytes = made.pgn.clone().into_bytes();
-                    position_games = Some(made.positions);
-                    positions_skipped.clone_from(&made.skipped);
-                    pgn_warnings.clone_from(&made.warnings);
-                    annotated = Some(Box::new(made));
-                    bytes
+                if o.exercises && o.anki {
+                    let (written, made) = anki_cards(&read.doc, &book, o, &labels, &mut notes);
+                    exercises = Some(Box::new(made));
+                    written
                 } else {
-                    let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
-                    position_games = Some(made.positions);
-                    positions_skipped = made.skipped;
-                    pgn_warnings = made.warnings;
-                    made.pgn.into_bytes()
-                };
-                Written { bytes, images: Vec::new(), drawn: 0 }
+                    let bytes = if o.exercises {
+                        let made = pdfcraft_chessvision::doc::exercises::exercises_pgn(&read.doc, &book, o.pgn_style);
+                        let bytes = made.pgn.clone().into_bytes();
+                        pgn_warnings.clone_from(&made.warnings);
+                        exercises = Some(Box::new(made));
+                        bytes
+                    } else if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
+                        let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
+                        let bytes = made.pgn.clone().into_bytes();
+                        position_games = Some(made.positions);
+                        positions_skipped.clone_from(&made.skipped);
+                        pgn_warnings.clone_from(&made.warnings);
+                        annotated = Some(Box::new(made));
+                        bytes
+                    } else {
+                        let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
+                        position_games = Some(made.positions);
+                        positions_skipped = made.skipped;
+                        pgn_warnings = made.warnings;
+                        made.pgn.into_bytes()
+                    };
+                    Written { bytes, images: Vec::new(), drawn: 0 }
+                }
             }
             _ => {
                 let epub = if format == ChessFormat::Epub {
@@ -380,7 +450,7 @@ impl Session {
             }
         };
         let Written { bytes, images, drawn } = written;
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes, linked })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, exercises, notes, linked })
     }
 }
 

@@ -3557,3 +3557,10 @@ the move's comment	Move comment	Kommentar des Zugs
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} ist die Durchsicht eines anderen Buchs ({pages} Seiten; dieses hat {here}). Trotzdem in dieses Dokument importieren?
 	Another book's review	Durchsicht eines anderen Buchs
 	Import anyway	Trotzdem importieren
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Nicht bestätigt
+progress bar	Progress	Fortschritt
+	Export as book	Als Buch exportieren
+	The games of the list as a book, a page each, with their diagrams.	Die Partien der Liste als Buch, je eine Seite, mit ihren Diagrammen.
+	Nothing to export: an illegal position has no game.	Nichts zu exportieren: Eine regelwidrige Stellung hat keine Partie.
+	Games left out (an illegal position has no game): {n}	Ausgelassene Partien (eine regelwidrige Stellung hat keine Partie): {n}

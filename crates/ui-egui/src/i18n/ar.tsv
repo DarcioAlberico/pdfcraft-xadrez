@@ -3830,3 +3830,10 @@ the move's comment	Move comment	تعليق النقلة
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} هو مراجعة لكتاب آخر ({pages} صفحة؛ وهذا فيه {here}). هل تريد استيراده إلى هذا المستند رغم ذلك؟
 	Another book's review	مراجعة كتاب آخر
 	Import anyway	استيراد على أي حال
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	غير مؤكد
+progress bar	Progress	التقدم
+	Export as book	تصدير ككتاب
+	The games of the list as a book, a page each, with their diagrams.	مباريات القائمة ككتاب، صفحة لكل منها، مع مخططاتها.
+	Nothing to export: an illegal position has no game.	لا شيء للتصدير: الوضع غير القانوني ليست له مباراة.
+	Games left out (an illegal position has no game): {n}	مباريات مستبعدة (الوضع غير القانوني ليست له مباراة): {n}

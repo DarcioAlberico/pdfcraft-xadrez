@@ -3578,3 +3578,10 @@ the move's comment	Move comment	Коментар до ходу
 	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} — перевірка іншої книги ({pages} стор.; у цій {here}). Однаково імпортувати в цей документ?
 	Another book's review	Перевірка іншої книги
 	Import anyway	Однаково імпортувати
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Не підтверджено
+progress bar	Progress	Хід виконання
+	Export as book	Експортувати як книгу
+	The games of the list as a book, a page each, with their diagrams.	Партії зі списку як книга, по сторінці на кожну, з їхніми діаграмами.
+	Nothing to export: an illegal position has no game.	Нічого експортувати: недопустима позиція не має партії.
+	Games left out (an illegal position has no game): {n}	Пропущені партії (недопустима позиція не має партії): {n}

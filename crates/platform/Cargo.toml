@@ -10,6 +10,12 @@ workspace = true
 
 [dependencies]
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# MIT OR Apache-2.0. The free space on a disk (app_dirs::free_space, plan A9-N5b): std has no way
+# to ask it, and calling the system directly needs unsafe. Its dependencies (rustix, windows-sys)
+# are already in the graph.
+fs4 = { version = "1.1", default-features = false, features = ["sync"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # `write_atomically`: a volume that refuses F_FULLFSYNC gets a plain fsync.
 rustix = { version = "1", features = ["fs"] }

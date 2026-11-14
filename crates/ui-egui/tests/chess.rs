@@ -447,7 +447,12 @@ fn the_editors_labels_are_not_broken_into_letters() {
     let (left, right) = (tab.left(), tab.right());
     for name in ["Move number:", "To move:", "White", "Black", "1 of 1 to review", "Details", "Legal position", "Confirm and next", "More actions"] {
         let r = h.get_by_label(name).rect();
-        assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
+        // The place in the walk shows as "1/1" (plan A9-I8): narrow, but on one line.
+        if name == "1 of 1 to review" {
+            assert!(r.height() <= white.height(), "{name} is on one line: {r:?}");
+        } else {
+            assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
+        }
         assert!(r.left() >= left && r.right() <= right, "{name} is inside the tab: {r:?}, from {left} to {right}");
     }
     assert!(confirm.bottom() <= 768.0 && confirm.top() > board.bottom(), "the main button is on screen, under the board: {confirm:?}");
@@ -6544,4 +6549,125 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     h.run_steps(2);
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
+}
+
+/// Plan A9-N5b (finding A8-06): the app keeps what detecting read of each page in its data
+/// folder's `chess/reading`, so the book opened again (another app, as after a restart) reads
+/// none of its pages again.
+#[test]
+fn a_book_opened_again_in_the_app_reads_none_of_its_pages() {
+    use pdfcraft_engine::chess::DiskUse;
+    let dir = corrections_dir("chess-reading");
+    let data = dir.join("data").join("chess");
+    let detect = || {
+        let mut h = harness_on(boards(), 0.25);
+        h.state_mut().use_chess_data(data.clone(), None);
+        h.state_mut().start_chess_scan(true);
+        h.run_steps(3);
+        let id = h.state().views[0].id;
+        assert!(h.state().chess.results_of(id).is_some_and(|r| r.diagram(0, 0).is_some()), "detected");
+        h.state().session.chess_disk()
+    };
+    let first = detect();
+    assert!(first.kept > 0 && first.read == 0, "{first:?}");
+    assert_eq!(detect(), DiskUse { read: first.kept, ..Default::default() }, "nothing read again");
+    assert!(data.join("reading").is_dir());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+// ─── Plan A9-I8: layout that measures before it draws ───────────────────────────────────────
+
+/// Plan A9-I8 (§2.8.1, finding A6-05): "Unconfirmed changes" is said in the row of Read |
+/// Original, whose room is kept: the board never moves when it shows (it pushed it 24 pt down).
+#[test]
+fn the_unconfirmed_notice_never_moves_the_board() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label_contains("Diagram 2 · ").next().expect("the drawn board is listed").click();
+    h.run_steps(3);
+    let before = h.get_by_label_contains("Diagram board, ").rect();
+    assert!(h.query_by_label("Unconfirmed changes").is_none());
+    h.state_mut().chess.editor.as_mut().expect("the editor").position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(3);
+    h.get_by_label("Unconfirmed changes");
+    assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), before, "the board stays where it was");
+}
+
+/// Plan A9-I8 (§2.8.1, finding A6-15): the Chess column's scroll area keeps its bar's room: a
+/// row of the list ends left of the bar instead of running under it to the column's edge.
+#[test]
+fn the_chess_columns_rows_end_left_of_its_scroll_bar() {
+    let mut h = harness_sized(boards(), egui::vec2(1400.0, 300.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let column = chess_column(&h);
+    // The list's rows are under the window's edge: the wheel over the column brings them up.
+    h.hover_at(column.center());
+    h.run_steps(1);
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, -600.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run_steps(4);
+    let row = h.get_all_by_label_contains("Diagram 1 · ").next().expect("listed").rect();
+    let bar = h.ctx.global_style().spacing.scroll.bar_width;
+    assert!(row.max.x <= column.max.x - 12.0 - bar + 0.5, "{row:?} under the bar ({bar} pt) of {column:?}");
+}
+
+/// Plan A9-I8 (§2.8.1): at 1366 × 768 (a column of 360 pt) the Diagram tab's header shows the
+/// diagram's title whole (it was cut to "…"): the place in the walk is "1/1", "‹ Diagrams" its
+/// arrow alone when need be, both whole in their tooltips and names.
+#[test]
+fn the_editors_header_keeps_the_diagrams_title_whole() {
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_all_by_label_contains("Diagram 2 · ").next().expect("listed").click();
+    h.run_steps(4);
+    let title = "Page 1 · diagram 2 of 2";
+    let link = h.get_by_role_and_label(egui::accesskit::Role::Link, title).rect();
+    let font = egui::TextStyle::Body.resolve(&h.ctx.global_style());
+    let whole = h.ctx.fonts_mut(|f| f.layout_no_wrap(title.to_owned(), font, egui::Color32::WHITE).size().x);
+    assert!(link.width() >= whole - 0.5, "the title {link:?} is {whole} pt wide");
+    h.get_by_label("Back to Diagrams");
+    assert!(chess_column(&h).contains_rect(link));
+}
+
+// ─── Plan A9-N2: one truth of the games for every export, in the app ────────────────────────
+
+/// Plan A9-N2 (A8-03): the app's export gives every format the book's PGN and the document's own
+/// games, as the tools do (it gave the PGN export the book's PGN, and no format the games): the
+/// book's variation lost its brackets, so the reader cannot play White's a6 after 3...Nf6; with
+/// the book's PGN the HTML gives that move the PGN's position, marked as the PGN's, and with no
+/// book's PGN the document's game on the board does the same.
+#[test]
+fn every_export_format_is_linked_to_the_books_pgn_and_the_documents_games() {
+    let dir = corrections_dir("n2-ui");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 a6 4.Ba4"), dir.join("reference"));
+    let id = h.state().views[0].id;
+    let export = |h: &mut Harness<'static, PdfCraftApp>, name: &str| {
+        let path = dir.join(name);
+        h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Html, &path);
+        h.run_steps(6);
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}; toast {:?}", h.state().toast))
+    };
+    let plain = export(&mut h, "plain.html");
+    assert!(!plain.contains("data-reference=\"recovered\""), "nothing to link it to yet");
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    let with_pgn = export(&mut h, "with-pgn.html");
+    assert!(with_pgn.contains("data-reference=\"recovered\""), "the book's PGN plays the move the reader could not: {with_pgn}");
+    // The document's own game instead.
+    h.state_mut().clear_book_pgn();
+    h.run_steps(2);
+    let (game, _) = pdfcraft_engine::chess::pdfcraft_chess::game::Game::from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(2);
+    let with_games = export(&mut h, "with-games.html");
+    assert!(with_games.contains("data-reference=\"recovered\""), "the document's game plays it: {with_games}");
+    let _ = std::fs::remove_dir_all(dir);
 }
