@@ -1,9 +1,9 @@
 //! The notation errata list (plan A9-N19): a row per printed mark the move does not bear out, per
 //! number out of sequence, and per move in conflict with the book's PGN on a born-digital page,
-//! with its page and move, as CSV and Markdown.
+//! with its page and move, as CSV and Markdown; each row a misprint or a row to check (A9-N19b).
 
 use super::*;
-use crate::doc::errata::{Erratum, Issue, errata, to_csv, to_markdown};
+use crate::doc::errata::{Erratum, Issue, Kind, errata, to_csv, to_markdown};
 use crate::doc::reference::{ReferenceIndex, link};
 
 /// One page of text, page index `index`, read from its text layer or by OCR.
@@ -28,9 +28,9 @@ fn a_capture_on_an_empty_square_and_a_check_too_many_are_two_rows_with_page_and_
     let csv = to_csv(&rows, &labels);
     assert_eq!(
         csv,
-        "page,page_label,move,printed,issue,expected,detail,read_from\r\n\
-         5,17,2.,2.Ng5+,check_mark,Ng5,\"printed with a check, but Ng5 gives none\",text\r\n\
-         5,17,4.,4.Nxd8,capture_mark,Nd8,\"printed as a capture, but Nd8 takes nothing\",text\r\n"
+        "page,page_label,move,printed,issue,expected,detail,read_from,kind\r\n\
+         5,17,2.,2.Ng5+,check_mark,Ng5,\"printed with a check, but Ng5 gives none\",text,misprint\r\n\
+         5,17,4.,4.Nxd8,capture_mark,Nd8,\"printed as a capture, but Nd8 takes nothing\",text,misprint\r\n"
     );
     // A black move printed without its number is said by the game's.
     let black = errata(&page_doc(0, "1.e4 Nf6 2.Nc3 Nxd5", false), None);
@@ -38,7 +38,7 @@ fn a_capture_on_an_empty_square_and_a_check_too_many_are_two_rows_with_page_and_
     // The same page read by OCR says so: a mark there may be a misread character.
     let ocr = errata(&page_doc(4, "1.Nf3 d5 2.Ng5+ Qd6 3.Ne6 Qb4 4.Nxd8 Kxd8", true), None);
     assert_eq!(ocr.len(), 2);
-    assert!(ocr.iter().all(|e| e.ocr) && to_csv(&ocr, &[]).lines().skip(1).all(|l| l.ends_with(",ocr")), "{ocr:?}");
+    assert!(ocr.iter().all(|e| e.ocr) && to_csv(&ocr, &[]).lines().skip(1).all(|l| l.ends_with(",ocr,misprint")), "{ocr:?}");
 }
 
 /// A mate mark on a move that only checks, and a number out of sequence, are rows of their own; a
@@ -125,8 +125,34 @@ fn the_csv_and_the_markdown_keep_what_is_printed_as_text() {
     };
     let csv = to_csv(std::slice::from_ref(&row), &[]);
     assert_eq!(csv.lines().nth(1), Some("1,1,,\"'=HYPERLINK(\"\"x\"\")\",book_pgn,'-1,\"a | b"));
+    assert_eq!(csv.lines().nth(2), Some("c\",text,check"));
     let md = to_markdown(std::slice::from_ref(&row), &[], "Book | one");
     assert!(md.starts_with("# Notation errata: Book \\| one\n\n| Page |"), "{md}");
-    assert!(md.contains("| a \\| bc |"), "control characters go and the bar stays text: {md}");
+    assert!(md.contains("| a \\| bc | text layer | to check |"), "control characters go and the bar stays text: {md}");
     assert_eq!(to_markdown(&[], &[], "Book"), "# Notation errata: Book\n\nNo errata found.\n");
+}
+
+/// Plan A9-N19b: a move cited in prose that the walk played on the wrong line conflicts with the
+/// book's PGN on a born-digital page, and that is the reading's straying, not the book's misprint:
+/// the row is one to check. A capture mark on a move that takes nothing is the book's, and comes
+/// first, though it is printed after.
+#[test]
+fn a_move_cited_in_prose_against_the_books_pgn_is_to_check_and_a_mark_is_a_misprint() {
+    let index = ReferenceIndex::from_pgn("[Event \"Chapter 1\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 *\n").unwrap();
+    let mut doc = page_doc(0, "1.e4 e5 2.Nf3 Nc6! Not 1...c5 2.Nf3 here. 3.Bb5 a6 4.Bxa4 Nf6", false);
+    link(&mut doc, &index);
+    assert!(doc.pages.iter().all(crate::doc::errata::born_digital));
+    let rows = errata(&doc, Some(&index));
+    let got: Vec<(&str, Issue, Kind)> = rows.iter().map(|e| (e.printed.as_str(), e.issue, e.issue.kind())).collect();
+    assert_eq!(got, [("4.Bxa4", Issue::CaptureMark, Kind::Misprint), ("2.Nf3", Issue::BookPgn, Kind::Check)]);
+    let csv = to_csv(&rows, &[]);
+    let kinds: Vec<&str> = csv.lines().map(|l| l.rsplit(',').next().unwrap_or_default()).collect();
+    assert_eq!(kinds, ["kind", "misprint", "check"], "{csv}");
+    let md = to_markdown(&rows, &[], "Book");
+    assert!(md.contains("| Read from | Kind |") && md.contains("| text layer | misprint |") && md.contains("| text layer | to check |"), "{md}");
+    // A number out of sequence may be a line label the walk did not attach: to check too.
+    let numbers = errata(&page_doc(0, "1.e4 e5 2.Nf3 Nc6 5.Bb5 a6", false), None);
+    assert_eq!(numbers.iter().map(|e| (e.issue, e.issue.kind())).collect::<Vec<_>>(), [(Issue::MoveNumber, Kind::Check)]);
+    assert_eq!(Kind::ALL.map(|k| Kind::from_name(k.name())), [Some(Kind::Misprint), Some(Kind::Check)]);
+    assert_eq!(Kind::from_name("all"), None);
 }

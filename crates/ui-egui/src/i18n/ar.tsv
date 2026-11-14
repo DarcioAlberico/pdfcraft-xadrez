@@ -3755,4 +3755,49 @@ the move's comment	Move comment	تعليق النقلة
 	mates in {m}	يُميت في {m}
 	supposes castling is allowed	يفترض أن التبييت مسموح
 	Mate in {n}: both sides mate, so who moves stays assumed	كش مات في {n}: كلا الطرفين يُميت، لذا يبقى صاحب الدور مفترضًا
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	ترسم الصفحة مسارات أكثر مما يُفحص؛ وتم تخطي الباقي.
+	Content streams that couldn't be decoded and were skipped: {n}	تدفقات محتوى تعذّر فك ترميزها وتم تخطيها: {n}
+	The page's paths couldn't be read: {e}	تعذّرت قراءة مسارات الصفحة: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	لا يمكن قراءة المستند للتحرير، لذا لم تُفحص صوره ومساراته.
+	The page's text couldn't be read: {e}	تعذّرت قراءة نص الصفحة: {e}
+	Only the first {n} of the page's {total} images were looked at.	فُحصت أول {n} صور فقط من صور الصفحة البالغة {total}.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	صور لم تُقصّ لأن بكسلات صور الصفحة تتجاوز ميزانية الفحص: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	المخطط {d}: كلا الطرفين يُميت في {n}، لذا يبقى صاحب الدور مفترضًا.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	يقدّم مخطط {offered} dpi؛ وقد قُرئ بدقة {max} dpi على الأكثر (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	الصفحة أكبر من أن تُعرض بدقة {wanted} dpi؛ وقُرئت مخططاتها بدقة {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	تعذّر عرض الصفحة بدقة {wanted} dpi للقراءة ({e})؛ وقُرئت بدقة {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	المخطط {d}: تغيّرت القراءة منذ تصحيحه (الآن {fen})؛ ويُحتفظ بالتصحيح.
+	The frames around text were not looked for: {e}	لم يُبحث عن الإطارات حول النص: {e}
+	The lines set bolder were not looked for: {e}	لم يُبحث عن الأسطر المكتوبة بخط أثقل من متن النص: {e}
+	The words set in bold were not looked for: {e}	لم يُبحث عن الكلمات المكتوبة بخط عريض: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% من ارتفاع الصفحة يحوي حبرًا دقيقًا أكثر من أن يكون نصًا (صورة أو مسح مغبر)؛ ولم تُقرأ تلك الشرائط.
+	The general OCR failed ({e}); the glyph reader read the prose too.	فشل التعرف الضوئي العام ({e})؛ وقرأ قارئ الحروف النثر أيضًا.
+	Chess OCR failed: {e}	فشل التعرف الضوئي للشطرنج: {e}
+	The page couldn't be rendered for chess OCR: {e}	تعذّر عرض الصفحة للتعرف الضوئي للشطرنج: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	طُلب التعرف الضوئي للشطرنج، لكنه يتطلب نموذج chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	يبدو الخط {font} خط شطرنج لكنه ليس في الفهرس؛ وأُبقي نصه كما يُستخرج.
+	The page has no visible area; it is left out.	ليس للصفحة مساحة مرئية؛ وقد استُبعدت.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	تعذّرت قراءة فقرات الصفحة ({e})؛ وجُمعت أسطرها حسب التباعد.
+	The page's diagrams couldn't be read; they are left out.	تعذّرت قراءة مخططات الصفحة؛ وقد استُبعدت.
+	A correction ({id}) was not used: {e}	لم يُستخدم تصحيح ({id}): {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	الترميز الوصفي ({examples}) غير مدعوم؛ ولم تُقرأ نقلاته.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	يحوي المستند {n} مباراة، وهو أقصى ما يحتفظ به: من هنا فصاعدًا لا تبدأ أي مباراة.
+	This page couldn't be read: {e}	تعذّرت قراءة هذه الصفحة: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (يتطلب التعرف الضوئي للشطرنج نموذج chess-glyphs)
+	the page has no text layer	ليس للصفحة طبقة نص
+	the text layer has two-byte codes with no Unicode text	في طبقة النص رموز ثنائية البايت بلا نص Unicode
+	the text layer extracts as replacement characters	تُستخرج طبقة النص كمحارف بديلة
+	the text layer's Unicode map is dead	خريطة Unicode لطبقة النص معطّلة
+	chess-font glyphs that couldn't be resolved: {n}	حروف خطوط شطرنج تعذّر حلّها: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	نقلات فيها رمز شارد مكان القطعة، حيث فقدت طبقة تعرف ضوئي سابقة رموز القطع: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	طبقة النص نص غير مرئي فوق صورة للصفحة: تعرف ضوئي من برنامج آخر
+	no piece model is loaded	لا يوجد نموذج قطع محمّل
+	the page raster's resolution is not a positive number	دقة الصورة النقطية للصفحة ليست عددًا موجبًا
+	the diagram's box or corners are not finite numbers on this page	إطار المخطط أو زواياه ليست أعدادًا منتهية في هذه الصفحة
+	the diagram lies outside the page raster	يقع المخطط خارج الصورة النقطية للصفحة
+	the diagram's corners do not form a quadrilateral	لا تشكّل زوايا المخطط شكلًا رباعيًا
+	the page has more diagrams than are read on one page	في الصفحة مخططات أكثر مما يُقرأ في صفحة واحدة
+	the piece model failed: {e}	فشل نموذج القطع: {e}
+	the piece model's output is not a probability matrix: {e}	مخرجات نموذج القطع ليست مصفوفة احتمالات: {e}
 	Back to Diagrams	العودة إلى المخططات

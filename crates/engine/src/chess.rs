@@ -32,6 +32,7 @@
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pdfcraft_chess::mate;
@@ -53,6 +54,7 @@ use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, Reque
 pub use document::ChessDocument;
 pub use keys::DocKeys;
 pub use links::{LinkPlan, LinkSettings, LinkTarget};
+pub use notes::{LayerProblem, NeedsOcr, ScanNote};
 pub use pdfcraft_chessvision::doc::DiagramAt;
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
@@ -147,7 +149,7 @@ pub struct ChessPage {
     pub error: Option<String>,
     /// What was skipped or approximated on the way (an unreadable content stream, a limit hit,
     /// images left untrimmed), so a partial result is never silent.
-    pub notes: Vec<String>,
+    pub notes: Vec<ScanNote>,
 }
 
 /// Which piece model a reading used, for the cache: a reading made with one model is not the
@@ -311,16 +313,32 @@ impl DocCache {
     }
 }
 
-/// One document state's page keys, computed as they are asked for.
+/// One document state's page keys, computed as they are asked for. Its memo outlives an edit
+/// for the objects the edit did not touch (plan A9-I3b, §2.4).
 struct KeyState {
     doc: DocId,
     generation: u64,
     bytes: usize,
+    /// What the document read as then: an edit's objects are told against it.
+    read: Option<pdfcraft_cos::ReadState>,
     /// The page objects in page order; `None` until first needed, empty when the page tree can't
     /// be walked.
     pages: Option<Vec<pdfcraft_cos::ObjRef>>,
     keys: std::collections::HashMap<usize, Option<page_key::PageKey>>,
     memo: page_key::KeyMemo,
+}
+
+/// One document's page fingerprints for a state, and what each page's was made from, which
+/// outlives an edit for the pages it did not touch (plan A9-I3b, §2.4).
+struct FingerprintState {
+    doc: DocId,
+    /// The state (generation, size) [`FingerprintState::made`] is for.
+    state: (u64, usize),
+    /// What the document read as then.
+    read: Option<pdfcraft_cos::ReadState>,
+    made: Arc<corrections::Fingerprints>,
+    /// Each page's fingerprint, by its object, and the objects it was made from.
+    by_page: std::collections::HashMap<u32, (String, Vec<u32>)>,
 }
 
 /// Scan results kept in the session, by document and page, then by page content and scan
@@ -337,7 +355,11 @@ pub(crate) struct ChessCache {
     corrections: Vec<(DocId, Arc<corrections::CorrectionFile>)>,
     /// Each document's page fingerprints, indexed, for the state (generation, size) they were
     /// made in ([`Session::chess_fingerprints`]; plan A9-G2b).
-    fingerprints: Vec<(DocId, (u64, usize), Arc<corrections::Fingerprints>)>,
+    fingerprints: Vec<FingerprintState>,
+    /// Page fingerprints worked out rather than taken from a memo (plan A9-I3b's measure).
+    fingerprints_made: usize,
+    /// Page keys worked out rather than taken from a memo, every document and state (the same).
+    keys_hashed: usize,
     /// Pages [`Session::chess_scan`] has scanned (not answered from here): [`Session::chess_scanned`].
     scanned: usize,
     /// What each open document's reads taught and what the user said of its pages (plan A9-I1a),
@@ -424,16 +446,27 @@ impl ChessCache {
         let at = match self.keys.iter().position(|k| k.doc == doc) {
             Some(at) => at,
             None => {
-                self.keys.push(KeyState { doc, generation, bytes, pages: None, keys: Default::default(), memo: Default::default() });
+                self.keys.push(KeyState { doc, generation, bytes, read: None, pages: None, keys: Default::default(), memo: Default::default() });
                 self.keys.len().saturating_sub(1)
             }
         };
         let Some(state) = self.keys.get_mut(at) else { return vec![None; pages.len()] };
-        if state.generation != generation || state.bytes != bytes {
-            *state = KeyState { doc, generation, bytes, pages: None, keys: Default::default(), memo: Default::default() };
+        if state.generation != generation || state.bytes != bytes || state.read.is_none() {
+            // What the edit changed is forgotten, and only that (plan A9-I3b); another source
+            // (a save read again) starts over.
+            match state.read.as_ref().and_then(|r| r.changed(cos)) {
+                Some(changed) => state.memo.forget(&changed),
+                None => state.memo = page_key::KeyMemo::default(),
+            }
+            state.generation = generation;
+            state.bytes = bytes;
+            state.read = Some(cos.read_state());
+            state.pages = None;
+            state.keys.clear();
         }
+        let before = state.memo.pages_hashed;
         let refs = state.pages.get_or_insert_with(|| page_objects(cos, count));
-        pages
+        let keys = pages
             .iter()
             .map(|&p| {
                 if let Some(known) = state.keys.get(&p) {
@@ -443,7 +476,9 @@ impl ChessCache {
                 state.keys.insert(p, key);
                 key
             })
-            .collect()
+            .collect();
+        self.keys_hashed = self.keys_hashed.saturating_add(state.memo.pages_hashed.saturating_sub(before));
+        keys
     }
 
     /// The content key page `page` of `doc` had when it was scanned in state `then`, when an
@@ -464,7 +499,7 @@ impl ChessCache {
         self.docs.remove(&doc);
         self.keys.retain(|k| k.doc != doc);
         self.corrections.retain(|(d, _)| *d != doc);
-        self.fingerprints.retain(|(d, ..)| *d != doc);
+        self.fingerprints.retain(|f| f.doc != doc);
         self.books.remove(&doc);
     }
 
@@ -615,10 +650,13 @@ struct PageInputs {
     /// The images the page draws: box in user space and pixel size.
     images: Vec<(PageRect, u32, u32)>,
     boxes: Vec<FilledBox>,
-    notes: Vec<String>,
+    notes: Vec<ScanNote>,
     /// The page's content key when the job was made.
     key: Option<page_key::PageKey>,
 }
+
+/// Most threads one scan runs on ([`ChessScanJob::run_parallel`]).
+pub const MAX_SCAN_WORKERS: usize = 4;
 
 /// Everything scanning needs from a document, detached from the session.
 pub struct ChessScanJob {
@@ -689,6 +727,104 @@ impl ChessScanJob {
     pub fn run_with(self, model: Option<&dyn SquareClassifier>, progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
         let key = if model.is_some() { ModelKey::Supplied } else { ModelKey::Missing };
         self.run_inner(model, key, progress)
+    }
+
+    /// [`Self::run`] on `workers` threads (plan A9-V10, R8-02: a book's scan used one core),
+    /// each with its own page renderer and the same guard against a page that panics; the pages
+    /// come back in order, and `progress(done, total)` is told of those scanned from the first
+    /// (returning `false` stops the workers between two pages, and the pages scanned from the first
+    /// up to a gap are returned). One worker, one page or a target without threads (the web)
+    /// scans as [`Self::run`] does. What it finds is what [`Self::run`] finds.
+    pub fn run_parallel(self, models: &ChessModels, workers: usize, progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
+        let model = models.pieces.loaded().map(|m| m as &(dyn SquareClassifier + Sync));
+        self.run_parallel_inner(model, ModelKey::of(models), workers, progress)
+    }
+
+    /// [`Self::run_parallel`] with a classifier the caller supplies ([`Self::run_with`]).
+    pub fn run_parallel_with(
+        self,
+        model: Option<&(dyn SquareClassifier + Sync)>,
+        workers: usize,
+        progress: impl FnMut(usize, usize) -> bool,
+    ) -> ChessScan {
+        let key = if model.is_some() { ModelKey::Supplied } else { ModelKey::Missing };
+        self.run_parallel_inner(model, key, workers, progress)
+    }
+
+    /// How many workers a scan uses by default: one core is left to the rest of the program, and
+    /// at most [`MAX_SCAN_WORKERS`] (each holds a page's peak: 120 MB detecting, 285-445 MB
+    /// reading, measured for R8-02).
+    pub fn default_workers() -> usize {
+        std::thread::available_parallelism().map_or(1, |n| n.get().saturating_sub(1)).clamp(1, MAX_SCAN_WORKERS)
+    }
+
+    fn run_parallel_inner(
+        mut self,
+        model: Option<&(dyn SquareClassifier + Sync)>,
+        key: ModelKey,
+        workers: usize,
+        mut progress: impl FnMut(usize, usize) -> bool,
+    ) -> ChessScan {
+        let total = self.inputs.len();
+        let workers = workers.min(MAX_SCAN_WORKERS).min(total);
+        if cfg!(target_arch = "wasm32") || workers <= 1 {
+            return self.run_inner(model.map(|m| m as &dyn SquareClassifier), key, progress);
+        }
+        if self.read {
+            self.params.model = Some(key);
+        }
+        let settings = self.settings.sanitized();
+        let next = AtomicUsize::new(0);
+        let stop = AtomicBool::new(false);
+        let mut slots: Vec<Option<Arc<ChessPage>>> = vec![None; total];
+        let job = &self;
+        std::thread::scope(|scope| {
+            let (tx, rx) = std::sync::mpsc::channel::<(usize, ChessPage)>();
+            for _ in 0..workers {
+                let tx = tx.clone();
+                let (next, stop, settings) = (&next, &stop, &settings);
+                scope.spawn(move || {
+                    let mut renderer = PageRenderer::new(job.bytes.clone(), job.render_config());
+                    while !stop.load(Ordering::Relaxed) {
+                        let i = next.fetch_add(1, Ordering::Relaxed);
+                        let Some(input) = job.inputs.get(i) else { break };
+                        // The same last-resort guard as a page at a time ([`ChessScanSteps::step`]).
+                        let scanned = catch_unwind(AssertUnwindSafe(|| {
+                            scan_page(&mut renderer, input, settings, job.read, model.map(|m| m as &dyn SquareClassifier))
+                        }));
+                        let page = scanned.unwrap_or_else(|_| {
+                            renderer = PageRenderer::new(job.bytes.clone(), job.render_config());
+                            failed_page(input, "scanning the page failed unexpectedly")
+                        });
+                        if tx.send((i, page)).is_err() {
+                            break;
+                        }
+                    }
+                });
+            }
+            drop(tx);
+            let mut done = 0usize;
+            if !progress(done, total) {
+                stop.store(true, Ordering::Relaxed);
+            }
+            for (i, page) in rx {
+                if let Some(slot) = slots.get_mut(i) {
+                    *slot = Some(Arc::new(page));
+                }
+                let before = done;
+                while slots.get(done).is_some_and(Option::is_some) {
+                    done += 1;
+                }
+                if done > before && !stop.load(Ordering::Relaxed) && done < total && !progress(done, total) {
+                    stop.store(true, Ordering::Relaxed);
+                }
+            }
+        });
+        progress(total, total);
+        // The pages scanned from the first: a stop leaves the rest unscanned, as a page at a time.
+        let pages: Vec<Arc<ChessPage>> = slots.into_iter().map_while(|p| p).collect();
+        let keys = self.inputs.iter().map(|i| (i.page, i.key)).collect();
+        ChessScan { doc: self.doc, params: self.params, pages, keys }
     }
 
     fn run_inner(self, model: Option<&dyn SquareClassifier>, key: ModelKey, mut progress: impl FnMut(usize, usize) -> bool) -> ChessScan {
@@ -859,7 +995,7 @@ fn image_boxes(
     images: &[(PageRect, u32, u32)],
     geometry: &PageGeometry,
     raster: Option<(&GrayImage, f32)>,
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) -> Vec<ImageBox> {
     let crop_box = geometry.crop_box();
     let page_area = crop_box.width() * crop_box.height();
@@ -890,10 +1026,10 @@ fn image_boxes(
         })
         .collect();
     if images.len() > embedded::consts::MAX_IMAGES {
-        notes.push(format!("only the first {} of {} images were looked at", embedded::consts::MAX_IMAGES, images.len()));
+        notes.push(ScanNote::ImagesCapped { looked: embedded::consts::MAX_IMAGES, total: images.len() });
     }
     if uncropped > 0 {
-        notes.push(format!("{uncropped} image(s) were not trimmed: the page's image pixels exceed the scan budget"));
+        notes.push(ScanNote::ImagesUntrimmed { count: uncropped });
     }
     out
 }
@@ -1027,7 +1163,7 @@ fn scan_page(
     let raster = render_gray(renderer, input.page, info, settings.dpi);
     let text = renderer.render(RenderRequest { page: input.page, kind: RequestKind::Text, scale: 1.0, ..Default::default() });
     if let Some(e) = &text.error {
-        notes.push(format!("the page's text could not be read: {e}"));
+        notes.push(ScanNote::TextUnreadable { error: e.clone() });
     }
     let glyphs = text.text.as_deref().map(font_glyphs).unwrap_or_default();
 
@@ -1091,7 +1227,7 @@ fn sides_from_move_numbers(
     geometry: &PageGeometry,
     diagrams: &[Merged],
     readings: &mut [BoardReading],
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) {
     if !readings.iter().any(|r| r.position().is_some()) {
         return;
@@ -1115,7 +1251,7 @@ fn sides_from_move_numbers(
         if let Some(Stipulation { goal: Some(Goal::Mate(n)), .. }) = stipulations.get(reading.index).copied().flatten() {
             position.check_mate(n, mate::DEFAULT_MATE_BUDGET);
             if let Some(MateFinding::BothSides { n }) = position.mate {
-                notes.push(format!("diagram {}: both sides mate in {n}; the side to move stays assumed", reading.index.saturating_add(1)));
+                notes.push(ScanNote::BothSidesMate { diagram: reading.index.saturating_add(1), n });
             }
         }
     }
@@ -1133,7 +1269,7 @@ fn read_page(
     candidates: &[DiagramCandidate],
     settings: &ChessScanSettings,
     model: Option<&dyn SquareClassifier>,
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) -> Vec<BoardReading> {
     // `board::read` cuts a box-only candidate (an embedded image) from the page raster at the
     // raster's resolution, while the prototype read such a crop at the image's own resolution.
@@ -1143,18 +1279,18 @@ fn read_page(
     let finest = candidates.iter().filter(|c| c.placement.is_none()).map(|c| c.dpi_hint).filter(|d| d.is_finite()).fold(0.0_f32, f32::max);
     let wanted = finest.min(settings.max_read_dpi);
     if finest > settings.max_read_dpi * 1.05 && model.is_some() {
-        notes.push(format!("a diagram offers {finest:.0} dpi; read at most at {:.0} dpi (max_read_dpi)", settings.max_read_dpi));
+        notes.push(ScanNote::ReadDpiCapped { offered: finest, max: settings.max_read_dpi });
     }
     // Within 5 % is the same raster: rendering again would cost a page and add nothing.
     if model.is_some() && wanted > dpi * 1.05 {
         match render_gray(renderer, page, info, wanted) {
             Ok((finer, finer_dpi)) => {
                 if finer_dpi < wanted * 0.95 {
-                    notes.push(format!("the page is too large to render at {wanted:.0} dpi; diagrams were read at {finer_dpi:.0} dpi"));
+                    notes.push(ScanNote::PageTooLarge { wanted, read: finer_dpi });
                 }
                 return board::read(&finer, geometry, finer_dpi, candidates, model);
             }
-            Err(e) => notes.push(format!("the page could not be rendered at {wanted:.0} dpi for reading ({e}); read at {dpi:.0} dpi")),
+            Err(error) => notes.push(ScanNote::FinerRenderFailed { wanted, read: dpi, error }),
         }
     }
     board::read(gray, geometry, dpi, candidates, model)
@@ -1209,19 +1345,19 @@ impl Session {
                 let boxes = match doc.editor.as_ref().map(|e| pdfcraft_edit::paths::page_paths(&e.cos, page)) {
                     Some(Ok(inventory)) => {
                         if inventory.truncated {
-                            notes.push("the page draws more paths than are looked at; the rest were skipped".into());
+                            notes.push(ScanNote::PathsCapped);
                         }
                         if inventory.unreadable > 0 {
-                            notes.push(format!("{} content stream(s) could not be decoded and were skipped", inventory.unreadable));
+                            notes.push(ScanNote::StreamsUndecoded { count: inventory.unreadable });
                         }
                         filled_boxes(&inventory.items)
                     }
                     Some(Err(e)) => {
-                        notes.push(format!("the page's paths could not be read: {e}"));
+                        notes.push(ScanNote::PathsUnreadable { error: e.to_string() });
                         Vec::new()
                     }
                     None => {
-                        notes.push("the document can't be read for editing, so its images and paths were not looked at".into());
+                        notes.push(ScanNote::NotEditable);
                         Vec::new()
                     }
                 };
@@ -1353,9 +1489,11 @@ impl Session {
         if !missing.is_empty() {
             self.chess.scanned = self.chess.scanned.saturating_add(missing.len());
             let job = self.chess_scan_job_keyed(id, &missing, &missing_keys, &settings, read).ok_or("no such document")?;
+            // On the cores (plan A9-V10a): the command line and the agents scan whole books here.
+            let workers = ChessScanJob::default_workers();
             let scan = match &models {
-                Some(m) => job.run(m, |_, _| true),
-                None => job.run_with(None, |_, _| true),
+                Some(m) => job.run_parallel(m, workers, |_, _| true),
+                None => job.run_parallel_with(None, workers, |_, _| true),
             };
             self.store_chess_scan(&scan);
             for page in scan.pages {
@@ -1519,15 +1657,54 @@ impl Session {
     /// made once per document state and kept, so reading with the corrections does not hash the
     /// book's pages again each time (plan A9-G2b, R8-04/R8-05: 748 fingerprints on every call).
     /// `None` when there is no such document.
+    ///
+    /// After an edit only the pages whose objects it changed are hashed again (plan A9-I3b, §2.4):
+    /// a new Title hashes none, an edit to one page that one.
     pub fn chess_fingerprints(&mut self, id: DocId) -> Option<Arc<corrections::Fingerprints>> {
-        let doc = self.get(id)?;
+        let doc = self.docs.iter().find(|d| d.id == id)?;
         let state = (doc.generation, doc.bytes.len());
-        if let Some((_, _, kept)) = self.chess.fingerprints.iter().find(|(d, s, _)| *d == id && *s == state) {
-            return Some(kept.clone());
+        let cache = &mut self.chess;
+        if let Some(kept) = cache.fingerprints.iter().find(|f| f.doc == id && f.state == state) {
+            return Some(kept.made.clone());
         }
-        let made = Arc::new(corrections::Fingerprints::new(doc.page_fingerprints()));
-        self.chess.fingerprints.retain(|(d, ..)| *d != id);
-        self.chess.fingerprints.push((id, state, made.clone()));
+        let before = cache.fingerprints.iter().position(|f| f.doc == id).map(|i| cache.fingerprints.swap_remove(i));
+        let Some(cos) = doc.editor.as_ref().map(|e| &e.cos) else {
+            // Not readable yet (encrypted and locked): no page has a fingerprint.
+            let made = Arc::new(corrections::Fingerprints::new(Vec::new()));
+            cache.fingerprints.push(FingerprintState { doc: id, state, read: None, made: made.clone(), by_page: Default::default() });
+            return Some(made);
+        };
+        let mut by_page = match before {
+            Some(b) => match b.read.as_ref().and_then(|r| r.changed(cos)) {
+                Some(changed) => {
+                    let mut by_page = b.by_page;
+                    by_page.retain(|_, (_, from)| !from.iter().any(|o| changed.contains(o)));
+                    by_page
+                }
+                None => Default::default(),
+            },
+            None => Default::default(),
+        };
+        let pages = pdfcraft_organize::pages(cos).map(|p| p.into_iter().map(|p| p.obj).collect::<Vec<_>>()).unwrap_or_default();
+        let mut made = 0usize;
+        let prints: Vec<String> = pages
+            .iter()
+            .map(|page| match by_page.get(&page.num) {
+                Some((print, _)) => print.clone(),
+                None => {
+                    made = made.saturating_add(1);
+                    let (print, from) = corrections::page_fingerprint_from(cos, *page);
+                    by_page.insert(page.num, (print.clone(), from));
+                    print
+                }
+            })
+            .collect();
+        // Only the pages there now are kept for the next state.
+        let there: std::collections::HashSet<u32> = pages.iter().map(|p| p.num).collect();
+        by_page.retain(|num, _| there.contains(num));
+        cache.fingerprints_made = cache.fingerprints_made.saturating_add(made);
+        let made = Arc::new(corrections::Fingerprints::new(prints));
+        cache.fingerprints.push(FingerprintState { doc: id, state, read: Some(cos.read_state()), made: made.clone(), by_page });
         Some(made)
     }
 
@@ -1645,6 +1822,7 @@ pub mod epub;
 pub mod export;
 pub mod keys;
 pub mod links;
+pub mod notes;
 pub mod office;
 mod page_key;
 pub mod reference_store;

@@ -896,22 +896,36 @@ impl Document {
 /// length). Saving keeps it; an edit to the page's content or its pictures changes it. `fnv:`
 /// and 32 hexadecimal digits.
 pub fn page_fingerprint(cos: &pdfcraft_cos::Document, page: pdfcraft_cos::ObjRef) -> String {
+    page_fingerprint_from(cos, page).0
+}
+
+/// [`page_fingerprint`], with the objects it was made from (the page and the streams and
+/// dictionaries it reached by reference): it stands while none of them changes (plan A9-I3b).
+pub fn page_fingerprint_from(cos: &pdfcraft_cos::Document, page: pdfcraft_cos::ObjRef) -> (String, Vec<u32>) {
     use pdfcraft_cos::Object;
+    let mut from = vec![page.num];
+    // `o` resolved, its object noted when it is a reference.
+    let mut resolve = |o: &Object| {
+        if let Object::Ref(r) = o {
+            from.push(r.num);
+        }
+        cos.resolve(o)
+    };
     let page = cos.get(page);
-    let Some(dict) = page.as_dict() else { return format!("fnv:{}", hash_hex(&[b"no page"])) };
+    let Some(dict) = page.as_dict() else { return (format!("fnv:{}", hash_hex(&[b"no page"])), from) };
     let mut streams: Vec<std::sync::Arc<Object>> = Vec::new();
-    let contents = dict.get(b"Contents").map(|c| cos.resolve(c));
+    let contents = dict.get(b"Contents").map(&mut resolve);
     match contents.as_deref() {
-        Some(Object::Array(parts)) => streams.extend(parts.iter().take(MAX_HASHED_STREAMS).map(|p| cos.resolve(p))),
+        Some(Object::Array(parts)) => streams.extend(parts.iter().take(MAX_HASHED_STREAMS).map(&mut resolve)),
         Some(_) => streams.extend(contents.clone()),
         None => {}
     }
-    let resources = dict.get(b"Resources").map(|r| cos.resolve(r));
-    let xobjects = resources.as_deref().and_then(Object::as_dict).and_then(|r| r.get(b"XObject")).map(|x| cos.resolve(x));
+    let resources = dict.get(b"Resources").map(&mut resolve);
+    let xobjects = resources.as_deref().and_then(Object::as_dict).and_then(|r| r.get(b"XObject")).map(&mut resolve);
     if let Some(x) = xobjects.as_deref().and_then(Object::as_dict) {
         let mut named: Vec<_> = x.iter().take(MAX_HASHED_STREAMS).collect();
         named.sort_by(|a, b| a.0.cmp(b.0));
-        streams.extend(named.into_iter().map(|(_, o)| cos.resolve(o)));
+        streams.extend(named.into_iter().map(|(_, o)| resolve(o)));
     }
     // Each stream's length and its first bytes, hashed where they are (never copied).
     let raws: Vec<&[u8]> = streams.iter().filter_map(|s| if let Object::Stream(s) = s.as_ref() { Some(s.raw.as_ref()) } else { None }).collect();
@@ -921,7 +935,9 @@ pub fn page_fingerprint(cos: &pdfcraft_cos::Document, page: pdfcraft_cos::ObjRef
         parts.push(len);
         parts.push(raw.get(..raw.len().min(MAX_HASHED_STREAM)).unwrap_or_default());
     }
-    format!("fnv:{}", hash_hex(&parts))
+    let print = format!("fnv:{}", hash_hex(&parts));
+    drop(resolve);
+    (print, from)
 }
 
 /// A correction that replaced a diagram's reading ([`apply`]).
@@ -1129,7 +1145,7 @@ pub fn apply<F: PageFingerprints + ?Sized>(pages: &[std::sync::Arc<super::ChessP
             let diverged = e.orig.is_some() && read_fen != made_over;
             if diverged {
                 let now = read_fen.as_deref().unwrap_or("unread");
-                corrected.notes.push(format!("diagram {}: the reading changed since it was corrected (now {now}); the correction is kept", i + 1));
+                corrected.notes.push(super::ScanNote::CorrectionDiverged { diagram: i.saturating_add(1), now: now.to_owned() });
             }
             *reading = BoardReading {
                 index: reading.index,

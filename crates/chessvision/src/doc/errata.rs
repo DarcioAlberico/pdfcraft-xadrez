@@ -14,8 +14,15 @@
 //! - **The book's PGN** ([`LinkKind::Conflict`], [`super::reference::link`]): on a **born-digital**
 //!   page ([`born_digital`]: the text layer was good and read as it is, no word of the move
 //!   repaired), a move the reader played to a position the book's PGN does not have, and the PGN
-//!   plays from another position. The characters cannot be a misreading there, so the PGN decides:
-//!   the book's position is the erratum. Not on a page read by OCR, where it may be the reading's.
+//!   plays from another position. Not on a page read by OCR.
+//!
+//! Each row has a [`Kind`] (plan A9-N19b): a mark is a [`Kind::Misprint`], since the printed `x`,
+//! `+` or `#` disagrees with the position the move was played in, and a number or a conflict with
+//! the PGN is a row [`Kind::Check`], since it may be the reading's. On a born-digital page the
+//! characters are the book's, but how its lines join is the walk's: on Harikrishna's 60 pages every
+//! number out of sequence and every conflict with the PGN was a place where the reading strayed
+//! (a line label not attached, a move cited in prose), none a misprint. The rows come misprints
+//! first.
 //!
 //! A move with two issues (`Nxd8+` taking nothing and giving no check) has a row for each. On a
 //! page read by OCR a mark may be a misread character: each row says what its page was read from.
@@ -47,6 +54,41 @@ pub enum Issue {
     BookPgn,
 }
 
+/// How sure a row is (plan A9-N19b).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Kind {
+    /// The printed mark disagrees with the position the move was played in: the book's.
+    Misprint,
+    /// Where the reading and the book disagree, which may be the reading's: a number out of
+    /// sequence, a conflict with the book's PGN.
+    Check,
+}
+
+impl Kind {
+    pub const ALL: [Kind; 2] = [Kind::Misprint, Kind::Check];
+
+    /// The kind's name in the CSV, in the tools' replies and in `chess_errata`'s `kind` filter.
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Misprint => "misprint",
+            Kind::Check => "check",
+        }
+    }
+
+    /// The kind in words, as the Markdown table says it.
+    pub fn words(self) -> &'static str {
+        match self {
+            Kind::Misprint => "misprint",
+            Kind::Check => "to check",
+        }
+    }
+
+    /// The kind named `name` ([`Kind::name`]).
+    pub fn from_name(name: &str) -> Option<Kind> {
+        Kind::ALL.into_iter().find(|k| k.name() == name)
+    }
+}
+
 impl Issue {
     pub const ALL: [Issue; 5] = [Issue::CaptureMark, Issue::CheckMark, Issue::MateMark, Issue::MoveNumber, Issue::BookPgn];
 
@@ -69,6 +111,15 @@ impl Issue {
             Issue::MateMark => "mate mark",
             Issue::MoveNumber => "move number",
             Issue::BookPgn => "book's PGN",
+        }
+    }
+
+    /// How sure a row of this issue is: a mark is the book's, a number or a conflict with the PGN
+    /// may be the reading's.
+    pub fn kind(self) -> Kind {
+        match self {
+            Issue::CaptureMark | Issue::CheckMark | Issue::MateMark => Kind::Misprint,
+            Issue::MoveNumber | Issue::BookPgn => Kind::Check,
         }
     }
 }
@@ -103,7 +154,8 @@ pub fn born_digital(page: &ChessPage) -> bool {
     !page.ocr && page.text_layer == TextLayer::Good
 }
 
-/// The document's errata, in reading order, each move's issues in [`Issue::ALL`]'s order.
+/// The document's errata, misprints first, then the rows to check ([`Kind`]), each in reading
+/// order, a move's issues in [`Issue::ALL`]'s order.
 /// `index` is the book's PGN `doc` was linked to ([`super::reference::link`]), which names the
 /// PGN's move of a [`Issue::BookPgn`] row; without it the row says the PGN's game and move only.
 /// The page's furniture (its number, the text in a diagram's box, a running head) is passed over,
@@ -120,6 +172,8 @@ pub fn errata(doc: &ChessDoc, index: Option<&ReferenceIndex>) -> Vec<Erratum> {
             }
         }
     }
+    // Stable: reading order within each kind.
+    out.sort_by_key(|e| e.issue.kind());
     out
 }
 
@@ -282,10 +336,10 @@ fn label(labels: &[String], e: &Erratum) -> String {
 
 /// `errata` as CSV (RFC 4180: a header, then a row each, lines ended by CR LF): `page` (the PDF's
 /// page, from 1), `page_label` (as the book numbers it, `labels` by page index), `move` (the
-/// move's number in its game), `printed`, `issue` ([`Issue::name`]), `expected`, `detail` and
-/// `read_from` (`text` or `ocr`).
+/// move's number in its game), `printed`, `issue` ([`Issue::name`]), `expected`, `detail`,
+/// `read_from` (`text` or `ocr`) and `kind` ([`Kind::name`]; last, as plan A9-N19b added it).
 pub fn to_csv(errata: &[Erratum], labels: &[String]) -> String {
-    let mut out = String::from("page,page_label,move,printed,issue,expected,detail,read_from\r\n");
+    let mut out = String::from("page,page_label,move,printed,issue,expected,detail,read_from,kind\r\n");
     for e in errata {
         let fields = [
             u64::from(e.at.page).saturating_add(1).to_string(),
@@ -296,6 +350,7 @@ pub fn to_csv(errata: &[Erratum], labels: &[String]) -> String {
             e.expected.clone(),
             e.detail.clone(),
             (if e.ocr { "ocr" } else { "text" }).to_owned(),
+            e.issue.kind().name().to_owned(),
         ];
         let row: Vec<String> = fields.iter().map(|f| csv_field(f)).collect();
         out.push_str(&row.join(","));
@@ -314,12 +369,12 @@ pub fn to_markdown(errata: &[Erratum], labels: &[String], title: &str) -> String
         out.push_str("No errata found.\n");
         return out;
     }
-    out.push_str("| Page | Printed page | Move | Printed | Issue | Should be | Detail | Read from |\n");
-    out.push_str("|---:|---|---|---|---|---|---|---|\n");
+    out.push_str("| Page | Printed page | Move | Printed | Issue | Should be | Detail | Read from | Kind |\n");
+    out.push_str("|---:|---|---|---|---|---|---|---|---|\n");
     for e in errata {
         let _ = writeln!(
             out,
-            "| {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} |",
             u64::from(e.at.page).saturating_add(1),
             esc(&label(labels, e)),
             esc(&e.number),
@@ -328,6 +383,7 @@ pub fn to_markdown(errata: &[Erratum], labels: &[String], title: &str) -> String
             esc(&e.expected),
             esc(&e.detail),
             if e.ocr { "OCR" } else { "text layer" },
+            e.issue.kind().words(),
         );
     }
     out

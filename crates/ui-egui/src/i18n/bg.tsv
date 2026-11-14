@@ -3443,4 +3443,49 @@ the move's comment	Move comment	Коментар към хода
 	mates in {m}	матира в {m}
 	supposes castling is allowed	предполага, че рокадата е разрешена
 	Mate in {n}: both sides mate, so who moves stays assumed	Мат в {n}: и двете страни матират, затова кой е на ход остава предположено
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Страницата рисува повече контури, отколкото се преглеждат; останалите са пропуснати.
+	Content streams that couldn't be decoded and were skipped: {n}	Потоци съдържание, които не можаха да се декодират и бяха пропуснати: {n}
+	The page's paths couldn't be read: {e}	Контурите на страницата не можаха да се прочетат: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Документът не може да се прочете за редактиране, затова изображенията и контурите му не бяха прегледани.
+	The page's text couldn't be read: {e}	Текстът на страницата не можа да се прочете: {e}
+	Only the first {n} of the page's {total} images were looked at.	Прегледани са само първите {n} от {total} изображения на страницата.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Неизрязани изображения, защото пикселите на изображенията на страницата надхвърлят бюджета на търсенето: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Диаграма {d}: и двете страни матират в {n}, затова кой е на ход остава предположено.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Диаграмата предлага {offered} dpi; прочетена е с най-много {max} dpi (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Страницата е твърде голяма, за да се изобрази с {wanted} dpi; диаграмите ѝ са прочетени с {read} dpi.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Страницата не можа да се изобрази с {wanted} dpi за четене ({e}); прочетена е с {read} dpi.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Диаграма {d}: разчитането се промени, откакто е коригирана (сега {fen}); корекцията се запазва.
+	The frames around text were not looked for: {e}	Рамките около текст не бяха търсени: {e}
+	The lines set bolder were not looked for: {e}	Редовете, набрани по-удебелено от основния текст, не бяха търсени: {e}
+	The words set in bold were not looked for: {e}	Думите в удебелен шрифт не бяха търсени: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% от височината на страницата съдържа твърде много фино мастило, за да е текст (картина или прашно сканиране); тези ивици не бяха прочетени.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Общото OCR се провали ({e}); четецът на глифове прочете и прозата.
+	Chess OCR failed: {e}	Шахматното OCR се провали: {e}
+	The page couldn't be rendered for chess OCR: {e}	Страницата не можа да се изобрази за шахматно OCR: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Поискано е шахматно OCR, но за него е нужен моделът chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Шрифтът {font} прилича на шахматен, но не е в каталога; текстът му е запазен както се извлича.
+	The page has no visible area; it is left out.	Страницата няма видима област; тя се пропуска.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Абзаците на страницата не можаха да се прочетат ({e}); редовете ѝ са групирани по разстоянието.
+	The page's diagrams couldn't be read; they are left out.	Диаграмите на страницата не можаха да се прочетат; те се пропускат.
+	A correction ({id}) was not used: {e}	Една корекция ({id}) не беше използвана: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Описателната нотация ({examples}) не се поддържа; ходовете ѝ не бяха прочетени.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Документът съдържа {n} партии — най-много, колкото пази: оттук нататък не започва нито една партия.
+	This page couldn't be read: {e}	Тази страница не можа да се прочете: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (за шахматното OCR е нужен моделът chess-glyphs)
+	the page has no text layer	страницата няма текстов слой
+	the text layer has two-byte codes with no Unicode text	текстовият слой има двубайтови кодове без Unicode текст
+	the text layer extracts as replacement characters	текстовият слой се извлича като заместващи символи
+	the text layer's Unicode map is dead	Unicode картата на текстовия слой не работи
+	chess-font glyphs that couldn't be resolved: {n}	глифове от шахматни шрифтове, които не можаха да се разпознаят: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	ходове със случаен символ вместо фигурата, където предишен OCR слой е загубил фигурките: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	текстовият слой е невидим текст върху изображение на страницата: OCR на друга програма
+	no piece model is loaded	няма зареден модел на фигурите
+	the page raster's resolution is not a positive number	резолюцията на растера на страницата не е положително число
+	the diagram's box or corners are not finite numbers on this page	рамката или ъглите на диаграмата не са крайни числа на тази страница
+	the diagram lies outside the page raster	диаграмата е извън растера на страницата
+	the diagram's corners do not form a quadrilateral	ъглите на диаграмата не образуват четириъгълник
+	the page has more diagrams than are read on one page	страницата има повече диаграми, отколкото се четат на една страница
+	the piece model failed: {e}	моделът на фигурите се провали: {e}
+	the piece model's output is not a probability matrix: {e}	изходът на модела на фигурите не е матрица от вероятности: {e}
 	Back to Diagrams	Обратно към Диаграми

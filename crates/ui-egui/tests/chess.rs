@@ -2588,6 +2588,8 @@ fn the_games_come_back_exactly_in_the_next_session() {
         h.run_steps(10);
         assert!(chess_files(&s).is_empty(), "not before the changes have rested");
         h.run_steps(40);
+        // The store's writer thread writes the file (plan A9-I3b): waited for, as Quit does.
+        h.state_mut().settle_chess_games();
         assert_eq!(chess_files(&s).len(), 1, "written once they have");
         let state = game_state(h.state());
         assert_eq!(state.len(), 2);
@@ -2631,6 +2633,7 @@ fn saving_a_pdf_without_an_id_rekeys_its_games() {
         let mut h = session(&s, "book.pdf", Some(&path.to_string_lossy()), boards());
         h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         assert_eq!(chess_files(&s).len(), 1);
         let app = h.state_mut();
         assert!(app.apply_edit(Edit::RotatePages { pages: vec![0], degrees: 90 }));
@@ -2698,6 +2701,7 @@ fn a_newer_games_file_of_this_document_is_only_read() {
     assert!(toast.contains("saved by a newer PdfCraft (format 2)"), "{toast}");
     h.state_mut().chess.board_mut().play_uci_line(&["c2c4".into()]);
     h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
     h.state_mut().show_chess_board();
     h.run_steps(3);
     assert!(h.query_by_label_contains("Saved by a newer PdfCraft: these games are only read here.").is_some(), "the list says why");
@@ -2714,6 +2718,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     let mut first = session(&s, "boards.pdf", None, boards());
     first.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
     first.state_mut().flush_chess_games();
+    first.state_mut().settle_chess_games();
     let files = chess_files(&s);
     assert_eq!(files.len(), 1);
     let file = s.dir().join("chess").join(&files[0]);
@@ -2724,6 +2729,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     assert_eq!(games(second.state()).0, ["1. e4"]);
     second.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
     second.state_mut().flush_chess_games();
+    second.state_mut().settle_chess_games();
     assert_eq!(std::fs::read(&file).unwrap(), written, "the first window's file is untouched");
     let toast = second.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
     assert!(toast.contains("autosaved by another PdfCraft window"), "{toast}");
@@ -2731,6 +2737,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     drop(first);
     drop(s);
     second.state_mut().flush_chess_games();
+    second.state_mut().settle_chess_games();
     assert!(String::from_utf8_lossy(&std::fs::read(&file).unwrap()).contains("1. e4 e5"), "written once the first window is gone");
 }
 
@@ -2766,6 +2773,7 @@ fn a_protected_document_asks_before_its_games_are_written() {
         click_square(&mut h, "e2");
         click_square(&mut h, "e4");
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         h.run_steps(2);
         assert!(chess_files(&s).is_empty(), "{tag}: nothing before the user answers");
         match answer {
@@ -2780,6 +2788,7 @@ fn a_protected_document_asks_before_its_games_are_written() {
         click_square(&mut h, "e7");
         click_square(&mut h, "e5");
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         h.run_steps(2);
         assert!(h.query_by_label(ASKED).is_none(), "{tag}: asked once");
         assert_eq!(chess_files(&s).len(), usize::from(answer == Some(true)), "{tag}");
