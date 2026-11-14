@@ -3561,3 +3561,7 @@ the move's comment	Move comment	Comentário do lance
 	Alt+O switches between the board as read and the page's own picture.	Alt+O alterna entre o tabuleiro como foi lido e a imagem da própria página.
 	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
 	The page's picture of this diagram shows once its page is drawn.	A imagem da página deste diagrama aparece assim que a página dele é desenhada.
+	Export as book	Exportar como livro
+	The games of the list as a book, a page each, with their diagrams.	As partidas da lista como livro, uma página cada, com seus diagramas.
+	Nothing to export: an illegal position has no game.	Nada a exportar: uma posição ilegal não tem partida.
+	Games left out (an illegal position has no game): {n}	Partidas deixadas de fora (uma posição ilegal não tem partida): {n}

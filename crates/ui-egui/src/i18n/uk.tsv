@@ -3566,3 +3566,7 @@ the move's comment	Move comment	Коментар до ходу
 	Alt+O switches between the board as read and the page's own picture.	Alt+O перемикає між дошкою, як її прочитано, і зображенням самої сторінки.
 	Original diagram, page {p}, diagram {n}	Оригінальна діаграма, сторінка {p}, діаграма {n}
 	The page's picture of this diagram shows once its page is drawn.	Зображення цієї діаграми зі сторінки з’явиться, щойно її сторінку буде намальовано.
+	Export as book	Експортувати як книгу
+	The games of the list as a book, a page each, with their diagrams.	Партії зі списку як книга, по сторінці на кожну, з їхніми діаграмами.
+	Nothing to export: an illegal position has no game.	Нічого експортувати: недопустима позиція не має партії.
+	Games left out (an illegal position has no game): {n}	Пропущені партії (недопустима позиція не має партії): {n}

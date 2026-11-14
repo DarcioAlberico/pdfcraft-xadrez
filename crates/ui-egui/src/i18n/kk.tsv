@@ -3542,3 +3542,7 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Alt+O switches between the board as read and the page's own picture.	Alt+O оқылған тақта мен беттің өз суретінің арасында ауыстырады.
 	Original diagram, page {p}, diagram {n}	Түпнұсқа диаграмма, {p}-бет, {n}-диаграмма
 	The page's picture of this diagram shows once its page is drawn.	Бұл диаграмманың бет суреті оның беті салынғанда көрсетіледі.
+	Export as book	Кітап ретінде экспорттау
+	The games of the list as a book, a page each, with their diagrams.	Тізімдегі партиялар кітап ретінде, әрқайсысы бір беттен, диаграммаларымен.
+	Nothing to export: an illegal position has no game.	Экспорттайтын ештеңе жоқ: заңсыз позицияның партиясы болмайды.
+	Games left out (an illegal position has no game): {n}	Тысқары қалған партиялар (заңсыз позицияның партиясы болмайды): {n}

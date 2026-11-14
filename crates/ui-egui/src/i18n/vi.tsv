@@ -3796,3 +3796,7 @@ the move's comment	Move comment	Bình luận của nước đi
 	Alt+O switches between the board as read and the page's own picture.	Alt+O chuyển giữa bàn cờ như đã đọc và hình của chính trang.
 	Original diagram, page {p}, diagram {n}	Sơ đồ gốc, trang {p}, sơ đồ {n}
 	The page's picture of this diagram shows once its page is drawn.	Hình trên trang của sơ đồ này hiện khi trang của nó đã được vẽ.
+	Export as book	Xuất thành sách
+	The games of the list as a book, a page each, with their diagrams.	Các ván trong danh sách thành sách, mỗi ván một trang, kèm sơ đồ.
+	Nothing to export: an illegal position has no game.	Không có gì để xuất: thế cờ không hợp lệ không có ván.
+	Games left out (an illegal position has no game): {n}	Các ván bị bỏ qua (thế cờ không hợp lệ không có ván): {n}

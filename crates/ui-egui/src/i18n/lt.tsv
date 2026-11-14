@@ -3794,3 +3794,7 @@ the move's comment	Move comment	Ėjimo komentaras
 	Alt+O switches between the board as read and the page's own picture.	Alt+O perjungia nuskaitytą lentą ir paties puslapio paveikslą.
 	Original diagram, page {p}, diagram {n}	Originali diagrama, {p} puslapis, {n} diagrama
 	The page's picture of this diagram shows once its page is drawn.	Šios diagramos puslapio paveikslas parodomas, kai jos puslapis nupiešiamas.
+	Export as book	Eksportuoti kaip knygą
+	The games of the list as a book, a page each, with their diagrams.	Sąrašo partijos kaip knyga, po puslapį kiekvienai, su diagramomis.
+	Nothing to export: an illegal position has no game.	Nėra ką eksportuoti: neleistina pozicija neturi partijos.
+	Games left out (an illegal position has no game): {n}	Praleistos partijos (neleistina pozicija neturi partijos): {n}
