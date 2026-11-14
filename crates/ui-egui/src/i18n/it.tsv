@@ -3780,3 +3780,10 @@ progress bar	Progress	Avanzamento
 	Games left out (an illegal position has no game): {n}	Partite tralasciate (una posizione illegale non ha partita): {n}
 	Indexing the book's PGN…	Indicizzazione del PGN del libro…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Il PGN del libro è più grande di quanto PdfCraft indicizzi: solo le sue prime {moves} mosse sono collegate al libro.
+	Chess engine	Motore scacchistico
+	Search threads	Thread di ricerca
+	Hash table	Tabella hash
+	Engine's default	Predefinito del motore
+	Endgame tables (Syzygy)	Tablebase dei finali (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Ciascuna va al motore solo se la accetta. Avvia l'analisi per vedere quali accetta questo motore.
+	This engine does not take: {names}	Questo motore non accetta: {names}

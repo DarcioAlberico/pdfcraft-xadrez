@@ -3573,3 +3573,10 @@ progress bar	Progress	Napredek
 	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}
 	Indexing the book's PGN…	Indeksiranje PGN knjige…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knjige je večji, kot ga PdfCraft indeksira: s knjigo je povezanih le prvih {moves} potez.
+	Chess engine	Šahovski pogon
+	Search threads	Niti iskanja
+	Hash table	Zgoščevalna tabela
+	Engine's default	Privzeto za pogon
+	Endgame tables (Syzygy)	Tabele končnic (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Vsaka nastavitev gre pogonu le, če jo sprejema. Zaženite analizo, da vidite, katere ta pogon sprejema.
+	This engine does not take: {names}	Ta pogon ne sprejema: {names}

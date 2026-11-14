@@ -3532,3 +3532,10 @@ progress bar	Progress	进度
 	Games left out (an illegal position has no game): {n}	未导出的对局（非法局面没有对局）：{n}
 	Indexing the book's PGN…	正在为本书的 PGN 建立索引…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本书的 PGN 超出了 PdfCraft 的索引上限：只有前 {moves} 步与本书关联。
+	Chess engine	国际象棋引擎
+	Search threads	搜索线程
+	Hash table	哈希表
+	Engine's default	引擎默认值
+	Endgame tables (Syzygy)	残局库（Syzygy）
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	每项设置仅在引擎接受时才会发送给它。开始分析即可看到此引擎接受哪些设置。
+	This engine does not take: {names}	此引擎不接受：{names}

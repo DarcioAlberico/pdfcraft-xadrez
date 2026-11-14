@@ -3564,3 +3564,10 @@ progress bar	Progress	İlerleme
 	Games left out (an illegal position has no game): {n}	Dışarıda bırakılan oyunlar (kural dışı bir konumun oyunu olmaz): {n}
 	Indexing the book's PGN…	Kitabın PGN'i dizinleniyor…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Kitabın PGN'i PdfCraft'ın dizinlediğinden büyük: kitaba yalnızca ilk {moves} hamlesi bağlandı.
+	Chess engine	Satranç motoru
+	Search threads	Arama iş parçacıkları
+	Hash table	Karma tablosu
+	Engine's default	Motorun varsayılanı
+	Endgame tables (Syzygy)	Oyun sonu tabloları (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Her biri motora yalnızca motor onu kabul ediyorsa gönderilir. Bu motorun hangilerini kabul ettiğini görmek için analizi başlatın.
+	This engine does not take: {names}	Bu motor kabul etmiyor: {names}

@@ -3566,3 +3566,10 @@ progress bar	Progress	Орындалу барысы
 	Games left out (an illegal position has no game): {n}	Тысқары қалған партиялар (заңсыз позицияның партиясы болмайды): {n}
 	Indexing the book's PGN…	Кітаптың PGN файлы индекстелуде…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Кітаптың PGN файлы PdfCraft индекстейтін көлемнен үлкен: кітаппен оның алғашқы {moves} жүрісі ғана байланыстырылды.
+	Chess engine	Шахмат қозғалтқышы
+	Search threads	Іздеу ағындары
+	Hash table	Хэш кестесі
+	Engine's default	Қозғалтқыштың әдепкісі
+	Endgame tables (Syzygy)	Эндшпиль кестелері (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Әрқайсысы қозғалтқышқа тек ол қабылдаса ғана жіберіледі. Бұл қозғалтқыш қайсысын қабылдайтынын көру үшін талдауды бастаңыз.
+	This engine does not take: {names}	Бұл қозғалтқыш қабылдамайды: {names}

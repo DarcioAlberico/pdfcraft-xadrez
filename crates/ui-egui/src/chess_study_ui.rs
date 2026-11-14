@@ -143,6 +143,17 @@ pub struct StudyState {
     sent: Option<String>,
     /// The no-engine assistant shows ([`engine_assistant`]).
     pub assistant: bool,
+    /// Threads, hash and the endgame tables the engine is set up with (plan A9-N8): Preferences ▸
+    /// Chess engine ([`crate::chess_engine_prefs`]), kept in the settings.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub settings: pdfcraft_engine::chess::analysis::EngineSettings,
+    /// What the last engine to finish its handshake said it takes of them (none before one did,
+    /// in this session).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub settable: Option<pdfcraft_engine::chess::analysis::Settable>,
+    /// The evaluations the engine found, for the document store ([`crate::chess_evals_ui`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    evals: crate::chess_evals_ui::Finding,
 }
 
 impl Default for StudyState {
@@ -162,6 +173,12 @@ impl Default for StudyState {
             no_engine: false,
             sent: None,
             assistant: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            settings: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            settable: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            evals: Default::default(),
         }
     }
 }
@@ -172,13 +189,20 @@ const MAX_ENGINE_PATH: usize = 4096;
 
 impl StudyState {
     /// The engine preferences for the settings file: the program picked (desktop; `null` when
-    /// none was), the lines shown and whether analysis is on.
+    /// none was), the lines shown, whether analysis is on, and the threads, hash and endgame
+    /// tables (desktop; `null` for the engine's own, plan A9-N8).
     pub(crate) fn to_json(&self) -> serde_json::Value {
         #[cfg(not(target_arch = "wasm32"))]
-        let path = self.engine_path.as_ref().map(|p| p.to_string_lossy().into_owned());
+        {
+            let path = self.engine_path.as_ref().map(|p| p.to_string_lossy().into_owned());
+            let s = &self.settings;
+            serde_json::json!({
+                "path": path, "lines": self.lines, "analysis": self.analysis,
+                "threads": s.threads, "hash_mb": s.hash_mb, "syzygy_path": s.syzygy_path,
+            })
+        }
         #[cfg(target_arch = "wasm32")]
-        let path: Option<String> = None;
-        serde_json::json!({ "path": path, "lines": self.lines, "analysis": self.analysis })
+        serde_json::json!({ "path": serde_json::Value::Null, "lines": self.lines, "analysis": self.analysis })
     }
 
     /// The engine preferences from the settings file. It is untrusted: lines outside 1–3 are
@@ -199,6 +223,10 @@ impl StudyState {
                 self.restart();
             }
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.settings = crate::chess_engine_prefs::settings_from(v);
+        }
     }
 
     /// The board is not shown: the engine stops searching (it starts again when the board is
@@ -210,6 +238,8 @@ impl StudyState {
         {
             engine.stop();
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        self.evals.finish();
         self.sent = None;
     }
 
@@ -272,16 +302,25 @@ impl StudyState {
         {
             self.engine = None;
             self.start_error = None;
+            self.evals.finish();
         }
         self.no_engine = false;
         self.sent = None;
     }
 
+    /// The evaluations the engine finished with since the last time, each with the document
+    /// whose game it was (plan A9-N8): for the document store.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn take_evals(&mut self) -> Vec<crate::chess_evals_ui::Found> {
+        self.evals.take()
+    }
+
     /// Start the engine when analysis is on, close it when off, and give it the position shown.
     #[cfg(not(target_arch = "wasm32"))]
-    fn sync_engine(&mut self, ctx: &egui::Context, board: &BoardState) {
+    fn sync_engine(&mut self, ctx: &egui::Context, board: &BoardState, doc: Option<pdfcraft_engine::DocId>) {
         use pdfcraft_engine::chess::analysis::{Analyser, AnalysisOptions, DEFAULT_DEPTH, find_engine};
         if !self.analysis {
+            self.evals.finish();
             self.engine = None;
             self.sent = None;
             return;
@@ -305,8 +344,17 @@ impl StudyState {
         }
         let Some(engine) = &self.engine else { return };
         engine.set_options(options);
+        engine.set_settings(self.settings.clone());
+        // What it takes of the settings, for Preferences, and what it found, for the store
+        // (plan A9-N8).
+        let snap = engine.snapshot();
+        if snap.ready {
+            self.settable = Some(snap.settable);
+        }
+        self.evals.note(doc, self.sent.as_deref(), &snap);
         let want = (self.setup.is_none() && board.illegal.is_none()).then(|| board.game.fen());
         if want != self.sent {
+            self.evals.finish();
             match &want {
                 // With the moves since the last capture or pawn move (plan A9-N8).
                 Some(_) => engine.analyse_game(&board.game),
@@ -768,7 +816,7 @@ pub(crate) fn setup_in_place(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessSta
     }
     study.setup_shown = shown;
     #[cfg(not(target_arch = "wasm32"))]
-    study.sync_engine(ui.ctx(), chess.games.board());
+    study.sync_engine(ui.ctx(), chess.games.board(), chess.games.current_doc());
     shown
 }
 

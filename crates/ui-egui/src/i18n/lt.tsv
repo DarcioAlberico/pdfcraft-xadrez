@@ -3818,3 +3818,10 @@ progress bar	Progress	Eiga
 	Games left out (an illegal position has no game): {n}	Praleistos partijos (neleistina pozicija neturi partijos): {n}
 	Indexing the book's PGN…	Indeksuojamas knygos PGN…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Knygos PGN didesnis, nei PdfCraft indeksuoja: su knyga susieti tik pirmieji {moves} jo ėjimai.
+	Chess engine	Šachmatų variklis
+	Search threads	Paieškos gijos
+	Hash table	Maišos lentelė
+	Engine's default	Variklio numatytoji
+	Endgame tables (Syzygy)	Endšpilio lentelės (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Kiekvienas nustatymas perduodamas varikliui tik tada, jei jis jį priima. Pradėkite analizę ir pamatysite, kuriuos šis variklis priima.
+	This engine does not take: {names}	Šis variklis nepriima: {names}
