@@ -308,7 +308,8 @@ impl StudyState {
         let want = (self.setup.is_none() && board.illegal.is_none()).then(|| board.game.fen());
         if want != self.sent {
             match &want {
-                Some(fen) => engine.analyse(fen),
+                // With the moves since the last capture or pawn move (plan A9-N8).
+                Some(_) => engine.analyse_game(&board.game),
                 None => engine.stop(),
             }
             self.sent = want;

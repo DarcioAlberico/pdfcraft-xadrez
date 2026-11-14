@@ -739,7 +739,7 @@ impl<K: StoreKind> DocStore<K, DirBackend> {
     }
 
     /// Every file of this kind here, with the document it records (its header only).
-    fn records(&self) -> Result<Vec<(String, DocRecord)>, K::Error> {
+    pub(super) fn records(&self) -> Result<Vec<(String, DocRecord)>, K::Error> {
         let mut out = Vec::new();
         for name in self.backend.list(MAX_FILES)?.into_iter().filter(|n| named_for::<K>(n)) {
             let Some(bytes) = self.backend.read(&name, K::MAX_FILE_BYTES)? else { continue };
@@ -783,7 +783,7 @@ fn kind_name<K: StoreKind>(name: &str) -> Option<String> {
 
 /// Whether two folders are one.
 #[cfg(not(target_arch = "wasm32"))]
-fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
+pub(super) fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,
@@ -792,7 +792,7 @@ fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
 
 /// A file's last change, in nanoseconds since 1970 (0 when the system can't say).
 #[cfg(not(target_arch = "wasm32"))]
-fn nanos(meta: &std::fs::Metadata) -> u64 {
+pub(super) fn nanos(meta: &std::fs::Metadata) -> u64 {
     meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
 }
 
@@ -811,40 +811,40 @@ const MAX_MIGRATED: usize = 4 * MAX_FILES;
 /// (never its path), with its size and time then and a hash of its bytes.
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
-struct Migrated {
+pub(super) struct Migrated {
     format: String,
     version: u32,
     #[serde(default)]
-    sources: Vec<MigratedSource>,
+    pub(super) sources: Vec<MigratedSource>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-struct MigratedSource {
-    source: String,
-    size: u64,
-    time: u64,
-    hash: String,
+pub(super) struct MigratedSource {
+    pub(super) source: String,
+    pub(super) size: u64,
+    pub(super) time: u64,
+    pub(super) hash: String,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Migrated {
     /// The record in `backend`'s folder; an empty one when there is none, or it can't be read
     /// (every source is then merged again, which merging makes harmless).
-    fn read(backend: &DirBackend) -> Migrated {
+    pub(super) fn read(backend: &DirBackend) -> Migrated {
         let read = backend.read(MIGRATED, 4 << 20).ok().flatten().and_then(|b| serde_json::from_slice::<Migrated>(&b).ok());
         read.filter(|m| m.format == MIGRATED_FORMAT).unwrap_or(Migrated { format: MIGRATED_FORMAT.into(), version: 1, sources: Vec::new() })
     }
 
     /// Remember `source` in place of what was remembered of it.
-    fn keep(&mut self, source: MigratedSource) {
+    pub(super) fn keep(&mut self, source: MigratedSource) {
         self.sources.retain(|s| s.source != source.source);
         self.sources.push(source);
         let over = self.sources.len().saturating_sub(MAX_MIGRATED);
         self.sources.drain(..over);
     }
 
-    fn write<E: StoreFailure>(&self, backend: &DirBackend) -> Result<(), E> {
+    pub(super) fn write<E: StoreFailure>(&self, backend: &DirBackend) -> Result<(), E> {
         let bytes = serde_json::to_vec(self).map_err(|e| E::from(std::io::Error::other(e)))?;
         backend.write::<E>(MIGRATED, &bytes)
     }

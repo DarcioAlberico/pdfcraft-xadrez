@@ -73,7 +73,7 @@ fn loaded_reply(loaded: &Loaded) -> Value {
 impl Automation {
     /// The folder `reference_store` names (by default the app's, plan A9-G5a), confined to the
     /// root, to change.
-    fn reference_store(&self, a: &Args) -> Result<FolderStore> {
+    pub(crate) fn reference_store(&self, a: &Args) -> Result<FolderStore> {
         match self.chess_store_at(a, REFERENCE, true)? {
             StoreAt::Folder(dir) => Ok(Self::folder_store(dir)),
             StoreAt::OutsideRoot => Err(failed("the books' PGNs folder is outside the allowed folders")),
@@ -82,7 +82,7 @@ impl Automation {
 
     /// The folder `reference_store` names, confined to the root, only to read (A4-13). `None`:
     /// the app's folder, outside the folders the tools are confined to.
-    fn reference_store_to_read(&self, a: &Args) -> Result<Option<FolderStore>> {
+    pub(crate) fn reference_store_to_read(&self, a: &Args) -> Result<Option<FolderStore>> {
         Ok(match self.chess_store_at(a, REFERENCE, false)? {
             StoreAt::Folder(dir) => Some(Self::folder_store(dir)),
             StoreAt::OutsideRoot => None,

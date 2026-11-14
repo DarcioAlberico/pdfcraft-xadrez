@@ -16,7 +16,16 @@
 //! The lines found for the last [`MAX_KEPT`] positions are kept for the session: back on one of
 //! them (or on the position it was stopped on), the analyser shows them at once and searches on,
 //! showing them until the new search goes deeper; a position searched to the depth asked for is
-//! not searched again.
+//! not searched again. A position is what the engine was given: the position and the moves before
+//! it ([`Analyser::analyse_game`]).
+//!
+//! **What the engine is told** (plan A9-N8, A8-11, R6-09). An option is sent only when the engine
+//! announced it in its handshake, under the name it announced, a number within the bounds it
+//! announced, and text only without a line break or another control character (one would be a
+//! second command); the engine's own default stays otherwise, and [`Snapshot::refused`] says why
+//! a setting was not sent ([`EngineSettings`]). At most [`MAX_OPTIONS`] options are read from the
+//! handshake. A game's position goes with the moves since its last capture or pawn move, at most
+//! [`MAX_HISTORY`] (`position fen <start> moves …`), so the engine sees a repetition coming.
 //!
 //! Only the interface starts an engine. No automation tool does: a tool that runs a program
 //! named in its arguments would let any MCP client run any program.
@@ -31,7 +40,7 @@ use std::time::{Duration, Instant};
 
 use pdfcraft_chess::game::Game;
 use pdfcraft_chess::placement::Color;
-use pdfcraft_chess::uci::{self, Bound, MAX_LINE_LEN, MAX_MULTIPV, Message, Score};
+use pdfcraft_chess::uci::{self, Bound, EngineOption, MAX_LINE_LEN, MAX_MULTIPV, Message, OptionKind, Score};
 
 /// How long an engine has to answer `uci` with `uciok`.
 pub const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
@@ -59,6 +68,15 @@ const MAX_SAN: usize = 24;
 
 /// Positions whose lines are kept for when the board comes back to them.
 pub const MAX_KEPT: usize = 64;
+
+/// Most options read from an engine's handshake; the rest are not known to it here.
+pub const MAX_OPTIONS: usize = 256;
+
+/// Most moves given before a game's position: the fifty-move rule's 100 half-moves.
+pub const MAX_HISTORY: usize = 100;
+
+/// Longest text sent as an option's value, in bytes (a list of folders).
+pub const MAX_OPTION_TEXT: usize = 4096;
 
 /// A real UCI engine for the tests that run one, from `PDFCRAFT_CHESS_TEST_ENGINE`; `Ok(None)` skips
 /// and `PDFCRAFT_REQUIRE_MODELS=1` makes a missing one an error (see
@@ -181,6 +199,41 @@ pub struct Snapshot {
     pub nodes: Option<u64>,
     pub nps: Option<u64>,
     pub error: Option<AnalysisError>,
+    /// The settings not sent since the handshake, and why (plan A9-N8).
+    pub refused: Vec<Refused>,
+}
+
+/// How the engine is set up beyond what the analysis asks (plan A9-N8, A8-11): each `None` leaves
+/// the engine's default, and each is sent only when the engine announced the option.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct EngineSettings {
+    /// Search threads (`Threads`).
+    pub threads: Option<u32>,
+    /// Hash table size in MB (`Hash`).
+    pub hash_mb: Option<u32>,
+    /// The folders of Syzygy endgame tables, as the engine takes them (`SyzygyPath`: separated
+    /// by `;` on Windows, `:` elsewhere). Picked by the user; never fetched.
+    pub syzygy_path: Option<String>,
+}
+
+/// A setting the engine was not given.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Refused {
+    /// The option's name as this board asks for it (`Threads`, `Hash`, `SyzygyPath`, `MultiPV`).
+    pub option: &'static str,
+    pub why: Refusal,
+}
+
+/// Why a setting was not sent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Refusal {
+    /// The engine did not announce the option (or announced more than [`MAX_OPTIONS`] before it).
+    NotAnnounced,
+    /// It announced it as another kind (a number where text is sent, or the other way round).
+    OtherKind,
+    /// The text has a line break or another control character, or is longer than
+    /// [`MAX_OPTION_TEXT`]: it would reach the engine as more than one command.
+    BadText,
 }
 
 /// What the analysis asks of the engine.
@@ -207,9 +260,34 @@ impl AnalysisOptions {
 /// Called after the engine said something new (the interface repaints).
 pub type Notify = Arc<dyn Fn() + Send + Sync>;
 
+/// What the engine is given to analyse: a position, as the rules write it, and how it was reached:
+/// the moves from `start` that lead to it (none when only the position is known).
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Asked {
+    fen: String,
+    start: String,
+    moves: Vec<String>,
+}
+
+impl Asked {
+    /// The position alone.
+    fn position(fen: String) -> Asked {
+        Asked { start: fen.clone(), fen, moves: Vec::new() }
+    }
+
+    /// The `position` command: `position fen <fen>`, or `position fen <start> moves …`.
+    fn command(&self) -> String {
+        if self.moves.is_empty() {
+            format!("position fen {}", self.fen)
+        } else {
+            format!("position fen {} moves {}", self.start, self.moves.join(" "))
+        }
+    }
+}
+
 /// The lines found for a position the analyser left.
 struct Kept {
-    fen: String,
+    asked: Asked,
     lines: Vec<Line>,
     /// The search reached the depth asked for (it was not stopped).
     done: bool,
@@ -219,11 +297,15 @@ struct Shared {
     name: Option<String>,
     ready: bool,
     options: AnalysisOptions,
-    /// The position being analysed and its side to move.
-    fen: Option<String>,
+    settings: EngineSettings,
+    /// The options the engine announced, at most [`MAX_OPTIONS`].
+    announced: Vec<EngineOption>,
+    refused: Vec<Refused>,
+    /// The position being analysed (and how it was reached), and its side to move.
+    asked: Option<Asked>,
     side: Color,
     /// A position asked for before the handshake finished.
-    pending: Option<String>,
+    pending: Option<Asked>,
     /// The lines of the search running (or last run) on the position.
     lines: Vec<Line>,
     /// Lines kept from an earlier search of the position, shown instead of [`Shared::lines`]
@@ -295,7 +377,10 @@ impl Analyser {
             name: None,
             ready: false,
             options: options.sanitized(),
-            fen: None,
+            settings: EngineSettings::default(),
+            announced: Vec::new(),
+            refused: Vec::new(),
+            asked: None,
             side: Color::White,
             pending: None,
             lines: Vec::new(),
@@ -331,24 +416,74 @@ impl Analyser {
     /// that search reached the depth asked for. A position with no legal move (mate, stalemate)
     /// or that cannot be played is not sent: its lines are empty.
     pub fn analyse(&self, fen: &str) {
-        let mut s = lock(&self.shared);
         // The engine is given the FEN as the rules wrote it back, never the text as received: a
         // line break in it would be a second command.
         let fen = Game::from_fen(fen).ok().filter(|g| !g.legal_moves().is_empty()).map(|g| g.fen());
-        let Some(fen) = fen else {
+        self.ask(fen.map(Asked::position));
+    }
+
+    /// [`Analyser::analyse`] the position `game` shows, with the moves since its last capture or
+    /// pawn move (at most [`MAX_HISTORY`], [`Game::reversible_tail`]), so the engine sees a
+    /// repetition or a perpetual check coming (plan A9-N8, R6-09). Another line to the same
+    /// position is another position here: its lines are kept apart.
+    pub fn analyse_game(&self, game: &Game) {
+        if game.legal_moves().is_empty() {
+            self.ask(None);
+            return;
+        }
+        let (from, nodes) = game.reversible_tail(MAX_HISTORY);
+        let moves: Option<Vec<String>> = nodes.iter().map(|n| game.uci(*n).filter(|m| uci::is_move(m))).collect();
+        let start = game.fen_at(from).map(|f| f.to_string());
+        let asked = match (moves, start) {
+            (Some(moves), Some(start)) => Asked { fen: game.fen(), start, moves },
+            // Not a line this game holds: the position alone.
+            _ => Asked::position(game.fen()),
+        };
+        self.ask(Some(asked));
+    }
+
+    /// Analyse `asked`; `None`: there is nothing to analyse (no legal move, no position).
+    fn ask(&self, asked: Option<Asked>) {
+        let mut s = lock(&self.shared);
+        let Some(asked) = asked else {
             stop_search(&mut s, &self.commands, true);
             remember(&mut s);
-            s.fen = None;
+            s.asked = None;
             return;
         };
         // Already searching it, or searched to the depth asked for.
-        if s.fen.as_deref() == Some(fen.as_str()) && ((s.searching && !s.stopping) || (!s.searching && s.done)) {
+        if s.asked.as_ref() == Some(&asked) && ((s.searching && !s.stopping) || (!s.searching && s.done)) {
             return;
         }
         if s.ready {
-            start_search(&mut s, &self.commands, fen);
+            start_search(&mut s, &self.commands, asked);
         } else {
-            s.pending = Some(fen);
+            s.pending = Some(asked);
+        }
+    }
+
+    /// Set the engine up with `settings` (plan A9-N8), starting the position again when they
+    /// changed: what was found before is not shown (it was found with the old ones). Each is sent
+    /// only as the engine announced it ([`Snapshot::refused`] says what was not).
+    pub fn set_settings(&self, settings: EngineSettings) {
+        let mut s = lock(&self.shared);
+        if s.settings == settings {
+            return;
+        }
+        s.settings = settings;
+        s.kept.clear();
+        s.seed.clear();
+        s.done = false;
+        if !s.ready {
+            return;
+        }
+        let again = s.asked.clone();
+        // UCI allows setoption only between searches.
+        stop_search(&mut s, &self.commands, true);
+        s.lines.clear();
+        configure(&mut s, &self.commands);
+        if let Some(asked) = again {
+            start_search(&mut s, &self.commands, asked);
         }
     }
 
@@ -374,13 +509,13 @@ impl Analyser {
         if !s.ready {
             return;
         }
-        let again = s.fen.clone();
+        let again = s.asked.clone();
         // UCI allows setoption only between searches.
         stop_search(&mut s, &self.commands, true);
         s.lines.clear();
-        let _ = self.commands.send(format!("setoption name MultiPV value {}", options.lines));
-        if let Some(fen) = again {
-            start_search(&mut s, &self.commands, fen);
+        send_lines(&mut s, &self.commands);
+        if let Some(asked) = again {
+            start_search(&mut s, &self.commands, asked);
         }
     }
 
@@ -391,12 +526,13 @@ impl Analyser {
         Snapshot {
             name: s.name.clone(),
             ready: s.ready,
-            fen: s.fen.clone(),
+            fen: s.asked.as_ref().map(|a| a.fen.clone()),
             lines: shown(&s).to_vec(),
             searching: s.searching,
             nodes: s.nodes,
             nps: s.nps,
             error,
+            refused: s.refused.clone(),
         }
     }
 }
@@ -447,43 +583,108 @@ fn shown(s: &Shared) -> &[Line] {
 fn remember(s: &mut Shared) {
     let lines = if s.seed.is_empty() { std::mem::take(&mut s.lines) } else { std::mem::take(&mut s.seed) };
     s.lines.clear();
-    let Some(fen) = s.fen.clone() else { return };
+    let Some(asked) = s.asked.clone() else { return };
     if lines.is_empty() {
         return;
     }
-    s.kept.retain(|k| k.fen != fen);
-    s.kept.push_back(Kept { fen, lines, done: s.done });
+    s.kept.retain(|k| k.asked != asked);
+    s.kept.push_back(Kept { asked, lines, done: s.done });
     while s.kept.len() > MAX_KEPT {
         s.kept.pop_front();
     }
 }
 
-/// Analyse `fen` (written back by the rules): what was found for the position before is kept, and
-/// what was kept for this one is shown while the engine searches on, or instead of searching
-/// when that search reached the depth asked for.
-fn start_search(s: &mut Shared, commands: &Sender<String>, fen: String) {
+/// Analyse `asked` (its positions written back by the rules): what was found for the position
+/// before is kept, and what was kept for this one is shown while the engine searches on, or
+/// instead of searching when that search reached the depth asked for.
+fn start_search(s: &mut Shared, commands: &Sender<String>, asked: Asked) {
     stop_search(s, commands, true);
     remember(s);
-    let kept = s.kept.iter().position(|k| k.fen == fen).and_then(|at| s.kept.remove(at));
-    s.side = if fen.split_ascii_whitespace().nth(1) == Some("b") { Color::Black } else { Color::White };
+    let kept = s.kept.iter().position(|k| k.asked == asked).and_then(|at| s.kept.remove(at));
+    s.side = if asked.fen.split_ascii_whitespace().nth(1) == Some("b") { Color::Black } else { Color::White };
     s.pending = None;
     s.nodes = None;
     s.nps = None;
     s.stopping = false;
     match kept {
         Some(k) if k.done => {
-            s.fen = Some(fen);
+            s.asked = Some(asked);
             s.lines = k.lines;
             s.done = true;
             s.searching = false;
         }
         kept => {
-            let _ = commands.send(format!("position fen {fen}"));
+            let _ = commands.send(asked.command());
             let _ = commands.send(format!("go depth {}", s.options.depth));
-            s.fen = Some(fen);
+            s.asked = Some(asked);
             s.seed = kept.map(|k| k.lines).unwrap_or_default();
             s.done = false;
             s.searching = true;
+        }
+    }
+}
+
+/// The option the engine announced as `name` (its spelling may differ in case: UCI's names are
+/// not case sensitive).
+fn announced<'a>(s: &'a Shared, name: &str) -> Option<&'a EngineOption> {
+    s.announced.iter().find(|o| o.name.eq_ignore_ascii_case(name))
+}
+
+/// `setoption` for the number `value` of the option the engine announced as `name`, within its
+/// bounds; or why not.
+fn number_option(s: &Shared, name: &'static str, value: u32) -> Result<String, Refused> {
+    let refused = |why| Refused { option: name, why };
+    let option = announced(s, name).ok_or(refused(Refusal::NotAnnounced))?;
+    match option.kind {
+        // max(min).min(max), not clamp: bounds the wrong way round (an option not read from a handshake) never panic.
+        OptionKind::Spin { min, max } => Ok(format!("setoption name {} value {}", option.name, i64::from(value).max(min).min(max))),
+        _ => Err(refused(Refusal::OtherKind)),
+    }
+}
+
+/// `setoption` for the text `value` of the option the engine announced as `name`; or why not. A
+/// line break or another control character would end the command and start another (`\nquit`),
+/// so such a text is never sent.
+fn text_option(s: &Shared, name: &'static str, value: &str) -> Result<String, Refused> {
+    let refused = |why| Refused { option: name, why };
+    if value.len() > MAX_OPTION_TEXT || value.chars().any(char::is_control) {
+        return Err(refused(Refusal::BadText));
+    }
+    let option = announced(s, name).ok_or(refused(Refusal::NotAnnounced))?;
+    match option.kind {
+        OptionKind::Text => Ok(format!("setoption name {} value {}", option.name, value)),
+        _ => Err(refused(Refusal::OtherKind)),
+    }
+}
+
+/// Tell the engine how many lines to search for ([`AnalysisOptions::lines`]), when it announced
+/// `MultiPV`.
+fn send_lines(s: &mut Shared, commands: &Sender<String>) {
+    s.refused.retain(|r| r.option != "MultiPV");
+    match number_option(s, "MultiPV", s.options.lines) {
+        Ok(command) => {
+            let _ = commands.send(command);
+        }
+        Err(refused) => s.refused.push(refused),
+    }
+}
+
+/// Tell the engine its lines and [`EngineSettings`], each as it announced it; what was not sent
+/// goes to [`Shared::refused`].
+fn configure(s: &mut Shared, commands: &Sender<String>) {
+    s.refused.clear();
+    send_lines(s, commands);
+    let wanted = [
+        s.settings.threads.map(|n| number_option(s, "Threads", n)),
+        s.settings.hash_mb.map(|n| number_option(s, "Hash", n)),
+        s.settings.syzygy_path.as_deref().map(|p| text_option(s, "SyzygyPath", p)),
+    ];
+    for result in wanted.into_iter().flatten() {
+        match result {
+            Ok(command) => {
+                let _ = commands.send(command);
+            }
+            Err(refused) => s.refused.push(refused),
         }
     }
 }
@@ -552,10 +753,17 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
                 return false;
             }
             s.ready = true;
-            let _ = commands.send(format!("setoption name MultiPV value {}", s.options.lines));
-            if let Some(fen) = s.pending.take() {
-                start_search(s, commands, fen);
+            configure(s, commands);
+            if let Some(asked) = s.pending.take() {
+                start_search(s, commands, asked);
             }
+        }
+        Message::Option(option) => {
+            // Only the handshake announces options; one announced again keeps its first word.
+            if !s.ready && s.announced.len() < MAX_OPTIONS && !s.announced.iter().any(|o| o.name.eq_ignore_ascii_case(&option.name)) {
+                s.announced.push(option);
+            }
+            return false;
         }
         Message::Info(info) => {
             if s.stale > 0 || !s.searching {
@@ -563,7 +771,9 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
             }
             s.nodes = info.nodes.or(s.nodes);
             s.nps = info.nps.or(s.nps);
-            let (Some(depth), Some(score), Some(fen)) = (info.depth, info.score, s.fen.as_deref()) else { return info.nodes.is_some() };
+            let (Some(depth), Some(score), Some(fen)) = (info.depth, info.score, s.asked.as_ref().map(|a| a.fen.as_str())) else {
+                return info.nodes.is_some();
+            };
             if info.pv.is_empty() || info.multipv > s.options.lines {
                 return info.nodes.is_some();
             }
@@ -612,7 +822,12 @@ mod tests {
     /// for `stop` and sends one more (late) line before its `bestmove`, as a real engine
     /// interrupted mid-search does. On a position without castling rights it reports nothing.
     /// It records every command.
-    fn fake_engine(commands: PipeReader, mut out: PipeWriter, log: Arc<Mutex<Vec<String>>>) {
+    fn fake_engine(commands: PipeReader, out: PipeWriter, log: Arc<Mutex<Vec<String>>>) {
+        fake_engine_with(commands, out, log, &["option name MultiPV type spin default 1 min 1 max 5"]);
+    }
+
+    /// [`fake_engine`], announcing `options` in its handshake.
+    fn fake_engine_with(commands: PipeReader, mut out: PipeWriter, log: Arc<Mutex<Vec<String>>>, options: &[&str]) {
         let mut position = String::new();
         let mut waiting = false;
         let mut searched: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
@@ -627,7 +842,9 @@ mod tests {
             match line.split_whitespace().next() {
                 Some("uci") => {
                     say("id name Fake Engine 1");
-                    say("option name MultiPV type spin default 1 min 1 max 5");
+                    for option in options {
+                        say(option);
+                    }
                     say("uciok");
                 }
                 Some("position") => position = line.clone(),
@@ -665,6 +882,106 @@ mod tests {
         let l = Arc::clone(&log);
         std::thread::spawn(move || fake_engine(engine_in, engine_out, l));
         (Analyser::with_streams(our_in, our_out, options, Arc::new(|| {})), log)
+    }
+
+    /// [`connect`] to an engine announcing `announced`, set up with `settings` before its handshake.
+    fn connect_announcing(announced: &'static [&'static str], settings: EngineSettings) -> (Analyser, Arc<Mutex<Vec<String>>>) {
+        let (engine_in, our_out) = std::io::pipe().unwrap();
+        let (our_in, engine_out) = std::io::pipe().unwrap();
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let l = Arc::clone(&log);
+        std::thread::spawn(move || fake_engine_with(engine_in, engine_out, l, announced));
+        let a = Analyser::with_streams(our_in, our_out, AnalysisOptions { lines: 2, depth: 2 }, Arc::new(|| {}));
+        a.set_settings(settings);
+        (a, log)
+    }
+
+    fn setoptions(log: &Mutex<Vec<String>>) -> Vec<String> {
+        log.lock().unwrap().iter().filter(|c| c.starts_with("setoption")).cloned().collect()
+    }
+
+    /// Plan A9-N8 (A8-11): Threads, Hash and SyzygyPath go to the engine only when it announced
+    /// them, under its own spelling and within its bounds; otherwise they are refused and said.
+    #[test]
+    fn settings_are_sent_only_as_the_engine_announced_them() {
+        let settings = || EngineSettings { threads: Some(64), hash_mb: Some(0), syzygy_path: Some("C:/tables/syzygy".into()) };
+        // An engine announcing none of them: none is sent (only the lines, which it announced).
+        let (a, log) = connect_announcing(&["option name MultiPV type spin default 1 min 1 max 5"], settings());
+        a.analyse(START);
+        let s = wait(&a, |s| s.ready && !s.searching && !s.lines.is_empty());
+        assert_eq!(setoptions(&log), ["setoption name MultiPV value 2"]);
+        let refused: Vec<(&str, Refusal)> = s.refused.iter().map(|r| (r.option, r.why)).collect();
+        assert_eq!(refused, [("Threads", Refusal::NotAnnounced), ("Hash", Refusal::NotAnnounced), ("SyzygyPath", Refusal::NotAnnounced)]);
+        // An engine announcing them: its spelling, its bounds.
+        const ALL: &[&str] = &[
+            "option name threads type spin default 1 min 1 max 8",
+            "option name Hash type spin default 16 min 1 max 1024",
+            "option name SyzygyPath type string default <empty>",
+        ];
+        let (a, log) = connect_announcing(ALL, settings());
+        a.analyse(START);
+        let s = wait(&a, |s| s.ready && !s.searching && !s.lines.is_empty());
+        assert_eq!(
+            setoptions(&log),
+            ["setoption name threads value 8", "setoption name Hash value 1", "setoption name SyzygyPath value C:/tables/syzygy"]
+        );
+        assert_eq!(s.refused, [Refused { option: "MultiPV", why: Refusal::NotAnnounced }], "MultiPV was not announced");
+        // Changed settings start the position again, after telling the engine.
+        a.set_settings(EngineSettings { threads: Some(2), ..settings() });
+        let s = wait(&a, |s| !s.searching && !s.lines.is_empty() && searches(&log) == 2);
+        assert!(log.lock().unwrap().iter().any(|c| c == "setoption name threads value 2"), "{:?}", log.lock().unwrap());
+        assert_eq!(s.fen.as_deref(), Some(START));
+    }
+
+    /// Plan A9-N8: a text with a line break would reach the engine as a second command
+    /// (`SyzygyPath` `C:/tb` then `quit`): it is refused, and the engine goes on.
+    #[test]
+    fn a_setting_with_a_line_break_is_refused() {
+        const ALL: &[&str] = &["option name SyzygyPath type string default <empty>", "option name Threads type spin default 1 min 1 max 8"];
+        for path in ["C:/tb\nquit", "C:/tb\rquit", "C:/tb\u{0}", "C:/tb\u{1b}[2J"] {
+            let (a, log) = connect_announcing(ALL, EngineSettings { syzygy_path: Some(path.into()), threads: Some(3), hash_mb: None });
+            a.analyse(START);
+            let s = wait(&a, |s| s.ready && !s.searching && !s.lines.is_empty());
+            assert!(!s.lines.is_empty(), "the engine goes on: {path:?}");
+            let log = log.lock().unwrap().clone();
+            assert!(!log.iter().any(|c| c == "quit" || c.contains("SyzygyPath")), "{path:?}: {log:?}");
+            assert!(log.iter().any(|c| c == "setoption name Threads value 3"), "the others are sent: {log:?}");
+            assert!(s.refused.contains(&Refused { option: "SyzygyPath", why: Refusal::BadText }), "{:?}", s.refused);
+        }
+        // A number option announced as text, and the other way round: refused, not sent.
+        const SWAPPED: &[&str] = &["option name SyzygyPath type spin default 0 min 0 max 9", "option name Threads type string default 1"];
+        let (a, log) = connect_announcing(SWAPPED, EngineSettings { syzygy_path: Some("C:/tb".into()), threads: Some(3), hash_mb: None });
+        a.analyse(START);
+        let s = wait(&a, |s| s.ready && !s.searching && !s.lines.is_empty());
+        assert!(!log.lock().unwrap().iter().any(|c| c.starts_with("setoption name SyzygyPath") || c.starts_with("setoption name Threads")));
+        assert!(s.refused.contains(&Refused { option: "SyzygyPath", why: Refusal::OtherKind }), "{:?}", s.refused);
+        assert!(s.refused.contains(&Refused { option: "Threads", why: Refusal::OtherKind }), "{:?}", s.refused);
+    }
+
+    /// Plan A9-N8 (R6-09): a game's position goes with the moves since its last capture or pawn
+    /// move, so the engine sees a repetition; reached another way, it is another position.
+    #[test]
+    fn a_games_position_goes_with_its_moves_since_the_last_pawn_move() {
+        let (a, log) = connect(AnalysisOptions { lines: 1, depth: 2 });
+        let mut game = Game::standard();
+        for mv in ["e2e4", "e7e5", "g1f3", "b8c6", "f3g1", "c6b8"] {
+            game.play_uci(mv).unwrap();
+        }
+        a.analyse_game(&game);
+        let after_e5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2";
+        let s = wait(&a, |s| s.ready && !s.searching && searches(&log) == 1);
+        assert_eq!(s.fen.as_deref(), Some(game.fen().as_str()), "the position shown is the game's");
+        let positions: Vec<String> = log.lock().unwrap().iter().filter(|c| c.starts_with("position")).cloned().collect();
+        assert_eq!(positions, [format!("position fen {after_e5} moves g1f3 b8c6 f3g1 c6b8")]);
+        // The same position given alone is searched as another one.
+        a.analyse(&game.fen());
+        wait(&a, |s| !s.searching && searches(&log) == 2);
+        assert_eq!(log.lock().unwrap().iter().rfind(|c| c.starts_with("position")), Some(&format!("position fen {}", game.fen())));
+        // A pawn move: the position alone again.
+        game.play_uci("d2d4").unwrap();
+        a.analyse_game(&game);
+        wait(&a, |s| !s.searching && searches(&log) == 3);
+        assert_eq!(log.lock().unwrap().iter().rfind(|c| c.starts_with("position")), Some(&format!("position fen {}", game.fen())));
     }
 
     /// Wait (up to five seconds) until `done` holds for the snapshot.
