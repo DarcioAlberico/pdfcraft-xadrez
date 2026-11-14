@@ -447,7 +447,12 @@ fn the_editors_labels_are_not_broken_into_letters() {
     let (left, right) = (tab.left(), tab.right());
     for name in ["Move number:", "To move:", "White", "Black", "1 of 1 to review", "Details", "Legal position", "Confirm and next", "More actions"] {
         let r = h.get_by_label(name).rect();
-        assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
+        // The place in the walk shows as "1/1" (plan A9-I8): narrow, but on one line.
+        if name == "1 of 1 to review" {
+            assert!(r.height() <= white.height(), "{name} is on one line: {r:?}");
+        } else {
+            assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
+        }
         assert!(r.left() >= left && r.right() <= right, "{name} is inside the tab: {r:?}, from {left} to {right}");
     }
     assert!(confirm.bottom() <= 768.0 && confirm.top() > board.bottom(), "the main button is on screen, under the board: {confirm:?}");
@@ -6544,4 +6549,65 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     h.run_steps(2);
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
+}
+
+// ─── Plan A9-I8: layout that measures before it draws ───────────────────────────────────────
+
+/// Plan A9-I8 (§2.8.1, finding A6-05): "Unconfirmed changes" is said in the row of Read |
+/// Original, whose room is kept: the board never moves when it shows (it pushed it 24 pt down).
+#[test]
+fn the_unconfirmed_notice_never_moves_the_board() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label_contains("Diagram 2 · ").next().expect("the drawn board is listed").click();
+    h.run_steps(3);
+    let before = h.get_by_label_contains("Diagram board, ").rect();
+    assert!(h.query_by_label("Unconfirmed changes").is_none());
+    h.state_mut().chess.editor.as_mut().expect("the editor").position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(3);
+    h.get_by_label("Unconfirmed changes");
+    assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), before, "the board stays where it was");
+}
+
+/// Plan A9-I8 (§2.8.1, finding A6-15): the Chess column's scroll area keeps its bar's room: a
+/// row of the list ends left of the bar instead of running under it to the column's edge.
+#[test]
+fn the_chess_columns_rows_end_left_of_its_scroll_bar() {
+    let mut h = harness_sized(boards(), egui::vec2(1400.0, 300.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let column = chess_column(&h);
+    // The list's rows are under the window's edge: the wheel over the column brings them up.
+    h.hover_at(column.center());
+    h.run_steps(1);
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, -600.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run_steps(4);
+    let row = h.get_all_by_label_contains("Diagram 1 · ").next().expect("listed").rect();
+    let bar = h.ctx.global_style().spacing.scroll.bar_width;
+    assert!(row.max.x <= column.max.x - 12.0 - bar + 0.5, "{row:?} under the bar ({bar} pt) of {column:?}");
+}
+
+/// Plan A9-I8 (§2.8.1): at 1366 × 768 (a column of 360 pt) the Diagram tab's header shows the
+/// diagram's title whole (it was cut to "…"): the place in the walk is "1/1", "‹ Diagrams" its
+/// arrow alone when need be, both whole in their tooltips and names.
+#[test]
+fn the_editors_header_keeps_the_diagrams_title_whole() {
+    let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_all_by_label_contains("Diagram 2 · ").next().expect("listed").click();
+    h.run_steps(4);
+    let title = "Page 1 · diagram 2 of 2";
+    let link = h.get_by_role_and_label(egui::accesskit::Role::Link, title).rect();
+    let font = egui::TextStyle::Body.resolve(&h.ctx.global_style());
+    let whole = h.ctx.fonts_mut(|f| f.layout_no_wrap(title.to_owned(), font, egui::Color32::WHITE).size().x);
+    assert!(link.width() >= whole - 0.5, "the title {link:?} is {whole} pt wide");
+    h.get_by_label("Back to Diagrams");
+    assert!(chess_column(&h).contains_rect(link));
 }

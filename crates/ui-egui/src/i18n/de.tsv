@@ -3545,3 +3545,6 @@ the move's comment	Move comment	Kommentar des Zugs
 	Alt+O switches between the board as read and the page's own picture.	Alt+O wechselt zwischen dem Brett, wie es gelesen wurde, und dem Bild der Seite selbst.
 	Original diagram, page {p}, diagram {n}	Originaldiagramm, Seite {p}, Diagramm {n}
 	The page's picture of this diagram shows once its page is drawn.	Das Bild der Seite mit diesem Diagramm erscheint, sobald seine Seite gezeichnet ist.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Nicht bestätigt
+progress bar	Progress	Fortschritt
