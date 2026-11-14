@@ -146,7 +146,7 @@ fn a_pgn_with_no_moves_or_too_long_is_refused() {
     // A game that cannot be read is kept, with its error, beside one that can.
     let index = ReferenceIndex::from_pgn("[FEN \"8/8/8/8/8/8/8/8 w - - 0 1\"]\n\n1.e4 *\n\n[Event \"b\"]\n\n1.e4 *\n").unwrap();
     assert_eq!(index.games().len(), 2);
-    assert!(index.games()[0].error.is_some() && index.games()[0].game.is_none());
+    assert!(index.games()[0].error.is_some() && index.game(0).is_none());
 }
 
 #[test]

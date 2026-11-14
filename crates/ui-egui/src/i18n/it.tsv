@@ -3743,3 +3743,16 @@ the move's comment	Move comment	Commento della mossa
 	The board is in the column beside.	La scacchiera è nella colonna accanto.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Aggiungi segnalibri degli scacchi
+	More board actions	Altre azioni della scacchiera
+	Back to the moves	Torna alle mosse
+	Back to the moves (Esc)	Torna alle mosse (Esc)
+	Game	Partita
+	The game starts at move:	La partita inizia alla mossa:
+	Comment	Commento
+	The comments of the move shown, under the moves	I commenti della mossa mostrata, sotto le mosse
+	Edit the FEN and the PGN	Modifica il FEN e il PGN
+	More continuations: {moves}	Altre continuazioni: {moves}
+	Diagram shown	Diagramma mostrato
+	Alt+O switches between the board as read and the page's own picture.	Alt+O passa dalla scacchiera così come è stata letta all’immagine della pagina stessa.
+	Original diagram, page {p}, diagram {n}	Diagramma originale, pagina {p}, diagramma {n}
+	The page's picture of this diagram shows once its page is drawn.	L’immagine della pagina di questo diagramma appare non appena la sua pagina è disegnata.

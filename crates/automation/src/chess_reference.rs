@@ -9,6 +9,8 @@
 //! (plan A9-G3a, A4-13); a PGN is kept for a document only as its security allows
 //! (`Automation::may_keep`).
 
+use std::sync::Arc;
+
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex;
@@ -35,7 +37,8 @@ type FolderStore = pdfcraft_engine::chess::reference_store::MemStore;
 pub(crate) struct BookPgn {
     /// The path as given, or the kept PGN's file name.
     pub shown: String,
-    pub index: ReferenceIndex,
+    /// Indexed once a session for the same text (plan A9-I3b, `Session::chess_book_index`).
+    pub index: Arc<ReferenceIndex>,
     /// The user's choices on moves in conflict with the PGN kept (R6e; none for `reference_pgn`).
     pub decisions: Decisions,
 }
@@ -112,7 +115,7 @@ impl Automation {
     /// Indexed before the pages are read, so a PGN that cannot be used costs nothing.
     pub(crate) fn book_pgn(&self, a: &Args, id: DocId) -> Result<(Option<BookPgn>, Value)> {
         if let Some(p) = a.opt_str("reference_pgn")? {
-            let index = crate::chess::read_reference(&self.resolve(p, false)?, p)?;
+            let index = self.read_reference(&self.resolve(p, false)?, p)?;
             return Ok((Some(BookPgn { shown: p.to_owned(), index, decisions: Decisions::default() }), Value::Null));
         }
         if !a.opt_bool("reference")?.unwrap_or(true) {
@@ -129,7 +132,7 @@ impl Automation {
         let reply = loaded_reply(&loaded);
         let Some(pgn) = loaded.pgn() else { return Ok((None, reply)) };
         let shown = pgn.name.clone().unwrap_or_else(|| "the kept PGN".into());
-        let index = ReferenceIndex::from_pgn(&pgn.text).map_err(|e| failed(format!("{shown} (kept for the document): {e}")))?;
+        let index = self.session.chess_book_index(&pgn.text).map_err(|e| failed(format!("{shown} (kept for the document): {e}")))?;
         Ok((Some(BookPgn { shown, index, decisions: Decisions::of(&loaded.file) }), reply))
     }
 
@@ -149,7 +152,7 @@ impl Automation {
         let path = self.resolve(shown, false)?;
         let (text, encoding, bytes) = crate::chess::read_reference_text(&path, shown)?;
         // Indexed first: a PGN with no game in it is refused, and the counts are kept with it.
-        let index = ReferenceIndex::from_pgn(&text).map_err(|e| failed(format!("{shown}: {e}")))?;
+        let index = self.session.chess_book_index(&text).map_err(|e| failed(format!("{shown}: {e}")))?;
         if index.games().is_empty() {
             return Err(failed(format!("{shown}: no game in it")));
         }
@@ -165,6 +168,8 @@ impl Automation {
         reply["decisions_unmatched"] = json!(kept.unmatched);
         reply["stopped_games"] = json!(stopped);
         reply["encoding"] = json!(encoding.name());
+        // Past a cap of the index the rest of the PGN is left out (plan A9-I3b): which one.
+        reply["cut"] = json!(index.cut().map(crate::chess::cut_name));
         Ok(reply)
     }
 

@@ -58,43 +58,22 @@ type Store = UiStore<Reference>;
 
 impl UiStore<Reference> {
     fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, ReferenceStoreError> {
-        in_store!(&self.place, s => s.load(keys, pages))
+        in_store!(self.reading(keys), s => s.load(keys, pages))
     }
 
     /// The writes go to the store when `write`, else to memory only (plan A9-I1c,
     /// [`PdfCraftApp::book_pgn_place`]); they say why not in words that follow "was not kept as the
     /// book's PGN:".
     fn set(&mut self, write: bool, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), String> {
-        if write {
-            self.writable()?;
-        }
-        let out = in_store!(self.at(write), s => s.set(keys, pages, pgn, has_move)).map_err(|e| e.to_string())?;
-        if write {
-            self.wrote();
-        }
-        Ok(out)
+        self.change(write, keys, pages, |place| in_store!(place, s => s.set(keys, pages, pgn, has_move)).map_err(|e| e.to_string()))
     }
 
     fn clear(&mut self, write: bool, keys: &DocKeys, pages: usize) -> Result<bool, String> {
-        if write {
-            self.writable()?;
-        }
-        let cleared = in_store!(self.at(write), s => s.clear(keys, pages, now())).map_err(|e| e.to_string())?;
-        if cleared && write {
-            self.wrote();
-        }
-        Ok(cleared)
+        self.change(write, keys, pages, |place| in_store!(place, s => s.clear(keys, pages, now())).map_err(|e| e.to_string()))
     }
 
     fn decide(&mut self, write: bool, keys: &DocKeys, pages: usize, decision: Decision, page: Option<&ChessPage>) -> Result<Loaded, String> {
-        if write {
-            self.writable()?;
-        }
-        let out = in_store!(self.at(write), s => s.decide(keys, pages, decision, page)).map_err(|e| e.to_string())?;
-        if write {
-            self.wrote();
-        }
-        Ok(out)
+        self.change(write, keys, pages, |place| in_store!(place, s => s.decide(keys, pages, decision, page)).map_err(|e| e.to_string()))
     }
 
     /// The decisions made on `page` taken to its moves as read now (plan A9-L1b); nothing is
@@ -104,11 +83,7 @@ impl UiStore<Reference> {
         if write && self.writable().is_err() {
             return Ok(None);
         }
-        let out = in_store!(self.at(write), s => s.rematch(keys, pages, page)).map_err(|e| e.to_string())?;
-        if out.is_some() && write {
-            self.wrote();
-        }
-        Ok(out)
+        self.change(write, keys, pages, |place| in_store!(place, s => s.rematch(keys, pages, page)).map_err(|e| e.to_string()))
     }
 
     fn rekey(&mut self, write: bool, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, String> {
@@ -233,7 +208,7 @@ struct DocPgn {
 
 /// The books' PGNs in the app.
 pub struct BookPgns {
-    store: Store,
+    pub(crate) store: Store,
     docs: Vec<DocPgn>,
     /// The documents whose PGN beside them the user said Not now to, by the name their keys
     /// give their files (`corrections::file_name`): not offered again. Kept in the settings, at

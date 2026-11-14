@@ -3536,3 +3536,16 @@ the move's comment	Move comment	Komentar k potezi
 	The board is in the column beside.	Šahovnica je v sosednjem stolpcu.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Dodaj šahovske zaznamke
+	More board actions	Več dejanj s šahovnico
+	Back to the moves	Nazaj na poteze
+	Back to the moves (Esc)	Nazaj na poteze (Esc)
+	Game	Partija
+	The game starts at move:	Partija se začne s potezo:
+	Comment	Komentar
+	The comments of the move shown, under the moves	Komentarji prikazane poteze, pod potezami
+	Edit the FEN and the PGN	Uredi FEN in PGN
+	More continuations: {moves}	Več nadaljevanj: {moves}
+	Diagram shown	Prikazani diagram
+	Alt+O switches between the board as read and the page's own picture.	Alt+O preklaplja med šahovnico, kot je bila prebrana, in sliko same strani.
+	Original diagram, page {p}, diagram {n}	Izvirni diagram, stran {p}, diagram {n}
+	The page's picture of this diagram shows once its page is drawn.	Slika strani s tem diagramom se prikaže, ko je njegova stran izrisana.

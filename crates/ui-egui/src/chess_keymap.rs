@@ -9,8 +9,8 @@
 //! shortcut and they belong to different places: Esc, Page Up and Page Down act on the place the
 //! keyboard is in (the board's game or the Diagram tab), while a letter or a sign means one thing
 //! in every chess panel. Keys planned for later steps are in the map already ([`Binding::planned`]),
-//! so their choice is checked now: the shortcut sheet is F1 (`?` is the "poor move" sign typed)
-//! and the Diagram tab's Original / Read switch is Alt+O (O alone is the rail's OCR area).
+//! so their choice is checked now: the shortcut sheet is F1 (`?` is the "poor move" sign typed).
+//! The Diagram tab's Original / Read switch is Alt+O (O alone is the rail's OCR area).
 
 use std::sync::OnceLock;
 
@@ -69,8 +69,9 @@ impl Binding {
 pub(crate) const SHORTCUT_SHEET: Binding = Binding { planned: Some("I16"), ..Binding::key(Place::Scope, ChessKey::plain(Key::F1), "shortcuts") };
 
 /// The Diagram tab's Original / Read switch (finding A6-14, step I0): Alt+O, since O alone is the
-/// rail's OCR area.
-pub(crate) const ORIGINAL_SWITCH: Binding = Binding { planned: Some("I0"), ..Binding::key(Place::Diagram, ChessKey::alt(Key::O), "original") };
+/// rail's OCR area. One of the tab's keys (`chess_diagram_keys::TAB_KEYS`).
+#[cfg(test)]
+pub(crate) const ORIGINAL_SWITCH: Binding = Binding::key(Place::Diagram, ChessKey::alt(Key::O), "original");
 
 /// F6 leaves the chess surface the keyboard is in (`chess_tools::take_f6`).
 const LEAVE: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::F6), "leave");
@@ -102,7 +103,6 @@ fn build() -> Vec<Binding> {
     for (key, action) in crate::chess_diagram_keys::TAB_KEYS {
         map.push(Binding::key(Place::Diagram, key, action.action()));
     }
-    map.push(ORIGINAL_SWITCH);
     map.push(Binding::key(Place::App, ChessKey::plain(crate::SELECT_KEY), "select-tool"));
     map.push(Binding::key(Place::App, ChessKey::plain(crate::HAND_KEY), "hand-tool"));
     map

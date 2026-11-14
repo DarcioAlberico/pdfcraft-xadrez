@@ -127,9 +127,9 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 /// A click on a label of the Board panel: the chess scope goes on, and nothing takes the focus.
 fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
     let title = h
-        .get_all_by_label("To move:")
+        .get_all_by_label_contains(" to move")
         .find(|n| n.accesskit_node().role() == Role::Label)
-        .expect("a label of the panel (its title is the docking tab: plan A8, P6)");
+        .expect("the Board tab's header: the move shown and whose move it is (plan A9-I0b)");
     let at = title.rect().center();
     click_at(h, at);
     assert!(h.state().chess.in_scope());
@@ -387,6 +387,9 @@ fn the_palette_lists_the_assessments_without_a_sign() {
     assert_eq!(glyphs_at(&h, &[0, 0, 0]), [88]);
     // With the comment field taking the keyboard, an assessment still goes on the move, not into
     // the comment.
+    // The comment fields under the moves, from the Board tab's bar (plan A9-I0b).
+    h.get_by_label("Comment").click();
+    h.run_steps(2);
     h.get_by_label("Comment on this move").click();
     h.run_steps(2);
     named_in_palette(&h, "Poor knight placement").unwrap().click();
