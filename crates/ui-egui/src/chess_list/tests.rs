@@ -224,3 +224,24 @@ fn a_diagram_the_books_pgn_has_leaves_the_review_queue() {
     assert_eq!(results.review_queue().len(), queue.len() - 1);
     assert_eq!(results.reviewed(), crate::chess_ui::Reviewed { checked: reviewed.checked + 1, of: reviewed.of });
 }
+
+/// Plan A9-I8 (§2.8.1, finding A6-13): a row's state is cut short, never its title, and the two
+/// never overlap, whatever the row's width; with no room the state is left out.
+#[test]
+fn a_rows_state_gives_way_to_its_title() {
+    let width_of = |s: &str| 7.0 * s.chars().count() as f32;
+    for row_width in [120.0, 180.0, 240.0, 330.0, 420.0, 0.0, f32::NAN] {
+        let rect = Rect::from_min_size(pos2(10.0, 0.0), vec2(row_width, 32.0));
+        let right = rect.max.x - 34.0;
+        let lay = row_layout(rect, width_of("Diagram 12"), right, "Confirmed by the PGN", width_of);
+        assert!(lay.title.is_finite() && lay.state_rect.is_finite(), "{row_width}: {lay:?}");
+        assert!(lay.title.max.x <= lay.state_rect.min.x + 0.01, "{row_width}: they overlap: {lay:?}");
+        if row_width >= 180.0 {
+            assert!((lay.title.width() - width_of("Diagram 12")).abs() < 0.01, "{row_width}: the title whole: {lay:?}");
+        }
+        assert!(lay.state.is_empty() || lay.state == "Confirmed by the PGN" || lay.state.ends_with('…'), "{lay:?}");
+    }
+    let wide = row_layout(Rect::from_min_size(pos2(0.0, 0.0), vec2(420.0, 32.0)), 70.0, 386.0, "PGN", width_of);
+    assert_eq!(wide.state, "PGN");
+    assert!((wide.state_rect.max.x - 386.0).abs() < 0.01, "against the ⋯: {wide:?}");
+}

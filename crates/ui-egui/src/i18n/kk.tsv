@@ -3542,3 +3542,5 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	The page's picture of this diagram shows once its page is drawn.	Бұл диаграмманың бет суреті оның беті салынғанда көрсетіледі.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Шахмат бетбелгілерін қосу
+	Not confirmed	Расталмаған
+progress bar	Progress	Орындалу барысы

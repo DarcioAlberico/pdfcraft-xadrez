@@ -3543,3 +3543,5 @@ the move's comment	Move comment	A lépés megjegyzése
 	The page's picture of this diagram shows once its page is drawn.	A diagram oldalképe akkor jelenik meg, amikor az oldala kirajzolódott.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Sakk-könyvjelzők hozzáadása
+	Not confirmed	Nincs megerősítve
+progress bar	Progress	Előrehaladás

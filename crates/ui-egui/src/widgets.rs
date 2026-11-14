@@ -28,7 +28,9 @@ fn dialog_frame(ctx: &egui::Context) -> egui::Frame {
 
 /// A modal with the card fill, a 10-point corner and room around its contents.
 pub fn modal(ctx: &egui::Context, id: impl std::hash::Hash + std::fmt::Debug) -> egui::Modal {
-    egui::Modal::new(egui::Id::new(id)).frame(dialog_frame(ctx))
+    #[expect(clippy::disallowed_methods, reason = "the one place that makes a modal")]
+    let modal = egui::Modal::new(egui::Id::new(id));
+    modal.frame(dialog_frame(ctx))
 }
 
 /// Show [`modal`], outline its controls, and remember the card rect for layout checks. A dialog
@@ -421,6 +423,44 @@ pub fn search_box(ui: &mut egui::Ui, placeholder: &str, width: f32) -> Response 
     ui.painter().with_clip_rect(rect).galley(shortcut_pos, shortcut, t.text_faint);
     let resp = resp.on_hover_cursor(egui::CursorIcon::Text);
     if elided { resp.on_hover_text(placeholder) } else { resp }
+}
+
+/// Give `ui`'s scroll areas a bar with room of its own beside the content, instead of one floating
+/// over it (plan A9-I8, finding A6-15: the engine's lines, the Text tab's paragraphs and a combo ran
+/// under the floating bar and were cut at the panel's edge). For the chess panels' scroll areas.
+pub(crate) fn solid_scroll_bar(ui: &mut egui::Ui) {
+    ui.spacing_mut().scroll.floating = false;
+}
+
+/// A progress bar (plan A9-I8, finding A6-17: egui's bar was 1.19:1 against the panel): 6 pt
+/// tall, as wide as the room, the part done in the accent over the border colour (3:1 or more
+/// against both and the panel, tested in `theme`), named `name` for assistive technology with the
+/// percentage as its value. Every progress bar goes through here: clippy.toml disallows
+/// `egui::ProgressBar::new`.
+pub fn progress(ui: &mut egui::Ui, fraction: f32, name: &str) -> Response {
+    const HEIGHT: f32 = 6.0;
+    let t = Tokens::get(ui.ctx());
+    let done = if fraction.is_finite() { fraction.clamp(0.0, 1.0) } else { 0.0 };
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width().max(0.0), HEIGHT), Sense::hover());
+    let painter = ui.painter();
+    let (part_done, track) = progress_colours(&t);
+    painter.rect_filled(rect, HEIGHT / 2.0, track);
+    if done > 0.0 {
+        let part = Rect::from_min_size(rect.min, vec2((rect.width() * done).max(HEIGHT), HEIGHT));
+        painter.rect_filled(part.intersect(rect), HEIGHT / 2.0, part_done);
+    }
+    response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(egui::WidgetType::ProgressIndicator, true, name);
+        info.value = Some(f64::from(done) * 100.0);
+        info
+    });
+    response
+}
+
+/// [`progress`]'s colours: the part done, and its track (plan A9-I8: 3:1 between them, and
+/// against every surface the bar sits on).
+pub(crate) fn progress_colours(t: &Tokens) -> (Color32, Color32) {
+    (t.accent, t.border)
 }
 
 /// A menu's item with its shortcut: [`menu_entry`].

@@ -3546,3 +3546,5 @@ the move's comment	Move comment	手のコメント
 	The page's picture of this diagram shows once its page is drawn.	この局面図のページの画像は、そのページが描画されると表示されます。
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	チェスのしおりを追加
+	Not confirmed	未確定
+progress bar	Progress	進行状況

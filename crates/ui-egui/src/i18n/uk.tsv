@@ -3566,3 +3566,5 @@ the move's comment	Move comment	Коментар до ходу
 	The page's picture of this diagram shows once its page is drawn.	Зображення цієї діаграми зі сторінки з’явиться, щойно її сторінку буде намальовано.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Додати шахові закладки
+	Not confirmed	Не підтверджено
+progress bar	Progress	Хід виконання
