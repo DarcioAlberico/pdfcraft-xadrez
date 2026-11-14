@@ -407,7 +407,7 @@ pub struct Alignment {
 
 /// A move of the text and where the reference has it, kept on the move
 /// ([`MoveInline::reference`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MoveReference {
     pub kind: LinkKind,
     /// The game of the reference, from 0; `None` when [`LinkKind::Absent`].
@@ -416,6 +416,20 @@ pub struct MoveReference {
     /// The node in that game (0 is its start).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub node: Option<usize>,
+    /// Which of the references [`link_all`] was given has it, from 0, the first outranking the
+    /// rest (plan A9-N2); 0, and not written, for [`link`]'s one.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub source: usize,
+    /// [`LinkKind::Recovered`]: the position after the reference's move, a full FEN, which every
+    /// export shows for the move the reader did not play (plan A9-N2), its printed text and its
+    /// reader's status kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fen: Option<String>,
+}
+
+/// Whether `n` is 0 (not written).
+fn is_zero(n: &usize) -> bool {
+    *n == 0
 }
 
 /// How a diagram stands against the reference.
@@ -451,6 +465,9 @@ pub struct DiagramReference {
     pub node: usize,
     /// The reference's position there, a full FEN.
     pub fen: String,
+    /// Which of the references [`link_all`] was given it is, from 0 (not written when 0).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub source: usize,
     /// [`DiagramKind::Suggested`]: the squares that differ, `from` as read and `to` as the
     /// reference has it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -482,9 +499,9 @@ pub struct Linked {
 
 /// Align `doc` with `index` ([`align`]) and keep the links on its moves and diagrams: each move of
 /// a paragraph gets its [`MoveInline::reference`], and a recovered move keeps the reader's status
-/// and gains [`ReviewFlag::FromReference`] with the reference's move; each diagram the reference
-/// confirms or suggests a position for gets its [`DiagramBlock::reference`] (see the module
-/// documentation).
+/// and gains [`ReviewFlag::FromReference`] with the reference's move, and the position after it
+/// ([`MoveReference::fen`]); each diagram the reference confirms or suggests a position for gets
+/// its [`DiagramBlock::reference`] (see the module documentation).
 ///
 /// **The games follow the diagrams confirmed** (plan A9-L0b, A2-11). A diagram the PGN confirms
 /// takes its side to move, castling and number, so the moves after it are walked again from the
@@ -496,6 +513,17 @@ pub struct Linked {
 /// The links of an earlier call are replaced, and the moves are walked again from the diagrams as
 /// read before linking anew, so linking twice is linking once.
 pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
+    link_all(doc, &[index]).into_iter().next().unwrap_or_default()
+}
+
+/// [`link`] with several references, the first outranking the rest (plan A9-N2, §2.9: the user's
+/// games, then the book's PGN, then the reading): a move keeps the link of the first reference
+/// that has it (any kind but [`LinkKind::Absent`]; absent from all, the first's), and a diagram the
+/// position of the first that confirms it, else, when none aligned it, of the first that suggests
+/// one. Each link says its reference ([`MoveReference::source`], [`DiagramReference::source`]).
+/// One [`Linked`] per reference, in their order, with its own alignment (its nodes are its own
+/// index's); with none, the links of an earlier call are only taken away.
+pub fn link_all(doc: &mut ChessDoc, refs: &[&ReferenceIndex]) -> Vec<Linked> {
     let mut restored = false;
     for page in &mut doc.pages {
         for block in &mut page.blocks {
@@ -507,17 +535,23 @@ pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
     if restored {
         walk_again(doc);
     }
-    let mut alignment = align(doc, index);
-    link_moves(doc, index, &alignment);
-    let diagrams = link_diagrams(doc, index, &alignment);
+    let mut alignments: Vec<Alignment> = refs.iter().map(|index| align(doc, index)).collect();
+    link_moves(doc, refs, &alignments);
+    let diagrams = link_diagrams(doc, refs, &alignments);
     let walked_again = doc.pages.iter().flat_map(|p| &p.blocks).any(|b| matches!(b, Block::Diagram(d) if moves_position(d)));
     if walked_again {
         walk_again(doc);
-        alignment = align(doc, index);
-        link_moves(doc, index, &alignment);
+        alignments = refs.iter().map(|index| align(doc, index)).collect();
+        link_moves(doc, refs, &alignments);
     }
-    let warnings = warnings(doc, index, &alignment);
-    Linked { alignment, diagrams, warnings, walked_again }
+    refs.iter()
+        .zip(alignments)
+        .zip(diagrams)
+        .map(|((index, alignment), diagrams)| {
+            let warnings = warnings(doc, index, &alignment);
+            Linked { alignment, diagrams, warnings, walked_again }
+        })
+        .collect()
 }
 
 /// `doc`'s moves walked again from what was read on its pages, its diagrams as they stand now,
@@ -527,9 +561,10 @@ fn walk_again(doc: &mut ChessDoc) {
     *doc = super::walk(&pages, super::WalkRules::BOOK);
 }
 
-/// Keep `alignment`'s links on `doc`'s moves, in place of any earlier ones: each move's
-/// [`MoveInline::reference`], and a recovered move's [`ReviewFlag::FromReference`].
-fn link_moves(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment) {
+/// Keep the links of `alignments` (one per reference of `refs`, the first outranking the rest) on
+/// `doc`'s moves, in place of any earlier ones: each move's [`MoveInline::reference`], the first
+/// reference's that has it, and a recovered move's [`ReviewFlag::FromReference`].
+fn link_moves(doc: &mut ChessDoc, refs: &[&ReferenceIndex], alignments: &[Alignment]) {
     for page in &mut doc.pages {
         for block in &mut page.blocks {
             if let Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } = block {
@@ -542,21 +577,36 @@ fn link_moves(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment)
             }
         }
     }
+    // Each move's link and its reference: the first that has the move, else the first's.
+    let mut chosen: BTreeMap<MoveAt, (usize, MoveLink)> = BTreeMap::new();
+    for (source, alignment) in alignments.iter().enumerate() {
+        for l in &alignment.moves {
+            let taken = chosen.get(&l.at).is_some_and(|(_, c)| c.kind != LinkKind::Absent || l.kind == LinkKind::Absent);
+            if !taken {
+                chosen.insert(l.at, (source, *l));
+            }
+        }
+    }
     let at_page: HashMap<u32, usize> = doc.pages.iter().enumerate().map(|(k, p)| (p.index, k)).collect();
-    for l in &alignment.moves {
+    for (source, l) in chosen.into_values() {
+        let Some(index) = refs.get(source) else { continue };
         let page = at_page.get(&l.at.page).and_then(|&k| doc.pages.get_mut(k));
         let block = usize::try_from(l.at.block).ok().and_then(|b| page?.blocks.get_mut(b));
         let Some(Block::Paragraph { inlines, .. }) = block else { continue };
         let Some(Inline::Move(m)) = usize::try_from(l.at.inline).ok().and_then(|i| inlines.get_mut(i)) else { continue };
-        m.reference = Some(MoveReference { kind: l.kind, game: l.node.map(|n| n.game), node: l.node.map(|n| n.node) });
-        if l.kind == LinkKind::Recovered {
-            let san = l.node.and_then(|n| {
-                let game = index.games.get(n.game)?.game.as_ref()?;
-                game.fen_at(n.node).map(|_| game.san(n.node).to_string())
-            });
-            if let Some(san) = san {
-                m.review.push(ReviewFlag::FromReference { san });
-            }
+        let recovered = l.node.filter(|_| l.kind == LinkKind::Recovered).and_then(|n| {
+            let game = index.games.get(n.game)?.game.as_ref()?;
+            game.fen_at(n.node).map(|fen| (game.san(n.node).to_string(), fen.to_string()))
+        });
+        m.reference = Some(MoveReference {
+            kind: l.kind,
+            game: l.node.map(|n| n.game),
+            node: l.node.map(|n| n.node),
+            source,
+            fen: recovered.as_ref().map(|(_, fen)| fen.clone()),
+        });
+        if let Some((san, _)) = recovered {
+            m.review.push(ReviewFlag::FromReference { san });
         }
     }
 }
@@ -586,48 +636,70 @@ fn moves_position(d: &DiagramBlock) -> bool {
     reading.side_assumed() || Fen::parse(fen).ok() != Fen::parse(&reading.fen).ok()
 }
 
-/// Keep on `doc`'s diagrams the positions of `index` they show ([`DiagramKind::Confirmed`]) or
-/// nearly show ([`DiagramKind::Suggested`]).
-fn link_diagrams(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> DiagramCounts {
-    let mut counts = DiagramCounts::default();
-    let shown: HashMap<DiagramAt, RefNode> = alignment.diagrams.iter().filter_map(|d| Some((d.at, d.node?))).collect();
-    let nearby = NearbyPositions::new(index, alignment);
+/// Keep on `doc`'s diagrams the positions of `refs` they show ([`DiagramKind::Confirmed`]) or
+/// nearly show ([`DiagramKind::Suggested`]), the first reference that confirms one outranking the
+/// rest; a diagram some reference aligned is offered no suggestion. How many each reference
+/// confirmed and suggested.
+fn link_diagrams(doc: &mut ChessDoc, refs: &[&ReferenceIndex], alignments: &[Alignment]) -> Vec<DiagramCounts> {
+    let mut counts = vec![DiagramCounts::default(); refs.len()];
+    let shown: Vec<HashMap<DiagramAt, RefNode>> =
+        alignments.iter().map(|a| a.diagrams.iter().filter_map(|d| Some((d.at, d.node?))).collect()).collect();
+    let nearby: Vec<NearbyPositions> = refs.iter().zip(alignments).map(|(index, a)| NearbyPositions::new(index, a)).collect();
     for page in &mut doc.pages {
         let page_index = page.index;
         for block in &mut page.blocks {
             let Block::Diagram(d) = block else { continue };
-            let Some(reading) = d.reading.as_ref() else { continue };
-            if let Some(&at) = shown.get(&DiagramAt::on(page_index, d.number)) {
-                if confirm(d, index, at) {
-                    counts.confirmed = counts.confirmed.saturating_add(1);
+            if d.reading.is_none() {
+                continue;
+            }
+            let at = DiagramAt::on(page_index, d.number);
+            let confirmed = refs.iter().enumerate().find_map(|(source, index)| {
+                let node = *shown.get(source)?.get(&at)?;
+                confirm(d, index, node, source).then_some(source)
+            });
+            if let Some(source) = confirmed {
+                if let Some(c) = counts.get_mut(source) {
+                    c.confirmed = c.confirmed.saturating_add(1);
                 }
                 continue;
             }
-            if d.source == DiagramSource::User {
+            if d.source == DiagramSource::User || shown.iter().any(|s| s.contains_key(&at)) {
                 continue;
             }
-            if let Some(suggested) = nearby.suggest(index, page_index, reading) {
+            let Some(reading) = d.reading.as_ref() else { continue };
+            let suggested =
+                refs.iter().enumerate().find_map(|(source, index)| Some((source, nearby.get(source)?.suggest(index, page_index, reading, source)?)));
+            if let Some((source, suggested)) = suggested {
                 d.reference = Some(Box::new(suggested));
-                counts.suggested = counts.suggested.saturating_add(1);
+                if let Some(c) = counts.get_mut(source) {
+                    c.suggested = c.suggested.saturating_add(1);
+                }
             }
         }
     }
     counts
 }
 
-/// Confirm diagram `d` by the reference's move `at`, whose pieces it has: the diagram shows the
-/// move's position, its side to move, castling and number ([`DiagramBlock::shown`]), unless a
-/// person set it; the reading stays what was printed (plan A9-L6b). Not confirmed when its side to
-/// move was read, not assumed, and is the other one. Whether it was confirmed.
-fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode) -> bool {
+/// Confirm diagram `d` by the move `at` of reference `source`, whose pieces it has: the diagram
+/// shows the move's position, its side to move, castling and number ([`DiagramBlock::shown`]),
+/// unless a person set it; the reading stays what was printed (plan A9-L6b). Not confirmed when
+/// its side to move was read, not assumed, and is the other one. Whether it was confirmed.
+fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode, source: usize) -> bool {
     let (Some(fen), Some(reading)) = (index.fen(at), d.reading.as_ref()) else { return false };
     let Ok(read) = Fen::parse(&reading.fen) else { return false };
     if !read.book_key().matches(fen.book_key(), reading.side_assumed()) {
         return false;
     }
     let fen = fen.to_string();
-    d.reference =
-        Some(Box::new(DiagramReference { kind: DiagramKind::Confirmed, game: at.game, node: at.node, fen, changes: Vec::new(), before: None }));
+    d.reference = Some(Box::new(DiagramReference {
+        kind: DiagramKind::Confirmed,
+        game: at.game,
+        node: at.node,
+        fen,
+        source,
+        changes: Vec::new(),
+        before: None,
+    }));
     true
 }
 
@@ -665,8 +737,8 @@ impl NearbyPositions {
 
     /// The position linked on `page` or the pages beside it that `reading` is fewest squares from,
     /// one to [`MAX_SUGGESTED_SQUARES`]; the first in reading order among the fewest. None when
-    /// the side to move was read, not assumed, and is the other one.
-    fn suggest(&self, index: &ReferenceIndex, page: u32, reading: &DiagramReading) -> Option<DiagramReference> {
+    /// the side to move was read, not assumed, and is the other one. `index` is reference `source`.
+    fn suggest(&self, index: &ReferenceIndex, page: u32, reading: &DiagramReading, source: usize) -> Option<DiagramReference> {
         let read_fen = Fen::parse(&reading.fen).ok()?;
         let read = read_fen.placement().reading_order();
         let mut best: Option<(usize, RefNode, Squares)> = None;
@@ -693,7 +765,7 @@ impl NearbyPositions {
             .filter(|(_, (from, to))| from != to)
             .map(|(k, (&from, &to))| SquareChange { square: square_name(k), from: from.map(Piece::fen_char), to: to.map(Piece::fen_char) })
             .collect();
-        Some(DiagramReference { kind: DiagramKind::Suggested, game: at.game, node: at.node, fen: fen.to_string(), changes, before: None })
+        Some(DiagramReference { kind: DiagramKind::Suggested, game: at.game, node: at.node, fen: fen.to_string(), source, changes, before: None })
     }
 }
 

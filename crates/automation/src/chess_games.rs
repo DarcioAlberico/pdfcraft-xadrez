@@ -25,10 +25,13 @@
 //! never the file of an open document unless the call says `overwrite: true`.
 
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
+use pdfcraft_engine::chess::export::{ChessFormat, GamesBookMeta, games_book};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, PgnStopReason};
+use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, LangTag};
 use serde_json::{Map, Value, json};
 
-use crate::{Args, Automation, Result, ToolError, chess_pgn, write_atomic};
+use crate::{Args, Automation, Result, ToolError, chess_pgn, failed, write_atomic};
 
 /// Most operations in one call.
 pub(crate) const MAX_OPS: usize = 1000;
@@ -59,31 +62,9 @@ type Refusal = String;
 
 impl Automation {
     pub(crate) fn chess_games(&self, a: &Args) -> Result<Value> {
-        let inline = a.opt_str("pgn")?;
-        if inline.is_some() && a.opt_str("path")?.is_some() {
-            return Err(ToolError::InvalidArgs("give pgn or path, not both".into()));
-        }
-        // The paths next: one that leaves the root is refused before anything is read.
-        let path = a.opt_str("path")?.map(|p| self.resolve(p, false).map(|r| (p, r))).transpose()?;
+        // The paths first: one that leaves the root is refused before anything is read.
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true)).transpose()?;
-        let mut encoding = None;
-        let text = match (inline, path) {
-            (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give pgn or path, not both".into())),
-            (Some(text), None) => {
-                if text.len() > MAX_PGN_BYTES {
-                    return Err(Args::wrong("pgn", &format!("at most {MAX_PGN_BYTES} bytes")));
-                }
-                text.to_owned()
-            }
-            (None, Some((given, file))) => {
-                // Resolved above, and refused above the cap (a file that grew past it since too).
-                let bytes = crate::chess_files::read_capped(&file, given, MAX_PGN_BYTES)?;
-                let (text, read_as) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
-                encoding = Some(read_as.name());
-                text
-            }
-            (None, None) => String::new(),
-        };
+        let (text, encoding) = self.games_text(a)?;
         if let Some(target) = &out {
             self.check_outputs(a, &[("out", target.as_path())], &[])?;
         }
@@ -148,6 +129,114 @@ impl Automation {
             "report": report,
             "applied": applied,
             "written": written,
+        }))
+    }
+
+    /// The PGN text a games tool starts from: `pgn` inline, or the `.pgn` file `path` (confined to
+    /// the root, resolved before it is read, refused past [`MAX_PGN_BYTES`]), with how the file was
+    /// decoded; empty without either.
+    fn games_text(&self, a: &Args) -> Result<(String, Option<&'static str>)> {
+        let inline = a.opt_str("pgn")?;
+        if inline.is_some() && a.opt_str("path")?.is_some() {
+            return Err(ToolError::InvalidArgs("give pgn or path, not both".into()));
+        }
+        let path = a.opt_str("path")?.map(|p| self.resolve(p, false).map(|r| (p, r))).transpose()?;
+        match (inline, path) {
+            (Some(_), Some(_)) => Err(ToolError::InvalidArgs("give pgn or path, not both".into())),
+            (Some(text), None) => {
+                if text.len() > MAX_PGN_BYTES {
+                    return Err(Args::wrong("pgn", &format!("at most {MAX_PGN_BYTES} bytes")));
+                }
+                Ok((text.to_owned(), None))
+            }
+            (None, Some((given, file))) => {
+                // Resolved above, and refused above the cap (a file that grew past it since too).
+                let bytes = crate::chess_files::read_capped(&file, given, MAX_PGN_BYTES)?;
+                let (text, read_as) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
+                Ok((text, Some(read_as.name())))
+            }
+            (None, None) => Ok((String::new(), None)),
+        }
+    }
+
+    /// `chess_games_book` (plan A9-N9, A8-12): games of a PGN, as `chess_games` reads them, written
+    /// as a book (HTML, EPUB, Word, RTF or Markdown) by the writers of Chess ▸ Export, a page per
+    /// game ([`pdfcraft_engine::chess::export::games_book`]).
+    pub(crate) fn chess_games_book(&self, a: &Args) -> Result<Value> {
+        let format = match a.str("format")? {
+            "html" => ChessFormat::Html,
+            "epub" => ChessFormat::Epub,
+            "docx" => ChessFormat::Docx,
+            "rtf" => ChessFormat::Rtf,
+            "markdown" => ChessFormat::Markdown,
+            _ => return Err(Args::wrong("format", "html, epub, docx, rtf or markdown (the games are their own PGN)")),
+        };
+        let text_lang = match a.opt_str("lang")? {
+            None => LangTag::default(),
+            Some(tag) => {
+                Some(LangTag::parse(tag)).filter(|t| !t.is_empty()).ok_or_else(|| Args::wrong("lang", "a BCP 47 language tag such as en or pt-BR"))?
+            }
+        };
+        // The paths first: one that leaves the root is refused before anything is read.
+        let shown = a.str("out")?.to_owned();
+        let target = self.resolve(&shown, true)?;
+        let input = a.opt_str("path")?.map(|p| self.resolve(p, false)).transpose()?;
+        let title = match a.opt_str("title")? {
+            Some(t) => t.to_owned(),
+            None => std::path::Path::new(&shown).file_stem().map_or_else(|| "Games".to_owned(), |s| s.to_string_lossy().into_owned()),
+        };
+        let (mut options, look) = self.export_look(a, &title, Lang::En)?;
+        let (image_dir, folder) = self.image_folder(&shown, format, &options)?;
+        options.image_dir = image_dir.clone();
+        let mut outputs: Vec<(&str, &std::path::Path)> = vec![("out", target.as_path())];
+        outputs.extend(folder.as_ref().map(|f| ("image_dir", f.as_path())));
+        self.check_outputs(a, &outputs, &input.iter().map(|p| p.as_path()).collect::<Vec<_>>())?;
+        let (text, encoding) = self.games_text(a)?;
+        let list = read_games(&text)?;
+        let picked: Vec<usize> = match a.get("games") {
+            None | Some(Value::Null) => (0..list.len()).collect(),
+            Some(v) => {
+                let all = v.as_array().ok_or_else(|| Args::wrong("games", "a list of games (0-based)"))?;
+                let mut picked = Vec::with_capacity(all.len());
+                for g in all {
+                    let at = g.as_u64().and_then(|g| usize::try_from(g).ok()).filter(|&g| g < list.len() && !picked.contains(&g));
+                    picked.push(
+                        at.ok_or_else(|| Args::wrong("games", &format!("games of the list, 0 to {}, each once", list.len().saturating_sub(1))))?,
+                    );
+                }
+                picked
+            }
+        };
+        let entries: Vec<&Entry> = picked.iter().filter_map(|&g| list.get(g)).collect();
+        if entries.iter().all(|e| e.is_blank()) {
+            return Err(ToolError::InvalidArgs("no game to write: give a PGN with moves (pgn or path)".into()));
+        }
+        let games: Vec<Game> = entries.iter().map(|e| e.game.clone()).collect();
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+        // The same games make the same book: its identifier is made from their PGN.
+        let identity = games.iter().map(Game::pgn).collect::<String>().into_bytes();
+        let meta = GamesBookMeta { text_lang, creator: None, now_secs: now, identity };
+        let book = games_book(&games, format, &options, &meta).map_err(failed)?;
+        crate::chess::write_images(folder.as_deref(), &image_dir, &book.images)?;
+        write_atomic(&target, &book.bytes)?;
+        let blocks = || book.doc.pages.iter().flat_map(|p| &p.blocks);
+        Ok(json!({
+            "out": shown,
+            "bytes": book.bytes.len(),
+            "format": format.extension(),
+            "games": book.doc.pages.len(),
+            "diagrams": blocks().filter(|b| matches!(b, Block::Diagram(_))).count(),
+            "diagrams_drawn": book.drawn,
+            "moves": blocks().flat_map(|b| b.inlines()).filter(|i| matches!(i, Inline::Move(_))).count(),
+            "image_dir": folder.as_ref().filter(|_| !book.images.is_empty()).map(|_| image_dir),
+            "encoding": encoding,
+            // A game read only up to a move that could not be played is written up to there, the
+            // rest as the comment where it stopped (plan A9-F3).
+            "pgn_stopped": picked.iter().zip(&entries).filter_map(|(g, e)| e.stopped.as_ref().map(|mv| json!({ "game": g, "at": mv }))).collect::<Vec<_>>(),
+            "text_font": self.font_json(look.fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &look.fonts.errors),
+            "sign_font": self.font_json(look.fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
+            "pieces": look.pieces,
+            "notes": book.notes,
         }))
     }
 }
