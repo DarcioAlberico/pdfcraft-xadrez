@@ -8,17 +8,18 @@
 //!   or an empty board, side to move and castling; Done plays from it as a new game, one undo
 //!   step.
 //! - **Drawings**: arrows and circles drawn with the right button (`chess_board_ui`), kept on
-//!   the move shown and written into the game's PGN (`[%csl]`/`[%cal]`, U7); the Analysis
-//!   section clears them and says how they are drawn.
-//! - **Engine analysis**, in the Analysis section (closed until opened): the user's own UCI
-//!   engine (`engine::chess::analysis`) analyses the position shown, with a thin evaluation bar
-//!   beside the board, the best lines (a click on one of their moves plays the line up to it) and
-//!   the best move as an arrow. None ships with PdfCraft; the desktop app finds one or the user
+//!   the move shown and written into the game's PGN (`[%csl]`/`[%cal]`, U7); the Board tab's
+//!   menu (⋯) clears them and says how they are drawn.
+//! - **Engine analysis**, switched by Analyze in the Board tab's header (plan A9-I0b): the user's
+//!   own UCI engine (`engine::chess::analysis`) analyses the position shown, with a thin
+//!   evaluation bar beside the board, the best lines in rows of their own under it (a click on
+//!   one of their moves plays the line up to it) and the best move as an arrow. None ships with PdfCraft; the desktop app finds one or the user
 //!   picks one, and the web build has none. The program picked and the number of lines are kept
 //!   in the settings (`chess_engine`, U7: [`StudyState::to_json`]); the engine is started only
 //!   when analysis is switched on. The engine rests while the Board panel is not drawn
 //!   (another tab in front of it, closed, or Home mode): [`StudyState::new_frame`].
-//! - **Material**: what each side is ahead by, as pieces and points (in the Analysis section).
+//! - **Material**: what each side is ahead by, as pieces and points (at the end of the Board
+//!   tab's navigation row).
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
@@ -35,7 +36,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind,
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::pdfcraft_chess::uci::Score;
 
-use crate::chess_board_ui::{self, BoardAction, BoardState, Sizing};
+use crate::chess_board_ui::{self, BoardState, Sizing};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::chess_board_ui::{Mark, MarkColor};
 use crate::chess_editor::Brush;
@@ -140,8 +141,6 @@ pub struct StudyState {
     no_engine: bool,
     /// The position last given to the engine.
     sent: Option<String>,
-    /// Open the Analysis section at its next drawing ([`StudyState::analyze`]).
-    open_section: bool,
     /// The no-engine assistant shows ([`engine_assistant`]).
     pub assistant: bool,
 }
@@ -162,7 +161,6 @@ impl Default for StudyState {
             start_error: None,
             no_engine: false,
             sent: None,
-            open_section: false,
             assistant: false,
         }
     }
@@ -235,8 +233,9 @@ impl StudyState {
     }
 
     /// Analyse at one click (plan A8, P7: Analyze in the Diagrams list, the Diagram tab and on
-    /// the board): analysis on, without closing an engine already running, and the Analysis
-    /// section open. With no engine running, picked or found, the assistant says how to get one.
+    /// the board): analysis on, without closing an engine already running; the Board tab shows
+    /// its lines under the board. With no engine running, picked or found, the assistant says how
+    /// to get one.
     pub fn analyze(&mut self) {
         if !self.analysis {
             self.analysis = true;
@@ -247,7 +246,6 @@ impl StudyState {
             self.no_engine = false;
             self.sent = None;
         }
-        self.open_section = true;
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.assistant = self.engine.is_none()
@@ -473,49 +471,6 @@ pub fn material_lead(placement: &Placement) -> i32 {
     material(placement).iter().fold(0i32, |sum, (kind, d)| sum.saturating_add(d.saturating_mul(points(*kind))))
 }
 
-/// The material line: for each side, the opponent's pieces it is ahead by, and its lead.
-fn material_view(ui: &mut egui::Ui, t: &Tokens, board: &mut BoardState, pieces: &PieceSet) {
-    let placement = board.placement();
-    let diff = material(&placement);
-    if diff.iter().all(|(_, d)| *d == 0) {
-        return;
-    }
-    let sprites = board.sprites(ui.ctx(), pieces);
-    let lead = material_lead(&placement);
-    for (side, label) in [(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))] {
-        let ahead: Vec<(PieceKind, i32)> =
-            diff.iter().map(|(k, d)| (*k, if side == Color::White { *d } else { d.saturating_neg() })).filter(|(_, d)| *d > 0).collect();
-        if ahead.is_empty() {
-            continue;
-        }
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 1.0;
-            ui.label(egui::RichText::new(label).small().color(t.text_muted));
-            ui.add_space(4.0);
-            // The pieces taken are the other side's.
-            let taken = if side == Color::White { Color::Black } else { Color::White };
-            for (kind, n) in ahead {
-                for _ in 0..n.min(16) {
-                    let piece = Piece { color: taken, kind };
-                    match &sprites {
-                        Some(tex) => {
-                            ui.add(egui::Image::new(tex).uv(chess_board_ui::sprite_uv(piece)).fit_to_exact_size(vec2(16.0, 16.0)));
-                        }
-                        None => {
-                            ui.label(egui::RichText::new(crate::chess_editor::piece_letter(piece)).small().monospace());
-                        }
-                    }
-                }
-            }
-            let mine = if side == Color::White { lead } else { lead.saturating_neg() };
-            if mine > 0 {
-                ui.add_space(4.0);
-                ui.label(egui::RichText::new(format!("+{mine}")).small().strong());
-            }
-        });
-    }
-}
-
 /// The evaluation bar beside a board `height` points high: White's share from the bottom (from
 /// the top when the board is flipped), the score at White's end.
 #[cfg(not(target_arch = "wasm32"))]
@@ -589,80 +544,127 @@ fn searching_mark(ui: &mut egui::Ui) {
     ui.painter().add(egui::Shape::line(points, Stroke::new(3.0, ui.visuals().strong_text_color())));
 }
 
-/// The engine's part: the switch, the engine's state and its lines. A click on a move of a line
-/// plays the line up to that move.
+/// What the engine says while it analyses, or why it can't: for the Board tab's engine rows.
 #[cfg(not(target_arch = "wasm32"))]
-fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mut BoardState) -> Option<BoardAction> {
+enum EngineSays {
+    /// No engine was found: the line to show, and how to get one.
+    NoEngine,
+    /// It couldn't be started, didn't answer as UCI, or stopped.
+    Error(String),
+    /// The position has no move.
+    NoMoves,
+    /// Its lines so far (none yet while it starts).
+    Lines(pdfcraft_engine::chess::analysis::Snapshot),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn engine_says(study: &StudyState, board: &BoardState) -> Option<EngineSays> {
     use pdfcraft_engine::chess::analysis::AnalysisError;
-    let mut action = None;
-    ui.horizontal_wrapped(|ui| {
-        let was = study.analysis;
-        ui.add(crate::widgets::checkbox(&mut study.analysis, tl!("Engine analysis")));
-        if study.analysis != was {
-            study.restart();
-        }
-        if study.analysis {
-            // One unit, so a narrow panel wraps it whole.
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Lines:")).small());
-                for n in 1..=3u32 {
-                    if ui.selectable_label(study.lines == n, n.to_string()).clicked() {
-                        study.lines = n;
-                    }
-                }
-            });
-        }
-        if ui.small_button(tl!("Choose engine…")).on_hover_text(tl!("Pick a UCI chess engine program, such as Stockfish.")).clicked() {
-            action = Some(BoardAction::ChooseEngine);
-        }
-    });
     if !study.analysis {
-        return action;
+        return None;
     }
-    let muted = |ui: &mut egui::Ui, text: &str| ui.label(egui::RichText::new(text).small().color(t.text_muted));
     if study.no_engine {
-        ui.label(egui::RichText::new(tl!("No analysis engine installed")).small().strong());
-        muted(ui, engine_help()).on_hover_text(tl!("Or set PDFCRAFT_CHESS_ENGINE to the program."));
-        return action;
+        return Some(EngineSays::NoEngine);
     }
     let error = study.start_error.clone().or_else(|| study.engine.as_ref().and_then(|e| e.snapshot().error));
     if let Some(e) = error {
-        let text = match e {
+        return Some(EngineSays::Error(match e {
             AnalysisError::Start(why) => crate::i18n::fmt(tl!("The engine couldn't be started: {e}"), &[("e", &why)]),
             AnalysisError::NotUci => tl!("That program didn't answer as a UCI chess engine.").to_string(),
             AnalysisError::Stopped => tl!("The engine stopped.").to_string(),
-        };
-        ui.label(egui::RichText::new(text).small().color(Tokens::get(ui.ctx()).danger_text));
-        return action;
+        }));
     }
-    let Some(snap) = study.snapshot(board) else { return action };
-    ui.horizontal_wrapped(|ui| {
-        if snap.searching || !snap.ready {
-            searching_mark(ui);
-        }
-        let mut status = snap.name.clone().unwrap_or_else(|| tl!("Starting the engine…").to_string());
-        if let Some(depth) = snap.lines.first().map(|l| l.depth) {
-            status.push_str(" · ");
-            status.push_str(&crate::i18n::fmt(tl!("depth {n}"), &[("n", &depth.to_string())]));
-        }
-        if let Some(nps) = snap.nps.filter(|n| *n > 0) {
-            status.push_str(&format!(" · {} kN/s", nps / 1000));
-        }
-        muted(ui, &status);
-    });
-    let fen = board.game.fen();
+    let snap = study.snapshot(board)?;
     if board.game.legal_moves().is_empty() {
-        muted(ui, tl!("No moves to analyse in this position."));
-        return action;
+        return Some(EngineSays::NoMoves);
     }
+    Some(EngineSays::Lines(snap))
+}
+
+/// The engine's state in a few words, for the Board tab's navigation row while it analyses
+/// (plan A9-I0b): its name, the depth and the speed, and whether it is still searching.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn engine_status(study: &StudyState, board: &BoardState) -> Option<(String, bool)> {
+    let Some(EngineSays::Lines(snap)) = engine_says(study, board) else { return None };
+    let mut status = snap.name.clone().unwrap_or_else(|| tl!("Starting the engine…").to_string());
+    if let Some(depth) = snap.lines.first().map(|l| l.depth) {
+        status.push_str(" · ");
+        status.push_str(&crate::i18n::fmt(tl!("depth {n}"), &[("n", &depth.to_string())]));
+    }
+    if let Some(nps) = snap.nps.filter(|n| *n > 0) {
+        status.push_str(&format!(" · {} kN/s", nps / 1000));
+    }
+    Some((status, snap.searching || !snap.ready))
+}
+
+/// The spinner of [`searching_mark`], for the Board tab's navigation row.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn searching(ui: &mut egui::Ui) {
+    searching_mark(ui);
+}
+
+/// The engine's rows of the Board tab (plan A9-I0b, §2.8.0 sketch (d)): one row of
+/// [`crate::chess_board_tab::ENGINE_LINE`] points per line in `rect`, each cut short with "…"
+/// where it does not fit and whole in its tooltip; or, in the first row, why there are none. A
+/// click on a move of a line plays the line up to that move.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn engine_rows(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, board: &mut BoardState, rect: Rect) {
+    let Some(says) = engine_says(study, board) else { return };
+    let row = |i: usize| {
+        Rect::from_min_size(
+            egui::pos2(rect.min.x, rect.min.y + i as f32 * crate::chess_board_tab::ENGINE_LINE),
+            vec2(rect.width(), crate::chess_board_tab::ENGINE_LINE),
+        )
+    };
+    let one_line = |ui: &mut egui::Ui, text: &str, colour: Color32, tip: &str| {
+        crate::chess_board_tab::in_row(ui, row(0), "chess-engine-0", |ui| {
+            let r = ui.add(egui::Label::new(egui::RichText::new(text).small().color(colour)).truncate());
+            if !tip.is_empty() {
+                r.on_hover_text(tip);
+            }
+        });
+    };
+    let lines = match says {
+        EngineSays::NoEngine => {
+            one_line(ui, tl!("No analysis engine installed"), t.text, engine_help());
+            return;
+        }
+        EngineSays::Error(text) => {
+            one_line(ui, &text, t.danger_text, "");
+            return;
+        }
+        EngineSays::NoMoves => {
+            one_line(ui, tl!("No moves to analyse in this position."), t.text_muted, "");
+            return;
+        }
+        EngineSays::Lines(snap) => snap.lines,
+    };
+    let fen = board.game.fen();
     let mut play = None;
-    for line in &snap.lines {
-        ui.horizontal_wrapped(|ui| {
+    let shown = usize::try_from(study.lines).unwrap_or(1).clamp(1, crate::chess_board_tab::MAX_ENGINE_LINES);
+    for (i, line) in lines.iter().take(shown).enumerate() {
+        crate::chess_board_tab::in_row(ui, row(i), ("chess-engine", i), |ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
+            let right = ui.max_rect().right();
             let colour = if line.score.white_share() >= 0.5 { Color32::from_gray(30) } else { Color32::from_gray(235) };
             let fill = if line.score.white_share() >= 0.5 { Color32::from_gray(235) } else { Color32::from_gray(50) };
             ui.label(egui::RichText::new(line.score.text()).monospace().strong().color(colour).background_color(fill));
-            for (k, (label, san)) in numbered_moves(&fen, &line.san).into_iter().enumerate() {
+            let moves = numbered_moves(&fen, &line.san);
+            let whole: Vec<String> = moves.iter().map(|(n, san)| n.as_ref().map_or_else(|| san.clone(), |n| format!("{n}{san}"))).collect();
+            let whole = format!("{} {}", line.score.text(), whole.join(" "));
+            let mono = egui::TextStyle::Monospace.resolve(ui.style());
+            let small = egui::TextStyle::Small.resolve(ui.style());
+            let gap = ui.spacing().item_spacing.x;
+            let ellipsis = crate::widgets::text_width(ui, "…", &small) + gap;
+            for (k, (label, san)) in moves.into_iter().enumerate() {
+                // The number and its move together, or the "…" with the whole line in its tooltip.
+                let need = label.as_ref().map_or(0.0, |l| crate::widgets::text_width(ui, l, &small) + gap)
+                    + crate::widgets::text_width(ui, &san, &mono)
+                    + gap;
+                if ui.cursor().min.x + need + ellipsis > right {
+                    ui.label(egui::RichText::new("…").small().color(t.text_faint)).on_hover_text(&whole);
+                    break;
+                }
                 if let Some(label) = label {
                     ui.label(egui::RichText::new(label).small().color(t.text_faint));
                 }
@@ -679,7 +681,6 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
     if let Some(moves) = play {
         board.play_uci_line(&moves);
     }
-    action
 }
 
 /// How to get an engine, as the no-engine assistant and the Analysis section say it.
@@ -770,69 +771,120 @@ pub(crate) fn setup_in_place(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessSta
     shown
 }
 
-/// The board within `sizing`'s limits, with the evaluation bar beside it and the engine's best
-/// move on it while the engine analyses.
-pub(crate) fn board_with_bar(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, board: &mut BoardState, pieces: &PieceSet, sizing: Sizing) {
+/// The width the evaluation bar takes left of the board while the engine analyses (none
+/// otherwise), with the gap between them.
+pub(crate) fn eval_room(ui: &egui::Ui, study: &StudyState) -> f32 {
+    #[cfg(not(target_arch = "wasm32"))]
+    if study.analysis {
+        return BAR_PT + ui.spacing().item_spacing.x;
+    }
+    let _ = (ui, study);
+    0.0
+}
+
+/// The board in `square` (as large as it is, within `sizing`'s picture limits), the engine's
+/// best move on it and the evaluation bar in `bar` beside it while the engine analyses (plan
+/// A9-I0b: the Board tab measures the room first, [`crate::chess_board_tab::Regions`]).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn board_at(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    study: &StudyState,
+    board: &mut BoardState,
+    pieces: &PieceSet,
+    sizing: Sizing,
+    square: Rect,
+    bar: Option<Rect>,
+) {
+    let mut best = Vec::new();
     #[cfg(not(target_arch = "wasm32"))]
     if study.analysis {
         let snap = study.snapshot(board);
-        let best = snap.as_ref().and_then(|s| s.lines.first()).and_then(|l| l.uci.first()).and_then(|mv| {
+        best.extend(snap.as_ref().and_then(|s| s.lines.first()).and_then(|l| l.uci.first()).and_then(|mv| {
             let (from, to) = (mv.get(0..2).and_then(Square::parse)?, mv.get(2..4).and_then(Square::parse)?);
             Some(Mark { from, to, color: MarkColor::Engine })
-        });
-        let bar = BAR_PT + ui.spacing().item_spacing.x;
-        // The board's side as `board_view_sized` finds it in the room the bar leaves: the bar is
-        // as tall.
-        let side = (ui.available_width() - bar).clamp(160.0, sizing.side_limit());
-        ui.horizontal_top(|ui| {
-            eval_bar(ui, snap.as_ref().and_then(|s| s.lines.first()).map(|l| l.score), board.flipped, side);
-            ui.allocate_ui(vec2(side, side), |ui| chess_board_ui::board_view_sized(ui, t, board, pieces, best.as_slice(), sizing));
-        });
-        return;
+        }));
+        if let Some(bar) = bar {
+            crate::chess_board_tab::in_row(ui, bar, "chess-eval-bar", |ui| {
+                eval_bar(ui, snap.as_ref().and_then(|s| s.lines.first()).map(|l| l.score), board.flipped, bar.height());
+            });
+        }
     }
     #[cfg(target_arch = "wasm32")]
-    let _ = study;
-    chess_board_ui::board_view_sized(ui, t, board, pieces, &[], sizing);
+    let _ = (study, bar);
+    let mut child =
+        ui.new_child(egui::UiBuilder::new().id_salt("chess-board-square").max_rect(square).layout(egui::Layout::top_down(egui::Align::Min)));
+    chess_board_ui::board_view_side(&mut child, t, board, pieces, &best, sizing, square.width().min(square.height()));
 }
 
-/// The Analysis section, closed until opened (egui keeps whether it is open): the engine's
-/// switch, its state and lines, the material, and the drawings. What it asks the app for.
-pub(crate) fn analysis_section(
-    ui: &mut egui::Ui,
-    t: &Tokens,
-    study: &mut StudyState,
-    board: &mut BoardState,
-    pieces: &PieceSet,
-) -> Option<BoardAction> {
-    egui::CollapsingHeader::new(tl!("Analysis"))
-        .id_salt("chess-board-analysis")
-        .default_open(false)
-        .open(std::mem::take(&mut study.open_section).then_some(true))
-        .show(ui, |ui| {
-            #[cfg(not(target_arch = "wasm32"))]
-            let action = engine_view(ui, t, study, board);
-            #[cfg(target_arch = "wasm32")]
-            let action = {
-                let _ = &study;
-                ui.label(egui::RichText::new(tl!("Engine analysis needs the desktop app.")).small().color(t.text_muted));
-                None
-            };
-            material_view(ui, t, board, pieces);
-            ui.add_space(4.0);
-            if ui.add_enabled(!board.marks().is_empty(), egui::Button::new(tl!("Clear drawings")).small()).clicked() {
-                board.clear_marks();
+/// The material, in one row of `room` points at most (plan A9-I0b: the Board tab's navigation
+/// row): each side's pieces ahead, drawn small, then the lead; what does not fit ends in "…",
+/// and the whole is the row's tooltip and accessible name.
+pub(crate) fn material_strip(ui: &mut egui::Ui, t: &Tokens, board: &mut BoardState, pieces: &PieceSet, room: f32) {
+    const SIDE: f32 = 14.0;
+    let placement = board.placement();
+    let diff = material(&placement);
+    if diff.iter().all(|(_, d)| *d == 0) {
+        return;
+    }
+    let sprites = board.sprites(ui.ctx(), pieces);
+    let lead = material_lead(&placement);
+    let mut said = Vec::new();
+    let mut drawn: Vec<Piece> = Vec::new();
+    for side in [Color::White, Color::Black] {
+        // The pieces taken are the other side's.
+        let taken = if side == Color::White { Color::Black } else { Color::White };
+        let ahead: Vec<(PieceKind, i32)> =
+            diff.iter().map(|(k, d)| (*k, if side == Color::White { *d } else { d.saturating_neg() })).filter(|(_, d)| *d > 0).collect();
+        for (kind, n) in &ahead {
+            for _ in 0..(*n).min(16) {
+                drawn.push(Piece { color: taken, kind: *kind });
             }
-            ui.label(
-                egui::RichText::new(tl!(
-                    "Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow)."
-                ))
-                .small()
-                .color(t.text_faint),
-            );
-            action
+        }
+        if !ahead.is_empty() {
+            let pieces: Vec<String> =
+                ahead.iter().map(|(k, n)| format!("{n} {}", crate::chess_editor::piece_name(Piece { color: taken, kind: *k }))).collect();
+            let name = if side == Color::White { tl!("White") } else { tl_ctx!("chess side", "Black") };
+            said.push(format!("{name}: {}", pieces.join(", ")));
+        }
+    }
+    let lead_text = if lead != 0 { format!("{:+}", lead) } else { String::new() };
+    if lead != 0 {
+        said.push(lead_text.clone());
+    }
+    let said = said.join(" · ");
+    let r = ui
+        .horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 1.0;
+            let font = egui::TextStyle::Small.resolve(ui.style());
+            let tail = crate::widgets::text_width(ui, &format!("…{lead_text}"), &font) + 4.0;
+            let fit = (((room - tail) / (SIDE + 1.0)).floor().max(0.0) as usize).min(drawn.len());
+            for piece in drawn.iter().take(fit) {
+                match &sprites {
+                    Some(tex) => {
+                        ui.add(egui::Image::new(tex).uv(chess_board_ui::sprite_uv(*piece)).fit_to_exact_size(vec2(SIDE, SIDE)));
+                    }
+                    None => {
+                        ui.label(egui::RichText::new(crate::chess_editor::piece_letter(*piece)).small().monospace());
+                    }
+                }
+            }
+            if fit < drawn.len() {
+                ui.label(egui::RichText::new("…").small().color(t.text_faint));
+            }
+            if lead != 0 {
+                ui.add_space(3.0);
+                ui.label(egui::RichText::new(&lead_text).small().strong());
+            }
         })
-        .body_returned
-        .flatten()
+        .response;
+    let r = r.on_hover_text(&said);
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &said));
+}
+
+/// The text under Clear drawings in the Board tab's menu: how the drawings are made.
+pub(crate) fn drawing_help() -> &'static str {
+    tl!("Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).")
 }
 
 #[cfg(test)]

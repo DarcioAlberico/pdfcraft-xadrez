@@ -3525,3 +3525,12 @@ the move's comment	Move comment	Hamlenin yorumu
 	Tools panel collapsed	Araçlar paneli daraltıldı
 	Show the page (F6)	Sayfayı göster (F6)
 	The board is in the column beside.	Tahta yandaki sütunda.
+	More board actions	Diğer tahta eylemleri
+	Back to the moves	Hamlelere dön
+	Back to the moves (Esc)	Hamlelere dön (Esc)
+	Game	Oyun
+	The game starts at move:	Oyun şu hamleden başlar:
+	Comment	Yorum
+	The comments of the move shown, under the moves	Gösterilen hamlenin yorumları, hamlelerin altında
+	Edit the FEN and the PGN	FEN ve PGN'yi düzenle
+	More continuations: {moves}	Diğer devamlar: {moves}

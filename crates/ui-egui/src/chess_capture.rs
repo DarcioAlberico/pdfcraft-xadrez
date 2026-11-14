@@ -103,6 +103,9 @@ pub struct CaptureState {
     /// The mode the next paste is captured in (Paste as ▸, where the clipboard can only be read by
     /// a paste: the web).
     paste_mode: Option<(CaptureMode, bool)>,
+    /// Paste as ▸ was chosen in the Capture popup: the clipboard's text to capture in this mode,
+    /// once the board is drawn ([`CaptureState::take_paste`]).
+    paste_asked: Option<(CaptureMode, bool)>,
     /// A capture tool was just armed: the page tool goes to Select at the next tick.
     select_page: bool,
     /// Underline on the page the text already captured into the document's games (§4.3.5).
@@ -128,6 +131,11 @@ pub struct CaptureState {
 }
 
 impl CaptureState {
+    /// Paste as ▸ chosen in the Capture popup, once: the mode to capture the clipboard's text in.
+    pub(crate) fn take_paste(&mut self) -> Option<(CaptureMode, bool)> {
+        self.paste_asked.take()
+    }
+
     /// Tell the user `text` at the next tick.
     pub(crate) fn note(&mut self, text: String) {
         self.notes.push(text);
@@ -1380,22 +1388,23 @@ pub(crate) fn paint_captured(
     }
 }
 
-/// The board panel's row for captures: Paste as ▸ (the clipboard's text captured in the mode
-/// chosen) and the switch for the layer of text already captured.
-pub(crate) fn panel_row(ui: &mut egui::Ui, chess: &mut ChessState) -> Option<(CaptureMode, bool)> {
-    let mut chosen = None;
-    ui.horizontal_wrapped(|ui| {
-        ui.menu_button(tl!("Paste as"), |ui| {
-            for (mode, label) in menu_modes() {
-                if ui.button(label).clicked() {
-                    chosen = Some(mode);
-                    ui.close();
-                }
+/// The Capture tool's settings, under its tools in the rail's Capture popup (plan A9-I0b,
+/// §2.8.0: "os ajustes de captura vão para o menu da ferramenta Capturar"; they were a row above
+/// the board): Paste as ▸ (the clipboard's text captured in the mode chosen, done by whoever draws
+/// the board, [`CaptureState::take_paste`]) and the switch for the layer of text already
+/// captured.
+pub(crate) fn popup_settings(ui: &mut egui::Ui, chess: &mut ChessState) {
+    ui.separator();
+    let paste = ui.menu_button(tl!("Paste as"), |ui| {
+        for (mode, label) in menu_modes() {
+            if crate::widgets::menu_entry(ui, true, egui::Button::new(label)).clicked() {
+                chess.capture.paste_asked = Some(mode);
             }
-        });
-        ui.add(crate::widgets::checkbox(&mut chess.capture.show_captured, tl!("Underline captured text on the page")));
+        }
     });
-    chosen
+    // Named by its words, without the submenu's arrow.
+    paste.response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Paste as")));
+    ui.add(crate::widgets::checkbox(&mut chess.capture.show_captured, tl!("Underline captured text on the page")));
 }
 
 /// The chip's line: what is armed, its menu, the Comment tool's switches, and how to stop.

@@ -45,7 +45,8 @@
 use egui::{Pos2, Rect, Vec2, ViewportId, vec2};
 use serde_json::{Value, json};
 
-use crate::chess_board_ui::{self, Sizing};
+use crate::chess_board_tab;
+use crate::chess_board_ui::Sizing;
 use crate::chess_text_ui::ChessTab;
 use crate::theme::Tokens;
 use crate::window_place::{MainWindow, Monitor, Place, Target};
@@ -754,7 +755,7 @@ struct OpenDoc<'a> {
 /// What the window's contents asked for, done once they are drawn.
 #[derive(Default)]
 struct Asked {
-    board: Option<chess_board_ui::BoardAction>,
+    board: Option<crate::chess_board_ui::BoardAction>,
     games: Option<crate::chess_collection::GamesAction>,
     panel: Option<crate::chess_ui::PanelAction>,
     dock: bool,
@@ -868,8 +869,9 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
 }
 
-/// The Board panel within the room it has: board, moves, notes and fields in one column, or
-/// from 760 pt wide the moves, notes and fields beside the board (§4.1).
+/// The Board panel within the room it has, in the Board tab's fixed regions (plan A9-I0b,
+/// [`chess_board_tab`]): in one column, or from 760 pt wide the board's regions with the moves'
+/// beside them (§4.1).
 fn board_column(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -878,65 +880,24 @@ fn board_column(
     source_label: Option<String>,
     asked: &mut Asked,
 ) {
-    // Captures from the clipboard (T7a) and the layer of captured text (T7b), above the board, as in the docked panel.
-    asked.paste = crate::chess_capture::panel_row(ui, chess);
-    let sizing = sizing(ui.available_size());
-    if !sizing.wide {
-        // The notation takes the height the scroll area shows and the rest leaves.
-        let viewport = ui.available_height();
-        egui::ScrollArea::vertical().id_salt("chess-window-panel").auto_shrink([false, false]).show(ui, |ui| {
-            (asked.board, asked.games) = chess_board_ui::panel_body(ui, t, chess, pieces, source_label, sizing, viewport, true);
-        });
-        return;
-    }
-    let side = sizing.max_side;
-    let mut setting_up = false;
-    ui.horizontal_top(|ui| {
-        ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
-            ui.set_width(side);
-            asked.board = chess_board_ui::title(ui, t, chess.board(), source_label, chess.moves_beside, true, chess.study.analysis);
-            ui.add_space(4.0);
-            if chess.tools.tool == crate::chess_tools::PgnTool::Setup {
-                // The set-up view is taller than the board's controls: it scrolls.
-                egui::ScrollArea::vertical().id_salt("chess-window-setup").auto_shrink([false, true]).show(ui, |ui| {
-                    setting_up = crate::chess_study_ui::setup_in_place(ui, t, chess, pieces);
-                });
-            } else {
-                setting_up = crate::chess_study_ui::setup_in_place(ui, t, chess, pieces);
-            }
-            if setting_up {
-                return;
-            }
-            let focus = chess.comment_focus;
-            let (study, state) = (&chess.study, chess.games.board_mut());
-            chess_board_ui::view_controls(ui, state);
-            ui.add_space(4.0);
-            crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
-            chess_board_ui::promotion_choice(ui, state);
-            chess_board_ui::navigation(ui, t, state);
-            if focus {
-                chess_board_ui::comment_focus(ui, t, state);
-            }
-        });
-        ui.separator();
-        ui.vertical(|ui| {
-            // The notation fills the column's height, less the Analysis section above it and
-            // what goes under it.
-            let room = ui.available_height();
-            egui::ScrollArea::vertical().id_salt("chess-window-notes").auto_shrink([false, false]).show(ui, |ui| {
-                let top = ui.cursor().top();
-                if !setting_up {
-                    let (study, state) = (&mut chess.study, chess.games.board_mut());
-                    let analysis = crate::chess_study_ui::analysis_section(ui, t, study, state, pieces);
-                    asked.board = asked.board.take().or(analysis);
-                    ui.add_space(4.0);
-                }
-                let (fields, listed) = chess_board_ui::moves_column(ui, t, chess, room - (ui.cursor().top() - top));
-                asked.games = listed;
-                asked.board = asked.board.take().or(fields);
-            });
-        });
-    });
+    let room = ui.available_rect_before_wrap();
+    let sizing = sizing(room.size());
+    let tab = if sizing.wide {
+        // The board's column as wide as its board and the evaluation bar, the moves' the rest.
+        let eval = crate::chess_study_ui::eval_room(ui, &chess.study);
+        let width = (sizing.max_side + eval).min((room.width() - NOTES_MIN).max(160.0));
+        let left = Rect::from_min_size(room.min, vec2(width, room.height()));
+        let gap = 2.0 * ui.spacing().item_spacing.x + 1.0;
+        let right = Rect::from_min_max(egui::pos2(left.max.x + gap, room.min.y), room.max);
+        ui.painter().vline(left.max.x + gap / 2.0, room.y_range(), egui::Stroke::new(1.0, t.divider));
+        chess_board_tab::beside(ui, t, chess, pieces, source_label.as_deref(), sizing, left, right)
+    } else {
+        chess_board_tab::column(ui, t, chess, pieces, source_label.as_deref(), sizing, room)
+    };
+    asked.board = tab.board;
+    asked.games = tab.games;
+    // Paste as ▸ in the rail's Capture popup (T7a).
+    asked.paste = chess.capture.take_paste();
 }
 
 /// The chess panel's Text tab (`text`) or Diagrams tab, for the open document.

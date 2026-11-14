@@ -3527,3 +3527,12 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Tools panel collapsed	Құралдар тақтасы жиналды
 	Show the page (F6)	Бетті көрсету (F6)
 	The board is in the column beside.	Тақта көрші бағанда.
+	More board actions	Тақтаның басқа әрекеттері
+	Back to the moves	Жүрістерге оралу
+	Back to the moves (Esc)	Жүрістерге оралу (Esc)
+	Game	Партия
+	The game starts at move:	Партия мына жүрістен басталады:
+	Comment	Түсініктеме
+	The comments of the move shown, under the moves	Көрсетілген жүрістің түсініктемелері, жүрістердің астында
+	Edit the FEN and the PGN	FEN мен PGN-ді өңдеу
+	More continuations: {moves}	Басқа жалғасулар: {moves}

@@ -3529,3 +3529,12 @@ the move's comment	Move comment	Commentaire du coup
 	Tools panel collapsed	Panneau Outils réduit
 	Show the page (F6)	Afficher la page (F6)
 	The board is in the column beside.	L’échiquier est dans la colonne voisine.
+	More board actions	Plus d’actions de l’échiquier
+	Back to the moves	Revenir aux coups
+	Back to the moves (Esc)	Revenir aux coups (Échap)
+	Game	Partie
+	The game starts at move:	La partie commence au coup :
+	Comment	Commentaire
+	The comments of the move shown, under the moves	Les commentaires du coup affiché, sous les coups
+	Edit the FEN and the PGN	Modifier le FEN et le PGN
+	More continuations: {moves}	Autres suites : {moves}

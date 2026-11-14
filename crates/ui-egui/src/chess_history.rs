@@ -76,8 +76,6 @@ pub enum ChessEdit {
     ClearDrawings,
     /// The game's details (its PGN tags) typed in.
     GameDetails,
-    /// Whose move it is at the start.
-    SideToMove,
     /// The number of the move the game starts at, corrected.
     MoveNumber,
     /// A FEN typed in the FEN field.
@@ -141,7 +139,6 @@ impl ChessEdit {
             // The button says it as a command; as a step it is named like the others.
             ChessEdit::ClearDrawings => tl_ctx!("chess undo step", "Clear drawings").to_string(),
             ChessEdit::GameDetails => tl!("Edit game details").to_string(),
-            ChessEdit::SideToMove => tl!("Change side to move").to_string(),
             ChessEdit::MoveNumber => tl!("Change the move number").to_string(),
             ChessEdit::LoadFen => tl!("Load the FEN").to_string(),
             ChessEdit::LoadPgn => tl!("Load the PGN").to_string(),
@@ -165,10 +162,7 @@ impl ChessEdit {
     /// Whether the step puts a new game in place of the old one. Such a step counts even when the
     /// new game's revision happens to equal the old one's.
     pub(crate) fn replaces_game(&self) -> bool {
-        matches!(
-            self,
-            ChessEdit::SideToMove | ChessEdit::LoadFen | ChessEdit::LoadPgn | ChessEdit::LoadDiagram | ChessEdit::SetUp | ChessEdit::StandardStart
-        )
+        matches!(self, ChessEdit::LoadFen | ChessEdit::LoadPgn | ChessEdit::LoadDiagram | ChessEdit::SetUp | ChessEdit::StandardStart)
     }
 
     /// Whether the step also chose the board's side (loading a position does): only then does

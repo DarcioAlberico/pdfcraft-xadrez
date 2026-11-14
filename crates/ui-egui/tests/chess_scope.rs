@@ -104,9 +104,9 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
     h.run_steps(2);
 }
 
-/// Where the Board panel's "To move:" label is.
+/// Where the Board tab's header says whose move it is (plan A9-I0b).
 fn board_label(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
-    h.get_all_by_label("To move:").find(|n| n.accesskit_node().role() == Role::Label).expect("a label of the Board panel").rect()
+    h.get_all_by_label_contains(" to move").find(|n| n.accesskit_node().role() == Role::Label).expect("the Board tab's header").rect()
 }
 
 /// A click on a label of the Board panel: the chess scope goes on, and nothing takes the focus.

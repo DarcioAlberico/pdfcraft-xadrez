@@ -3531,3 +3531,12 @@ the move's comment	Move comment	手のコメント
 	Tools panel collapsed	ツールパネルを折りたたみました
 	Show the page (F6)	ページを表示 (F6)
 	The board is in the column beside.	盤は隣の列にあります。
+	More board actions	盤のその他の操作
+	Back to the moves	指し手に戻る
+	Back to the moves (Esc)	指し手に戻る (Esc)
+	Game	対局
+	The game starts at move:	対局の開始手数:
+	Comment	コメント
+	The comments of the move shown, under the moves	表示中の手のコメント (指し手の下)
+	Edit the FEN and the PGN	FEN と PGN を編集
+	More continuations: {moves}	その他の続き: {moves}
