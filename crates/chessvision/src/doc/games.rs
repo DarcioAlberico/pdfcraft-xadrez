@@ -385,7 +385,7 @@ impl GameScore {
     pub fn start_board(&self) -> Option<Board> {
         match &self.start_fen {
             None => Some(Board::default()),
-            Some(fen) => Board::from_fen(fen.trim(), false).ok(),
+            Some(fen) => pdfcraft_chess::fen::board_from_fen(fen.trim()).ok(),
         }
     }
 
@@ -393,7 +393,7 @@ impl GameScore {
     pub fn board_after(&self, at: Option<usize>) -> Option<Board> {
         match at {
             None => self.start_board(),
-            Some(n) => Board::from_fen(&self.nodes.get(n)?.fen, false).ok(),
+            Some(n) => pdfcraft_chess::fen::board_from_fen(&self.nodes.get(n)?.fen).ok(),
         }
     }
 
@@ -1282,7 +1282,7 @@ fn moving(position: &Position, black: bool) -> Position {
 
 /// The board of `position` with its side to move written out; `None` when not legal.
 fn board_of(position: &Position) -> Option<Board> {
-    Board::from_fen(&position.fen(), false).ok()
+    pdfcraft_chess::fen::board_from_fen(&position.fen()).ok()
 }
 
 /// The starting position for a diagram's moves, the flags it raised, and whether the first
