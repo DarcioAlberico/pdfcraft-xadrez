@@ -3527,3 +3527,5 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Tools panel collapsed	Құралдар тақтасы жиналды
 	Show the page (F6)	Бетті көрсету (F6)
 	The board is in the column beside.	Тақта көрші бағанда.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Шахмат бетбелгілерін қосу

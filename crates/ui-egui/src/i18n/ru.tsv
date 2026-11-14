@@ -3442,3 +3442,5 @@ the move's comment	Move comment	Комментарий к ходу
 	Tools panel collapsed	Панель «Инструменты» свёрнута
 	Show the page (F6)	Показать страницу (F6)
 	The board is in the column beside.	Доска — в соседней колонке.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Добавить шахматные закладки
