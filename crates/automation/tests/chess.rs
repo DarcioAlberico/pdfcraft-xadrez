@@ -4084,6 +4084,50 @@ fn chess_bookmarks_shows_then_makes_the_books_outline_in_one_step() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N5b: a reading tool given `cache` keeps the pages' readings there, a second call (in
+/// another process, here a new `Automation`) reads none of them again, `chess_cache_status` says
+/// what is kept and `chess_cache_clear` takes it out, all confined to the root; without `cache`
+/// nothing is kept.
+#[test]
+fn the_pages_readings_are_kept_in_cache_listed_and_cleared_inside_the_root() {
+    let (base, root) = workdir("cache");
+    let (mut a, doc) = opened(&root);
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "cache": "reading" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 0, "kept": 1, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    let (mut again, doc) = opened(&root);
+    let read = ok(&mut again, "chess_export_html", json!({ "doc": doc, "models_dir": "models", "cache": "reading", "out": "book.html" }));
+    assert_eq!(read["cache"], json!({ "folder": "reading", "read": 1, "kept": 0, "not_kept": 0, "set_aside": 0 }), "{read:#}");
+    assert_eq!(read["diagrams"], 3, "{read:#}");
+    let status = ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }));
+    assert_eq!((status["entries"].as_u64(), status["books"].as_array().map(Vec::len)), (Some(1), Some(1)), "{status:#}");
+    assert_eq!(status["books"][0]["name"], "board.pdf");
+    assert_eq!(status["books"][0]["pages"], 1);
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading", "doc": doc }))["entries"], 1);
+    // Without cache: nothing taken or kept.
+    let plain = ok(&mut again, "chess_document", json!({ "doc": doc }));
+    assert!(plain["cache"].is_null(), "{plain:#}");
+    // Confined to the root, as every written path is.
+    for tool in ["chess_document", "chess_cache_clear"] {
+        let outside = base.join("outside").join("reading").to_string_lossy().into_owned();
+        match again.call(tool, &json!({ "doc": doc, "cache": outside })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
+            other => panic!("{tool} accepted a folder outside the root: {other:?}"),
+        }
+    }
+    let cleared = ok(&mut again, "chess_cache_clear", json!({ "cache": "reading" }));
+    assert_eq!((cleared["books"].as_u64(), cleared["files"].as_u64()), (Some(1), Some(2)), "{cleared:#}");
+    assert_eq!(ok(&mut again, "chess_cache_status", json!({ "cache": "reading" }))["entries"], 0);
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    // With the app's folder outside the root, the status says so and clearing is refused.
+    let app = base.join("app-data");
+    let mut confined = Automation::new().with_chess_data(Some(app.clone()), None).with_root(&root).unwrap();
+    let status = ok(&mut confined, "chess_cache_status", json!({}));
+    assert_eq!(status["outside_root"], true, "{status:#}");
+    assert!(confined.call("chess_cache_clear", &json!({})).is_err());
+    assert!(!app.exists(), "the app's folder was not made");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Pages each with an `Exercise n` caption in Helvetica over a Merida board and, when it has one,
 /// its solution under it.
 fn exercise_pages(pages: &[(&str, [&str; 8], Option<&str>)]) -> Vec<u8> {
@@ -4165,6 +4209,67 @@ fn chess_export_exercises_writes_a_problem_pgn() {
         assert!(game.contains(first), "{game}");
     }
     match a.call("chess_export_exercises", &json!({ "doc": doc, "out": "../outside/x.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-N10b (A8-05): `chess_export_anki` writes the same exercises as Anki's cards — a text
+/// file in the form Anki's manual gives (its headers, a tab between front and back, HTML on) and
+/// a picture per card in a folder beside it — named and drawn the same on every run, and says
+/// which numbered diagram it left out.
+#[test]
+fn chess_export_anki_writes_cards_and_their_pictures_the_same_on_every_run() {
+    let (base, root) = workdir("anki");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5 2.Nf3 Nc6")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5 2.c4")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+        ("Exercise 4", board("OoOoOo+o"), None),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "lang": "en", "out": "exercises.txt", "title": "Openings: Vol. 1", "diagram_px": 64 });
+    let made = ok(&mut a, "chess_export_anki", args.clone());
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3], "{made:#}");
+    assert_eq!(made["exercises_left_out"], json!([{ "page": 4, "diagram": 1, "number": 4, "reason": "no_solution" }]), "{made:#}");
+    assert_eq!((made["image_dir"].as_str(), made["diagrams_drawn"].as_u64()), (Some("exercises_diagrams"), Some(3)), "{made:#}");
+    let tsv = std::fs::read_to_string(root.join("exercises.txt")).unwrap();
+    let lines: Vec<&str> = tsv.lines().collect();
+    assert_eq!(lines.get(..3), Some(["#separator:tab", "#html:true", "#tags:openings-vol-1"].as_slice()), "{tsv}");
+    assert_eq!(lines.len(), 6, "{tsv}");
+    let folder = root.join("exercises_diagrams");
+    let mut pictures = Vec::new();
+    for (line, (n, back)) in lines.iter().skip(3).zip([(1, "1.e4 e5 2.Nf3 Nc6"), (2, "1.d4 d5 2.c4"), (3, "1.c4 c5")]) {
+        let name = format!("openings-vol-1-p{n:04}-1.png");
+        let front = format!(r#"<img src="{name}"><br>White to move (№ {n}). Page {n}"#);
+        let fields: Vec<&str> = line.split('\t').collect();
+        assert_eq!(fields.len(), 2, "{line}");
+        assert!(fields.first().is_some_and(|f| f.starts_with(&front)), "{line}");
+        assert_eq!(fields.get(1), Some(&back), "{line}");
+        let png = std::fs::read(folder.join(&name)).unwrap();
+        assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"), "{name} is a PNG");
+        assert_eq!(png.get(16..24), Some([0, 0, 0, 64, 0, 0, 0, 64].as_slice()), "{name}: diagram_px square");
+        pictures.push(png);
+    }
+    assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 3, "a picture per card, nothing else");
+    // Again: the same file, the same names, the same pictures (Anki updates the cards).
+    ok(&mut a, "chess_export_anki", args);
+    assert_eq!(std::fs::read_to_string(root.join("exercises.txt")).unwrap(), tsv);
+    for (n, png) in (1..).zip(&pictures) {
+        assert_eq!(&std::fs::read(folder.join(format!("openings-vol-1-p{n:04}-1.png"))).unwrap(), png);
+    }
+    assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 3);
+    match a.call("chess_export_anki", &json!({ "doc": doc, "out": "../outside/x.txt" })) {
         Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
         other => panic!("accepted a path outside the root: {other:?}"),
     }
