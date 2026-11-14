@@ -197,7 +197,7 @@ fn near_outline(poly: &[(f32, f32)], (px, py): (f32, f32), half: f32) -> bool {
 
 /// A page with all three kinds: a font diagram top left, a vector board under it and an image
 /// of `OPENING` (`px` pixels a side, drawn 160 pt wide) top right.
-fn three_boards(px: u32) -> Vec<u8> {
+pub(super) fn three_boards(px: u32) -> Vec<u8> {
     let image = rasterize(OPENING, &PieceSet::geometric(), px);
     let content = format!("{}{}q 160 0 0 160 360 580 cm /Im1 Do Q\n", font_board(60.0, 60.0, MERIDA_START), vector_board(60.0, 240.0));
     pdf(&content, "ChessMerida", Some((px, px, &image)), "")
@@ -256,7 +256,7 @@ fn pdf_pages(contents: &[String], font: &str, image: (u32, u32, &[u8])) -> Vec<u
 
 /// A book of `n` pages, each with a font diagram, a vector board and an image of `OPENING`,
 /// placed a little differently on each page.
-fn book_of_boards(n: usize) -> Vec<u8> {
+pub(super) fn book_of_boards(n: usize) -> Vec<u8> {
     let image = rasterize(OPENING, &PieceSet::geometric(), 200);
     let contents: Vec<String> = (0..n)
         .map(|i| {
@@ -332,14 +332,14 @@ fn perf_scan_on_the_cores() {
     assert!(parallel <= 0.4 * sequential, "{parallel:.2} s against {sequential:.2} s");
 }
 
-fn open(bytes: Vec<u8>) -> (Session, DocId) {
+pub(super) fn open(bytes: Vec<u8>) -> (Session, DocId) {
     let mut s = Session::new();
     let id = s.open("chess.pdf", None, Arc::new(bytes), None).unwrap();
     (s, id)
 }
 
 /// Settings that look for the piece model in an empty folder: no model, whatever the machine has.
-fn no_model() -> ChessScanSettings {
+pub(super) fn no_model() -> ChessScanSettings {
     let dir = std::env::temp_dir().join(format!("pdfcraft-chess-no-model-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     ChessScanSettings { models_dir: Some(dir), ..Default::default() }

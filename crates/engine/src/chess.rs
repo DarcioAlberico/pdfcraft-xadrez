@@ -1308,7 +1308,7 @@ impl Session {
         let keys: Vec<Option<page_key::PageKey>> = match doc.editor.as_ref() {
             Some(editor) => {
                 let objects = page_objects(&editor.cos, all);
-                let mut memo = page_key::KeyMemo::default();
+                let mut memo = page_key::KeyMemo::<page_key::Wide>::default();
                 pages.iter().map(|p| objects.get(*p).and_then(|r| memo.page(&editor.cos, *r))).collect()
             }
             None => vec![None; pages.len()],
@@ -1470,6 +1470,20 @@ impl Session {
         let Some(doc) = self.docs.iter().find(|d| d.id == id) else { return vec![None; pages.len()] };
         let Some(editor) = doc.editor.as_ref() else { return vec![None; pages.len()] };
         self.chess.page_keys(id, (doc.generation, doc.bytes.len()), &editor.cos, doc.info.pages.len(), pages)
+    }
+
+    /// The content keys of `pages` (0-based) of document `id` on disk (plan A9-N5a): SHA-256 over
+    /// what [`Self::chess_page_keys`] hashes, the same from one build to the next, made now with a
+    /// memo of their own, so only when a reading kept on disk is looked for or kept
+    /// ([`reading::scan_key`], [`reading::alone_key`]). `None` for a page without one (out of
+    /// range, too many or too deep objects); every one `None` for a document that is not open or
+    /// not readable yet.
+    pub fn chess_disk_keys(&self, id: DocId, pages: &[usize]) -> Vec<Option<[u8; 32]>> {
+        let Some(doc) = self.get(id) else { return vec![None; pages.len()] };
+        let Some(editor) = doc.editor.as_ref() else { return vec![None; pages.len()] };
+        let objects = page_objects(&editor.cos, doc.info.pages.len());
+        let mut memo = page_key::KeyMemo::<page_key::Sha>::default();
+        pages.iter().map(|p| objects.get(*p).and_then(|r| memo.page(&editor.cos, *r))).collect()
     }
 
     /// Scan `pages` (0-based; empty = all) of document `id`, from the cache where it still
@@ -1827,6 +1841,7 @@ pub mod links;
 pub mod notes;
 pub mod office;
 mod page_key;
+pub mod reading;
 pub mod reference_store;
 pub mod replace;
 pub mod review_pack;
