@@ -168,6 +168,9 @@ pub struct ChessState {
     /// master-detail): opened from the list, Review now or the Text tab, closed by "‹ Diagrams"
     /// and Esc. The editor itself ([`ChessState::editor`]) stays while it is closed.
     pub diagram_open: bool,
+    /// The Diagram tab shows the page's own picture of the diagram in its board's square
+    /// (Original), else the board as read (plan A9-I0, finding A6-14; Alt+O switches).
+    pub diagram_original: bool,
     /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
     /// is [`ChessState::board`]).
     pub study: crate::chess_study_ui::StudyState,

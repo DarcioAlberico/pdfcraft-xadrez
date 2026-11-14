@@ -3557,3 +3557,7 @@ the move's comment	Move comment	Comentário do lance
 	The comments of the move shown, under the moves	Os comentários do lance mostrado, sob os lances
 	Edit the FEN and the PGN	Editar o FEN e o PGN
 	More continuations: {moves}	Mais continuações: {moves}
+	Diagram shown	Diagrama mostrado
+	Alt+O switches between the board as read and the page's own picture.	Alt+O alterna entre o tabuleiro como foi lido e a imagem da própria página.
+	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
+	The page's picture of this diagram shows once its page is drawn.	A imagem da página deste diagrama aparece assim que a página dele é desenhada.
