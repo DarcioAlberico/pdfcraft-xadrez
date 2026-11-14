@@ -21,6 +21,7 @@ mod chess_area;
 mod chess_bookmarks;
 mod chess_cache;
 mod chess_corrections;
+mod chess_crop;
 mod chess_errata;
 mod chess_evals;
 mod chess_files;
@@ -855,6 +856,7 @@ impl Automation {
             "ocr_status" => self.ocr_status()?,
             "ocr_recognize_files" => self.ocr_recognize_files(&a)?,
             "chess_detect" => self.chess_detect(&a)?,
+            "chess_diagram_crop" => return self.chess_diagram_crop(&a),
             "chess_read" => self.chess_read(&a)?,
             "chess_diagram_states" => self.chess_diagram_states(&a)?,
             "chess_read_area" => self.chess_read_area(&a)?,

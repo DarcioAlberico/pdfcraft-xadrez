@@ -3557,6 +3557,18 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Alt+O switches between the board as read and the page's own picture.	Alt+O оқылған тақта мен беттің өз суретінің арасында ауыстырады.
 	Original diagram, page {p}, diagram {n}	Түпнұсқа диаграмма, {p}-бет, {n}-диаграмма
 	The page's picture of this diagram shows once its page is drawn.	Бұл диаграмманың бет суреті оның беті салынғанда көрсетіледі.
+	Export the book's review…	Кітапты тексеру нәтижесін экспорттау…
+	Import a book's review…	Кітапты тексеру нәтижесін импорттау…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Сіз айтқандай, бұл шифрланған құжаттың шахматы сақталмайды: одан тексеру нәтижесін экспорттауға да, оған импорттауға да болмайды.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Әзірге экспорттайтын ештеңе жоқ: бұл құжатта түзету, таңдау немесе партия сақталмаған.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Тексеру нәтижесі {path} файлына экспортталды (түзетулер: {corrections}, таңдаулар: {decisions}, партиялар: {games}). Партиялардың түсініктемелерінде кітап мәтіні болуы мүмкін: файлды жеке пайдалану үшін сақтаңыз.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Тексеру нәтижесі {name} файлынан импортталды (түзетулер: {corrections}, таңдаулар: {decisions}, партиялар: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Бұл құжатта жоқ беттерге арналған түзетулер: {n} (сақталды, ешбір диаграммада емес).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Кітаптың PGN файлын күтіп тұрған таңдаулар: {n} (PGN жүктеп, тексеру нәтижесін қайта импорттаңыз).
+	Entries that couldn't be read and were left out: {n}.	Оқылмай, шығарылып тасталған жазбалар: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} — басқа кітаптың тексеру нәтижесі ({pages} бет; бұл кітапта {here}). Бәрібір осы құжатқа импорттау керек пе?
+	Another book's review	Басқа кітаптың тексеру нәтижесі
+	Import anyway	Бәрібір импорттау
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Расталмаған
 progress bar	Progress	Орындалу барысы
@@ -3566,3 +3578,5 @@ progress bar	Progress	Орындалу барысы
 	Games left out (an illegal position has no game): {n}	Тысқары қалған партиялар (заңсыз позицияның партиясы болмайды): {n}
 	Indexing the book's PGN…	Кітаптың PGN файлы индекстелуде…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Кітаптың PGN файлы PdfCraft индекстейтін көлемнен үлкен: кітаппен оның алғашқы {moves} жүрісі ғана байланыстырылды.
+	Engine: {name}, in {folder}	Қозғалтқыш: {name}, орны: {folder}
+	Importing…	Импортталуда…

@@ -3564,6 +3564,18 @@ the move's comment	Move comment	Komentar k potezi
 	Alt+O switches between the board as read and the page's own picture.	Alt+O preklaplja med šahovnico, kot je bila prebrana, in sliko same strani.
 	Original diagram, page {p}, diagram {n}	Izvirni diagram, stran {p}, diagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Slika strani s tem diagramom se prikaže, ko je njegova stran izrisana.
+	Export the book's review…	Izvozi pregled knjige …
+	Import a book's review…	Uvozi pregled knjige …
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Šah tega šifriranega dokumenta se ne hrani, kot ste želeli: pregleda ni mogoče izvoziti iz njega ali uvoziti vanj.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Ni še ničesar za izvoz: ta dokument ne hrani nobenega popravka, izbire ali partije.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Pregled izvožen v {path} (popravki: {corrections}, izbire: {decisions}, partije: {games}). Komentarji partij lahko vsebujejo besedilo knjige: datoteko hranite za lastno uporabo.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Pregled uvožen iz {name} (popravki: {corrections}, izbire: {decisions}, partije: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Popravki za strani, ki jih ta dokument nima: {n} (shranjeni, brez diagrama).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Izbire, ki čakajo na PGN knjige: {n} (naložite PGN, nato pregled uvozite znova).
+	Entries that couldn't be read and were left out: {n}.	Vnosi, ki jih ni bilo mogoče prebrati in so bili izpuščeni: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} je pregled druge knjige ({pages} strani; ta ima {here}). Ga vseeno uvozim v ta dokument?
+	Another book's review	Pregled druge knjige
+	Import anyway	Vseeno uvozi
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Ni potrjeno
 progress bar	Progress	Napredek
@@ -3573,3 +3585,5 @@ progress bar	Progress	Napredek
 	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}
 	Indexing the book's PGN…	Indeksiranje PGN knjige…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knjige je večji, kot ga PdfCraft indeksira: s knjigo je povezanih le prvih {moves} potez.
+	Engine: {name}, in {folder}	Šahovski program: {name}, v mapi {folder}
+	Importing…	Uvažanje…
