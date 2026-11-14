@@ -8,6 +8,9 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath};
 use pdfcraft_ui_egui::PdfCraftApp;
 
+#[path = "common/gpu.rs"]
+mod gpu;
+
 /// A blank 600 × 800 pt page: the tests use the Board panel only.
 fn blank() -> Vec<u8> {
     let objs = [
@@ -398,6 +401,7 @@ fn the_palette_lists_the_assessments_without_a_sign() {
     assert_eq!(glyphs_at(&h, &[0, 0, 0]), [86, 88, 252]);
     assert!(h.state().chess.board().pgn_text.contains("Nf3 $86 $88 $252"), "{}", h.state().chess.board().pgn_text);
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        let _gpu = gpu::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join("glyph-palette-assessments.png")).unwrap();
     }
 }

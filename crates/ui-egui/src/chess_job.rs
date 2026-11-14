@@ -20,7 +20,7 @@
 //! would never run.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard, PoisonError};
 
 /// How the work ended.
 enum Outcome<T> {
@@ -30,8 +30,29 @@ enum Outcome<T> {
     Lost,
 }
 
-/// Where a job's outcome waits.
-type Slot<T> = Arc<Mutex<Option<Outcome<T>>>>;
+/// Where a job's outcome waits, and the signal that it came ([`Job::wait`]).
+struct Slot<T> {
+    out: Mutex<Option<Outcome<T>>>,
+    came: Condvar,
+}
+
+impl<T> Default for Slot<T> {
+    fn default() -> Self {
+        Slot { out: Mutex::new(None), came: Condvar::new() }
+    }
+}
+
+impl<T> Slot<T> {
+    /// Leave `outcome` there, unless `keep` and one is there already, and wake whoever waits.
+    fn put(&self, outcome: Outcome<T>, keep: bool) {
+        let mut out = lock(&self.out);
+        if !(keep && out.is_some()) {
+            *out = Some(outcome);
+        }
+        drop(out);
+        self.came.notify_all();
+    }
+}
 
 /// The lock, even after a worker panicked while holding it (it holds plain data).
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -63,21 +84,18 @@ impl JobCtl {
 /// Marks the slot, when it is dropped and the work left nothing there, as ended without a result.
 /// Set first in the worker, so it is dropped last.
 struct Guard<T> {
-    slot: Slot<T>,
+    slot: Arc<Slot<T>>,
 }
 
 impl<T> Drop for Guard<T> {
     fn drop(&mut self) {
-        let mut slot = lock(&self.slot);
-        if slot.is_none() {
-            *slot = Some(Outcome::Lost);
-        }
+        self.slot.put(Outcome::Lost, true);
     }
 }
 
 /// Work off the interface thread ([`Job::spawn`]), its result taken by [`Job::poll`].
 pub(crate) struct Job<T> {
-    slot: Slot<T>,
+    slot: Arc<Slot<T>>,
     ctl: JobCtl,
     handle: Option<std::thread::JoinHandle<()>>,
 }
@@ -92,14 +110,14 @@ impl<T: Send + 'static> Job<T> {
             // First, so it is dropped last, the result already written when there is one.
             let _guard = Guard { slot: slot.clone() };
             let out = work(&ctl);
-            *lock(&slot) = Some(Outcome::Done(out));
+            slot.put(Outcome::Done(out), false);
         };
         if inline || cfg!(target_arch = "wasm32") {
             run();
         } else {
             match std::thread::Builder::new().name(name.to_owned()).spawn(run) {
                 Ok(handle) => job.handle = Some(handle),
-                Err(e) => *lock(&job.slot) = Some(Outcome::Done(Err(e.to_string()))),
+                Err(e) => job.slot.put(Outcome::Done(Err(e.to_string())), false),
             }
         }
         job
@@ -110,7 +128,7 @@ impl<T> Job<T> {
     /// What the work gave, once it is done (taken: `None` before, and after). A panic is said
     /// with its message.
     pub(crate) fn poll(&mut self) -> Option<Result<T, String>> {
-        let out = lock(&self.slot).take()?;
+        let out = lock(&self.slot.out).take()?;
         // The worker is past its result: its thread ends at once, and gives a panic's message.
         let message = self
             .handle
@@ -124,6 +142,18 @@ impl<T> Job<T> {
                 None => tl!("The work stopped on an internal error.").to_owned(),
             }),
         })
+    }
+
+    /// Wait until the work is done, its result waiting for [`Job::poll`], or `timeout` passed;
+    /// whether it is done. Woken by the worker, not by a clock: the tests wait for the work this
+    /// way, with a long `timeout` only as a net against a hang (plan A9-Q4b, finding A7-15: they
+    /// slept and polled for 4–10 s, which a loaded machine overran). A result already taken is
+    /// not there: `false` after `timeout`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn wait(&self, timeout: std::time::Duration) -> bool {
+        let out = lock(&self.slot.out);
+        let (out, _) = self.slot.came.wait_timeout_while(out, timeout, |o| o.is_none()).unwrap_or_else(PoisonError::into_inner);
+        out.is_some()
     }
 
     /// Ask the work to stop at its next step.
@@ -155,13 +185,24 @@ mod tests {
     use super::*;
 
     fn wait<T: Send + 'static>(job: &mut Job<T>) -> Result<T, String> {
-        for _ in 0..12_000 {
-            if let Some(out) = job.poll() {
-                return out;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(5));
-        }
-        panic!("the job never came back");
+        assert!(job.wait(std::time::Duration::from_secs(60)), "the job never came back");
+        job.poll().expect("done, so its result is there")
+    }
+
+    /// [`Job::wait`] is woken when the work is done, not before; a result taken is not waited
+    /// for again.
+    #[test]
+    fn waiting_for_a_job_wakes_when_it_is_done() {
+        let (go, gate) = std::sync::mpsc::channel::<()>();
+        let mut job = Job::spawn("job-test", false, move |_| gate.recv().map(|()| 7).map_err(|e| e.to_string()));
+        assert!(!job.wait(std::time::Duration::from_millis(30)), "not done while the work waits");
+        go.send(()).unwrap();
+        assert!(job.wait(std::time::Duration::from_secs(60)));
+        assert_eq!(job.poll(), Some(Ok(7)));
+        assert!(!job.wait(std::time::Duration::from_millis(1)), "taken");
+        let mut boom: Job<u8> = Job::spawn("job-test", false, |_| panic!("lost"));
+        assert!(boom.wait(std::time::Duration::from_secs(60)), "a work that panicked is done too");
+        assert!(boom.poll().is_some_and(|r| r.is_err()));
     }
 
     /// A job on a real thread: its result comes back once; a panic in the work comes back as an
@@ -217,11 +258,11 @@ mod tests {
     /// The guard marks a slot the work left empty, and never touches a result written.
     #[test]
     fn the_guard_marks_what_left_no_result() {
-        let slot: Slot<u8> = Arc::default();
+        let slot: Arc<Slot<u8>> = Arc::default();
         drop(Guard { slot: slot.clone() });
-        assert!(matches!(lock(&slot).take(), Some(Outcome::Lost)));
-        *lock(&slot) = Some(Outcome::Done(Ok(1)));
+        assert!(matches!(lock(&slot.out).take(), Some(Outcome::Lost)));
+        *lock(&slot.out) = Some(Outcome::Done(Ok(1)));
         drop(Guard { slot: slot.clone() });
-        assert!(matches!(lock(&slot).take(), Some(Outcome::Done(Ok(1)))), "a result written is kept");
+        assert!(matches!(lock(&slot.out).take(), Some(Outcome::Done(Ok(1)))), "a result written is kept");
     }
 }

@@ -10,6 +10,9 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_ui_egui::PdfCraftApp;
 
+#[path = "common/gpu.rs"]
+mod gpu;
+
 /// A 600 × 800 pt page with the start position set in a chess diagram font (as the Chess
 /// diagrams tests build it), so a scan finds one diagram the board can open.
 fn boards() -> Vec<u8> {
@@ -923,6 +926,7 @@ fn the_games_header_shows_what_is_known_and_opens_its_details() {
     h.run_steps(4);
     assert!(h.query_all_by_label("Site").count() > 0, "a click on the header opens Game details");
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        let _gpu = gpu::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join("game-header.png")).unwrap();
     }
 }
