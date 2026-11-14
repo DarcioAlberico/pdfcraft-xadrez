@@ -3556,4 +3556,6 @@ progress bar	Progress	Napredek
 	The games of the list as a book, a page each, with their diagrams.	Partije s seznama kot knjiga, vsaka na svoji strani, z diagrami.
 	Nothing to export: an illegal position has no game.	Ničesar ni za izvoz: nedovoljen položaj nima partije.
 	Games left out (an illegal position has no game): {n}	Izpuščene partije (nedovoljen položaj nima partije): {n}
+	Indexing the book's PGN…	Indeksiranje PGN knjige…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knjige je večji, kot ga PdfCraft indeksira: s knjigo je povezanih le prvih {moves} potez.
 	Engine: {name}, in {folder}	Šahovski program: {name}, v mapi {folder}

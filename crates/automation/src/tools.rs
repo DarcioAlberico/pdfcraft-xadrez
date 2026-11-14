@@ -100,11 +100,25 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// `allow_encrypted` on a tool that reads pages: one description, as the cache's helper and the
+/// cipher's both set it (plans A9-N5b and A9-G3c).
+const ALLOW_ENCRYPTED_KEEP: &str = "Keep what an encrypted document teaches too, unencrypted (default false): with cache, its pages' readings (without it they are only taken from the cache); with keep_cipher, its cipher (without it, refused). Never a document that does not allow copying.";
+
 /// The folder a tool that reads pages keeps their readings in and takes them from (plan A9-N5b).
 fn insert_cache(props: &mut Value) {
     if let Some(o) = props.as_object_mut() {
         o.insert("cache".into(), json!({ "type": "string", "description": "A file path to a folder (relative to --root when set) to keep the pages' readings in and take them from: a page read before with the same settings and models (by what they are, not where) is not read again, across calls and processes; the app keeps its own in chess/reading of its data folder (chess_cache_status). Each entry holds its key and is checked when read: one that does not check out is set aside and its page read again. At most 512 MiB, the books used longest ago leaving first; nothing is kept while the disk has less than 1 GB free. Default: none, every page is read." }));
-        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": "With cache: keep an encrypted document's readings there too, unencrypted (default false: they are only taken from it). Never a document that does not allow copying." }));
+        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": ALLOW_ENCRYPTED_KEEP }));
+    }
+}
+
+/// The book's cipher kept per document (plan A9-G3c), for a tool that reads pages with chess OCR.
+fn insert_cipher_store(props: &mut Value) {
+    if let Some(o) = props.as_object_mut() {
+        o.insert("cipher_kept".into(), json!({ "type": "boolean", "description": "Without cipher_in, start chess OCR from the book cipher kept for doc in cipher_store (default true): what earlier readings of the book proved its figurine font's symbols to be." }));
+        o.insert("keep_cipher".into(), json!({ "type": "boolean", "description": "Keep the cipher these pages taught for doc in cipher_store, merged by page with what is kept there (default false). Refused for a document that does not allow copying, and for an encrypted one unless allow_encrypted. The reply's cipher.kept names the file." }));
+        o.insert("cipher_store".into(), json!({ "type": "string", "description": "A file path to the folder of the books' ciphers, one file per document, <hash>.cipher.json (relative to --root when set). Default: the app's own (chess/cipher in its data folder, where the app keeps them); with --root or the automation roots it must be inside them, else none is read there and keeping is refused: give cipher_store." }));
+        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": ALLOW_ENCRYPTED_KEEP }));
     }
 }
 
@@ -162,6 +176,7 @@ fn chess_export_schema() -> Value {
         {
             let mut props = chess_props(true);
             insert_cache(&mut props);
+            insert_cipher_store(&mut props);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
                 o.insert("overwrite".into(), json!({ "type": "boolean", "description": "Write an output even when it is the file of an open document or a file this call reads (default false: refused, so a book or its PGN is never replaced unasked). Two outputs of one call never share a file." }));
@@ -1484,6 +1499,7 @@ pub fn tools() -> Vec<ToolDef> {
                         insert_kept_reference(o);
                     }
                     insert_cache(&mut props);
+                    insert_cipher_store(&mut props);
                     insert_corrections(&mut props);
                     props
                 },

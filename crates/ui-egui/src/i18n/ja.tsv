@@ -3553,4 +3553,6 @@ progress bar	Progress	進行状況
 	The games of the list as a book, a page each, with their diagrams.	一覧の対局を本として、1 局 1 ページで、局面図付きで。
 	Nothing to export: an illegal position has no game.	書き出すものがありません: 不正な局面には対局がありません。
 	Games left out (an illegal position has no game): {n}	除いた対局 (不正な局面には対局がありません): {n}
+	Indexing the book's PGN…	本の PGN を索引付けしています…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本の PGN は PdfCraft が索引付けできる大きさを超えています: 本に関連付けられるのは最初の {moves} 手だけです。
 	Engine: {name}, in {folder}	エンジン: {name}（{folder}）

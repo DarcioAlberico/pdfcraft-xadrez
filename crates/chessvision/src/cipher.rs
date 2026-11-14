@@ -349,6 +349,52 @@ impl BookCipher {
     pub fn to_json(&self) -> Result<String, CipherError> {
         Ok(serde_json::to_string(self)?)
     }
+
+    /// Whether the table holds nothing: no symbol, no page's proofs.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty() && self.pages.is_empty()
+    }
+
+    /// `theirs` taken into this table (plan A9-G3c, V4b: two copies of a book's cipher kept apart,
+    /// by two processes or an earlier build, merged when one is kept), by page:
+    ///
+    /// - a page only `theirs` read brings its proofs; a page both read keeps this table's (the
+    ///   latest reading of it, as [`Self::record`] keeps it);
+    /// - the evidence that is no page's (the glyph reader's observations, a table's proofs of
+    ///   before plan A9-V4) is the larger count of the two for each symbol and piece, never
+    ///   their sum: both copies grew from one book's readings, and a sum would count the readings
+    ///   they share twice, settling a symbol on evidence the book never gave;
+    /// - examples are joined, at most [`MAX_EXAMPLES`] a symbol.
+    ///
+    /// Within [`MAX_ENTRIES`] symbols and [`MAX_PAGES`] pages: what does not fit is left out.
+    pub fn merge(&mut self, theirs: &BookCipher) {
+        for (symbol, entry) in &theirs.entries {
+            if !self.entries.contains_key(symbol) && self.entries.len() >= MAX_ENTRIES {
+                continue;
+            }
+            let mine = self.entries.entry(symbol.clone()).or_default();
+            for (officer, counts) in &entry.evidence {
+                let c = mine.evidence.entry(*officer).or_default();
+                c.legality = c.legality.max(counts.legality);
+                c.glyph = c.glyph.max(counts.glyph);
+            }
+            for example in &entry.examples {
+                if mine.examples.len() < MAX_EXAMPLES && !mine.examples.contains(example) {
+                    mine.examples.push(example.clone());
+                }
+            }
+        }
+        for (page, proofs) in &theirs.pages {
+            if self.pages.contains_key(page) || self.pages.len() >= MAX_PAGES {
+                continue;
+            }
+            // A page's proof is kept only for a symbol the table holds a row for.
+            let kept: Vec<(String, Officer)> = proofs.iter().filter(|(s, _)| self.entries.contains_key(s)).cloned().collect();
+            if !kept.is_empty() {
+                self.pages.insert(*page, kept);
+            }
+        }
+    }
 }
 
 /// Where the replay's position came from.

@@ -4340,3 +4340,53 @@ fn chess_export_anki_writes_cards_and_their_pictures_the_same_on_every_run() {
     assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// A book's cipher table with one settled symbol, as `cipher_out` writes one.
+const ONE_SYMBOL: &str = r#"{"entries":{"W":{"evidence":{"Q":{"legality":6,"glyph":0}},"examples":[]}}}"#;
+
+/// Plan A9-G3c, V4b: the cipher a reading ends with is kept for the document in `cipher_store`
+/// when asked (`keep_cipher`), and a reading in another process starts from it, unless
+/// `cipher_kept` is false; an encrypted document's only with `allow_encrypted`, one that does not
+/// allow copying never; `cipher_store` is confined to the root.
+#[test]
+fn the_cipher_kept_for_a_book_is_where_its_next_reading_starts() {
+    let (base, root) = workdir("cipher-kept");
+    std::fs::write(root.join("seed.json"), ONE_SYMBOL).unwrap();
+    let (mut a, doc) = opened(&root);
+    let fresh = ok(&mut a, "chess_document", json!({ "doc": doc, "cipher_store": "ciphers" }));
+    assert_eq!((fresh["cipher"]["rows"].as_u64(), fresh["cipher"]["kept"].is_null()), (Some(0), true), "{:#}", fresh["cipher"]);
+    let kept = ok(&mut a, "chess_document", json!({ "doc": doc, "cipher_in": "seed.json", "keep_cipher": true, "cipher_store": "ciphers" }));
+    assert_eq!(kept["cipher"]["rows"], 1);
+    assert!(kept["cipher"]["kept"].as_str().is_some_and(|f| f.starts_with("ciphers") && f.ends_with(".cipher.json")), "{:#}", kept["cipher"]);
+    let (mut again, doc) = opened(&root);
+    let next = ok(&mut again, "chess_export_pgn", json!({ "doc": doc, "out": "g.pgn", "cipher_store": "ciphers" }));
+    assert_eq!((next["cipher"]["rows"].as_u64(), next["cipher"]["settled"].as_u64()), (Some(1), Some(1)), "started from the kept one");
+    let off = ok(&mut again, "chess_document", json!({ "doc": doc, "cipher_store": "ciphers", "cipher_kept": false }));
+    assert_eq!(off["cipher"]["rows"], 0);
+    match again.call("chess_document", &json!({ "doc": doc, "keep_cipher": true, "cipher_store": "../outside/c" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a cipher_store outside the root accepted: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0);
+    // An encrypted document: kept only with allow_encrypted; without copying, never.
+    ok(&mut again, "doc_protect", json!({ "doc": doc, "open_password": "open", "permissions_password": "boss" }));
+    ok(&mut again, "doc_save", json!({ "doc": doc, "path": "locked.pdf" }));
+    let mut owner = Automation::new().with_root(&root).unwrap();
+    let locked = ok(&mut owner, "doc_open", json!({ "path": "locked.pdf", "password": "boss" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": locked, "cipher_in": "seed.json", "keep_cipher": true, "cipher_store": "locked-ciphers" });
+    match owner.call("chess_document", &args) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("allow_encrypted"), "{m}"),
+        other => panic!("an encrypted document's cipher kept unasked: {other:?}"),
+    }
+    assert!(!root.join("locked-ciphers").exists(), "nothing written");
+    let mut allowed = args.clone();
+    allowed["allow_encrypted"] = json!(true);
+    ok(&mut owner, "chess_document", allowed);
+    let mut reader = Automation::new().with_root(&root).unwrap();
+    let user = ok(&mut reader, "doc_open", json!({ "path": "locked.pdf", "password": "open" }))["doc"].as_u64().unwrap();
+    let mut no_copy = args;
+    no_copy["doc"] = json!(user);
+    no_copy["allow_encrypted"] = json!(true);
+    assert!(reader.call("chess_document", &no_copy).is_err(), "a document that forbids copying is not even read");
+    let _ = std::fs::remove_dir_all(base);
+}
