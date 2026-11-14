@@ -393,7 +393,14 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
 fn the_users_figurine_font_travels_in_the_book() {
     let pieces = PieceSet::geometric();
     let doc = chapter_doc();
-    let font = pdfcraft_chessvision::text_font::from_bytes(b"wOF2 figurine font".to_vec(), "dejavu").unwrap();
+    // A Unicode figurine font, as the export takes it (a WOFF2 is refused when read, plan A9-V5).
+    let font = pdfcraft_chessvision::text_font::TextFont {
+        bytes: b"wOF2 figurine font".to_vec(),
+        format: pdfcraft_chessvision::text_font::FontFormat::Woff2,
+        role: pdfcraft_chessvision::text_font::FontRole::Unicode,
+        family: String::new(),
+        path: None,
+    };
     let files = entries(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) }, &meta()).unwrap();
     // The file, its manifest item and every page's face point at the same place.
     let stored = files.iter().find(|e| e.name == "OEBPS/fonts/figurines.woff2").expect("the font file");
