@@ -12,6 +12,7 @@ use std::sync::Arc;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
+use pdfcraft_chessvision::doc::reference::{self, ReferenceIndex};
 use pdfcraft_chessvision::doc::{Block, PageLabel, markdown};
 use pdfcraft_chessvision::text_font::TextFont;
 
@@ -97,9 +98,17 @@ pub struct ChessExportOptions {
     /// HTML and EPUB: highlight what the reading flagged for review. `None`: on in HTML (a file
     /// to check), off in EPUB (a book to read; plan A8 P9b).
     pub review_marks: Option<bool>,
-    /// PGN: the book's own PGN (plan "Carregar PGN do livro", R4). With it, the PGN written is
-    /// that PGN's games with the book's text as their comments, in place of the games read.
-    pub reference: Option<Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>>,
+    /// The book's own PGN (plan "Carregar PGN do livro", R4; every format since plan A9-N2). The
+    /// pages read are linked to it, after [`ChessExportOptions::games`] ([`reference::link_all`]):
+    /// a diagram it confirms shows its position, the moves are walked again from it, and a move
+    /// the reader did not play and it did is shown with its position, marked (HTML, EPUB). PGN:
+    /// the PGN written is that PGN's games with the book's text as their comments, in place of the
+    /// games read.
+    pub reference: Option<Arc<ReferenceIndex>>,
+    /// The user's own games for the book (the document's game collection as a PGN; plan A9-N2,
+    /// §2.9): linked first, so they outrank [`ChessExportOptions::reference`], and the reading
+    /// comes last. PGN: without `reference`, the PGN written is these games with the book's text.
+    pub games: Option<Arc<ReferenceIndex>>,
 }
 
 impl ChessExportOptions {
@@ -130,6 +139,7 @@ impl ChessExportOptions {
             pgn_style: pdfcraft_chess::pgn_style::PgnStyle::FULL,
             review_marks: None,
             reference: None,
+            games: None,
         }
     }
 }
@@ -149,11 +159,15 @@ pub struct ChessExport {
     pub positions_skipped: Vec<markdown::SkippedPosition>,
     /// PGN: what writing left out of the games, by game in the order written (plan A9-F4).
     pub pgn_warnings: Vec<pdfcraft_chessvision::doc::pgn::GameWarning>,
-    /// PGN with [`ChessExportOptions::reference`]: what the book's PGN was given.
+    /// PGN with [`ChessExportOptions::reference`] (else [`ChessExportOptions::games`]): what that
+    /// PGN was given.
     /// Boxed: the export's result travels in the interface's job messages, which it would make large.
     pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
+    /// The links to [`ChessExportOptions::games`] and [`ChessExportOptions::reference`], in that
+    /// order, those given (plan A9-N2).
+    pub linked: Vec<reference::Linked>,
 }
 
 impl ChessExport {
@@ -187,7 +201,11 @@ impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
-        let read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        let mut read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        // One truth of the games for every format (plan A9-N2): the user's games, then the book's
+        // PGN, then the reading.
+        let refs: Vec<&ReferenceIndex> = [o.games.as_deref(), o.reference.as_deref()].into_iter().flatten().collect();
+        let linked = if refs.is_empty() { Vec::new() } else { reference::link_all(&mut read.doc, &refs) };
         // The book's language, not its piece letters' (plan A9-L6a, A2-08): `<html lang>`,
         // `dc:language`, `w:lang`; the letters' only when nothing says the text's.
         let book_lang = if read.text_lang.is_empty() { read.lang.lang.code() } else { read.text_lang.as_str() };
@@ -257,7 +275,7 @@ impl Session {
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
                 drawn = 0;
-                if let Some(index) = &o.reference {
+                if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
                     let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
                     let bytes = made.pgn.clone().into_bytes();
                     position_games = Some(made.positions);
@@ -329,6 +347,6 @@ impl Session {
                 }
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes, linked })
     }
 }
