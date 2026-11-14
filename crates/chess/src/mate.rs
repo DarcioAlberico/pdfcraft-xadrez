@@ -378,6 +378,15 @@ mod tests {
         assert!(matches!(solve("8/8/8/8/8/8/8/KK5k w - - 0 1", 2, BUDGET), Err(MateError::Illegal(Color::White))));
     }
 
+    /// Kings next to each other are no position (the proptest's find: `cozy-chess` takes it, and its
+    /// move generation then lets one king take the other and panics looking for it): refused, never
+    /// searched.
+    #[test]
+    fn kings_side_by_side_are_refused_not_searched() {
+        assert!(matches!(solve("4k3/3K4/8/8/8/8/8/4N3 b - - 0 1", 1, 1), Err(MateError::Illegal(Color::Black))));
+        assert!(matches!(solve("8/8/8/8/8/8/8/Kk6 w - - 0 1", 2, BUDGET), Err(MateError::Illegal(Color::White))));
+    }
+
     proptest::proptest! {
         #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
 
