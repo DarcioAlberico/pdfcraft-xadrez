@@ -216,7 +216,26 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let footer_rect = egui::Rect::from_min_max(egui::pos2(whole.min.x, (whole.max.y - FOOTER).max(whole.min.y + HEADER)), whole.max);
     let body_rect = egui::Rect::from_min_max(egui::pos2(whole.min.x, header_rect.max.y), egui::pos2(whole.max.x, footer_rect.min.y));
 
-    ui.scope_builder(UiBuilder::new().max_rect(header_rect.shrink2(egui::vec2(8.0, 4.0))), |ui| {
+    let header_inner = header_rect.shrink2(egui::vec2(8.0, 4.0));
+    let title = diagram_title(&label, index, on_page);
+    ui.scope_builder(UiBuilder::new().max_rect(header_inner), |ui| {
+        // Measured first (plan A9-I8, §2.8.1): the place in the walk as "3/12" (whole in its
+        // tooltip and name), and "‹ Diagrams" as its arrow alone when its word would leave the
+        // diagram's title cut short (at 330–360 pt it showed only "…").
+        let place_said = walk_place(filter, place, queue.len());
+        let place_short = match place {
+            Some(k) => format!("{}/{}", k.saturating_add(1), queue.len()),
+            None => queue.len().to_string(),
+        };
+        let small = egui::TextStyle::Small.resolve(ui.style());
+        let body = egui::TextStyle::Body.resolve(ui.style());
+        let gap = ui.spacing().item_spacing.x;
+        let buttons = 3.0 * (24.0 + gap) + widgets::text_width(ui, &place_short, &small) + gap;
+        let back_word =
+            14.0 + ui.spacing().icon_spacing + widgets::text_width(ui, tl!("Diagrams"), &body) + 2.0 * ui.spacing().button_padding.x + gap;
+        let left_fixed = 16.0 + gap + widgets::MIN_TARGET + gap;
+        let title_width = widgets::text_width(ui, &title, &body) + 1.0;
+        let back_with_word = header_inner.width() - buttons - left_fixed - back_word >= title_width;
         // The buttons first, from the right; the title takes what is left, shortened if need be.
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             {
@@ -225,7 +244,8 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     if crate::icons::button(ui, "chevron-right", 24.0, false, next).clicked() {
                         action = Some(EditorAction::Next);
                     }
-                    ui.label(RichText::new(walk_place(filter, place, queue.len())).small().color(t.text_muted));
+                    let r = ui.label(RichText::new(&place_short).small().color(t.text_muted)).on_hover_text(&place_said);
+                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &place_said));
                     let previous = if reviewing { tl!("Previous to review (Page Up)") } else { tl!("Previous diagram (Page Up)") };
                     if crate::icons::button(ui, "chevron-left", 24.0, false, previous).clicked() {
                         action = Some(EditorAction::Previous);
@@ -237,15 +257,18 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 // Back to the list, the diagram's row taking the keyboard (plan A9-I0a).
-                let back = egui::Button::image_and_text(crate::icons::image("chevron-left", 14.0, t.icon), tl!("Diagrams"))
-                    .min_size(egui::vec2(0.0, widgets::MIN_TARGET));
+                let back = if back_with_word {
+                    egui::Button::image_and_text(crate::icons::image("chevron-left", 14.0, t.icon), tl!("Diagrams"))
+                } else {
+                    egui::Button::image(crate::icons::image("chevron-left", 14.0, t.icon))
+                }
+                .min_size(egui::vec2(widgets::MIN_TARGET, widgets::MIN_TARGET));
                 let back = ui.add(back);
                 back.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Back to Diagrams")));
                 if back.on_hover_text(tl!("Back to Diagrams")).clicked() {
                     back_to_list = true;
                 }
                 state_icon(ui, &t, state, 16.0, dirty);
-                let title = diagram_title(&label, index, on_page);
                 // Its text's width (no more than the room left) and 24 points tall, the least a
                 // control the pointer clicks may be (plan A9-I15, finding R4-06).
                 let font = egui::TextStyle::Body.resolve(ui.style());
@@ -271,15 +294,8 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 });
             }
             // The first time: what a click does, and that Confirm leaves the PDF alone (P3b3).
-            if hint && first_time_hint(ui, &t) {
+            if hint && first_time_hint(ui, &t, board_room(body_rect.width(), ui.spacing().scroll.bar_width)) {
                 hint = false;
-            }
-            // Changes not confirmed yet (they are kept as a draft when another diagram opens).
-            if dirty {
-                ui.horizontal(|ui| {
-                    ui.add(crate::icons::image("triangle-alert", 14.0, t.warning_text));
-                    ui.label(RichText::new(tl!("Unconfirmed changes")).small().color(t.warning_text));
-                });
             }
             // The board is as large as the tab can show it. The room is taken from the tab's own
             // width, never from `ui.available_width()`, which inside the scroll area reports more
@@ -290,11 +306,19 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
             // Read or Original, in one row of its own (plan A9-I0, sketch (b)).
             // Its own id: the segments' ids come from their parent's, and the To move switch
-            // under the board sits in a row whose id is the same as this one's.
+            // under the board sits in a row whose id is the same as this one's. Changes not
+            // confirmed yet (kept as a draft when another diagram opens) are said at the row's
+            // end, its room kept, so the board never moves (plan A9-I8, finding A6-05).
             ui.allocate_ui_with_layout(egui::vec2(room, SWITCH_ROW), Layout::left_to_right(Align::Center), |ui| {
                 ui.push_id("chess-diagram-shown", |ui| {
                     widgets::segmented(ui, tl!("Diagram shown"), &mut original, &[(false, tl_ctx!("diagram state", "Read")), (true, tl!("Original"))])
                 });
+                if dirty {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        ui.add(egui::Label::new(RichText::new(tl!("Unconfirmed changes")).small().color(t.warning_text)).truncate());
+                        ui.add(crate::icons::image("triangle-alert", 14.0, t.warning_text));
+                    });
+                }
             })
             .response
             .on_hover_text(tl!("Alt+O switches between the board as read and the page's own picture."));
@@ -402,17 +426,26 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
 }
 
-/// The first-time hint over the board, with a button to put it away. Whether it was put away.
-fn first_time_hint(ui: &mut egui::Ui, t: &Tokens) -> bool {
+/// The first-time hint over the board, `width` points wide (the tab's body, measured before it is
+/// drawn: plan A9-I8, finding A6-05), its words wrapping beside the button that puts it away, at
+/// the top right corner. Whether it was put away.
+fn first_time_hint(ui: &mut egui::Ui, t: &Tokens, width: f32) -> bool {
+    const PAD: i8 = 8;
     let mut away = false;
-    egui::Frame::new().fill(t.accent_soft).corner_radius(6).inner_margin(8).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.add(
-                egui::Label::new(
-                    RichText::new(tl!("Click a square to put the piece there. Confirm keeps the correction without changing the PDF.")).small(),
-                )
-                .wrap(),
-            );
+    let inner = (width - 2.0 * f32::from(PAD)).max(0.0);
+    let words = (inner - widgets::MIN_TARGET - ui.spacing().item_spacing.x).max(0.0);
+    egui::Frame::new().fill(t.accent_soft).corner_radius(6).inner_margin(PAD).show(ui, |ui| {
+        ui.set_width(inner);
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui_with_layout(egui::vec2(words, 0.0), Layout::top_down(Align::Min), |ui| {
+                ui.set_max_width(words);
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(tl!("Click a square to put the piece there. Confirm keeps the correction without changing the PDF.")).small(),
+                    )
+                    .wrap(),
+                );
+            });
             if crate::icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Dismiss")).clicked() {
                 away = true;
             }
@@ -505,7 +538,7 @@ fn original_view(ui: &mut egui::Ui, t: &Tokens, picture: Option<(egui::TextureId
 fn empty(ui: &mut egui::Ui, t: &Tokens) {
     ui.add_space(16.0);
     ui.vertical_centered(|ui| {
-        ui.add(crate::icons::image("circle-dashed", 28.0, t.text_faint));
+        ui.add(crate::icons::image("square-dashed-mouse-pointer", 28.0, t.text_faint));
         ui.add_space(6.0);
         ui.label(RichText::new(tl!("Select a diagram in the Diagrams panel, or click one on the page.")).color(t.text_muted));
     });

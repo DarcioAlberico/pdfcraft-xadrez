@@ -1305,6 +1305,11 @@ impl ChessGames {
         }
     }
 
+    /// The boards of document `id`'s games, in list order (none when it has no collection).
+    pub(crate) fn games_of(&self, id: DocId) -> Vec<&BoardState> {
+        self.docs.get(&id).map(|c| c.iter().map(|e| &e.board).collect()).unwrap_or_default()
+    }
+
     /// The collection shown: the open document's, or the one for no document.
     pub fn collection(&self) -> &ChessCollection {
         self.current.and_then(|id| self.docs.get(&id)).unwrap_or(&self.none)
@@ -1903,6 +1908,9 @@ pub enum GamesAction {
     NewFrom(Option<NodeId>),
     /// Open game `n` of the trash (deleted moves kept) as a new game (plan A8 §7, V5).
     Restore(usize),
+    /// Export as book ▸ (plan A9-N9, A8-12): the list's games made a book, a page each, written
+    /// as this format.
+    ExportBook(pdfcraft_engine::chess::export::ChessFormat),
 }
 
 /// Most deleted games the menu lists (the newest).
@@ -2249,13 +2257,31 @@ pub(crate) fn games_list(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) 
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
         }
-        // The list's header: every game, in this order, to one PGN file.
+        // The list's header: every game, in this order, to one PGN file, or made a book (plan
+        // A9-N9).
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let r = ui.small_button(tl!("Save all games as PGN…"));
                 list.see(&r);
                 if r.clicked() {
                     action = Some(GamesAction::SaveAll);
+                }
+                let book = egui::containers::menu::MenuButton::new(egui::RichText::new(tl!("Export as book")).small());
+                let (r, picked) = book.ui(ui, |ui| {
+                    use pdfcraft_engine::chess::export::ChessFormat;
+                    let mut pick = None;
+                    for format in [ChessFormat::Docx, ChessFormat::Epub, ChessFormat::Html, ChessFormat::Rtf, ChessFormat::Markdown] {
+                        if crate::widgets::menu_entry(ui, true, egui::Button::new(format.name())).clicked() {
+                            pick = Some(format);
+                        }
+                    }
+                    pick
+                });
+                list.see(&r);
+                let r = r.on_hover_text(tl!("The games of the list as a book, a page each, with their diagrams."));
+                r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Export as book")));
+                if let Some(format) = picked.and_then(|p| p.inner) {
+                    action = Some(GamesAction::ExportBook(format));
                 }
             });
         });
@@ -3000,6 +3026,79 @@ impl PdfCraftApp {
             GamesAction::Open => self.open_chess_pgn(),
             GamesAction::Save => self.save_chess_games_pgn(PgnGames::Shown),
             GamesAction::SaveAll => self.save_chess_games_pgn(PgnGames::All),
+            GamesAction::ExportBook(format) => self.export_chess_games_book(format),
+        }
+    }
+
+    /// Export as book ▸ (plan A9-N9, A8-12): every game of the list, in its order, made a book, a
+    /// page each with a diagram after each move marked for one, by the writers a book read from
+    /// a PDF is written with (`games_book`), to a file the user chooses (Markdown's diagram
+    /// images in a folder beside it). Games of an illegal position are left out, and said.
+    pub(crate) fn export_chess_games_book(&mut self, format: pdfcraft_engine::chess::export::ChessFormat) {
+        use pdfcraft_engine::chess::export::{ChessExportOptions, GamesBookMeta, games_book};
+        let boards: Vec<&BoardState> = self.chess.games.chosen(&PgnGames::All).into_iter().map(|(_, e)| &e.board).collect();
+        let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
+        let games: Vec<pdfcraft_engine::chess::pdfcraft_chess::game::Game> =
+            boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.clone()).collect();
+        let skipped = boards.len().saturating_sub(games.len());
+        // A game read from a document is that document's content: its copy permission applies.
+        for doc in docs {
+            if self.session.get(doc).is_some() && !self.may_copy(doc) {
+                return;
+            }
+        }
+        if games.is_empty() {
+            return self.notify(tl!("Nothing to export: an illegal position has no game.").to_string());
+        }
+        let stem = self.active_ids().and_then(|(_, id)| self.session.get(id)).map_or_else(
+            || "games".to_owned(),
+            |d| format!("{} games", std::path::Path::new(&d.name).file_stem().map_or_else(|| d.name.clone(), |s| s.to_string_lossy().into_owned())),
+        );
+        let stem = file_stem(&stem);
+        let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
+        options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
+        options.image_dir = pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::image_folder(&stem);
+        let identity: Vec<u8> = games.iter().map(|g| g.pgn()).collect::<Vec<_>>().join("\n").into_bytes();
+        let now_secs =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+        let meta = GamesBookMeta { now_secs, identity, ..GamesBookMeta::default() };
+        let book = match games_book(&games, format, &options, &meta) {
+            Ok(book) => book,
+            Err(e) => return self.notify(e),
+        };
+        let left_out =
+            (skipped > 0).then(|| crate::i18n::fmt(tl!("Games left out (an illegal position has no game): {n}"), &[("n", &skipped.to_string())]));
+        let name = format!("{stem}.{}", format.extension());
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let image_dir = options.image_dir.clone();
+            let dialog = rfd::AsyncFileDialog::new().add_filter(format.name(), &[format.extension()]).set_file_name(&name);
+            self.ask_one(crate::pickers::Ask::Save(dialog), None, move |app, dest| {
+                let shown = dest.file_name().map_or_else(|| name.clone(), |n| n.to_string_lossy().into_owned());
+                if !book.images.is_empty() {
+                    let dir = dest.with_file_name(&image_dir);
+                    if let Err(e) = std::fs::create_dir_all(&dir) {
+                        return app.notify_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+                    }
+                    for (rel, png) in &book.images {
+                        let Some(file) = std::path::Path::new(rel).file_name() else { continue };
+                        let target = dir.join(file);
+                        if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
+                            return app.notify_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                        }
+                    }
+                }
+                match crate::editing::write_atomically(&dest.to_string_lossy(), &book.bytes) {
+                    Ok(()) => app.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &dest.display().to_string())]), left_out)),
+                    Err(e) => app.notify_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+                }
+            });
+        }
+        // On the web the file is downloaded (Markdown without its diagram images).
+        #[cfg(target_arch = "wasm32")]
+        match crate::editing::download(&name, &book.bytes) {
+            Ok(()) => self.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]), left_out)),
+            Err(e) => self.notify_fmt("Couldn't save {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
         }
     }
 
