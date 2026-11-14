@@ -1,6 +1,6 @@
 # Plano A9 — registro de execução
 
-**Status:** em execução desde 2026-11-11 · núcleo (§3.0) completo em 2026-11-12 · ondas 0, 1 e 2 completas em 2026-11-13 (notas em `../notas/2026-11-13.md`) · onda 3 completa em 2026-11-13, menos o F7, que espera a D18 (notas em `../notas/2026-11-13-onda-3.md`) · ondas 4, 5 e 6 em andamento.
+**Status:** em execução desde 2026-11-11 · núcleo (§3.0) completo em 2026-11-12 · ondas 0, 1 e 2 completas em 2026-11-13 (notas em `../notas/2026-11-13.md`) · onda 3 completa em 2026-11-13, menos o F7, que espera a D18 (notas em `../notas/2026-11-13-onda-3.md`) · onda 4 completa em 2026-11-14, menos o X1b, que espera a D18 (notas em `../notas/2026-11-14-onda-4.md`) · ondas 5 e 6 em andamento.
 
 Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou em relação ao texto do plano. O plano continua sendo a fonte do *que* fazer; este registro é a fonte do *que foi feito* e das decisões tomadas no caminho, para que o próximo passo não precise redescobri-las. Cada PR traz no corpo o teste visto falhando com a correção revertida e o resumo do `cargo xtask chess-gate`.
 
@@ -74,7 +74,7 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 | A9-I2 (2/2) | #326 | **Empilhado no I2 (1/2).** `ChessScanJob::steps` → `ChessScanSteps` (`step`, `done`, `total`, `finish`), e `run` passa a ser um laço sobre ele (um só caminho, o mesmo `catch_unwind` por página). Na web a varredura é `ScanWork::Steps`: no `poll`, páginas até ~50 ms por quadro (`js_sys::Date::now`; ao menos uma), progresso e Parar entre páginas; no desktop continua `ScanWork::Thread` (`Job<()>`). `ChessState::frame_budget_ms` liga o modo da web nos testes. **Desvio do cartão:** as fases do `chess_document_with` (Exportar, Alinhar o livro) não foram feitas; até elas, a web recusa esses dois acima de 20 páginas, com a razão (o que o próprio cartão manda enquanto não existem), e o parity diz que o "in the background" é do desktop. Uma frase nova. |
 | A9-X3 | #329 (X3b) | `pdfcraft_chess::spoken`: os nomes que uma exportação diz, copiados dos catálogos da interface (`i18n/*.tsv`) para pt, es, fr, de, it, ru e pl (as línguas de prosa que o leitor reconhece e que têm catálogo): os 105 verbetes da tabela de NAGs (a interface nomeia todos), as 12 peças, "To review" e os cinco motivos de status de lance; o resto em inglês com `lang="en"`. HTML/EPUB: `aria-label` do sinal no idioma da página, figurinas dos lances com `role="img"` pelo lado que jogou, texto oculto (`.sr`) "A revisar: <motivo>" com o destaque ligado; Word/RTF: o nome do sinal entre parênteses (não depois de `!`/`?`), em inglês com `w:lang` quando falta. Teste no ui-egui mantém as cópias iguais aos catálogos. **Decisão do coordenador:** fontes na ordem catálogos → inglês; o `describe` não tem nomes de peça (só letras e lados), então as peças também vêm dos catálogos; Ace/epubcheck ficam de fora. |
 
-## Onda 4 (em andamento)
+## Onda 4 (completa em 2026-11-14, menos o X1b, que espera a D18)
 
 | Passo | PR | Desvios e decisões |
 |---|---|---|
