@@ -127,7 +127,7 @@ impl ChessScanSettings {
 }
 
 /// What scanning found on one page.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ChessPage {
     /// The page, 0-based.
     pub page: usize,

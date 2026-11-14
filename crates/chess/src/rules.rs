@@ -20,7 +20,7 @@ use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 
 /// One reason a position cannot occur in a game.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Violation {
     /// No piece on the board at all.
     Empty,
@@ -87,7 +87,7 @@ impl fmt::Display for Violation {
 }
 
 /// What [`check_position`] concluded.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Legality {
     /// Legal whichever side is to move.
     Legal,

@@ -423,7 +423,7 @@ pub fn parse_placement(fen: &str) -> Result<Placement, FenError> {
     parse(fen).map(|p| p.placement)
 }
 
-fn parse_placement_field(field: &str) -> Result<Placement, FenError> {
+pub(crate) fn parse_placement_field(field: &str) -> Result<Placement, FenError> {
     let ranks: Vec<&str> = field.split('/').collect();
     if ranks.len() != 8 {
         return Err(FenError::RankCount(ranks.len()));

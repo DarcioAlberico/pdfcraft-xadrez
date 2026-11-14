@@ -1027,6 +1027,7 @@ mod links;
 mod office;
 mod page_cache;
 mod replace;
+mod stored;
 mod text_ocr;
 
 proptest! {
