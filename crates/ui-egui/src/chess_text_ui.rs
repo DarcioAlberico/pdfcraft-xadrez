@@ -292,9 +292,18 @@ pub enum TextAction {
 }
 
 /// The book's PGN row: what the document keeps, and the button to load or remove it; with none
-/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too.
-fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>, sibling: Option<&str>) -> Option<TextAction> {
+/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too. While a PGN is being
+/// indexed (`indexing`, plan A9-I3b) the row says so instead of offering one.
+fn book_pgn_row(
+    ui: &mut egui::Ui,
+    book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
+    sibling: Option<&str>,
+    indexing: bool,
+) -> Option<TextAction> {
     let mut action = None;
+    if indexing {
+        ui.label(tl!("Indexing the book's PGN…"));
+    }
     match book_pgn {
         Some(s) => {
             let name = s.name.as_deref().unwrap_or("PGN");
@@ -306,6 +315,7 @@ fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::
                 action = Some(TextAction::BookPgn(false));
             }
         }
+        None if indexing => {}
         None => {
             if ui
                 .button(tl!("Load the book's PGN…"))
@@ -503,7 +513,7 @@ pub fn text_tab(
         }
     });
     ui.horizontal_wrapped(|ui| {
-        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref()) {
+        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref(), pgn.indexing) {
             action = Some(a);
         }
     });
