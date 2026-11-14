@@ -79,8 +79,12 @@ where
     held: std::collections::HashMap<String, u64>,
     /// The writer thread that merges them, made with the first held change.
     #[cfg(not(target_arch = "wasm32"))]
-    writer: Option<crate::chess_writer::StoreWriter<HeldJob<K::File>, Result<(), String>>>,
+    writer: Option<HeldWriter<K::File>>,
 }
+
+/// The writer thread of a store's held changes.
+#[cfg(not(target_arch = "wasm32"))]
+type HeldWriter<F> = crate::chess_writer::StoreWriter<HeldJob<F>, Result<(), String>>;
 
 /// How many more times the writer thread waits for a folder another writer keeps (3 s each).
 #[cfg(not(target_arch = "wasm32"))]
@@ -458,7 +462,7 @@ mod tests {
         let uid = put(&mut store, 0.1).expect("made at once");
         assert!(started.elapsed() < std::time::Duration::from_millis(1500), "waited {:?}", started.elapsed());
         let seen = in_store!(store.reading(&keys()), s => s.load(&keys(), 1)).unwrap();
-        assert_eq!(seen.file.live().map(|c| c.uid.clone()).collect::<Vec<_>>(), [uid.clone()], "read back from memory");
+        assert_eq!(seen.file.live().map(|c| c.uid.clone()).collect::<Vec<_>>(), std::slice::from_ref(&uid), "read back from memory");
         let on_disk = || pdfcraft_engine::chess::corrections::DirStore::new(&dir).load(&keys(), 1).unwrap().file.live().count();
         assert_eq!(on_disk(), 0, "nothing written while the other writer holds it");
         other.unlock().unwrap();
