@@ -3528,6 +3528,8 @@ the move's comment	Move comment	A lépés megjegyzése
 	Tools panel collapsed	Eszközök panel összecsukva
 	Show the page (F6)	Az oldal megjelenítése (F6)
 	The board is in the column beside.	A tábla a szomszédos oszlopban van.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Sakk-könyvjelzők hozzáadása
 	More board actions	További táblaműveletek
 	Back to the moves	Vissza a lépésekhez
 	Back to the moves (Esc)	Vissza a lépésekhez (Esc)
@@ -3541,5 +3543,3 @@ the move's comment	Move comment	A lépés megjegyzése
 	Alt+O switches between the board as read and the page's own picture.	Az Alt+O vált a beolvasott tábla és az oldal saját képe között.
 	Original diagram, page {p}, diagram {n}	Eredeti diagram, {p}. oldal, {n}. diagram
 	The page's picture of this diagram shows once its page is drawn.	A diagram oldalképe akkor jelenik meg, amikor az oldala kirajzolódott.
-# Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Sakk-könyvjelzők hozzáadása

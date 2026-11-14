@@ -6113,6 +6113,121 @@ fn under_1000_points_the_page_or_the_column_shows() {
     assert!(h.state().chess.budget.show_page);
 }
 
+// ─── Plan A9, G3b: the games on the engine's store ───────────────────────────────────────────
+
+/// Plan A9-G3b (§2.3): the app's games are in the engine's store, which the command line writes
+/// too. Two games a tool imports while the app has three in memory are kept when the app autosaves
+/// next (the write merges with the file, never over it; before: three), and come into the list.
+/// The file names the document without its path, and the next session has all five.
+#[test]
+fn the_apps_autosave_keeps_the_games_a_tool_added() {
+    use pdfcraft_engine::chess::games_store::{DirStore, GameRecord, GamesFile, Owner};
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let s = store("merge");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    for m in ["d2d4", "c2c4"] {
+        assert!(h.state_mut().execute("chess.game.new"));
+        h.state_mut().chess.board_mut().play_uci_line(&[m.into()]);
+    }
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let files = chess_files(&s);
+    assert_eq!(files.len(), 1);
+    // A tool imports two games into the same document, merging into the running app's games.
+    let keys = {
+        let app = h.state();
+        app.session.get(app.views[0].id).unwrap().doc_keys()
+    };
+    let store = DirStore::new(s.dir().join("chess").join("games"));
+    let mut imported = GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, 1));
+    for (uid, moves) in [("cli-1", "g1f3"), ("cli-2", "b2b3")] {
+        let mut g = Game::standard();
+        g.play_uci(moves).unwrap();
+        imported.games.push(GameRecord::of_game(uid.into(), 1, &g).unwrap());
+    }
+    let alive = |_: &str| true;
+    let refused = store.keep(&keys, 1, imported.clone(), &Owner { me: None, live: &alive, merge: false });
+    assert!(refused.is_err(), "the app autosaves these games: a tool must ask to merge");
+    store.keep(&keys, 1, imported, &Owner { me: None, live: &alive, merge: true }).unwrap();
+    // The app changes one of its games and autosaves.
+    h.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let file = s.dir().join("chess").join("games").join(&files[0]);
+    let text = std::fs::read_to_string(&file).unwrap();
+    let kept: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let live: Vec<&str> =
+        kept["games"].as_array().unwrap().iter().filter(|g| g["deleted"] != true).map(|g| g["pgn"].as_str().unwrap_or_default()).collect();
+    assert_eq!(live.len(), 5, "the app's three and the tool's two: {live:?}");
+    assert!(!text.contains("pdfcraft-chess-games-merge"), "no path in clear: {text}");
+    assert_eq!(games(h.state()).0, ["1. e4", "1. d4", "1. c4 e5", "1. Nf3", "1. b3"], "taken into the list");
+    drop(h);
+    let h = session(&s, "book.pdf", Some(&path), boards());
+    assert_eq!(games(h.state()).0.len(), 5, "and the next session has them");
+}
+
+/// Plan A9-G3b: the games an earlier build autosaved (`<id>.games` in the recovery folder's
+/// `chess`) come back in this build, and that file is left as it was.
+#[test]
+fn the_games_an_earlier_build_autosaved_come_back() {
+    let s = store("earlier");
+    let dir = s.dir().join("chess");
+    std::fs::create_dir_all(&dir).unwrap();
+    let size = boards().len();
+    let header = format!(
+        r#"{{"format":"pdfcraft-chess-games","version":1,"keys":{{"name":"boards.pdf","size":{size}}},"instance":"instance-1-0.lock","games":2}}"#
+    );
+    let body = r#"{"active":1,"games":[{"pgn":"1. e4 e5 *","current":[0,0]},{"pgn":"1. d4 *","flipped":true}],"trash":[]}"#;
+    let v1 = format!("{header}\n{body}\n");
+    std::fs::write(dir.join("18c2f-1a-0.games"), &v1).unwrap();
+    let h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(games(h.state()), (vec!["1. e4 e5".to_owned(), "1. d4".to_owned()], 1));
+    assert!(h.state().chess.board().flipped);
+    assert_eq!(std::fs::read_to_string(dir.join("18c2f-1a-0.games")).unwrap(), v1, "left as it was");
+}
+
+/// Plan A9-G2c (R3-04): a page inserted before the page a game came from takes the game's
+/// diagram and the moves read on it along (Show in PDF goes to the page that moved), and the
+/// next session finds them there too.
+#[test]
+fn a_page_inserted_before_takes_the_games_pages_along() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource;
+    let s = store("anchors");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(2);
+    {
+        let b = h.state_mut().chess.board_mut();
+        b.play_uci_line(&["e2e4".into()]);
+        let e4 = b.game.current();
+        assert!(b.game.set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
+    }
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
+    h.run_steps(3);
+    let pages = |h: &Harness<'static, PdfCraftApp>| {
+        let b = h.state().chess.board();
+        let e4 = b.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
+        (b.source.map(|s| s.page), b.game.source(e4).map(|s| s.page))
+    };
+    assert_eq!(pages(&h), (Some(1), Some(1)), "the diagram and the move follow their page");
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let app = h.state_mut();
+    app.save_override = Some(path.clone());
+    assert!(app.save_active(pdfcraft_ui_egui::SaveTarget::InPlace));
+    drop(h);
+    let bytes = std::fs::read(&path).unwrap();
+    let h = session(&s, "book.pdf", Some(&path), bytes);
+    assert_eq!(pages(&h), (Some(1), Some(1)), "and come back there");
+}
+
 // ─── Plan A9-I0b: the board never scrolls ───────────────────────────────────────────────────
 
 /// The Board tab's regions as the last frame measured them (plan A9-I0b): header, board,
@@ -6429,119 +6544,4 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     h.run_steps(2);
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
-}
-
-// ─── Plan A9, G3b: the games on the engine's store ───────────────────────────────────────────
-
-/// Plan A9-G3b (§2.3): the app's games are in the engine's store, which the command line writes
-/// too. Two games a tool imports while the app has three in memory are kept when the app autosaves
-/// next (the write merges with the file, never over it; before: three), and come into the list.
-/// The file names the document without its path, and the next session has all five.
-#[test]
-fn the_apps_autosave_keeps_the_games_a_tool_added() {
-    use pdfcraft_engine::chess::games_store::{DirStore, GameRecord, GamesFile, Owner};
-    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
-    let s = store("merge");
-    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
-    let mut h = session(&s, "book.pdf", Some(&path), boards());
-    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
-    for m in ["d2d4", "c2c4"] {
-        assert!(h.state_mut().execute("chess.game.new"));
-        h.state_mut().chess.board_mut().play_uci_line(&[m.into()]);
-    }
-    h.state_mut().flush_chess_games();
-    h.state_mut().settle_chess_games();
-    let files = chess_files(&s);
-    assert_eq!(files.len(), 1);
-    // A tool imports two games into the same document, merging into the running app's games.
-    let keys = {
-        let app = h.state();
-        app.session.get(app.views[0].id).unwrap().doc_keys()
-    };
-    let store = DirStore::new(s.dir().join("chess").join("games"));
-    let mut imported = GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, 1));
-    for (uid, moves) in [("cli-1", "g1f3"), ("cli-2", "b2b3")] {
-        let mut g = Game::standard();
-        g.play_uci(moves).unwrap();
-        imported.games.push(GameRecord::of_game(uid.into(), 1, &g).unwrap());
-    }
-    let alive = |_: &str| true;
-    let refused = store.keep(&keys, 1, imported.clone(), &Owner { me: None, live: &alive, merge: false });
-    assert!(refused.is_err(), "the app autosaves these games: a tool must ask to merge");
-    store.keep(&keys, 1, imported, &Owner { me: None, live: &alive, merge: true }).unwrap();
-    // The app changes one of its games and autosaves.
-    h.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
-    h.state_mut().flush_chess_games();
-    h.state_mut().settle_chess_games();
-    let file = s.dir().join("chess").join("games").join(&files[0]);
-    let text = std::fs::read_to_string(&file).unwrap();
-    let kept: serde_json::Value = serde_json::from_str(&text).unwrap();
-    let live: Vec<&str> =
-        kept["games"].as_array().unwrap().iter().filter(|g| g["deleted"] != true).map(|g| g["pgn"].as_str().unwrap_or_default()).collect();
-    assert_eq!(live.len(), 5, "the app's three and the tool's two: {live:?}");
-    assert!(!text.contains("pdfcraft-chess-games-merge"), "no path in clear: {text}");
-    assert_eq!(games(h.state()).0, ["1. e4", "1. d4", "1. c4 e5", "1. Nf3", "1. b3"], "taken into the list");
-    drop(h);
-    let h = session(&s, "book.pdf", Some(&path), boards());
-    assert_eq!(games(h.state()).0.len(), 5, "and the next session has them");
-}
-
-/// Plan A9-G3b: the games an earlier build autosaved (`<id>.games` in the recovery folder's
-/// `chess`) come back in this build, and that file is left as it was.
-#[test]
-fn the_games_an_earlier_build_autosaved_come_back() {
-    let s = store("earlier");
-    let dir = s.dir().join("chess");
-    std::fs::create_dir_all(&dir).unwrap();
-    let size = boards().len();
-    let header = format!(
-        r#"{{"format":"pdfcraft-chess-games","version":1,"keys":{{"name":"boards.pdf","size":{size}}},"instance":"instance-1-0.lock","games":2}}"#
-    );
-    let body = r#"{"active":1,"games":[{"pgn":"1. e4 e5 *","current":[0,0]},{"pgn":"1. d4 *","flipped":true}],"trash":[]}"#;
-    let v1 = format!("{header}\n{body}\n");
-    std::fs::write(dir.join("18c2f-1a-0.games"), &v1).unwrap();
-    let h = session(&s, "boards.pdf", None, boards());
-    assert_eq!(games(h.state()), (vec!["1. e4 e5".to_owned(), "1. d4".to_owned()], 1));
-    assert!(h.state().chess.board().flipped);
-    assert_eq!(std::fs::read_to_string(dir.join("18c2f-1a-0.games")).unwrap(), v1, "left as it was");
-}
-
-/// Plan A9-G2c (R3-04): a page inserted before the page a game came from takes the game's
-/// diagram and the moves read on it along (Show in PDF goes to the page that moved), and the
-/// next session finds them there too.
-#[test]
-fn a_page_inserted_before_takes_the_games_pages_along() {
-    use pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource;
-    let s = store("anchors");
-    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
-    let mut h = session(&s, "book.pdf", Some(&path), boards());
-    assert!(h.state_mut().execute("chess.scan"));
-    h.run_steps(3);
-    h.state_mut().open_chess_board(0, 0);
-    h.run_steps(2);
-    {
-        let b = h.state_mut().chess.board_mut();
-        b.play_uci_line(&["e2e4".into()]);
-        let e4 = b.game.current();
-        assert!(b.game.set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
-    }
-    h.state_mut().flush_chess_games();
-    h.state_mut().settle_chess_games();
-    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
-    h.run_steps(3);
-    let pages = |h: &Harness<'static, PdfCraftApp>| {
-        let b = h.state().chess.board();
-        let e4 = b.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
-        (b.source.map(|s| s.page), b.game.source(e4).map(|s| s.page))
-    };
-    assert_eq!(pages(&h), (Some(1), Some(1)), "the diagram and the move follow their page");
-    h.state_mut().flush_chess_games();
-    h.state_mut().settle_chess_games();
-    let app = h.state_mut();
-    app.save_override = Some(path.clone());
-    assert!(app.save_active(pdfcraft_ui_egui::SaveTarget::InPlace));
-    drop(h);
-    let bytes = std::fs::read(&path).unwrap();
-    let h = session(&s, "book.pdf", Some(&path), bytes);
-    assert_eq!(pages(&h), (Some(1), Some(1)), "and come back there");
 }

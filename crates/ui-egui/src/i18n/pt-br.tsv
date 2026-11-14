@@ -3546,6 +3546,8 @@ the move's comment	Move comment	Comentário do lance
 	Tools panel collapsed	Painel Ferramentas recolhido
 	Show the page (F6)	Mostrar a página (F6)
 	The board is in the column beside.	O tabuleiro está na coluna ao lado.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Adicionar marcadores de xadrez
 	More board actions	Mais ações do tabuleiro
 	Back to the moves	Voltar para os lances
 	Back to the moves (Esc)	Voltar para os lances (Esc)
@@ -3559,5 +3561,3 @@ the move's comment	Move comment	Comentário do lance
 	Alt+O switches between the board as read and the page's own picture.	Alt+O alterna entre o tabuleiro como foi lido e a imagem da própria página.
 	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
 	The page's picture of this diagram shows once its page is drawn.	A imagem da página deste diagrama aparece assim que a página dele é desenhada.
-# Plan A9-N6: the undo step of a chess book's bookmarks.
-	Add chess bookmarks	Adicionar marcadores de xadrez
