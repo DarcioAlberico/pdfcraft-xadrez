@@ -87,7 +87,7 @@ pub struct OcrText {
     /// What the reading left out and why: a strip of the page with too much fine ink to be text,
     /// a layout hint (frames, bolder lines, bold words) that could not be worked out (plan A9-V2:
     /// either failed the whole page).
-    pub notes: Vec<String>,
+    pub notes: Vec<super::ScanNote>,
 }
 
 /// A line at least this many times as tall as the page's body text is set larger, as a title is.
@@ -242,7 +242,7 @@ pub fn read_page(
     let found = match ink.as_ref().map(frames_in).transpose() {
         Ok(found) => found.unwrap_or_default(),
         Err(e) => {
-            notes.push(format!("the frames around text were not looked for: {e}"));
+            notes.push(super::ScanNote::FramesNotLooked { error: e.to_string() });
             Vec::new()
         }
     };
@@ -263,25 +263,23 @@ pub fn read_page(
     let height = ink.skipped().iter().map(|r| r.y1.saturating_sub(r.y0)).sum::<u32>();
     if height > 0 {
         let share = 100.0 * f64::from(height) / f64::from(image.height().max(1));
-        notes.push(format!(
-            "{share:.0}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan): those strips were not read"
-        ));
+        notes.push(super::ScanNote::InkSkipped { percent: share });
     }
     let lines = read_ink(&ink, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
     let larger = larger_lines(&lines, dpi);
     // A caption beside a board, bold or not, is the board's, not a heading.
     let board_boxes: Vec<PixelRect> = diagrams.iter().chain(&boards).copied().collect();
-    let mut hint = |what: &str, found: Result<Vec<PixelRect>, GlyphError>| -> Vec<ViewRect> {
+    let mut hint = |missed: fn(String) -> super::ScanNote, found: Result<Vec<PixelRect>, GlyphError>| -> Vec<ViewRect> {
         match found {
             Ok(found) => found.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect(),
             Err(e) => {
-                notes.push(format!("the {what} were not looked for: {e}"));
+                notes.push(missed(e.to_string()));
                 Vec::new()
             }
         }
     };
-    let bolder = hint("lines set bolder", bolder_lines_in(&ink, &lines, &board_boxes));
-    let bold = hint("words set in bold", bold_words_in(&ink, &lines));
+    let bolder = hint(|error| super::ScanNote::BolderLinesNotLooked { error }, bolder_lines_in(&ink, &lines, &board_boxes));
+    let bold = hint(|error| super::ScanNote::BoldWordsNotLooked { error }, bold_words_in(&ink, &lines));
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),

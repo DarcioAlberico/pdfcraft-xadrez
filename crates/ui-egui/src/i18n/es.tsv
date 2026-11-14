@@ -3621,3 +3621,52 @@ the move's comment	Move comment	Comentario de la jugada
 	mates in {m}	da mate en {m}
 	supposes castling is allowed	supone que el enroque está permitido
 	Mate in {n}: both sides mate, so who moves stays assumed	Mate en {n}: ambos bandos dan mate, así que quién juega sigue supuesto
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	La página dibuja más trazados de los que se examinan; el resto se omitió.
+	Content streams that couldn't be decoded and were skipped: {n}	Flujos de contenido que no se pudieron decodificar y se omitieron: {n}
+	The page's paths couldn't be read: {e}	No se pudieron leer los trazados de la página: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	El documento no se puede leer para editarlo, así que no se examinaron sus imágenes ni sus trazados.
+	The page's text couldn't be read: {e}	No se pudo leer el texto de la página: {e}
+	Only the first {n} of the page's {total} images were looked at.	Solo se examinaron las primeras {n} de las {total} imágenes de la página.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Imágenes sin recortar, porque los píxeles de las imágenes de la página superan el presupuesto del escaneo: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagrama {d}: ambos bandos dan mate en {n}, así que quién juega sigue supuesto.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Un diagrama ofrece {offered} ppp; se leyó como máximo a {max} ppp (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	La página es demasiado grande para representarla a {wanted} ppp; sus diagramas se leyeron a {read} ppp.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	No se pudo representar la página a {wanted} ppp para leerla ({e}); se leyó a {read} ppp.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagrama {d}: la lectura cambió desde que se corrigió (ahora {fen}); la corrección se mantiene.
+	The frames around text were not looked for: {e}	No se buscaron los marcos alrededor del texto: {e}
+	The lines set bolder were not looked for: {e}	No se buscaron las líneas más gruesas que el cuerpo del texto: {e}
+	The words set in bold were not looked for: {e}	No se buscaron las palabras en negrita: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	El {p}% de la altura de la página tiene demasiada tinta fina para ser texto (una imagen o un escaneo sucio); esas franjas no se leyeron.
+	The general OCR failed ({e}); the glyph reader read the prose too.	El OCR general falló ({e}); el lector de glifos leyó también la prosa.
+	Chess OCR failed: {e}	El OCR de ajedrez falló: {e}
+	The page couldn't be rendered for chess OCR: {e}	No se pudo representar la página para el OCR de ajedrez: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Se pidió el OCR de ajedrez, pero necesita el modelo chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	La fuente {font} parece una fuente de ajedrez, pero no está en el catálogo; su texto se dejó tal como se extrae.
+	The page has no visible area; it is left out.	La página no tiene área visible; se deja fuera.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	No se pudieron leer los párrafos de la página ({e}); sus líneas se agruparon por el espaciado.
+	The page's diagrams couldn't be read; they are left out.	No se pudieron leer los diagramas de la página; se dejan fuera.
+	A correction ({id}) was not used: {e}	Una corrección ({id}) no se usó: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	La notación descriptiva ({examples}) no es compatible; sus jugadas no se leyeron.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	El documento contiene {n} partidas, el máximo que guarda: a partir de aquí no empieza ninguna partida.
+	This page couldn't be read: {e}	No se pudo leer esta página: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (el OCR de ajedrez necesita el modelo chess-glyphs)
+	the page has no text layer	la página no tiene capa de texto
+	the text layer has two-byte codes with no Unicode text	la capa de texto tiene códigos de dos bytes sin texto Unicode
+	the text layer extracts as replacement characters	la capa de texto se extrae como caracteres de reemplazo
+	the text layer's Unicode map is dead	el mapa Unicode de la capa de texto está muerto
+	chess-font glyphs that couldn't be resolved: {n}	glifos de fuentes de ajedrez que no se pudieron resolver: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	jugadas con un símbolo suelto en lugar de la pieza, donde una capa de OCR anterior perdió los figurines: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	la capa de texto es texto invisible sobre una imagen de la página: el OCR de otro programa
+	no piece model is loaded	no hay ningún modelo de piezas cargado
+	the page raster's resolution is not a positive number	la resolución de la imagen de la página no es un número positivo
+	the diagram's box or corners are not finite numbers on this page	el recuadro o las esquinas del diagrama no son números finitos en esta página
+	the diagram lies outside the page raster	el diagrama está fuera de la imagen de la página
+	the diagram's corners do not form a quadrilateral	las esquinas del diagrama no forman un cuadrilátero
+	the page has more diagrams than are read on one page	la página tiene más diagramas de los que se leen en una página
+	the piece model failed: {e}	el modelo de piezas falló: {e}
+	the piece model's output is not a probability matrix: {e}	la salida del modelo de piezas no es una matriz de probabilidades: {e}
+	Back to Diagrams	Volver a Diagramas
+	Tools panel collapsed	Panel Herramientas contraído
+	Show the page (F6)	Mostrar la página (F6)
+	The board is in the column beside.	El tablero está en la columna de al lado.

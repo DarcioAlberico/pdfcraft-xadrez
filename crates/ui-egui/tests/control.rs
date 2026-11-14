@@ -1953,12 +1953,13 @@ fn the_control_channel_reaches_the_chess_keyboard() {
     assert_ne!(queened, start, "Q put a queen under the cursor");
     host_ok(&mut h, &c, "ui.key", json!({ "key": "Z", "modifiers": ["command"] }));
     assert_eq!(h.state().chess.editor.as_ref().unwrap().fen(), start, "Ctrl+Z took it back");
+    // What a screen reader is told: the tab's announcement is live (while the tab is shown: since
+    // plan A9-I0a, Esc goes back to the list in the same column).
+    let all = host_ok(&mut h, &c, "ui.inspect", json!({ "limit": 2000 }));
+    assert!(all["widgets"].as_array().unwrap().iter().any(|w| w["live"] == "polite"), "a polite live region");
     host_ok(&mut h, &c, "ui.key", json!({ "key": "Escape" }));
     let row = first(&mut h, &c, json!({ "focused": true }));
     assert!(row["label"].as_str().is_some_and(|l| l.starts_with("Diagram 1")), "Esc: the row has the keyboard: {row}");
-    // What a screen reader is told: the tab's announcement is live.
-    let all = host_ok(&mut h, &c, "ui.inspect", json!({ "limit": 2000 }));
-    assert!(all["widgets"].as_array().unwrap().iter().any(|w| w["live"] == "polite"), "a polite live region");
     // A draft asked about before closing: the dialog is modal.
     h.state_mut().chess.editor.as_mut().unwrap().position =
         pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1").unwrap();

@@ -54,6 +54,7 @@ use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, Reque
 pub use document::ChessDocument;
 pub use keys::DocKeys;
 pub use links::{LinkPlan, LinkSettings, LinkTarget};
+pub use notes::{LayerProblem, NeedsOcr, ScanNote};
 pub use pdfcraft_chessvision::doc::DiagramAt;
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
@@ -148,7 +149,7 @@ pub struct ChessPage {
     pub error: Option<String>,
     /// What was skipped or approximated on the way (an unreadable content stream, a limit hit,
     /// images left untrimmed), so a partial result is never silent.
-    pub notes: Vec<String>,
+    pub notes: Vec<ScanNote>,
 }
 
 /// Which piece model a reading used, for the cache: a reading made with one model is not the
@@ -649,7 +650,7 @@ struct PageInputs {
     /// The images the page draws: box in user space and pixel size.
     images: Vec<(PageRect, u32, u32)>,
     boxes: Vec<FilledBox>,
-    notes: Vec<String>,
+    notes: Vec<ScanNote>,
     /// The page's content key when the job was made.
     key: Option<page_key::PageKey>,
 }
@@ -994,7 +995,7 @@ fn image_boxes(
     images: &[(PageRect, u32, u32)],
     geometry: &PageGeometry,
     raster: Option<(&GrayImage, f32)>,
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) -> Vec<ImageBox> {
     let crop_box = geometry.crop_box();
     let page_area = crop_box.width() * crop_box.height();
@@ -1025,10 +1026,10 @@ fn image_boxes(
         })
         .collect();
     if images.len() > embedded::consts::MAX_IMAGES {
-        notes.push(format!("only the first {} of {} images were looked at", embedded::consts::MAX_IMAGES, images.len()));
+        notes.push(ScanNote::ImagesCapped { looked: embedded::consts::MAX_IMAGES, total: images.len() });
     }
     if uncropped > 0 {
-        notes.push(format!("{uncropped} image(s) were not trimmed: the page's image pixels exceed the scan budget"));
+        notes.push(ScanNote::ImagesUntrimmed { count: uncropped });
     }
     out
 }
@@ -1162,7 +1163,7 @@ fn scan_page(
     let raster = render_gray(renderer, input.page, info, settings.dpi);
     let text = renderer.render(RenderRequest { page: input.page, kind: RequestKind::Text, scale: 1.0, ..Default::default() });
     if let Some(e) = &text.error {
-        notes.push(format!("the page's text could not be read: {e}"));
+        notes.push(ScanNote::TextUnreadable { error: e.clone() });
     }
     let glyphs = text.text.as_deref().map(font_glyphs).unwrap_or_default();
 
@@ -1226,7 +1227,7 @@ fn sides_from_move_numbers(
     geometry: &PageGeometry,
     diagrams: &[Merged],
     readings: &mut [BoardReading],
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) {
     if !readings.iter().any(|r| r.position().is_some()) {
         return;
@@ -1250,7 +1251,7 @@ fn sides_from_move_numbers(
         if let Some(Stipulation { goal: Some(Goal::Mate(n)), .. }) = stipulations.get(reading.index).copied().flatten() {
             position.check_mate(n, mate::DEFAULT_MATE_BUDGET);
             if let Some(MateFinding::BothSides { n }) = position.mate {
-                notes.push(format!("diagram {}: both sides mate in {n}; the side to move stays assumed", reading.index.saturating_add(1)));
+                notes.push(ScanNote::BothSidesMate { diagram: reading.index.saturating_add(1), n });
             }
         }
     }
@@ -1268,7 +1269,7 @@ fn read_page(
     candidates: &[DiagramCandidate],
     settings: &ChessScanSettings,
     model: Option<&dyn SquareClassifier>,
-    notes: &mut Vec<String>,
+    notes: &mut Vec<ScanNote>,
 ) -> Vec<BoardReading> {
     // `board::read` cuts a box-only candidate (an embedded image) from the page raster at the
     // raster's resolution, while the prototype read such a crop at the image's own resolution.
@@ -1278,18 +1279,18 @@ fn read_page(
     let finest = candidates.iter().filter(|c| c.placement.is_none()).map(|c| c.dpi_hint).filter(|d| d.is_finite()).fold(0.0_f32, f32::max);
     let wanted = finest.min(settings.max_read_dpi);
     if finest > settings.max_read_dpi * 1.05 && model.is_some() {
-        notes.push(format!("a diagram offers {finest:.0} dpi; read at most at {:.0} dpi (max_read_dpi)", settings.max_read_dpi));
+        notes.push(ScanNote::ReadDpiCapped { offered: finest, max: settings.max_read_dpi });
     }
     // Within 5 % is the same raster: rendering again would cost a page and add nothing.
     if model.is_some() && wanted > dpi * 1.05 {
         match render_gray(renderer, page, info, wanted) {
             Ok((finer, finer_dpi)) => {
                 if finer_dpi < wanted * 0.95 {
-                    notes.push(format!("the page is too large to render at {wanted:.0} dpi; diagrams were read at {finer_dpi:.0} dpi"));
+                    notes.push(ScanNote::PageTooLarge { wanted, read: finer_dpi });
                 }
                 return board::read(&finer, geometry, finer_dpi, candidates, model);
             }
-            Err(e) => notes.push(format!("the page could not be rendered at {wanted:.0} dpi for reading ({e}); read at {dpi:.0} dpi")),
+            Err(error) => notes.push(ScanNote::FinerRenderFailed { wanted, read: dpi, error }),
         }
     }
     board::read(gray, geometry, dpi, candidates, model)
@@ -1344,19 +1345,19 @@ impl Session {
                 let boxes = match doc.editor.as_ref().map(|e| pdfcraft_edit::paths::page_paths(&e.cos, page)) {
                     Some(Ok(inventory)) => {
                         if inventory.truncated {
-                            notes.push("the page draws more paths than are looked at; the rest were skipped".into());
+                            notes.push(ScanNote::PathsCapped);
                         }
                         if inventory.unreadable > 0 {
-                            notes.push(format!("{} content stream(s) could not be decoded and were skipped", inventory.unreadable));
+                            notes.push(ScanNote::StreamsUndecoded { count: inventory.unreadable });
                         }
                         filled_boxes(&inventory.items)
                     }
                     Some(Err(e)) => {
-                        notes.push(format!("the page's paths could not be read: {e}"));
+                        notes.push(ScanNote::PathsUnreadable { error: e.to_string() });
                         Vec::new()
                     }
                     None => {
-                        notes.push("the document can't be read for editing, so its images and paths were not looked at".into());
+                        notes.push(ScanNote::NotEditable);
                         Vec::new()
                     }
                 };
@@ -1822,6 +1823,7 @@ pub mod export;
 pub mod games_store;
 pub mod keys;
 pub mod links;
+pub mod notes;
 pub mod office;
 mod page_key;
 pub mod reference_store;

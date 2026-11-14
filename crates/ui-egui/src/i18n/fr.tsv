@@ -3480,3 +3480,52 @@ the move's comment	Move comment	Commentaire du coup
 	mates in {m}	mate en {m}
 	supposes castling is allowed	suppose le roque permis
 	Mate in {n}: both sides mate, so who moves stays assumed	Mat en {n} : les deux camps matent, donc le trait reste supposé
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	La page dessine plus de tracés que ceux qui sont examinés ; les autres ont été ignorés.
+	Content streams that couldn't be decoded and were skipped: {n}	Flux de contenu qui n'ont pas pu être décodés et ont été ignorés : {n}
+	The page's paths couldn't be read: {e}	Les tracés de la page n'ont pas pu être lus : {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Le document ne peut pas être lu pour l'édition, donc ses images et ses tracés n'ont pas été examinés.
+	The page's text couldn't be read: {e}	Le texte de la page n'a pas pu être lu : {e}
+	Only the first {n} of the page's {total} images were looked at.	Seules les {n} premières des {total} images de la page ont été examinées.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Images non rognées, car les pixels des images de la page dépassent le budget de l'analyse : {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagramme {d} : les deux camps matent en {n}, donc le trait reste supposé.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Un diagramme offre {offered} ppp ; il a été lu à {max} ppp au plus (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	La page est trop grande pour être rendue à {wanted} ppp ; ses diagrammes ont été lus à {read} ppp.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	La page n'a pas pu être rendue à {wanted} ppp pour la lecture ({e}) ; elle a été lue à {read} ppp.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagramme {d} : la lecture a changé depuis sa correction (maintenant {fen}) ; la correction est conservée.
+	The frames around text were not looked for: {e}	Les cadres autour du texte n'ont pas été recherchés : {e}
+	The lines set bolder were not looked for: {e}	Les lignes plus grasses que le corps du texte n'ont pas été recherchées : {e}
+	The words set in bold were not looked for: {e}	Les mots en gras n'ont pas été recherchés : {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p} % de la hauteur de la page contient trop d'encre fine pour être du texte (une image ou une numérisation poussiéreuse) ; ces bandes n'ont pas été lues.
+	The general OCR failed ({e}); the glyph reader read the prose too.	L'OCR général a échoué ({e}) ; le lecteur de glyphes a aussi lu la prose.
+	Chess OCR failed: {e}	L'OCR d'échecs a échoué : {e}
+	The page couldn't be rendered for chess OCR: {e}	La page n'a pas pu être rendue pour l'OCR d'échecs : {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	L'OCR d'échecs a été demandé, mais il nécessite le modèle chess-glyphs.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	La police {font} ressemble à une police d'échecs mais n'est pas dans le catalogue ; son texte a été gardé tel qu'il s'extrait.
+	The page has no visible area; it is left out.	La page n'a pas de zone visible ; elle est laissée de côté.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Les paragraphes de la page n'ont pas pu être lus ({e}) ; ses lignes ont été regroupées selon l'espacement.
+	The page's diagrams couldn't be read; they are left out.	Les diagrammes de la page n'ont pas pu être lus ; ils sont laissés de côté.
+	A correction ({id}) was not used: {e}	Une correction ({id}) n'a pas été utilisée : {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	La notation descriptive ({examples}) n'est pas prise en charge ; ses coups n'ont pas été lus.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Le document contient {n} parties, le maximum qu'il garde : à partir d'ici, aucune partie ne commence.
+	This page couldn't be read: {e}	Impossible de lire cette page : {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (l'OCR d'échecs nécessite le modèle chess-glyphs)
+	the page has no text layer	la page n'a pas de couche de texte
+	the text layer has two-byte codes with no Unicode text	la couche de texte a des codes sur deux octets sans texte Unicode
+	the text layer extracts as replacement characters	la couche de texte s'extrait en caractères de remplacement
+	the text layer's Unicode map is dead	la table Unicode de la couche de texte est morte
+	chess-font glyphs that couldn't be resolved: {n}	glyphes de police d'échecs qui n'ont pas pu être résolus : {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	coups avec un symbole parasite à la place de la pièce, là où une couche d'OCR antérieure a perdu les figurines : {n}
+	the text layer is invisible text over an image of the page: another program's OCR	la couche de texte est du texte invisible sur une image de la page : l'OCR d'un autre programme
+	no piece model is loaded	aucun modèle de pièces n'est chargé
+	the page raster's resolution is not a positive number	la résolution de l'image de la page n'est pas un nombre positif
+	the diagram's box or corners are not finite numbers on this page	le cadre ou les coins du diagramme ne sont pas des nombres finis sur cette page
+	the diagram lies outside the page raster	le diagramme se trouve hors de l'image de la page
+	the diagram's corners do not form a quadrilateral	les coins du diagramme ne forment pas un quadrilatère
+	the page has more diagrams than are read on one page	la page a plus de diagrammes qu'il n'en est lu sur une page
+	the piece model failed: {e}	le modèle de pièces a échoué : {e}
+	the piece model's output is not a probability matrix: {e}	la sortie du modèle de pièces n'est pas une matrice de probabilités : {e}
+	Back to Diagrams	Revenir aux diagrammes
+	Tools panel collapsed	Panneau Outils réduit
+	Show the page (F6)	Afficher la page (F6)
+	The board is in the column beside.	L’échiquier est dans la colonne voisine.

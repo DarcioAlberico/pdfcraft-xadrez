@@ -40,13 +40,14 @@ use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
 
-/// The panel's tabs. The study board that was a third tab is the Board panel since T5c (D11 b);
-/// the tab is not saved, so no setting names it.
+/// The Chess column's tabs (plan A9-I0a, §2.8.0). The study board, a panel of its own since T5c
+/// (D11 b), is a tab of the column again; the tab is not saved, so no setting names it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChessTab {
     #[default]
     Diagrams,
     Text,
+    Board,
 }
 
 /// One page read as text.
@@ -60,7 +61,7 @@ pub struct PageText {
     /// Read with chess OCR (not the text layer).
     pub ocr: bool,
     /// Why the page's layer cannot be believed, when it cannot (and OCR did not read it).
-    pub needs_ocr: Option<String>,
+    pub needs_ocr: Option<pdfcraft_engine::chess::NeedsOcr>,
     pub notes: Vec<String>,
     /// The diagrams' boards, by block index.
     boards: Vec<(usize, TextureHandle)>,
@@ -516,7 +517,7 @@ pub fn text_tab(
         } else {
             tl!("This page's text layer can't be believed ({e}): read it with chess OCR.")
         };
-        ui.label(egui::RichText::new(crate::i18n::fmt(said, &[("e", why)])).small().color(t.text_muted));
+        ui.label(egui::RichText::new(crate::i18n::fmt(said, &[("e", &crate::chess_reasons::reason_text(why))])).small().color(t.text_muted));
     }
     for n in &x.notes {
         ui.label(egui::RichText::new(n).small().color(t.text_muted));
@@ -985,8 +986,10 @@ impl PdfCraftApp {
                         let pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
                         let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
                         let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
-                        let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
-                        if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
+                        // The engine's notes, said here (plan A9-I5).
+                        let no_model = read.notes.iter().any(|(_, n)| *n == pdfcraft_engine::chess::ScanNote::OcrNeedsGlyphModel);
+                        let mut notes: Vec<String> = read.notes.iter().map(|(_, n)| crate::chess_reasons::reason_text(n)).collect();
+                        if ocr && read.ocr_pages.is_empty() && !no_model {
                             notes.push(tl!("Chess OCR read nothing on this page.").to_string());
                         }
                         // The choices made on the page go to its moves as read now (plan A9-L1b).

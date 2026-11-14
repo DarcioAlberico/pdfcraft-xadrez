@@ -55,7 +55,7 @@ pub struct GameSpanRead {
     /// The book's cipher as the pages read taught it.
     pub cipher: pdfcraft_chessvision::cipher::BookCipher,
     /// What reading the other pages noted, page by page (0-based).
-    pub notes: Vec<(usize, String)>,
+    pub notes: Vec<(usize, super::ScanNote)>,
 }
 
 /// The pages walked again as one document, and the node of the move at `at` in it.
@@ -190,8 +190,8 @@ impl Session {
                     notes.extend(read.notes);
                     read.doc.pages.into_iter().next()
                 }
-                Err(e) => {
-                    notes.push((p, e));
+                Err(error) => {
+                    notes.push((p, super::ScanNote::PageNotRead { error }));
                     None
                 }
             }
