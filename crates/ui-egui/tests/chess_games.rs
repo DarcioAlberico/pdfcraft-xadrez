@@ -525,6 +525,7 @@ fn the_order_and_the_names_come_back_in_the_next_session() {
         h.run_steps(2);
         assert_eq!(listed(h.state()), (vec!["B".to_owned(), "A".to_owned(), "Werle–Jianu".to_owned()], 1));
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         (listed(h.state()), movetexts(h.state()))
     };
     let h = session(&store);

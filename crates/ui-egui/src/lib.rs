@@ -73,6 +73,7 @@ mod chess_ui;
 mod chess_unsaved;
 mod chess_window;
 pub use chess_window::{ChessWindowTab, SurfaceFailuresFn};
+mod chess_writer;
 mod chrome;
 mod combine_grid;
 mod image_pick;
