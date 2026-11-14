@@ -3824,3 +3824,38 @@ fn a_running_apps_games_are_merged_into_only_when_asked() {
     assert_eq!(ok(&mut cli, "chess_games", json!({ "doc": doc, "pgn": "1. c4 *\n" }))["store"]["games"], 3);
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N8: `chess_evals` reads the engine's evaluations kept for a document (the one of a
+/// position, or the newest first), leaves out what it can't read, makes nothing, and its store
+/// stays inside the root.
+#[test]
+fn chess_evals_reads_what_is_kept_inside_the_root() {
+    let (base, root) = workdir("evals");
+    let (mut a, doc) = opened(&root);
+    let none = ok(&mut a, "chess_evals", json!({ "doc": doc }));
+    assert_eq!((none["positions"].as_u64(), none["evals"].as_array().map(Vec::len)), (Some(0), Some(0)), "{none:#}");
+    assert!(!root.join(".pdfcraft").exists(), "reading makes no folder");
+    let file = root.join(".pdfcraft/chess-evals").join(none["file"].as_str().unwrap());
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+    let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -";
+    let mut evals = serde_json::Map::new();
+    evals.insert(start.into(), json!({ "depth": 20, "cp": 25, "pv": ["e2e4", "e7e5"], "engine": "Stockfish", "at": 10 }));
+    evals.insert(after_e4.into(), json!({ "depth": 18, "mate": -3, "bound": "lower", "pv": ["e7e5"], "at": 20 }));
+    evals.insert("not a position".into(), json!({ "depth": 1, "cp": 0, "pv": [], "at": 1 }));
+    let kept = json!({ "format": "pdfcraft-chess-evals", "version": 1, "doc": { "pages": 1 }, "evals": evals });
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+    let all = ok(&mut a, "chess_evals", json!({ "doc": doc }));
+    assert_eq!((all["positions"].as_u64(), all["skipped"].as_u64()), (Some(2), Some(1)), "{all:#}");
+    assert_eq!(all["evals"][0]["position"], after_e4, "the newest first: {all:#}");
+    assert_eq!((all["evals"][0]["mate"].as_i64(), all["evals"][0]["bound"].as_str()), (Some(-3), Some("lower")));
+    let one = ok(&mut a, "chess_evals", json!({ "doc": doc, "fen": format!("{start} 5 9"), "limit": 1 }));
+    assert_eq!((one["evals"][0]["depth"].as_u64(), one["evals"][0]["cp"].as_i64()), (Some(20), Some(25)), "{one:#}");
+    assert!(a.call("chess_evals", &json!({ "doc": doc, "fen": "nonsense" })).is_err());
+    match a.call("chess_evals", &json!({ "doc": doc, "evals_store": "../outside/evals" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a store outside the root accepted: {other:?}"),
+    }
+    assert!(!base.join("outside").join("evals").exists());
+    let _ = std::fs::remove_dir_all(base);
+}
