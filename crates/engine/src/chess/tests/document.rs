@@ -578,3 +578,67 @@ fn a_page_in_descriptive_notation_says_so_in_its_notes() {
     assert!(read.notes.iter().any(|(p, n)| *p == 0 && n.to_string() == said), "{:?}", read.notes);
     assert!(read.doc.games.is_empty());
 }
+
+/// A synthetic book (plan A9-N6): two chapters (a 24 pt heading each) and three games, each under
+/// a header as ChessBase prints it (the players' line, the event's) and with its moves.
+pub(super) fn book_of_two_chapters() -> Vec<u8> {
+    let page = |chapter: &str, games: &[(&str, &str)]| {
+        let mut c = helv(40.0, 24.0, chapter);
+        let mut top = 100.0;
+        for (players, event) in games {
+            c.push_str(&helv(top, 11.0, players));
+            c.push_str(&helv(top + 60.0, 11.0, event));
+            c.push_str(&helv(top + 120.0, 11.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6"));
+            top += 200.0;
+        }
+        c
+    };
+    helvetica_pages(&[
+        page(
+            "Chapter 1",
+            &[
+                ("(1) Fischer,Robert (2760) - Spassky,Boris (2690) [C95]", "Siegen ol (5), 1970"),
+                ("(2) Tal,Mikhail - Botvinnik,Mikhail", "Moscow, 1960"),
+            ],
+        ),
+        page("Chapter 2", &[("(3) Carlsen,Magnus - Anand,Viswanathan", "Chennai (9), 2013")]),
+    ])
+}
+
+/// Plan A9-N6 (A8-13): the book's chapters and games become its outline, Chapters ▸ Games,
+/// numbered and titled as an index prints them; made under one bookmark of their own in one
+/// step, which undone leaves the PDF as it was, byte for byte.
+#[test]
+fn a_books_chapters_and_games_become_its_bookmarks_in_one_undoable_step() {
+    use pdfcraft_chessvision::doc::bookmarks::{self, Include};
+    let (mut s, id) = open(book_of_two_chapters());
+    let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let entries = bookmarks::outline(&read.doc, Include::default(), "Exercise");
+    let tree: Vec<(u8, &str, u32)> = entries.iter().map(|e| (e.level, e.title.as_str(), e.page)).collect();
+    assert_eq!(
+        tree,
+        [
+            (1, "Chapter 1", 0),
+            (2, "1. Fischer–Spassky, Siegen ol 1970", 0),
+            (2, "2. Tal–Botvinnik, Moscow 1960", 0),
+            (1, "Chapter 2", 1),
+            (2, "3. Carlsen–Anand, Chennai 2013", 1),
+        ],
+        "{:?}",
+        read.doc.pages.iter().flat_map(|p| &p.blocks).collect::<Vec<_>>()
+    );
+    let before = s.get(id).unwrap().bytes.clone();
+    let outline =
+        entries.iter().map(|e| crate::OutlineEntry { level: e.level, title: e.title.clone(), page: e.page as usize, element: None }).collect();
+    s.apply(id, crate::Edit::AddBookmarkTree { title: "Chess".into(), entries: outline }).unwrap();
+    let doc = s.get(id).unwrap();
+    assert_eq!(doc.can_undo(), Some("Add chess bookmarks"));
+    let top: Vec<&str> = doc.info.outline.iter().map(|i| i.title.as_str()).collect();
+    assert_eq!(top, ["Chess"]);
+    let chapters: Vec<&str> = doc.info.outline[0].children.iter().map(|i| i.title.as_str()).collect();
+    assert_eq!(chapters, ["Chapter 1", "Chapter 2"]);
+    assert_eq!(doc.info.outline[0].children[0].children.len(), 2, "two games under the first chapter");
+    s.undo(id).unwrap();
+    assert!(*s.get(id).unwrap().bytes == *before, "undone, the PDF is as it was, byte for byte");
+    assert!(s.get(id).unwrap().info.outline.is_empty());
+}

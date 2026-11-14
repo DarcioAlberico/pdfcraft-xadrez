@@ -124,8 +124,33 @@ pub enum Message {
     Info(Info),
     /// The search ended with this move (`None` for `bestmove (none)` or `0000`: no legal move).
     BestMove(Option<String>),
-    /// Anything else (`id author`, `option …`, `info string …`, noise).
+    /// An option the engine announced in its handshake (plan A9-N8).
+    Option(EngineOption),
+    /// Anything else (`id author`, an option that cannot be read, `info string …`, noise).
     Other,
+}
+
+/// Longest option name kept, in bytes: a longer one is not an option this board sets.
+pub const MAX_OPTION_NAME: usize = 64;
+
+/// The value an engine option takes (`type …` of its `option` line).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OptionKind {
+    /// A whole number from `min` to `max` (`type spin`).
+    Spin { min: i64, max: i64 },
+    /// Text (`type string`).
+    Text,
+    /// Anything else (`check`, `combo`, `button`): none this board sets.
+    Other,
+}
+
+/// An option an engine announced: `option name Hash type spin default 16 min 1 max 33554432`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EngineOption {
+    /// As the engine spelt it, its words joined by single spaces: what `setoption name` gives
+    /// back. Printable, at most [`MAX_OPTION_NAME`] bytes.
+    pub name: String,
+    pub kind: OptionKind,
 }
 
 /// Read one engine line. Never fails: what cannot be read is [`Message::Other`], and an `info`
@@ -147,8 +172,56 @@ pub fn parse(line: &str) -> Message {
         },
         Some("bestmove") => Message::BestMove(words.next().filter(|m| is_move(m)).map(str::to_owned)),
         Some("info") => parse_info(words).map_or(Message::Other, Message::Info),
+        Some("option") => parse_option(words).map_or(Message::Other, Message::Option),
         _ => Message::Other,
     }
+}
+
+/// The option an `option` line announces, after the word `option`: its name (the words between
+/// `name` and `type`) and its kind; a spin's bounds are its `min` and `max`. `None` when the line
+/// does not say these, the name is empty, too long or holds a character that is not printable,
+/// or a spin's bounds are missing or the wrong way round.
+fn parse_option<'a>(mut words: impl Iterator<Item = &'a str>) -> Option<EngineOption> {
+    if words.next() != Some("name") {
+        return None;
+    }
+    let mut name = String::new();
+    loop {
+        let word = words.next()?;
+        if word == "type" {
+            break;
+        }
+        if !name.is_empty() {
+            name.push(' ');
+        }
+        name.push_str(word);
+        if name.len() > MAX_OPTION_NAME {
+            return None;
+        }
+    }
+    if name.is_empty() || name.chars().any(|c| c.is_control()) {
+        return None;
+    }
+    let kind = match words.next()? {
+        "spin" => {
+            let (mut min, mut max) = (None, None);
+            while let Some(key) = words.next() {
+                match key {
+                    "min" => min = words.next().and_then(|w| w.parse::<i64>().ok()),
+                    "max" => max = words.next().and_then(|w| w.parse::<i64>().ok()),
+                    _ => {}
+                }
+            }
+            let (min, max) = (min?, max?);
+            if min > max {
+                return None;
+            }
+            OptionKind::Spin { min, max }
+        }
+        "string" => OptionKind::Text,
+        _ => OptionKind::Other,
+    };
+    Some(EngineOption { name, kind })
 }
 
 /// The fields of an `info` line after the word `info`. `None` for `info string …` (free text).
@@ -288,8 +361,34 @@ mod tests {
         assert_eq!(parse("bestmove (none)"), Message::BestMove(None));
         assert_eq!(parse("bestmove 0000"), Message::BestMove(None));
         assert_eq!(parse("info string NNUE evaluation using nn-1111.nnue"), Message::Other);
-        assert_eq!(parse("option name Hash type spin default 16 min 1 max 33554432"), Message::Other);
+        assert_eq!(
+            parse("option name Hash type spin default 16 min 1 max 33554432"),
+            Message::Option(EngineOption { name: "Hash".into(), kind: OptionKind::Spin { min: 1, max: 33_554_432 } })
+        );
         assert_eq!(parse(""), Message::Other);
+    }
+
+    /// Plan A9-N8: the options an engine announces, as it spells them; what cannot be read is
+    /// not one.
+    #[test]
+    fn options_are_read_with_their_names_and_bounds() {
+        let option = |line: &str| match parse(line) {
+            Message::Option(o) => Some(o),
+            _ => None,
+        };
+        assert_eq!(
+            option("option name Threads type spin default 1 min 1 max 1024"),
+            Some(EngineOption { name: "Threads".into(), kind: OptionKind::Spin { min: 1, max: 1024 } })
+        );
+        assert_eq!(option("option name SyzygyPath type string default <empty>").map(|o| o.kind), Some(OptionKind::Text));
+        assert_eq!(option("option  name Skill   Level type spin default 20 min 0 max 20").map(|o| o.name).as_deref(), Some("Skill Level"));
+        assert_eq!(option("option name Ponder type check default false").map(|o| o.kind), Some(OptionKind::Other));
+        assert_eq!(option("option name Hash type spin default 16 min 64 max 1"), None, "bounds the wrong way round");
+        assert_eq!(option("option name Hash type spin default 16 max 64"), None, "no min");
+        assert_eq!(option("option name type string"), None, "no name");
+        assert_eq!(option("option Hash type spin min 1 max 2"), None);
+        assert_eq!(option(&format!("option name {} type string", "x".repeat(MAX_OPTION_NAME + 1))), None);
+        assert_eq!(option("option name Bad\u{7}Name type string"), None, "a control character");
     }
 
     #[test]
