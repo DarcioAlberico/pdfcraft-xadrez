@@ -14,8 +14,14 @@
 //! deeper than [`MAX_DEPTH`], or reached once [`MAX_OBJECTS`] objects were hashed for the document
 //! state, gets no key, and its scan lasts only as long as the document state it was made in, as
 //! every scan did before.
+//!
+//! **What is hashed once outlives an edit** (plan A9-I3b, §2.4): the memo keeps, for each object
+//! it hashed, the objects it refers to, so an edit that changed some objects
+//! ([`pdfcraft_cos::ReadState::changed`]) forgets the hashes of those and of whatever reaches them,
+//! and nothing else ([`KeyMemo::forget`]): a new Title hashes no page again, an edit to one page
+//! hashes that page.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::hash::{DefaultHasher, Hasher};
 
 use pdfcraft_cos::{Dict, Document as Cos, ObjRef, Object};
@@ -73,16 +79,29 @@ impl Wide {
     }
 }
 
-/// What hashing one document state's pages has learned so far: every indirect object's hash is
-/// computed once and shared by the pages that use it (a font on every page is hashed once).
-/// Only valid for the document state it was made in.
+/// What hashing a document's pages has learned so far: every indirect object's hash is computed
+/// once and shared by the pages that use it (a font on every page is hashed once), and each
+/// page's key. Valid for the document state it was made in, and, once told what an edit changed
+/// ([`KeyMemo::forget`]), for the next.
 #[derive(Default)]
 pub(crate) struct KeyMemo {
     objects: HashMap<u32, Option<u128>>,
     /// Objects being hashed: a reference back to one of them is a cycle, hashed by number.
     open: HashSet<u32>,
+    /// The objects (a page, the catalog, an object) being hashed, innermost last: the one a
+    /// reference found now is in.
+    path: Vec<u32>,
+    /// What each object hashed refers to (and a page, the page-tree nodes it inherits from): what
+    /// is hashed again when one of those changes.
+    uses: HashMap<u32, HashSet<u32>>,
     hashed: usize,
-    catalog: Option<Option<u128>>,
+    /// The catalog's hash, with the catalog it was made from.
+    catalog: Option<(Option<ObjRef>, Option<u128>)>,
+    /// Each page's key, by its object, all made with the catalog's hash `pages_catalog`.
+    pages: HashMap<u32, Option<PageKey>>,
+    pages_catalog: Option<u128>,
+    /// Pages whose key was worked out rather than taken from here (plan A9-I3b's measure).
+    pub(crate) pages_hashed: usize,
 }
 
 impl KeyMemo {
@@ -90,22 +109,76 @@ impl KeyMemo {
     /// too many or too deep objects).
     pub(crate) fn page(&mut self, cos: &Cos, page: ObjRef) -> Option<PageKey> {
         let catalog = self.catalog(cos)?;
+        if self.pages_catalog != Some(catalog) {
+            self.pages.clear();
+            self.pages_catalog = Some(catalog);
+        }
+        if let Some(known) = self.pages.get(&page.num) {
+            return *known;
+        }
+        self.pages_hashed = self.pages_hashed.saturating_add(1);
+        self.uses.remove(&page.num);
+        let key = self.page_key(cos, page, catalog);
+        self.pages.insert(page.num, key);
+        key
+    }
+
+    fn page_key(&mut self, cos: &Cos, page: ObjRef, catalog: u128) -> Option<PageKey> {
         let object = cos.get(page);
         let dict = object.as_dict()?;
         let mut h = Wide::new(b"page");
         self.open.insert(page.num);
-        let hashed = self.page_dict(cos, dict, &mut h);
+        self.path.push(page.num);
+        let hashed = self.page_dict(cos, page.num, dict, &mut h);
+        self.path.pop();
         self.open.remove(&page.num);
         hashed?;
         h.u128(catalog);
         Some(h.finish())
     }
 
+    /// The document changed: `changed` (by number, [`pdfcraft_cos::ReadState::changed`]) are the
+    /// objects it reads differently now. The hashes of those, and of every object, page and
+    /// catalog that refers to one of them however deep, are forgotten; the rest stand. A page
+    /// that had no key is worked out again.
+    pub(crate) fn forget(&mut self, changed: &BTreeSet<u32>) {
+        let mut users: HashMap<u32, Vec<u32>> = HashMap::new();
+        for (from, to) in &self.uses {
+            for t in to {
+                users.entry(*t).or_default().push(*from);
+            }
+        }
+        let mut gone: HashSet<u32> = changed.iter().copied().collect();
+        let mut queue: Vec<u32> = changed.iter().copied().collect();
+        while let Some(n) = queue.pop() {
+            for u in users.get(&n).into_iter().flatten() {
+                if gone.insert(*u) {
+                    queue.push(*u);
+                }
+            }
+        }
+        self.objects.retain(|n, _| !gone.contains(n));
+        self.uses.retain(|n, _| !gone.contains(n));
+        self.pages.retain(|n, key| key.is_some() && !gone.contains(n));
+        if self.catalog.is_some_and(|(root, _)| root.is_none_or(|r| gone.contains(&r.num))) {
+            self.catalog = None;
+        }
+        self.hashed = self.objects.len();
+    }
+
+    /// `to` is used by the object being hashed (the innermost of [`Self::path`]).
+    fn used(&mut self, to: u32) {
+        if let Some(&from) = self.path.last() {
+            self.uses.entry(from).or_default().insert(to);
+        }
+    }
+
     /// The page's entries in order, except its `/Parent` (the page tree reaches every page) and
     /// the inheritable attributes, then each of those as the page has it, its own or the nearest
     /// ancestor's: restructuring the page tree copies inherited attributes onto the pages, which
-    /// changes nothing they draw.
-    fn page_dict(&mut self, cos: &Cos, page: &Dict, h: &mut Wide) -> Option<()> {
+    /// changes nothing they draw. The page-tree nodes looked through are the page's to hash again
+    /// when one changes.
+    fn page_dict(&mut self, cos: &Cos, num: u32, page: &Dict, h: &mut Wide) -> Option<()> {
         for (k, v) in page.iter() {
             if k.as_slice() == b"Parent" || INHERITED.contains(&k.as_slice()) {
                 continue;
@@ -113,9 +186,10 @@ impl KeyMemo {
             h.bytes(k);
             self.object(cos, v, h, 1)?;
         }
+        let mut ancestors = Vec::new();
         for key in INHERITED {
             h.bytes(key);
-            match effective(cos, page, key) {
+            match effective(cos, page, key, &mut ancestors) {
                 Some(v) => {
                     h.tag(20);
                     self.object(cos, &v, h, 1)?;
@@ -123,17 +197,25 @@ impl KeyMemo {
                 None => h.tag(21),
             }
         }
+        self.uses.entry(num).or_default().extend(ancestors);
         Some(())
     }
 
     /// The catalog entries every page's drawing depends on.
     fn catalog(&mut self, cos: &Cos) -> Option<u128> {
-        if let Some(known) = self.catalog {
+        let root = cos.root();
+        if let Some((made_from, known)) = self.catalog
+            && made_from == root
+        {
             return known;
+        }
+        if let Some(r) = root {
+            self.uses.remove(&r.num);
+            self.path.push(r.num);
         }
         let mut h = Wide::new(b"catalog");
         let found = (|| {
-            let Some(root) = cos.root() else { return Some(()) };
+            let Some(root) = root else { return Some(()) };
             let catalog = cos.get(root);
             let Some(dict) = catalog.as_dict() else { return Some(()) };
             if let Some(oc) = dict.get(b"OCProperties") {
@@ -152,8 +234,11 @@ impl KeyMemo {
             }
             Some(())
         })();
+        if root.is_some() {
+            self.path.pop();
+        }
         let key = found.map(|()| h.finish());
-        self.catalog = Some(key);
+        self.catalog = Some((root, key));
         key
     }
 
@@ -237,6 +322,7 @@ impl KeyMemo {
 
     /// The hash of what `r` refers to ([`Self::composite`]), computed once per document state.
     fn indirect(&mut self, cos: &Cos, r: ObjRef, depth: usize) -> Option<u128> {
+        self.used(r.num);
         if let Some(known) = self.objects.get(&r.num) {
             return *known;
         }
@@ -261,7 +347,10 @@ impl KeyMemo {
             return key;
         }
         self.open.insert(r.num);
+        self.path.push(r.num);
+        self.uses.remove(&r.num);
         let key = self.composite(cos, &object, depth);
+        self.path.pop();
         self.open.remove(&r.num);
         // A key cut short by the depth limit depends on the path that reached the object, so
         // only finished ones are kept (a missing one makes the page keyless anyway).
@@ -272,8 +361,9 @@ impl KeyMemo {
     }
 }
 
-/// `key` as `page` has it: its own entry, else the nearest ancestor's in the page tree.
-fn effective(cos: &Cos, page: &Dict, key: &[u8]) -> Option<Object> {
+/// `key` as `page` has it: its own entry, else the nearest ancestor's in the page tree. The
+/// ancestors looked through are added to `through`.
+fn effective(cos: &Cos, page: &Dict, key: &[u8], through: &mut Vec<u32>) -> Option<Object> {
     if let Some(v) = page.get(key) {
         return Some(v.clone());
     }
@@ -284,6 +374,7 @@ fn effective(cos: &Cos, page: &Dict, key: &[u8]) -> Option<Object> {
         if !seen.insert(r.num) {
             return None;
         }
+        through.push(r.num);
         let node = cos.get(r);
         let d = node.as_dict()?;
         if let Some(v) = d.get(key) {

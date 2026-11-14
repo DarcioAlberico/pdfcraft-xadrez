@@ -176,7 +176,14 @@ proptest! {
 fn the_users_figurine_font_is_embedded_for_the_chess_symbols_only() {
     let pieces = PieceSet::geometric();
     let doc = showcase_doc();
-    let font = crate::text_font::from_bytes(b"wOF2 figurine font".to_vec(), "dejavu").unwrap();
+    // A Unicode figurine font, as the export takes it (a WOFF2 is refused when read, plan A9-V5).
+    let font = crate::text_font::TextFont {
+        bytes: b"wOF2 figurine font".to_vec(),
+        format: crate::text_font::FontFormat::Woff2,
+        role: crate::text_font::FontRole::Unicode,
+        family: String::new(),
+        path: None,
+    };
     let html = write(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) });
     // One face, from a data URL, kept to the chess symbols; first in both families.
     assert_eq!(html.matches("@font-face").count(), 1);
@@ -572,4 +579,39 @@ fn a_review_mark_is_said_with_its_reason() {
     assert!(html.contains(".sr{position:absolute;"), "{html}");
     let html = write(&doc, &HtmlOptions { lang: "pt-BR", review_marks: false, ..options(&pieces) });
     assert!(!html.contains("class=\"sr\""), "{html}");
+}
+
+/// Plan A9-N2 (A8-03): the book's variation lost its brackets, so the reader played 3...Nf6 in the
+/// main line and could not play White's a6 after it. Linked to the book's PGN, the HTML gives that
+/// move the PGN's position as its `data-fen`, marked as the PGN's (`linked`,
+/// `data-reference`), its printed text and the reader's status kept. `4.Ba4`, which the reader
+/// could play (from the wrong position), keeps the reader's position.
+#[test]
+fn a_move_the_reader_could_not_play_has_the_books_pgn_position() {
+    use crate::doc::reference::{ReferenceIndex, link};
+    let pieces = PieceSet::geometric();
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 a6 4.Ba4")]);
+    let mut doc = build_page(&input(0, &text, &[], &[], &[]));
+    let status: Vec<MoveStatus> = moves(&doc.pages[0]).into_iter().map(|(_, s)| s).collect();
+    assert_eq!(status[6..], [MoveStatus::Illegal, MoveStatus::Valid], "{status:?}");
+    let index = ReferenceIndex::from_pgn("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 (3...Nf6 4.O-O) 4.Ba4 *").unwrap();
+    link(&mut doc, &index);
+    let after = |moves: &[&str]| {
+        let mut game = pdfcraft_chess::game::Game::standard();
+        for m in moves {
+            game.play_san(m).unwrap();
+        }
+        game.fen()
+    };
+    let html = write(&doc, &options(&pieces));
+    let a6 = after(&["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+    let expected = format!(
+        "<span class=\"move linked review\" data-san=\"a6\" data-fen=\"{a6}\" data-reference=\"recovered\" data-reference-san=\"a6\" data-status=\"illegal\">a6</span>"
+    );
+    assert!(html.contains(&expected), "{html}");
+    assert_eq!(html.matches("data-reference=").count(), 1, "only the move the reader could not play: {html}");
+    // Without the PGN the move has no position, as before.
+    let plain = write(&build_page(&input(0, &text, &[], &[], &[])), &options(&pieces));
+    assert_eq!(attrs(&plain, "data-fen").len(), 7, "{plain}");
+    assert!(!plain.contains("data-reference"));
 }

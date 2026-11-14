@@ -203,6 +203,135 @@ fn three_boards(px: u32) -> Vec<u8> {
     pdf(&content, "ChessMerida", Some((px, px, &image)), "")
 }
 
+/// A PDF of `contents.len()` pages of 600 × 800 pt, page `i` drawing `contents[i]`, with the
+/// font `F1` (`/BaseFont font`, every code 1000 units wide) and an 8-bit gray image `Im1`.
+fn pdf_pages(contents: &[String], font: &str, image: (u32, u32, &[u8])) -> Vec<u8> {
+    let n = contents.len();
+    let widths = vec!["1000"; 95].join(" ");
+    // 1 catalog, 2 pages, 3.. pages, then their contents, then the font and the image.
+    let (font_obj, image_obj) = (3 + 2 * n, 4 + 2 * n);
+    let kids: String = (0..n).map(|i| format!(" {} 0 R", 3 + i)).collect();
+    let mut objs: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        format!("<< /Type /Pages /Kids [{kids} ] /Count {n} /MediaBox [0 0 600 800] >>").into_bytes(),
+    ];
+    for i in 0..n {
+        objs.push(
+            format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 {font_obj} 0 R >> /XObject << /Im1 {image_obj} 0 R >> >> >>", 3 + n + i)
+                .into_bytes(),
+        );
+    }
+    for c in contents {
+        let mut s = format!("<< /Length {} >>\nstream\n", c.len()).into_bytes();
+        s.extend_from_slice(c.as_bytes());
+        s.extend_from_slice(b"\nendstream");
+        objs.push(s);
+    }
+    objs.push(format!("<< /Type /Font /Subtype /Type1 /BaseFont /{font} /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes());
+    let (w, h, data) = image;
+    let mut im = format!(
+        "<< /Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /DeviceGray /BitsPerComponent 8 /Length {} >>\nstream\n",
+        data.len()
+    )
+    .into_bytes();
+    im.extend_from_slice(data);
+    im.extend_from_slice(b"\nendstream");
+    objs.push(im);
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// A book of `n` pages, each with a font diagram, a vector board and an image of `OPENING`,
+/// placed a little differently on each page.
+fn book_of_boards(n: usize) -> Vec<u8> {
+    let image = rasterize(OPENING, &PieceSet::geometric(), 200);
+    let contents: Vec<String> = (0..n)
+        .map(|i| {
+            let shift = (i % 4) as f32 * 10.0;
+            format!(
+                "{}{}q 160 0 0 160 {} 580 cm /Im1 Do Q\n",
+                font_board(60.0 + shift, 60.0, MERIDA_START),
+                vector_board(60.0, 240.0 + shift),
+                360.0 + shift
+            )
+        })
+        .collect();
+    pdf_pages(&contents, "ChessMerida", (200, 200, &image))
+}
+
+/// Plan A9-V10a (R8-02): a scan on several workers finds what a scan on one finds, page by page
+/// and in page order, the diagrams read with a model; a stop between two pages keeps the pages
+/// scanned from the first, each as the one-worker scan found it.
+#[test]
+fn a_scan_on_several_workers_finds_what_one_finds() {
+    let (s, id) = open(book_of_boards(7));
+    let model = StandIn::new(OPENING);
+    let one = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run_with(Some(&model), |_, _| true);
+    let mut told = Vec::new();
+    let many = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run_parallel_with(Some(&model), 3, |done, total| {
+        told.push((done, total));
+        true
+    });
+    assert_eq!(one.pages.len(), 7);
+    assert_eq!(many.pages.iter().map(|p| p.page).collect::<Vec<_>>(), (0..7).collect::<Vec<_>>());
+    assert_eq!(many.pages, one.pages, "the same pages, field by field");
+    assert!(
+        one.pages.iter().all(|p| p.diagrams.len() == 3 && p.error.is_none()),
+        "{:?}",
+        one.pages.iter().map(|p| p.diagrams.len()).collect::<Vec<_>>()
+    );
+    assert_eq!(told.first(), Some(&(0, 7)));
+    assert_eq!(told.last(), Some(&(7, 7)));
+    assert!(told.windows(2).all(|w| w[0].0 <= w[1].0), "{told:?}");
+    // Stopped once two pages are in: the pages from the first, each the same.
+    let stopped = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run_parallel_with(Some(&model), 3, |done, _| done < 2);
+    assert!(stopped.pages.len() >= 2 && stopped.pages.len() <= 7, "{}", stopped.pages.len());
+    for (a, b) in stopped.pages.iter().zip(&one.pages) {
+        assert_eq!(a, b);
+    }
+    // One worker is a scan a page at a time.
+    let single = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run_parallel_with(Some(&model), 1, |_, _| true);
+    assert_eq!(single.pages, one.pages);
+}
+
+/// Plan A9-V10a (R8-02): on a book given by `PDFCRAFT_CHESS_PERF_BOOK` (its first 100 pages, the
+/// diagrams found), the scan on the default workers takes at most 0.4 of the time on one.
+/// `PDFCRAFT_CHESS_PERF_BOOK=book.pdf cargo test --release -p pdfcraft-engine --lib perf_scan_on_the_cores -- --ignored --nocapture`.
+#[test]
+#[ignore = "a timing, in release, on a book of the user's"]
+fn perf_scan_on_the_cores() {
+    let Some(path) = std::env::var_os("PDFCRAFT_CHESS_PERF_BOOK") else {
+        println!("PERF scan_on_the_cores skipped: PDFCRAFT_CHESS_PERF_BOOK is not set");
+        return;
+    };
+    let bytes = std::fs::read(&path).unwrap();
+    let (s, id) = open(bytes);
+    let pages: Vec<usize> = (0..s.get(id).unwrap().info.pages.len().min(100)).collect();
+    let t = std::time::Instant::now();
+    let one = s.chess_scan_job(id, &pages, &no_model(), false).unwrap().run_with(None, |_, _| true);
+    let sequential = t.elapsed().as_secs_f64();
+    let workers = ChessScanJob::default_workers();
+    let t = std::time::Instant::now();
+    let many = s.chess_scan_job(id, &pages, &no_model(), false).unwrap().run_parallel_with(None, workers, |_, _| true);
+    let parallel = t.elapsed().as_secs_f64();
+    println!("PERF scan_on_the_cores {:.0} ms on {workers} workers, {:.0} ms on one ({} pages)", parallel * 1000.0, sequential * 1000.0, pages.len());
+    assert_eq!(many.pages, one.pages);
+    assert!(parallel <= 0.4 * sequential, "{parallel:.2} s against {sequential:.2} s");
+}
+
 fn open(bytes: Vec<u8>) -> (Session, DocId) {
     let mut s = Session::new();
     let id = s.open("chess.pdf", None, Arc::new(bytes), None).unwrap();
@@ -661,11 +790,23 @@ fn a_job_scanned_a_page_at_a_time_finds_what_it_finds_at_once() {
     assert_eq!(shape(&steps.finish()), [(0, 3)], "stopped after a page");
 }
 
+/// A scan asked to stop after its first page gives that page, read whole, and none of the others
+/// (plan A9-Q4b, finding A7-18: the test asked it to stop before the first page and saw nothing
+/// scanned, which a scanner that reads nothing gives too).
 #[test]
 fn progress_can_stop_a_scan() {
-    let (s, id) = open(three_boards(400));
-    let scan = s.chess_scan_job(id, &[], &no_model(), false).unwrap().run_with(None, |done, _| done == 0 && false);
-    assert!(scan.pages.is_empty());
+    let (mut s, id) = open(three_boards(400));
+    for _ in 0..2 {
+        s.apply(id, Edit::InsertBlankPage { at: 1, width: 600.0, height: 800.0 }).unwrap();
+    }
+    let mut asked = Vec::new();
+    let scan = s.chess_scan_job(id, &[], &no_model(), false).unwrap().run_with(None, |done, total| {
+        asked.push((done, total));
+        done < 1
+    });
+    assert_eq!(scan.pages.iter().map(|p| p.page).collect::<Vec<_>>(), [0], "the first page and no other");
+    assert_eq!(scan.pages[0].diagrams.len(), 3, "the page scanned is found whole");
+    assert_eq!(asked, [(0, 3), (1, 3), (3, 3)], "asked before each page, then told it ended");
 }
 
 #[test]

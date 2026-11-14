@@ -262,6 +262,49 @@ fn moves_of(doc: &ChessDoc) -> Vec<&MoveInline> {
     paragraphs.flat_map(|b| b.inlines()).filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None }).collect()
 }
 
+/// Plan A9-N2 (§2.9): several references, the first outranking the rest. The user's games have
+/// 3...a6 but not the book's 3...Nf6 nor 4.Ba4; the book's PGN has all three. Each move keeps the
+/// link of the first reference that has it, saying which; a recovered move carries the position
+/// after the reference's move. Given the other way round, the book's PGN has them all.
+#[test]
+fn the_first_reference_that_has_a_move_links_it() {
+    let games = ReferenceIndex::from_pgn("[Event \"Mine\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n").unwrap();
+    let book = ReferenceIndex::from_pgn("[Event \"Book\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 (3...Nf6 4.O-O) 4.Ba4 *\n").unwrap();
+    // The variation's brackets were lost: 3...Nf6 is read in the main line, and a6 after it is
+    // White's, illegal.
+    let mut text = played(&[], &["e4", "e5", "Nf3", "Nc6", "Bb5", "Nf6"]);
+    text.extend([mv(None, "a6", MoveStatus::Illegal, None), mv(Some((4, false)), "Ba4", NotReached, None)]);
+    let read = doc(vec![vec![para(text)]]);
+    let mut d = read.clone();
+    let linked = link_all(&mut d, &[&games, &book]);
+    assert_eq!(linked.len(), 2);
+    assert_eq!(linked[0].alignment.counts, LinkCounts { confirmed: 5, recovered: 1, conflict: 0, absent: 2 });
+    assert_eq!(linked[1].alignment.counts, LinkCounts { confirmed: 6, recovered: 2, conflict: 0, absent: 0 });
+    let links: Vec<(LinkKind, usize)> = moves_of(&d).iter().filter_map(|m| m.reference.as_ref().map(|r| (r.kind, r.source))).collect();
+    let (c, r) = (Confirmed, Recovered);
+    assert_eq!(links, [(c, 0), (c, 0), (c, 0), (c, 0), (c, 0), (c, 1), (r, 0), (r, 1)]);
+    let moves = moves_of(&d);
+    let a6 = fen_after(&["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+    assert_eq!(moves[6].reference.as_ref().and_then(|r| r.fen.as_deref()), Some(a6.as_str()));
+    assert_eq!((moves[6].status, &moves[6].review), (MoveStatus::Illegal, &vec![ReviewFlag::FromReference { san: "a6".into() }]));
+    let ba4 = fen_after(&["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4"]);
+    assert_eq!(moves[7].reference.as_ref().and_then(|r| r.fen.as_deref()), Some(ba4.as_str()));
+    assert!(moves[..6].iter().all(|m| m.reference.as_ref().is_some_and(|r| r.fen.is_none())), "only a recovered move carries a position");
+    // The JSON says the reference that is not the first, and reads back.
+    let json = d.to_json().unwrap();
+    assert!(json.contains("\"kind\":\"confirmed\",\"game\":0,\"node\":7,\"source\":1"), "{json}");
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), d);
+    // The book's PGN first: it has every move.
+    let mut other = read.clone();
+    link_all(&mut other, &[&book, &games]);
+    assert!(moves_of(&other).iter().all(|m| m.reference.as_ref().is_some_and(|r| r.source == 0 && r.kind != Absent)));
+    // One reference is `link`; none takes the links away.
+    let mut one = read.clone();
+    assert_eq!(link(&mut one, &book), link_all(&mut read.clone(), &[&book]).remove(0));
+    assert!(link_all(&mut one, &[]).is_empty());
+    assert!(moves_of(&one).iter().all(|m| m.reference.is_none() && m.review.is_empty()));
+}
+
 #[test]
 fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
     let index = ReferenceIndex::from_pgn("[Event \"Ch 1\"]\n\n1.e4 e6 2.d4 d5 3.Nc3 Bb4! 4.e5 c5 *\n").unwrap();
@@ -280,10 +323,12 @@ fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
     assert_eq!(linked.alignment.counts, LinkCounts { confirmed: 6, recovered: 1, conflict: 0, absent: 0 });
     assert!(linked.warnings.is_empty(), "{:?}", linked.warnings);
     let moves = moves_of(&d);
-    assert_eq!(moves[0].reference, Some(MoveReference { kind: Confirmed, game: Some(0), node: Some(1) }));
+    assert_eq!(moves[0].reference, Some(MoveReference { kind: Confirmed, game: Some(0), node: Some(1), source: 0, fen: None }));
     // The caption is the diagram's move; the move after it was recovered, its status kept.
-    assert_eq!(moves[5].reference.map(|r| (r.kind, r.node)), Some((Confirmed, Some(5))));
-    assert_eq!(moves[6].reference, Some(MoveReference { kind: Recovered, game: Some(0), node: Some(6) }));
+    assert_eq!(moves[5].reference.as_ref().map(|r| (r.kind, r.node)), Some((Confirmed, Some(5))));
+    // Plan A9-N2: with the position after the PGN's move, for the exports.
+    let bb4 = Some(fen_after(&["e4", "e6", "d4", "d5", "Nc3", "Bb4"]));
+    assert_eq!(moves[6].reference, Some(MoveReference { kind: Recovered, game: Some(0), node: Some(6), source: 0, fen: bb4 }));
     assert_eq!(moves[6].status, NotReached);
     assert_eq!(moves[6].review, [ReviewFlag::FromReference { san: "Bb4".into() }], "the PGN's move, its glyph aside");
     assert!(moves[..6].iter().all(|m| m.review.is_empty()));
@@ -292,14 +337,14 @@ fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
     link(&mut d, &index);
     assert_eq!(d, once);
     let json = d.to_json().unwrap();
-    assert!(json.contains("\"reference\":{\"kind\":\"recovered\",\"game\":0,\"node\":6}"), "{json}");
+    assert!(json.contains("\"reference\":{\"kind\":\"recovered\",\"game\":0,\"node\":6,\"fen\":\""), "{json}");
     assert_eq!(ChessDoc::from_json(&json).unwrap(), d);
     // A document read before R2 has no links, and reads as one with none.
     let mut plain = doc(vec![vec![para(played(&[], &main))]]);
     let old = plain.to_json().unwrap();
     assert!(!old.contains("reference"), "{old}");
     link(&mut plain, &ReferenceIndex::from_pgn("1.c4 *").unwrap());
-    assert!(moves_of(&plain).iter().all(|m| m.reference.is_some_and(|r| r.kind == Absent && r.game.is_none())));
+    assert!(moves_of(&plain).iter().all(|m| m.reference.as_ref().is_some_and(|r| r.kind == Absent && r.game.is_none())));
 }
 
 #[test]
@@ -456,7 +501,7 @@ fn the_list_and_the_link_agree_on_what_is_the_same_position() {
         reading.fen = fen.clone();
         reading.side_source = if side_assumed { SideSource::Assumed } else { SideSource::Printed };
         let listed = index.has_position(&fen, side_assumed);
-        let confirmed = confirm(d, &index, at);
+        let confirmed = confirm(d, &index, at, 0);
         assert_eq!((listed, confirmed), (has, has), "{fen} (side assumed: {side_assumed}): listed, confirmed");
     }
 }

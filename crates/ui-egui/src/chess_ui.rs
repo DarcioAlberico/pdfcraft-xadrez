@@ -554,6 +554,19 @@ pub(crate) enum ScanWork {
     Steps(Box<StepScan>),
 }
 
+impl ChessRun {
+    /// Wait until the scan's worker is done (its last batches waiting for the next frame) or
+    /// `timeout` passed; whether it is done. A scan run a few pages a frame has nothing off the
+    /// interface thread to wait for: `true`. For tests (plan A9-Q4b, finding A7-15).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn wait(&self, timeout: std::time::Duration) -> bool {
+        match &self.work {
+            ScanWork::Thread(job) => job.wait(timeout),
+            ScanWork::Steps(_) => true,
+        }
+    }
+}
+
 impl ScanWork {
     /// Ask the scan to stop at its next page.
     fn cancel(&mut self) {
@@ -2195,13 +2208,13 @@ mod pick_tests {
         app.views[0].go_to_page(8);
         app.run_inline = false;
         app.chess_text_action(crate::chess_text_ui::TextAction::Diagram(DiagramAt::new(4, 0)));
-        for _ in 0..500 {
+        // The scan's worker is waited for, not the clock (plan A9-Q4b); then a few polls take its
+        // batches and open the editor.
+        assert!(app.chess.run.as_ref().is_some_and(|run| run.wait(std::time::Duration::from_secs(60))), "the scan ran on a worker and ended");
+        for _ in 0..3 {
             app.poll_chess();
-            if app.chess.editor.is_some() && app.chess.run.is_none() {
-                break;
-            }
-            std::thread::sleep(std::time::Duration::from_millis(10));
         }
+        assert!(app.chess.run.is_none(), "the scan is in");
         let ed = app.chess.editor.as_ref().expect("the editor opened");
         assert_eq!((ed.doc, ed.page, ed.index), (id, 4, 0));
         assert!(app.chess.results_of(id).is_some_and(|r| r.diagram(4, 0).is_some()), "the text's page was scanned");

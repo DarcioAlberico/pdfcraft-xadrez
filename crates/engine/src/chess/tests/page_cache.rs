@@ -1,11 +1,11 @@
 //! The scan cache across edits (plan A8 P3a2): an edit reads again only the pages it touched,
 //! pages moved by inserting or removing pages are found at their new index, and an undo reads
-//! nothing again. Counted with `ChessCache::scanned`, on a book of 703 synthetic pages.
+//! nothing again. Counted with `ChessCache::scanned`, on a book of 48 synthetic pages, and of
+//! 703 in the plan's measure, which the everyday tests leave out (plan A9-Q4b, finding A7-17:
+//! about a minute, for an invariant that does not depend on the length).
 
 use super::*;
 
-/// The book's length, as the plan's measure has it ("editing page 5 of 703 reads 1 page").
-const PAGES: usize = 703;
 /// The pages (0-based) with a board set in Chess Merida; the others say their number.
 const BOARDS: [usize; 2] = [4, 40];
 
@@ -73,9 +73,23 @@ fn boards(pages: &[Arc<ChessPage>]) -> Vec<(usize, String)> {
 
 #[test]
 fn an_edit_reads_again_only_the_pages_it_touched() {
-    let (mut s, id) = open(book(PAGES));
+    edits_read_again_only_the_pages_they_touched(48);
+}
+
+/// The plan's measure, "editing page 5 of 703 reads 1 page": `cargo xtask chess-gate --full`
+/// runs it (stage 5).
+#[test]
+#[ignore = "the plan's measure on 703 pages, about a minute: run with --ignored (chess-gate stage 5)"]
+fn an_edit_reads_again_only_the_pages_it_touched_in_703_pages() {
+    edits_read_again_only_the_pages_they_touched(703);
+}
+
+/// Scan a book of `pages` pages, then turn, undo, insert and delete pages, counting the pages
+/// each scan reads again.
+fn edits_read_again_only_the_pages_they_touched(pages: usize) {
+    let (mut s, id) = open(book(pages));
     let (first, scanned) = scan_all(&mut s, id);
-    assert_eq!((first.len(), scanned), (PAGES, PAGES));
+    assert_eq!((first.len(), scanned), (pages, pages));
     let found = boards(&first);
     assert_eq!(found.iter().map(|b| b.0).collect::<Vec<_>>(), BOARDS, "{found:?}");
     assert!(found.iter().all(|b| b.1.starts_with(START)), "{found:?}");
@@ -99,7 +113,7 @@ fn an_edit_reads_again_only_the_pages_it_touched() {
     // there with its new index.
     s.apply(id, Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }).unwrap();
     let (shifted, scanned) = scan_all(&mut s, id);
-    assert_eq!((shifted.len(), scanned), (PAGES + 1, 1));
+    assert_eq!((shifted.len(), scanned), (pages + 1, 1));
     assert!(shifted.iter().enumerate().all(|(i, p)| p.page == i), "each page carries its index now");
     assert_eq!(boards(&shifted), found.iter().map(|(p, fen)| (p + 1, fen.clone())).collect::<Vec<_>>());
 
@@ -123,6 +137,39 @@ fn a_scan_that_outlived_an_edit_keeps_the_pages_it_did_not_touch() {
     assert_eq!(scanned, 1, "only the turned page");
     assert_eq!(pages[2].geometry.unwrap().rotation(), Rotation::R90);
     assert!(Arc::ptr_eq(&pages[4], &scan.pages[4]));
+}
+
+/// Plan A9-I3b (§2.4, R8-05): the memo of page keys and page fingerprints outlives an edit for
+/// what the edit did not touch. A new Title hashes no page again, of either; turning one page
+/// hashes that page, once each; an undo hashes nothing. What comes out is what a fresh memo
+/// gives, every time.
+#[test]
+fn the_keys_and_fingerprints_outlive_an_edit_for_the_pages_it_did_not_touch() {
+    const N: usize = 40;
+    let (mut s, id) = open(book(N));
+    let all: Vec<usize> = (0..N).collect();
+    let fresh = |s: &Session| {
+        let doc = s.get(id).unwrap();
+        (keys(&doc.editor.as_ref().unwrap().cos, true), doc.page_fingerprints())
+    };
+    let now = |s: &mut Session| (s.chess_page_keys(id, &all), s.chess_fingerprints(id).unwrap().pages().to_vec());
+    let counts = |s: &Session| (s.chess.keys_hashed, s.chess.fingerprints_made);
+    assert_eq!(now(&mut s), fresh(&s));
+    assert_eq!(counts(&s), (N, N));
+
+    s.apply(id, Edit::SetInfo { key: "Title".into(), value: "A book of games".into() }).unwrap();
+    assert_eq!(now(&mut s), fresh(&s));
+    assert_eq!(counts(&s), (N, N), "the Title: no page hashed again");
+
+    s.apply(id, Edit::RotatePages { pages: vec![7], degrees: 90 }).unwrap();
+    let turned = now(&mut s);
+    assert_eq!(turned, fresh(&s));
+    assert_eq!(counts(&s), (N + 1, N + 1), "one page turned: that page hashed again");
+
+    s.undo(id).unwrap();
+    assert_eq!(now(&mut s), fresh(&s));
+    let (k, f) = counts(&s);
+    assert!(k <= N + 2 && f <= N + 2, "an undo hashes at most the page it gives back: {k}, {f}");
 }
 
 /// The keys of every page of `cos`, each from a fresh memo when `fresh`, else from one shared.
@@ -296,13 +343,15 @@ fn a_carried_whole_scan_covers_every_page() {
     assert_eq!(scan_all(&mut s, id).1, 0);
 }
 
-/// A closed document's scan is not carried.
+/// A closed document's scan is not carried, and that is the reason given (plan A9-Q4b, finding
+/// A7-18: any error passed).
 #[test]
 fn a_carry_needs_the_document() {
     let (mut s, id) = open(book(2));
     let then = s.chess_stamp(id).unwrap();
+    assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_ok(), "carried while it is open");
     s.close(id);
-    assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_err());
+    assert_eq!(s.chess_carry(id, then, &[], true, &quick(), true).err().as_deref(), Some("no such document"));
 }
 
 // ─── Plan A9, G11: the book read once per session ──────────────────────────────────────────────

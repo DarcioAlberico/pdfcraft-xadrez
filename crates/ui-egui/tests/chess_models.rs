@@ -14,6 +14,16 @@ const PDF: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
+/// The models installed from files are the process's (the engine's `static MODELS`), seen by
+/// every test of this binary: each test here takes this lock first, so none sees what another
+/// installed (plan A9-Q4b: the installer's test left invalid models there while the others ran).
+static MODEL_CACHE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn model_cache() -> std::sync::MutexGuard<'static, ()> {
+    // A test that panicked while holding it put the models back first, or the next one does.
+    MODEL_CACHE.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 /// The app with a page open, after `settings` were restored and the given options set.
 fn harness(settings: &str, options: &[(&str, &str)]) -> Harness<'static, PdfCraftApp> {
     let settings = settings.to_owned();
@@ -61,6 +71,7 @@ fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
 /// Preferences ▸ Chess shows it. Forget goes back to the search.
 #[test]
 fn the_chosen_models_folder_is_checked_shown_and_remembered() {
+    let _cache = model_cache();
     let dir = models_folder("chosen");
     let mut h = harness("", &[]);
     assert!(h.state_mut().execute("chess.panel"));
@@ -102,6 +113,7 @@ fn the_chosen_models_folder_is_checked_shown_and_remembered() {
 /// and says so, keeping the folder before.
 #[test]
 fn the_command_chooses_and_a_relative_folder_is_refused() {
+    let _cache = model_cache();
     let dir = models_folder("command");
     let mut h = harness("", &[]);
     h.state_mut().pick_override = Some(vec![dir.display().to_string()]);
@@ -119,6 +131,7 @@ fn the_command_chooses_and_a_relative_folder_is_refused() {
 /// The settings are untrusted: a bad value is ignored and the app starts with no folder chosen.
 #[test]
 fn bad_models_settings_are_ignored() {
+    let _cache = model_cache();
     let long = format!("{}{}", std::env::temp_dir().display(), "x".repeat(5000));
     for bad in [
         serde_json::json!("yes"),
@@ -142,6 +155,7 @@ fn bad_models_settings_are_ignored() {
 /// which is missing), and files that are not model files are listed.
 #[test]
 fn model_files_picked_are_installed_for_the_session() {
+    let _cache = model_cache();
     let mut app = PdfCraftApp::new();
     app.set_option("language", "en").unwrap();
     let meta = br#"{"kind":"chess-glyphs","input":{"name":"glyphs"},"output":{"name":"logits","classes":["a"]}}"#.to_vec();
@@ -165,4 +179,17 @@ fn model_files_picked_are_installed_for_the_session() {
     );
     assert_eq!(report.ignored, ["readme.txt"]);
     assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("piece model couldn't be loaded")), "{:?}", app.toast);
+}
+
+/// With no folder chosen and none installed from files, there are no models: what the web app
+/// has before its user picks model files, and what every other test of this binary sees, the
+/// installer's models put back before the lock is let go.
+#[test]
+fn without_a_folder_or_files_there_is_no_model() {
+    let _cache = model_cache();
+    let h = harness("", &[]);
+    assert_eq!(h.state().chess.models.folder, None);
+    let models = pdfcraft_engine::chess::models(None);
+    assert!(matches!(models.pieces, pdfcraft_engine::chess::ModelState::Missing), "{:?}", models.pieces);
+    assert!(matches!(models.glyphs, pdfcraft_engine::chess::ModelState::Missing), "{:?}", models.glyphs);
 }
