@@ -708,7 +708,19 @@ impl Automation {
         self.chess_export(a, ChessFormat::Rtf)
     }
 
+    /// The book's exercises as a standard problem PGN at `out` (plan A9-N10): the numbered
+    /// diagrams whose solution was read, each with `SetUp`/`FEN`, its solution as the main line
+    /// and its statement before it.
+    pub(crate) fn chess_export_exercises(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export_as(a, ChessFormat::Pgn, true)
+    }
+
     fn chess_export(&mut self, a: &Args, format: ChessFormat) -> Result<Value> {
+        self.chess_export_as(a, format, false)
+    }
+
+    /// An export of the document as `format`; with `exercises`, its exercises alone, as PGN.
+    fn chess_export_as(&mut self, a: &Args, format: ChessFormat, exercises: bool) -> Result<Value> {
         let lang = a.opt_str("lang")?.map(|t| lang_of("lang", t)).transpose()?;
         let pgn_style = crate::chess_pgn::pgn_style(a)?;
         let positions = match a.opt_str("positions")? {
@@ -752,6 +764,7 @@ impl Automation {
         options.pgn_style = pgn_style;
         options.reference = reference.as_ref().map(|(_, index)| index.clone());
         options.games = games.as_ref().map(|(_, index)| index.clone());
+        options.exercises = exercises;
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         write_images(folder.as_deref(), &image_dir, &made.images)?;
@@ -769,7 +782,7 @@ impl Automation {
         let reference_linked = reference.as_ref().and_then(|_| linked.next());
         // PGN: what the PGN written was given (the book's, else the user's games), as before, with
         // its links; the other formats: the links, as chess_document says them.
-        let reference_json = if format == ChessFormat::Pgn {
+        let reference_json = if format == ChessFormat::Pgn && !exercises {
             let written = reference.as_ref().map(|r| (r, reference_linked)).or(games.as_ref().map(|g| (g, games_linked)));
             written.zip(made.annotated.as_ref()).map(|(((p, index), l), n)| {
                 json!({
@@ -815,6 +828,20 @@ impl Automation {
             "reference": reference_json,
             "games_reference": games_json,
             "reference_kept": reference_kept,
+            // The exercises written and the numbered diagrams left out, pages and diagrams from 1
+            // (plan A9-N10); null for the other exports.
+            "exercises": made.exercises.as_ref().map(|e| e.exercises.iter().map(|x| json!({
+                "page": x.at.page.saturating_add(1),
+                "diagram": x.at.index.saturating_add(1),
+                "number": x.number,
+                "moves": x.moves,
+            })).collect::<Vec<_>>()),
+            "exercises_left_out": made.exercises.as_ref().map(|e| e.left_out.iter().map(|x| json!({
+                "page": x.at.page.saturating_add(1),
+                "diagram": x.at.index.saturating_add(1),
+                "number": x.number,
+                "reason": x.reason.name(),
+            })).collect::<Vec<_>>()),
         }))
     }
 
