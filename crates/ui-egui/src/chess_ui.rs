@@ -926,6 +926,7 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         action = in_window_note(ui, &t);
                         return;
                     }
+                    crate::widgets::solid_scroll_bar(ui);
                     egui::ScrollArea::vertical().id_salt("chess-column").auto_shrink([false, false]).show(ui, |ui| {
                         action = panel(ui, &t, chess, id, info, now, origin, page_now, editor_here, &pgn);
                     });

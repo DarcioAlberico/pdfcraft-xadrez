@@ -3457,3 +3457,6 @@ the move's comment	Move comment	Комментарий к ходу
 	Alt+O switches between the board as read and the page's own picture.	Alt+O переключает между доской, как она прочитана, и изображением самой страницы.
 	Original diagram, page {p}, diagram {n}	Исходная диаграмма, страница {p}, диаграмма {n}
 	The page's picture of this diagram shows once its page is drawn.	Изображение этой диаграммы со страницы появится, как только её страница будет нарисована.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	Не подтверждено
+progress bar	Progress	Ход выполнения

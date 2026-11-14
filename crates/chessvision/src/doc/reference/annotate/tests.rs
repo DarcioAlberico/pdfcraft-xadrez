@@ -174,7 +174,7 @@ proptest! {
     ) {
         if let Ok(index) = ReferenceIndex::from_pgn(&pgn) {
             let made = annotated_pgn(&doc(pages), &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
-            let read: Vec<&PgnGame> = index.games().iter().filter_map(|g| g.game.as_ref()).collect();
+            let read: Vec<PgnGame> = (0..index.games().len()).filter_map(|k| index.game(k)).collect();
             let back = games_of(&made.pgn);
             prop_assert_eq!(back.len(), read.len() + made.positions);
             for (a, b) in read.iter().zip(&back) {

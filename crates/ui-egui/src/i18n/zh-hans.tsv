@@ -3508,3 +3508,6 @@ the move's comment	Move comment	此着法的评论
 	Alt+O switches between the board as read and the page's own picture.	Alt+O 在读出的棋盘与页面本身的图像之间切换。
 	Original diagram, page {p}, diagram {n}	原始棋图，第 {p} 页，棋图 {n}
 	The page's picture of this diagram shows once its page is drawn.	此棋图的页面图像会在其页面绘制后显示。
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Not confirmed	未确认
+progress bar	Progress	进度

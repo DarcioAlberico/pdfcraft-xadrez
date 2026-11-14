@@ -626,6 +626,19 @@ impl Game {
         self.nodes.get(node).map(|n| Fen::from_board(&n.board))
     }
 
+    /// The board the game starts from, as `cozy-chess` holds it, and the move that led to move
+    /// `node` (`None` for the start, a null move and a node the game does not have): what an index
+    /// that keeps the moves and not the boards plays again (plan A9-I3b), [`Board::try_play`] for a
+    /// move and [`Board::null_move`] for a null one ([`Game::is_null`]), as the game did.
+    pub fn start_board(&self) -> &Board {
+        &self.node(0).board
+    }
+
+    /// See [`Game::start_board`].
+    pub fn step_at(&self, node: NodeId) -> Option<Move> {
+        self.nodes.get(node)?.mv
+    }
+
     /// Whose move it is on the board shown.
     pub fn side_to_move(&self) -> Color {
         color_from_cozy(self.board().side_to_move())

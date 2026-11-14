@@ -41,7 +41,7 @@ fn precision(s: Source) -> u8 {
 }
 
 /// One diagram, after merging.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Merged {
     /// The chosen box, source, score, DPI hint and position.
     pub candidate: DiagramCandidate,

@@ -44,6 +44,11 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 png = "0.18"
+# A book's reading kept on disk (chess/reading.rs, plan A9-N5a): entries deflated, keyed and
+# checked by SHA-256. Both already in the graph (flate2 through pdfcraft-export, sha2 through
+# pdfcraft-chessvision).
+flate2.workspace = true
+sha2 = "0.11"
 # Already in the graph (through image and pdfcraft-create): image's TiffEncoder can't set the
 # resolution or the compression of an exported page.
 tiff = "0.11"
@@ -59,8 +64,6 @@ unicode-segmentation = "1.13"
 pdfcraft-content = { workspace = true }
 # Checks that every XML file of an exported EPUB is well-formed (MIT OR Apache-2.0).
 roxmltree = "0.20"
-# Reads the parts of an exported Word package.
-flate2.workspace = true
 proptest.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

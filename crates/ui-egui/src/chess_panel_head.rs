@@ -1,9 +1,9 @@
 //! Chess ▸ Diagrams: the panel's header (plan A8, P2a2).
 //!
 //! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export book…
-//! (`file-output`, the menu of `chess_export_ui`), the chess board (`layout-grid`) and ⋯ (Chess models…). While a scan runs, a
-//! 4-point progress bar and "Detecting… page 75 of 703" (its width kept for the longest number, so
-//! the text does not jump) with × to stop it, the diagrams found so far staying. When a scan has
+//! (`file-output`, the menu of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…). While a scan runs, a
+//! progress bar (`widgets::progress`) and "Detecting… page 75 of 703" (its width kept for the
+//! longest number, so the text does not jump) with Stop, the diagrams found so far staying. When a scan has
 //! found diagrams, "548 diagrams · 40 to review" with Review now; before any, what detecting does.
 
 use egui::{Align, Layout, RichText, vec2};
@@ -53,7 +53,13 @@ pub(crate) fn header(
         // The icon buttons at the right edge, made left to right so Tab meets them in the order
         // they are seen.
         let gap = ui.spacing().item_spacing.x;
-        let room = ui.available_width() - 3.0 * BUTTON - 2.0 * gap;
+        // The board's button is the one with words beside its icon (plan A9-I8, finding R4-07:
+        // its icon was the rail's Set up a position's).
+        let board_label = tl!("Board");
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let board_width =
+            BUTTON.max(14.0 + ui.spacing().icon_spacing + widgets::text_width(ui, board_label, &font) + 2.0 * ui.spacing().button_padding.x);
+        let room = ui.available_width() - 2.0 * BUTTON - board_width - 2.0 * gap;
         if room > 0.0 {
             ui.add_space(room);
         }
@@ -63,7 +69,11 @@ pub(crate) fn header(
                 action = Some(PanelAction::Text(a));
             }
         });
-        if icons::button(ui, "layout-grid", BUTTON, false, tl!("Chess board")).clicked() {
+        let board = ui
+            .add(egui::Button::image_and_text(icons::image("grid-3x3", 14.0, t.icon), board_label).min_size(vec2(board_width, BUTTON)))
+            .on_hover_text(tl!("Chess board"));
+        board.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Chess board")));
+        if board.clicked() {
             action = Some(PanelAction::ShowBoard);
         }
         let more = icons::button(ui, "ellipsis", BUTTON, false, tl!("More chess actions"));
@@ -81,37 +91,39 @@ pub(crate) fn header(
         let page = |d: usize| crate::i18n::fmt(tl!("Detecting… page {d} of {t}"), &[("d", &d.to_string()), ("t", &total.to_string())]);
         ui.add_space(2.0);
         ui.horizontal(|ui| {
-            // As wide as the longest it will say, so the × does not move as the pages go by.
+            // As wide as the longest it will say, so Stop does not move as the pages go by.
             let font = egui::TextStyle::Small.resolve(ui.style());
             let width = widgets::text_width(ui, &page(total), &font);
             let text = page(done.saturating_add(1).min(total));
             ui.allocate_ui_with_layout(vec2(width, widgets::MIN_TARGET), Layout::left_to_right(Align::Center), |ui| {
                 ui.label(RichText::new(text).small().color(t.text_muted));
             });
-            if icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Stop (those found stay)")).clicked() {
+            if icons::button(ui, "circle-stop", widgets::MIN_TARGET, false, tl!("Stop (those found stay)")).clicked() {
                 action = Some(PanelAction::Cancel);
             }
         });
         // Pages done of the total; in 0..=1 as `done <= total`, the cast to f32 only rounds.
         let fraction = (done.min(total) as f32 / total as f32).clamp(0.0, 1.0);
-        ui.add(egui::ProgressBar::new(fraction).desired_height(4.0).corner_radius(2));
+        // Named for what it is: the words beside it already say the page.
+        widgets::progress(ui, fraction, tl_ctx!("progress bar", "Progress"));
     }
     action
 }
 
 /// A long job's row (plan A9-I2): what it says ("Exporting the chess document: page 75 of 703"),
-/// × to stop it, and a 4-point bar, as the scan's. Whether × was clicked.
+/// Stop (its own icon, never the closing ×) and the bar (`widgets::progress`, plan A9-I8), as the
+/// scan's. Whether Stop was clicked.
 pub(crate) fn long_job(ui: &mut egui::Ui, t: &Tokens, row: &crate::chess_text_ui::LongRow) -> bool {
     let mut stop = false;
     ui.add_space(2.0);
     ui.horizontal(|ui| {
         ui.label(RichText::new(&row.said).small().color(t.text_muted));
-        stop = icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Stop")).clicked();
+        stop = icons::button(ui, "circle-stop", widgets::MIN_TARGET, false, tl!("Stop")).clicked();
     });
     let total = row.total.max(1);
     // Pages done of the total; in 0..=1 as `done <= total`, the cast to f32 only rounds.
     let fraction = (row.done.min(total) as f32 / total as f32).clamp(0.0, 1.0);
-    ui.add(egui::ProgressBar::new(fraction).desired_height(4.0).corner_radius(2));
+    widgets::progress(ui, fraction, tl_ctx!("progress bar", "Progress"));
     stop
 }
 
@@ -158,7 +170,7 @@ mod tests {
 
     use super::*;
 
-    /// While a scan runs: the page it is on, of the total, and × to stop it (the diagrams found
+    /// While a scan runs: the page it is on, of the total, and Stop (the diagrams found
     /// staying); the header's own buttons are named for assistive technology.
     #[test]
     fn a_running_scan_says_its_page_and_stops() {

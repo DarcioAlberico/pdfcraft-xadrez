@@ -559,9 +559,8 @@ fn moves_region(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rec
             return (None, None);
         }
     }
+    crate::widgets::solid_scroll_bar(ui);
     egui::ScrollArea::vertical().id_salt(("chess-tab-view", view as u8)).auto_shrink([false, false]).show(ui, |ui| {
-        // Content as wide as the region less the scroll bar's room (it floats over the content).
-        ui.set_max_width((ui.available_width() - ui.spacing().scroll.allocated_width()).max(48.0));
         match view {
             MovesView::Moves | MovesView::Games => {
                 ui.label(egui::RichText::new(crate::chess_collection::games_title(&chess.games)).strong());
