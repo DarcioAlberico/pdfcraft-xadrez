@@ -3543,3 +3543,7 @@ the move's comment	Move comment	A lépés megjegyzése
 	Alt+O switches between the board as read and the page's own picture.	Az Alt+O vált a beolvasott tábla és az oldal saját képe között.
 	Original diagram, page {p}, diagram {n}	Eredeti diagram, {p}. oldal, {n}. diagram
 	The page's picture of this diagram shows once its page is drawn.	A diagram oldalképe akkor jelenik meg, amikor az oldala kirajzolódott.
+	Export as book	Exportálás könyvként
+	The games of the list as a book, a page each, with their diagrams.	A lista játszmái könyvként, mindegyik külön oldalon, a diagramjaikkal.
+	Nothing to export: an illegal position has no game.	Nincs mit exportálni: szabálytalan állásnak nincs játszmája.
+	Games left out (an illegal position has no game): {n}	Kihagyott játszmák (szabálytalan állásnak nincs játszmája): {n}

@@ -193,6 +193,30 @@ pub struct LongRow {
     pub total: usize,
 }
 
+/// Export document `id` as `format` with its own games, `games` (a PGN), read into an index
+/// first (plan A9-N2): in the export's job, off the interface's thread. Games that can't be
+/// indexed are left out of it, said in the export's notes, the book's PGN and the reading still
+/// linked.
+fn export_with_games(
+    s: &mut pdfcraft_engine::Session,
+    id: DocId,
+    format: ChessFormat,
+    mut options: ChessExportOptions,
+    games: Option<&str>,
+    ctl: &crate::chess_job::JobCtl,
+) -> Result<pdfcraft_engine::chess::export::ChessExport, String> {
+    let mut left_out = None;
+    if let Some(pgn) = games {
+        match pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex::from_pgn(pgn) {
+            Ok(index) => options.games = Some(Arc::new(index)),
+            Err(e) => left_out = Some(format!("the document's games were not linked: {e}")),
+        }
+    }
+    let mut made = export_in_steps(s, id, format, &options, ctl)?;
+    made.notes.extend(left_out);
+    Ok(made)
+}
+
 /// Export document `id` as `format` (plan A9-I2): its pages' diagrams are scanned first, a block
 /// at a time, so the job says how far it is and stops between two blocks; the export then finds
 /// them scanned. Reading their text and writing come after the last page, and are not counted.
@@ -1158,18 +1182,28 @@ impl PdfCraftApp {
         self.export_chess_save(id, format);
     }
 
-    /// The book's PGN a `format` export of document `id` writes from: for PGN, the one the
-    /// document keeps, unless the export menu says the text read (plan "Carregar PGN do livro",
-    /// R6b).
-    fn export_reference(
+    /// The book's PGN a `format` export of document `id` is linked to: the one the document
+    /// keeps, in every format (plan A9-N2: it reached the PGN alone); for PGN, unless the export
+    /// menu says the text read (plan "Carregar PGN do livro", R6b).
+    pub(crate) fn export_reference(
         &mut self,
         id: DocId,
         format: ChessFormat,
     ) -> Option<Arc<pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex>> {
-        if format != ChessFormat::Pgn || self.chess.doc(id).map(|d| d.pgn_source).unwrap_or_default() != crate::chess_export_ui::PgnSource::Book {
+        if format == ChessFormat::Pgn && self.chess.doc(id).map(|d| d.pgn_source).unwrap_or_default() != crate::chess_export_ui::PgnSource::Book {
             return None;
         }
         self.book_pgn_index(id)
+    }
+
+    /// Document `id`'s own games as one PGN, which an export of it is linked to first (plan
+    /// A9-N2, §2.9: the user's games outrank the book's PGN, and the reading comes last), or
+    /// nothing when none of them has a move. Read into an index by the export's job, off the
+    /// interface's thread ([`export_with_games`]).
+    pub(crate) fn export_games(&self, id: DocId) -> Option<String> {
+        let games = self.chess.games.games_of(id);
+        let text: Vec<String> = games.iter().filter(|b| b.illegal.is_none() && !b.game.is_empty()).map(|b| b.game.pgn()).collect();
+        (!text.is_empty()).then(|| text.join("\n"))
     }
 
     /// Ask where (`save_override` in tests), then read document `id` and write it as `format`.
@@ -1204,8 +1238,9 @@ impl PdfCraftApp {
             options.ocr = self.chess_origin(id).ocr_mode();
             options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
             options.reference = self.export_reference(id, format);
+            let games = self.export_games(id);
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id, ctl| {
-                JobDone::Export(export_in_steps(s, id, format, &options, ctl))
+                JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl))
             });
         }
     }
@@ -1226,9 +1261,10 @@ impl PdfCraftApp {
         options.ocr = self.chess_origin(id).ocr_mode();
         options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
         options.reference = self.export_reference(id, format);
+        let games = self.export_games(id);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());
-        self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_in_steps(s, id, format, &options, ctl)));
+        self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl)));
     }
 
     /// Write a finished export to `path`, Markdown's images in `image_dir` beside it.

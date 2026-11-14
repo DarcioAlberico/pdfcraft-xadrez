@@ -6545,3 +6545,39 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
 }
+
+// ─── Plan A9-N2: one truth of the games for every export, in the app ────────────────────────
+
+/// Plan A9-N2 (A8-03): the app's export gives every format the book's PGN and the document's own
+/// games, as the tools do (it gave the PGN export the book's PGN, and no format the games): the
+/// book's variation lost its brackets, so the reader cannot play White's a6 after 3...Nf6; with
+/// the book's PGN the HTML gives that move the PGN's position, marked as the PGN's, and with no
+/// book's PGN the document's game on the board does the same.
+#[test]
+fn every_export_format_is_linked_to_the_books_pgn_and_the_documents_games() {
+    let dir = corrections_dir("n2-ui");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6 a6 4.Ba4"), dir.join("reference"));
+    let id = h.state().views[0].id;
+    let export = |h: &mut Harness<'static, PdfCraftApp>, name: &str| {
+        let path = dir.join(name);
+        h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Html, &path);
+        h.run_steps(6);
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}; toast {:?}", h.state().toast))
+    };
+    let plain = export(&mut h, "plain.html");
+    assert!(!plain.contains("data-reference=\"recovered\""), "nothing to link it to yet");
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    let with_pgn = export(&mut h, "with-pgn.html");
+    assert!(with_pgn.contains("data-reference=\"recovered\""), "the book's PGN plays the move the reader could not: {with_pgn}");
+    // The document's own game instead.
+    h.state_mut().clear_book_pgn();
+    h.run_steps(2);
+    let (game, _) = pdfcraft_engine::chess::pdfcraft_chess::game::Game::from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(2);
+    let with_games = export(&mut h, "with-games.html");
+    assert!(with_games.contains("data-reference=\"recovered\""), "the document's game plays it: {with_games}");
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -989,3 +989,32 @@ fn pgn_files_with_a_bom_or_in_latin_1_open_whole() {
     assert!(again.chess.games.pgn_bom);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Plan A9-N9 (A8-12): Export as book ▸ in the games list writes its games as a book, a page
+/// each, by the book exports' writers: an HTML file naming each game, and an EPUB (a zip). The
+/// games' moves are the book's text.
+#[test]
+fn the_games_list_exports_its_games_as_a_book() {
+    let mut h = harness();
+    three_games(&mut h);
+    let dir = temp_dir("book");
+    for (format, file) in [("HTML", "abc games.html"), ("EPUB", "abc games.epub")] {
+        let path = dir.join(file);
+        h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
+        h.get_by_label("Export as book").click();
+        h.run_steps(2);
+        h.get_by_label(format).click();
+        h.run_steps(4);
+        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{format} written to {}: {e}; toast {:?}", path.display(), h.state().toast));
+        if format == "EPUB" {
+            assert!(bytes.starts_with(b"PK"), "an EPUB is a zip");
+        } else {
+            let html = String::from_utf8_lossy(&bytes);
+            for (event, mv) in [("A", "e4"), ("B", "d4"), ("C", "c4")] {
+                assert!(html.contains(&format!(">{event}<")) && html.contains(mv), "game {event}: {html}");
+            }
+        }
+        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Exported to")), "{:?}", h.state().toast);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

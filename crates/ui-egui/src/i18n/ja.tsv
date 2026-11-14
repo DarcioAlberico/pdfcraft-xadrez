@@ -3546,3 +3546,7 @@ the move's comment	Move comment	手のコメント
 	Alt+O switches between the board as read and the page's own picture.	Alt+O で、読み取った盤面とページそのものの画像を切り替えます。
 	Original diagram, page {p}, diagram {n}	元の局面図、{p} ページ、局面図 {n}
 	The page's picture of this diagram shows once its page is drawn.	この局面図のページの画像は、そのページが描画されると表示されます。
+	Export as book	本として書き出す
+	The games of the list as a book, a page each, with their diagrams.	一覧の対局を本として、1 局 1 ページで、局面図付きで。
+	Nothing to export: an illegal position has no game.	書き出すものがありません: 不正な局面には対局がありません。
+	Games left out (an illegal position has no game): {n}	除いた対局 (不正な局面には対局がありません): {n}

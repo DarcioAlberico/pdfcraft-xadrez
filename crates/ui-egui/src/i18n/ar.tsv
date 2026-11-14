@@ -3818,3 +3818,7 @@ the move's comment	Move comment	تعليق النقلة
 	Alt+O switches between the board as read and the page's own picture.	يبدّل Alt+O بين الرقعة كما قُرئت وصورة الصفحة نفسها.
 	Original diagram, page {p}, diagram {n}	المخطط الأصلي، الصفحة {p}، المخطط {n}
 	The page's picture of this diagram shows once its page is drawn.	تظهر صورة الصفحة لهذا المخطط بعد رسم صفحته.
+	Export as book	تصدير ككتاب
+	The games of the list as a book, a page each, with their diagrams.	مباريات القائمة ككتاب، صفحة لكل منها، مع مخططاتها.
+	Nothing to export: an illegal position has no game.	لا شيء للتصدير: الوضع غير القانوني ليست له مباراة.
+	Games left out (an illegal position has no game): {n}	مباريات مستبعدة (الوضع غير القانوني ليست له مباراة): {n}

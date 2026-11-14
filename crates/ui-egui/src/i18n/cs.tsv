@@ -3618,3 +3618,7 @@ the move's comment	Move comment	Komentář k tahu
 	Alt+O switches between the board as read and the page's own picture.	Alt+O přepíná mezi šachovnicí, jak byla přečtena, a vlastním obrázkem stránky.
 	Original diagram, page {p}, diagram {n}	Původní diagram, strana {p}, diagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Obrázek stránky s tímto diagramem se ukáže, jakmile se jeho stránka vykreslí.
+	Export as book	Exportovat jako knihu
+	The games of the list as a book, a page each, with their diagrams.	Partie ze seznamu jako kniha, každá na stránce, s diagramy.
+	Nothing to export: an illegal position has no game.	Není co exportovat: neplatná pozice nemá partii.
+	Games left out (an illegal position has no game): {n}	Vynechané partie (neplatná pozice nemá partii): {n}

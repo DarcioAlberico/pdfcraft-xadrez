@@ -3508,3 +3508,7 @@ the move's comment	Move comment	此着法的评论
 	Alt+O switches between the board as read and the page's own picture.	Alt+O 在读出的棋盘与页面本身的图像之间切换。
 	Original diagram, page {p}, diagram {n}	原始棋图，第 {p} 页，棋图 {n}
 	The page's picture of this diagram shows once its page is drawn.	此棋图的页面图像会在其页面绘制后显示。
+	Export as book	导出为书
+	The games of the list as a book, a page each, with their diagrams.	将列表中的对局导出为书，每局一页，附带棋图。
+	Nothing to export: an illegal position has no game.	没有可导出的内容：非法局面没有对局。
+	Games left out (an illegal position has no game): {n}	未导出的对局（非法局面没有对局）：{n}
