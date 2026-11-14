@@ -215,9 +215,9 @@ fn the_glyph_palette_floats_puts_glyphs_on_the_move_and_remembers_its_place() {
     assert!(h.state().chess.board().pgn_text.contains("e5 $5 $37"), "{}", h.state().chess.board().pgn_text);
     // Dragged by its title, it stays where it was put.
     let title = palette_title(&h);
-    drag(&mut h, title, vec2(-300.0, 100.0));
+    drag(&mut h, title, vec2(-300.0, -100.0));
     let moved = palette(&h).unwrap();
-    assert!((moved.left() - (first.left() - 300.0)).abs() < 2.0 && (moved.top() - (first.top() + 100.0)).abs() < 2.0, "{first:?} → {moved:?}");
+    assert!((moved.left() - (first.left() - 300.0)).abs() < 2.0 && (moved.top() - (first.top() - 100.0)).abs() < 2.0, "{first:?} → {moved:?}");
     // Esc closes it; G opens it where it was.
     host_key(&mut h, Modifiers::NONE, Key::Escape);
     assert!(palette(&h).is_none(), "Esc closed it");

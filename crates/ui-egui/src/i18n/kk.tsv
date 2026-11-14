@@ -3478,3 +3478,52 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	mates in {m}	{m} жүрісте мат қояды
 	supposes castling is allowed	рокировка рұқсат етілген деп болжайды
 	Mate in {n}: both sides mate, so who moves stays assumed	{n} жүрісте мат: екі жақ та мат қояды, сондықтан кімнің жүрісі екені болжам күйінде қалады
+# Plan A9-I5: the engine's reasons (a scan's notes, a page's text layer, an unreadable diagram) said here.
+	The page draws more paths than are looked at; the rest were skipped.	Бет қаралатыннан көп контур салады; қалғаны өткізілді.
+	Content streams that couldn't be decoded and were skipped: {n}	Декодталмай, өткізілген мазмұн ағындары: {n}
+	The page's paths couldn't be read: {e}	Беттің контурларын оқу мүмкін болмады: {e}
+	The document can't be read for editing, so its images and paths were not looked at.	Құжатты өңдеу үшін оқу мүмкін емес, сондықтан оның суреттері мен контурлары қаралмады.
+	The page's text couldn't be read: {e}	Беттің мәтінін оқу мүмкін болмады: {e}
+	Only the first {n} of the page's {total} images were looked at.	Беттің {total} суретінің тек алғашқы {n} суреті қаралды.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Беттің сурет пикселдері іздеу бюджетінен асатындықтан, қиылмаған суреттер: {n}
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Диаграмма {d}: екі жақ та {n} жүрісте мат қояды, сондықтан кімнің жүрісі екені болжам күйінде қалады.
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Диаграмма {offered} dpi ұсынады; ол ең көбі {max} dpi-мен оқылды (max_read_dpi).
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Бет {wanted} dpi-мен көрсету үшін тым үлкен; оның диаграммалары {read} dpi-мен оқылды.
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Бетті оқу үшін {wanted} dpi-мен көрсету мүмкін болмады ({e}); ол {read} dpi-мен оқылды.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Диаграмма {d}: түзетілгеннен бері оқылуы өзгерді (қазір {fen}); түзету сақталады.
+	The frames around text were not looked for: {e}	Мәтін айналасындағы жақтаулар ізделмеді: {e}
+	The lines set bolder were not looked for: {e}	Негізгі мәтіннен қалыңырақ терілген жолдар ізделмеді: {e}
+	The words set in bold were not looked for: {e}	Жуан қаріппен терілген сөздер ізделмеді: {e}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	Бет биіктігінің {p}% бөлігінде мәтін болу үшін тым көп ұсақ бояу бар (сурет немесе шаңды скан); ол жолақтар оқылмады.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Жалпы OCR сәтсіз болды ({e}); глиф оқу құралы прозаны да оқыды.
+	Chess OCR failed: {e}	Шахмат OCR сәтсіз болды: {e}
+	The page couldn't be rendered for chess OCR: {e}	Бетті шахмат OCR үшін көрсету мүмкін болмады: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Шахмат OCR сұралды, бірақ оған chess-glyphs моделі қажет.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	{font} қарпі шахмат қарпіне ұқсайды, бірақ каталогта жоқ; оның мәтіні шығарылған күйінде қалдырылды.
+	The page has no visible area; it is left out.	Беттің көрінетін аймағы жоқ; ол алынып тасталды.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Беттің азат жолдарын оқу мүмкін болмады ({e}); оның жолдары аралық бойынша топталды.
+	The page's diagrams couldn't be read; they are left out.	Беттің диаграммаларын оқу мүмкін болмады; олар алынып тасталды.
+	A correction ({id}) was not used: {e}	Түзету ({id}) қолданылмады: {e}
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Сипаттамалық нотация ({examples}) қолдау көрсетілмейді; оның жүрістері оқылмады.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Құжатта {n} партия бар, ол сақтайтын ең көп саны осы: осыдан әрі бірде-бір партия басталмайды.
+	This page couldn't be read: {e}	Бұл бетті оқу мүмкін болмады: {e}
+	{why} (chess OCR needs the chess-glyphs model)	{why} (шахмат OCR үшін chess-glyphs моделі қажет)
+	the page has no text layer	бетте мәтін қабаты жоқ
+	the text layer has two-byte codes with no Unicode text	мәтін қабатында Unicode мәтіні жоқ екі байтты кодтар бар
+	the text layer extracts as replacement characters	мәтін қабаты алмастыру таңбалары ретінде шығарылады
+	the text layer's Unicode map is dead	мәтін қабатының Unicode картасы жұмыс істемейді
+	chess-font glyphs that couldn't be resolved: {n}	шешілмеген шахмат қаріп глифтері: {n}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	фигураның орнында бөгде таңба тұрған жүрістер, бұрынғы OCR қабаты фигура белгілерін жоғалтқан жерде: {n}
+	the text layer is invisible text over an image of the page: another program's OCR	мәтін қабаты — беттің суреті үстіндегі көрінбейтін мәтін: басқа бағдарламаның OCR-ы
+	no piece model is loaded	фигуралар моделі жүктелмеген
+	the page raster's resolution is not a positive number	бет растрының ажыратымдылығы оң сан емес
+	the diagram's box or corners are not finite numbers on this page	диаграмманың жақтауы немесе бұрыштары бұл бетте шекті сандар емес
+	the diagram lies outside the page raster	диаграмма бет растрынан тыс жатыр
+	the diagram's corners do not form a quadrilateral	диаграмманың бұрыштары төртбұрыш құрамайды
+	the page has more diagrams than are read on one page	бетте бір бетте оқылатыннан көп диаграмма бар
+	the piece model failed: {e}	фигуралар моделі сәтсіз болды: {e}
+	the piece model's output is not a probability matrix: {e}	фигуралар моделінің шығысы ықтималдықтар матрицасы емес: {e}
+	Back to Diagrams	Диаграммаларға оралу
+	Tools panel collapsed	Құралдар тақтасы жиналды
+	Show the page (F6)	Бетті көрсету (F6)
+	The board is in the column beside.	Тақта көрші бағанда.
