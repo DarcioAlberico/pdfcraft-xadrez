@@ -2514,9 +2514,10 @@ fn session(store: &pdfcraft_ui_egui::RecoveryStore, name: &str, path: Option<&st
     h
 }
 
-/// The `.games` files (and the files set aside) in the store's chess folder, by name.
+/// The games' files (and the files set aside) in the store's folder, by name: the recovery
+/// folder's `chess/games`, the app being given no data folder here (plan A9-G3b).
 fn chess_files(store: &pdfcraft_ui_egui::RecoveryStore) -> Vec<String> {
-    let mut names: Vec<String> = std::fs::read_dir(store.dir().join("chess"))
+    let mut names: Vec<String> = std::fs::read_dir(store.dir().join("chess").join("games"))
         .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.contains(".games")).collect())
         .unwrap_or_default();
     names.sort();
@@ -2647,10 +2648,10 @@ fn saving_a_pdf_without_an_id_rekeys_its_games() {
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess game restored: Game 1, moves: 1"));
 }
 
-/// Files that can't be read (random bytes, a file over the cap) are set aside as `.bad`, never
-/// deleted, and the user is told; the document opens with a blank game. A file a newer PdfCraft
-/// wrote is never set aside (plan A9-G12, R3-05): this one is another document's, and stays as
-/// it is.
+/// Plan A9-G3b: the games' files of the builds before (`<id>.games`, in the recovery folder's
+/// `chess`) are only read, whatever they hold: random bytes, a file over the cap and a newer
+/// PdfCraft's stay as they are. A file of the store that can't be read is set aside as `.bad` by
+/// the next write (never deleted, never written over), and the user is told.
 #[test]
 fn unreadable_game_files_are_set_aside_and_said() {
     let s = store("corrupt");
@@ -2663,42 +2664,60 @@ fn unreadable_game_files_are_set_aside_and_said() {
         *b = (x >> 16) as u8;
     }
     std::fs::write(dir.join("aa-1.games"), &noise).unwrap();
-    // 2 MiB over the cap of a document's file (32 MiB of games and the header).
     let big = std::fs::File::create(dir.join("bb-2.games")).unwrap();
     big.set_len((34 << 20) + (64 << 10)).unwrap();
     drop(big);
     let newer = "{\"format\":\"pdfcraft-chess-games\",\"version\":99,\"keys\":{\"name\":\"boards.pdf\"}}\n{}\n";
     std::fs::write(dir.join("cc-3.games"), newer).unwrap();
-    let h = session(&s, "boards.pdf", None, boards());
-    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games"]);
+    let earlier = |d: &std::path::Path| {
+        let mut n: Vec<String> =
+            std::fs::read_dir(d).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.contains(".games")).collect();
+        n.sort();
+        n
+    };
+    {
+        let mut h = session(&s, "boards.pdf", None, boards());
+        assert_eq!(games(h.state()).0, [""], "a blank game");
+        h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+        h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
+    }
+    assert_eq!(earlier(&dir), ["aa-1.games", "bb-2.games", "cc-3.games"], "the earlier files, never renamed");
     assert_eq!(std::fs::read_to_string(dir.join("cc-3.games")).unwrap(), newer, "the newer file is as it was");
+    let written = chess_files(&s);
+    assert_eq!(written.len(), 1);
+    // The store's own file, damaged: set aside by the next write, and said.
+    let file = dir.join("games").join(&written[0]);
+    std::fs::write(&file, &noise).unwrap();
+    let mut h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(games(h.state()).0, [""], "nothing read from it");
+    h.state_mut().chess.board_mut().play_uci_line(&["d2d4".into()]);
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let bad = format!("{}.bad", written[0]);
+    assert_eq!(chess_files(&s), [written[0].clone(), bad.clone()]);
+    assert_eq!(std::fs::read(dir.join("games").join(&bad)).unwrap(), noise, "kept as it was");
     let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
-    assert!(toast.contains("couldn't be read. It was kept as aa-1.games.bad"), "{toast}");
-    assert!(!toast.contains("cc-3"), "{toast}");
-    assert_eq!(games(h.state()).0, [""], "a blank game");
-    // What was set aside stays aside: a second session neither reads nor renames it again.
-    drop(h);
-    let h = session(&s, "boards.pdf", None, boards());
-    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games"]);
-    assert!(h.state().toast.is_none());
+    assert!(toast.contains(&format!("couldn't be read. It was kept as {bad}")), "{toast}");
 }
 
-/// Plan A9-G12: this document's games, in a file a newer PdfCraft wrote, are shown and only read.
-/// The user is told, the list says so, and changes made here never write over the file (nor set
-/// it aside), in the session or when it ends.
+/// Plan A9-G12, kept by G3b: this document's games, in a file a newer PdfCraft wrote, are shown
+/// and only read. The user is told, the list says so, and changes made here never write over the
+/// file (nor set it aside), in the session or when it ends.
 #[test]
 fn a_newer_games_file_of_this_document_is_only_read() {
     let s = store("newer");
-    let dir = s.dir().join("chess");
+    let dir = s.dir().join("chess").join("games");
     std::fs::create_dir_all(&dir).unwrap();
     let size = boards().len();
-    let header = format!(r#"{{"format":"pdfcraft-chess-games","version":2,"keys":{{"name":"boards.pdf","size":{size}}},"games":1}}"#);
-    let newer = format!("{header}\n{}\n", r#"{"active":0,"games":[{"pgn":"1. d4 d5 *","uid":7,"rev":3}]}"#);
-    std::fs::write(dir.join("dd-4.games"), &newer).unwrap();
+    let newer = format!(
+        r#"{{"format":"pdfcraft-chess-games","version":3,"doc":{{"name":"boards.pdf","size":{size},"pages":1}},"games":[{{"uid":"n1","rev":3,"pgn":"1. d4 d5 *","later":true}}]}}"#
+    );
+    std::fs::write(dir.join("0123456789abcdef0123456789abcdef.games.json"), &newer).unwrap();
     let mut h = session(&s, "boards.pdf", None, boards());
     assert_eq!(games(h.state()).0, ["1. d4 d5"], "the games are read");
     let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
-    assert!(toast.contains("saved by a newer PdfCraft (format 2)"), "{toast}");
+    assert!(toast.contains("saved by a newer PdfCraft (format 3)"), "{toast}");
     h.state_mut().chess.board_mut().play_uci_line(&["c2c4".into()]);
     h.state_mut().flush_chess_games();
     h.state_mut().settle_chess_games();
@@ -2706,8 +2725,8 @@ fn a_newer_games_file_of_this_document_is_only_read() {
     h.run_steps(3);
     assert!(h.query_by_label_contains("Saved by a newer PdfCraft: these games are only read here.").is_some(), "the list says why");
     drop(h);
-    assert_eq!(chess_files(&s), ["dd-4.games"]);
-    assert_eq!(std::fs::read_to_string(dir.join("dd-4.games")).unwrap(), newer, "never written over");
+    assert_eq!(chess_files(&s), ["0123456789abcdef0123456789abcdef.games.json"]);
+    assert_eq!(std::fs::read_to_string(dir.join("0123456789abcdef0123456789abcdef.games.json")).unwrap(), newer, "never written over");
 }
 
 /// Two windows on the same document: the second one finds the games the first autosaves, but
@@ -2721,7 +2740,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     first.state_mut().settle_chess_games();
     let files = chess_files(&s);
     assert_eq!(files.len(), 1);
-    let file = s.dir().join("chess").join(&files[0]);
+    let file = s.dir().join("chess").join("games").join(&files[0]);
     let written = std::fs::read(&file).unwrap();
     // Another instance: the same folder, its own lock.
     let other = pdfcraft_ui_egui::RecoveryStore::new(s.dir());
@@ -6092,4 +6111,119 @@ fn under_1000_points_the_page_or_the_column_shows() {
     h.get_by_label("Show the page (F6)").click();
     h.run_steps(3);
     assert!(h.state().chess.budget.show_page);
+}
+
+// ─── Plan A9, G3b: the games on the engine's store ───────────────────────────────────────────
+
+/// Plan A9-G3b (§2.3): the app's games are in the engine's store, which the command line writes
+/// too. Two games a tool imports while the app has three in memory are kept when the app autosaves
+/// next (the write merges with the file, never over it; before: three), and come into the list.
+/// The file names the document without its path, and the next session has all five.
+#[test]
+fn the_apps_autosave_keeps_the_games_a_tool_added() {
+    use pdfcraft_engine::chess::games_store::{DirStore, GameRecord, GamesFile, Owner};
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let s = store("merge");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    for m in ["d2d4", "c2c4"] {
+        assert!(h.state_mut().execute("chess.game.new"));
+        h.state_mut().chess.board_mut().play_uci_line(&[m.into()]);
+    }
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let files = chess_files(&s);
+    assert_eq!(files.len(), 1);
+    // A tool imports two games into the same document, merging into the running app's games.
+    let keys = {
+        let app = h.state();
+        app.session.get(app.views[0].id).unwrap().doc_keys()
+    };
+    let store = DirStore::new(s.dir().join("chess").join("games"));
+    let mut imported = GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, 1));
+    for (uid, moves) in [("cli-1", "g1f3"), ("cli-2", "b2b3")] {
+        let mut g = Game::standard();
+        g.play_uci(moves).unwrap();
+        imported.games.push(GameRecord::of_game(uid.into(), 1, &g).unwrap());
+    }
+    let alive = |_: &str| true;
+    let refused = store.keep(&keys, 1, imported.clone(), &Owner { me: None, live: &alive, merge: false });
+    assert!(refused.is_err(), "the app autosaves these games: a tool must ask to merge");
+    store.keep(&keys, 1, imported, &Owner { me: None, live: &alive, merge: true }).unwrap();
+    // The app changes one of its games and autosaves.
+    h.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let file = s.dir().join("chess").join("games").join(&files[0]);
+    let text = std::fs::read_to_string(&file).unwrap();
+    let kept: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let live: Vec<&str> =
+        kept["games"].as_array().unwrap().iter().filter(|g| g["deleted"] != true).map(|g| g["pgn"].as_str().unwrap_or_default()).collect();
+    assert_eq!(live.len(), 5, "the app's three and the tool's two: {live:?}");
+    assert!(!text.contains("pdfcraft-chess-games-merge"), "no path in clear: {text}");
+    assert_eq!(games(h.state()).0, ["1. e4", "1. d4", "1. c4 e5", "1. Nf3", "1. b3"], "taken into the list");
+    drop(h);
+    let h = session(&s, "book.pdf", Some(&path), boards());
+    assert_eq!(games(h.state()).0.len(), 5, "and the next session has them");
+}
+
+/// Plan A9-G3b: the games an earlier build autosaved (`<id>.games` in the recovery folder's
+/// `chess`) come back in this build, and that file is left as it was.
+#[test]
+fn the_games_an_earlier_build_autosaved_come_back() {
+    let s = store("earlier");
+    let dir = s.dir().join("chess");
+    std::fs::create_dir_all(&dir).unwrap();
+    let size = boards().len();
+    let header = format!(
+        r#"{{"format":"pdfcraft-chess-games","version":1,"keys":{{"name":"boards.pdf","size":{size}}},"instance":"instance-1-0.lock","games":2}}"#
+    );
+    let body = r#"{"active":1,"games":[{"pgn":"1. e4 e5 *","current":[0,0]},{"pgn":"1. d4 *","flipped":true}],"trash":[]}"#;
+    let v1 = format!("{header}\n{body}\n");
+    std::fs::write(dir.join("18c2f-1a-0.games"), &v1).unwrap();
+    let h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(games(h.state()), (vec!["1. e4 e5".to_owned(), "1. d4".to_owned()], 1));
+    assert!(h.state().chess.board().flipped);
+    assert_eq!(std::fs::read_to_string(dir.join("18c2f-1a-0.games")).unwrap(), v1, "left as it was");
+}
+
+/// Plan A9-G2c (R3-04): a page inserted before the page a game came from takes the game's
+/// diagram and the moves read on it along (Show in PDF goes to the page that moved), and the
+/// next session finds them there too.
+#[test]
+fn a_page_inserted_before_takes_the_games_pages_along() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource;
+    let s = store("anchors");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(2);
+    {
+        let b = h.state_mut().chess.board_mut();
+        b.play_uci_line(&["e2e4".into()]);
+        let e4 = b.game.current();
+        assert!(b.game.set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
+    }
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
+    h.run_steps(3);
+    let pages = |h: &Harness<'static, PdfCraftApp>| {
+        let b = h.state().chess.board();
+        let e4 = b.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
+        (b.source.map(|s| s.page), b.game.source(e4).map(|s| s.page))
+    };
+    assert_eq!(pages(&h), (Some(1), Some(1)), "the diagram and the move follow their page");
+    h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
+    let app = h.state_mut();
+    app.save_override = Some(path.clone());
+    assert!(app.save_active(pdfcraft_ui_egui::SaveTarget::InPlace));
+    drop(h);
+    let bytes = std::fs::read(&path).unwrap();
+    let h = session(&s, "book.pdf", Some(&path), bytes);
+    assert_eq!(pages(&h), (Some(1), Some(1)), "and come back there");
 }

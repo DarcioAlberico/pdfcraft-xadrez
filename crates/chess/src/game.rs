@@ -1033,6 +1033,47 @@ impl Game {
         Some(click_of(&self.nodes.get(n.parent)?.board, mv))
     }
 
+    /// The move that led to the board after `node` in UCI notation, as an engine reads it: the
+    /// squares, castling as the king's two squares (`e1g1`) and the piece a pawn becomes
+    /// (`e7e8q`). `None` for the start, a null move (UCI has none) and a node the game does not
+    /// have.
+    pub fn uci(&self, node: NodeId) -> Option<String> {
+        let n = self.nodes.get(node)?;
+        let mv = n.mv?;
+        let (from, to) = click_of(&self.nodes.get(n.parent)?.board, mv);
+        let piece = match mv.promotion {
+            None => "",
+            Some(cozy_chess::Piece::Queen) => "q",
+            Some(cozy_chess::Piece::Rook) => "r",
+            Some(cozy_chess::Piece::Bishop) => "b",
+            Some(cozy_chess::Piece::Knight) => "n",
+            // No pawn becomes a pawn or a king: not a move this game holds.
+            Some(_) => return None,
+        };
+        Some(format!("{from}{to}{piece}"))
+    }
+
+    /// The moves up to the one shown since the last that cannot be undone, which is what an
+    /// engine needs to see a repetition (plan A9-N8, R6-09): as many as the board's half-move
+    /// clock counts (a capture or a pawn move sets it to 0), at most `max`, and never back past a
+    /// null move (UCI has none) or the start. The node they are played from, and the moves in
+    /// order (empty when the move shown is the first, or the clock is 0).
+    pub fn reversible_tail(&self, max: usize) -> (NodeId, Vec<NodeId>) {
+        let clock = usize::from(self.board().halfmove_clock()).min(max);
+        let mut moves = Vec::new();
+        let mut at = self.current;
+        while moves.len() < clock && at != 0 {
+            let n = self.node(at);
+            if n.mv.is_none() {
+                break;
+            }
+            moves.push(at);
+            at = n.parent;
+        }
+        moves.reverse();
+        (at, moves)
+    }
+
     /// The moves of the line shown in SAN, each with its number and whose it was: `(ply, number,
     /// color, san)`, `ply` being the board after the move.
     pub fn moves(&self) -> Vec<(usize, u32, Color, &str)> {
@@ -1545,6 +1586,42 @@ mod tests {
         assert_eq!(g.movetext(), "1. a8=Q");
         assert_eq!(g.play_uci("h7"), Err(GameError::IllegalMove));
         assert_eq!(g.play_uci("h7h6x"), Err(GameError::IllegalMove));
+    }
+
+    /// Plan A9-N8 (R6-09): a move in UCI as an engine reads it, and the moves since the last one
+    /// that cannot be undone, which let an engine see a repetition.
+    #[test]
+    fn moves_are_written_in_uci_and_the_reversible_tail_is_the_clocks() {
+        let mut g = Game::from_fen("r3k2r/1P6/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
+        g.play_uci("e1c1").unwrap();
+        assert_eq!(g.uci(g.current()).as_deref(), Some("e1c1"), "castling as the king's two squares");
+        g.play_uci("e8g8").unwrap();
+        assert_eq!(g.uci(g.current()).as_deref(), Some("e8g8"));
+        g.play_uci("b7b8n").unwrap();
+        assert_eq!(g.uci(g.current()).as_deref(), Some("b7b8n"));
+        assert_eq!(g.uci(0), None, "the start");
+        assert_eq!(g.uci(999), None);
+        // Knights out and back twice: the clock counts eight, all of them reversible.
+        let mut g = Game::standard();
+        g.play_uci("e2e4").unwrap();
+        for mv in ["g8f6", "g1f3", "f6g8", "f3g1", "g8f6", "g1f3", "f6g8", "f3g1"] {
+            g.play_uci(mv).unwrap();
+        }
+        let (from, tail) = g.reversible_tail(100);
+        assert_eq!(from, 1, "from the pawn move");
+        let ucis: Vec<String> = tail.iter().filter_map(|n| g.uci(*n)).collect();
+        assert_eq!(ucis, ["g8f6", "g1f3", "f6g8", "f3g1", "g8f6", "g1f3", "f6g8", "f3g1"]);
+        assert_eq!(g.reversible_tail(3).1.len(), 3, "at most max");
+        g.play_uci("d7d5").unwrap();
+        assert_eq!(g.reversible_tail(100), (g.current(), Vec::new()), "a pawn move sets the clock to 0");
+        // A null move ends the tail: UCI has none.
+        let mut g = Game::standard();
+        g.play_uci("g1f3").unwrap();
+        g.play_null().unwrap();
+        g.play_uci("f3g1").unwrap();
+        let null = g.reversible_tail(100).0;
+        assert!(g.is_null(null), "from the null move");
+        assert_eq!(g.reversible_tail(100).1.len(), 1);
     }
 
     #[test]

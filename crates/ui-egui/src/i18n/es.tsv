@@ -3670,3 +3670,5 @@ the move's comment	Move comment	Comentario de la jugada
 	Tools panel collapsed	Panel Herramientas contraído
 	Show the page (F6)	Mostrar la página (F6)
 	The board is in the column beside.	El tablero está en la columna de al lado.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Añadir marcadores de ajedrez

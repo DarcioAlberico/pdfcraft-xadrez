@@ -38,7 +38,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::corrections::{DocRecord, hash_hex};
+use super::corrections::{DocRecord, PageAnchor, PageFingerprints, hash_hex, locate_page};
 use super::store::{DocStore, Loaded, Parsed, StoreBackend, StoreFailure, StoreKind};
 use crate::chess::pdfcraft_chess::game::{Game, MAX_PGN_LEN, NodeId, NodePath, NodeSource, Token};
 use crate::chess::pdfcraft_chessvision::doc::DiagramAt;
@@ -83,6 +83,11 @@ pub struct MoveSource {
     pub page: u32,
     /// Its box in user space.
     pub rect: [f32; 4],
+    /// What the page was when the move was kept (plan A9-G2c): the page is found again by it
+    /// ([`GamesFile::relocate`]) after pages were inserted or removed. `None` in a file written
+    /// before it was kept, or by a document without fingerprints: then by its index, as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<PageAnchor>,
     /// Fields a later build of this version writes, kept as they are.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -123,6 +128,9 @@ pub struct GameRecord {
     /// The diagram the game was opened from.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<DiagramAt>,
+    /// What that diagram's page was then (plan A9-G2c), as a move's [`MoveSource::at`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin_at: Option<PageAnchor>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sources: Vec<MoveSource>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -288,7 +296,7 @@ impl GameRecord {
         for node in nodes(game) {
             let Some(path) = game.path_of(node) else { continue };
             if let Some(s) = game.source(node).filter(|s| s.rect_user.iter().all(|v| v.is_finite())) {
-                sources.push(MoveSource { path: path.indices().to_vec(), page: s.page, rect: s.rect_user, other: Map::new() });
+                sources.push(MoveSource { path: path.indices().to_vec(), page: s.page, rect: s.rect_user, at: None, other: Map::new() });
             }
             // A comment before a move this build's reader may take for the comment after the move
             // before it (a first reply's, once a variation came between), so both are kept.
@@ -308,6 +316,7 @@ impl GameRecord {
             flipped: false,
             illegal_fen: None,
             origin: None,
+            origin_at: None,
             sources,
             comments,
             other: Map::new(),
@@ -325,6 +334,7 @@ impl GameRecord {
             flipped: false,
             illegal_fen: None,
             origin: None,
+            origin_at: None,
             sources: Vec::new(),
             comments: Vec::new(),
             other: Map::new(),
@@ -357,6 +367,50 @@ impl GameRecord {
         Some((game, cut))
     }
 
+    /// Anchor where its moves were read and the diagram it came from to the pages they are on
+    /// now, in a document whose pages have `fingerprints` (plan A9-G2c), so a later edit that
+    /// inserts or removes pages finds them again ([`GameRecord::relocate`]).
+    pub fn anchor<F: PageFingerprints + ?Sized>(&mut self, fingerprints: &F) {
+        for s in &mut self.sources {
+            s.at = usize::try_from(s.page).ok().and_then(|p| PageAnchor::of(p, fingerprints));
+        }
+        self.origin_at = self.origin.and_then(|o| PageAnchor::of(o.page, fingerprints));
+    }
+
+    /// Take its moves' pages and its diagram's to where those pages are in a document whose pages
+    /// have `fingerprints` now (plan A9-G2c, the one rule of [`locate_page`]): a page moved by
+    /// pages inserted or removed before it is followed; one that is gone, or that another page
+    /// took the place of, leaves the move without its page and the game without its diagram,
+    /// never on another page's. Anchors are kept for the pages found. Without an anchor (a file
+    /// written before it was kept) the index stays. How many were left without their page.
+    pub fn relocate<F: PageFingerprints + ?Sized>(&mut self, fingerprints: &F) -> usize {
+        let mut lost = 0usize;
+        self.sources.retain_mut(|s| {
+            let Some(at) = &s.at else { return true };
+            match locate_page(usize::try_from(s.page).unwrap_or(usize::MAX), at, fingerprints).page().and_then(|p| u32::try_from(p).ok()) {
+                Some(p) => {
+                    s.page = p;
+                    true
+                }
+                None => {
+                    lost = lost.saturating_add(1);
+                    false
+                }
+            }
+        });
+        if let (Some(o), Some(at)) = (self.origin, &self.origin_at) {
+            match locate_page(o.page, at, fingerprints).page() {
+                Some(p) => self.origin = Some(DiagramAt::new(p, o.index)),
+                None => {
+                    self.origin = None;
+                    self.origin_at = None;
+                    lost = lost.saturating_add(1);
+                }
+            }
+        }
+        lost
+    }
+
     /// Why the record can't be kept: a uid that isn't one, a PGN or FEN past its cap, a diagram
     /// past the last page a document has.
     fn problem(&self) -> Option<&'static str> {
@@ -368,6 +422,8 @@ impl GameRecord {
             Some("a position too long")
         } else if self.origin.is_some_and(|o| o.page > MAX_PAGES) {
             Some("a diagram past the last page")
+        } else if self.origin_at.as_ref().is_some_and(|a| !a.ok()) || self.sources.iter().any(|s| s.at.as_ref().is_some_and(|a| !a.ok())) {
+            Some("a page's fingerprint past its cap")
         } else {
             None
         }
@@ -378,6 +434,12 @@ impl GamesFile {
     /// An empty file for the document `doc`.
     pub fn empty(doc: DocRecord) -> GamesFile {
         GamesFile { version: VERSION, doc, instance: None, active: None, games: Vec::new(), trash: Vec::new(), taken: Vec::new(), other: Map::new() }
+    }
+
+    /// Take every game's pages to where they are now ([`GameRecord::relocate`]). How many moves
+    /// and diagrams were left without their page.
+    pub fn relocate<F: PageFingerprints + ?Sized>(&mut self, fingerprints: &F) -> usize {
+        self.games.iter_mut().filter(|g| !g.deleted).fold(0usize, |n, g| n.saturating_add(g.relocate(fingerprints)))
     }
 
     /// The games not deleted, in list order.
@@ -816,11 +878,12 @@ pub mod v1 {
                 flipped: r.flipped,
                 illegal_fen: r.illegal_fen,
                 origin: r.origin.map(|o| DiagramAt::new(o.page, o.index)),
+                origin_at: None,
                 sources: r
                     .sources
                     .into_iter()
                     .filter(|s| s.rect.iter().all(|v| v.is_finite()))
-                    .map(|s| MoveSource { path: s.path, page: s.page, rect: s.rect, other: Map::new() })
+                    .map(|s| MoveSource { path: s.path, page: s.page, rect: s.rect, at: None, other: Map::new() })
                     .collect(),
                 comments: r.comments,
                 other: Map::new(),

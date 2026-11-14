@@ -35,6 +35,7 @@
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
+use pdfcraft_engine::chess::corrections::Fingerprints;
 use pdfcraft_engine::chess::export::{ChessFormat, GamesBookMeta, games_book};
 use pdfcraft_engine::chess::games_store::{self, GameRecord, GamesFile, Owner};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, PgnStopReason};
@@ -195,9 +196,12 @@ impl Automation {
             Some(dir) => Some(games_folder(dir).load(&keys, pages).map_err(failed)?),
             None => None,
         };
-        let file =
+        let mut file =
             loaded.as_ref().map_or_else(|| GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, pages)), |l| l.file.clone());
-        Ok(Some(DocGames { keys, pages, keep, dir, loaded, file, listed: Vec::new() }))
+        // The pages as they are now (plan A9-G2c): the games' moves and diagrams follow theirs.
+        let fingerprints = Fingerprints::new(self.session.get(id).map(|d| d.page_fingerprints()).unwrap_or_default());
+        file.relocate(&fingerprints);
+        Ok(Some(DocGames { keys, pages, keep, dir, loaded, file, listed: Vec::new(), fingerprints }))
     }
 
     /// Keep `list` as document `d`'s games, merged with what its store has now (plan A9-G3b):
@@ -353,6 +357,8 @@ struct DocGames {
     file: GamesFile,
     /// The stored games the list started with (uid, revision).
     listed: Vec<(String, u64)>,
+    /// The document's pages now, which the games' pages are anchored to (plan A9-G2c).
+    fingerprints: Fingerprints,
 }
 
 impl DocGames {
@@ -381,10 +387,14 @@ impl DocGames {
                     n.flipped = r.flipped;
                     n.origin = r.origin;
                     n.other.clone_from(&r.other);
+                    n.anchor(&self.fingerprints);
                     n
                 }),
                 None if e.is_blank() => None,
-                None => GameRecord::of_game(games_store::new_uid(now, salt.as_bytes()), games_store::next_rev(0, now), &e.game),
+                None => GameRecord::of_game(games_store::new_uid(now, salt.as_bytes()), games_store::next_rev(0, now), &e.game).map(|mut n| {
+                    n.anchor(&self.fingerprints);
+                    n
+                }),
             };
             if let Some(r) = record {
                 if i == list.active_index() {
