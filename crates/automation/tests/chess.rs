@@ -3824,3 +3824,149 @@ fn a_running_apps_games_are_merged_into_only_when_asked() {
     assert_eq!(ok(&mut cli, "chess_games", json!({ "doc": doc, "pgn": "1. c4 *\n" }))["store"]["games"], 3);
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N8: `chess_evals` reads the engine's evaluations kept for a document (the one of a
+/// position, or the newest first), leaves out what it can't read, makes nothing, and its store
+/// stays inside the root.
+#[test]
+fn chess_evals_reads_what_is_kept_inside_the_root() {
+    let (base, root) = workdir("evals");
+    let (mut a, doc) = opened(&root);
+    let none = ok(&mut a, "chess_evals", json!({ "doc": doc }));
+    assert_eq!((none["positions"].as_u64(), none["evals"].as_array().map(Vec::len)), (Some(0), Some(0)), "{none:#}");
+    assert!(!root.join(".pdfcraft").exists(), "reading makes no folder");
+    let file = root.join(".pdfcraft/chess-evals").join(none["file"].as_str().unwrap());
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+    let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -";
+    let mut evals = serde_json::Map::new();
+    evals.insert(start.into(), json!({ "depth": 20, "cp": 25, "pv": ["e2e4", "e7e5"], "engine": "Stockfish", "at": 10 }));
+    evals.insert(after_e4.into(), json!({ "depth": 18, "mate": -3, "bound": "lower", "pv": ["e7e5"], "at": 20 }));
+    evals.insert("not a position".into(), json!({ "depth": 1, "cp": 0, "pv": [], "at": 1 }));
+    let kept = json!({ "format": "pdfcraft-chess-evals", "version": 1, "doc": { "pages": 1 }, "evals": evals });
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+    let all = ok(&mut a, "chess_evals", json!({ "doc": doc }));
+    assert_eq!((all["positions"].as_u64(), all["skipped"].as_u64()), (Some(2), Some(1)), "{all:#}");
+    assert_eq!(all["evals"][0]["position"], after_e4, "the newest first: {all:#}");
+    assert_eq!((all["evals"][0]["mate"].as_i64(), all["evals"][0]["bound"].as_str()), (Some(-3), Some("lower")));
+    let one = ok(&mut a, "chess_evals", json!({ "doc": doc, "fen": format!("{start} 5 9"), "limit": 1 }));
+    assert_eq!((one["evals"][0]["depth"].as_u64(), one["evals"][0]["cp"].as_i64()), (Some(20), Some(25)), "{one:#}");
+    assert!(a.call("chess_evals", &json!({ "doc": doc, "fen": "nonsense" })).is_err());
+    match a.call("chess_evals", &json!({ "doc": doc, "evals_store": "../outside/evals" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a store outside the root accepted: {other:?}"),
+    }
+    assert!(!base.join("outside").join("evals").exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── Plan A9, G5b: a book's review taken to another machine ─────────────────────────────────
+
+/// A document with a correction, a decision on its book's PGN and two games kept in the stores
+/// `store`, `reference_store` and `games_store` of the root: the tool, the document, and its
+/// counts (corrections in chess_diagram_states, games in chess_games).
+fn reviewed(root: &Path) -> (Automation, u64) {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    let (mut a, doc) = opened(root);
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models", "store": "a-corr" }));
+    ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn", "reference_store": "a-ref" }));
+    ok(&mut a, "chess_games", json!({ "doc": doc, "pgn": "[Event \"a\"]\n\n1. e4 *\n\n[Event \"b\"]\n\n1. d4 *\n", "games_store": "a-games" }));
+    (a, doc)
+}
+
+/// The counts a review's stores give for `doc`: corrections kept, games kept.
+fn review_counts(a: &mut Automation, doc: u64, prefix: &str) -> (Value, Value) {
+    let states = ok(
+        a,
+        "chess_diagram_states",
+        json!({ "doc": doc, "models_dir": "models", "store": format!("{prefix}-corr"), "reference_store": format!("{prefix}-ref") }),
+    );
+    let games = ok(a, "chess_games", json!({ "doc": doc, "keep": false, "games_store": format!("{prefix}-games") }));
+    (states["corrections"]["kept"].clone(), games["store"]["games"].clone())
+}
+
+/// A9-G5b (A8-19, §2.3): a book's review exported and imported into other stores gives the same
+/// counts; imported twice, the same counts again (by uid, never a game twice); the pack names
+/// no path.
+#[test]
+fn a_review_pack_moves_a_books_review_and_imports_once() {
+    let (base, root) = workdir("review-pack");
+    let (mut a, doc) = reviewed(&root);
+    let before = review_counts(&mut a, doc, "a");
+    assert_eq!(before, (json!(1), json!(2)), "the review: {before:?}");
+    let out = ok(
+        &mut a,
+        "chess_review_pack_export",
+        json!({ "doc": doc, "out": "review.pack", "store": "a-corr", "reference_store": "a-ref", "games_store": "a-games" }),
+    );
+    assert_eq!((out["corrections"].as_u64(), out["decisions"].as_u64(), out["games"].as_u64()), (Some(1), Some(0), Some(2)), "{out:#}");
+    let text = std::fs::read_to_string(root.join("review.pack")).unwrap();
+    let around = base.file_name().unwrap().to_string_lossy().into_owned();
+    for absent in ["Users", around.as_str(), "board.pdf", "Ruy"] {
+        assert!(!text.contains(absent), "{absent} in the pack");
+    }
+    // Another machine: other stores, the same book.
+    let b_stores = json!({ "store": "b-corr", "reference_store": "b-ref", "games_store": "b-games" });
+    let import = |a: &mut Automation| {
+        let mut args = b_stores.clone();
+        args.as_object_mut().unwrap().extend(json!({ "doc": doc, "path": "review.pack" }).as_object().unwrap().clone());
+        ok(a, "chess_review_pack_import", args)
+    };
+    let first = import(&mut a);
+    assert_eq!(first["imported"]["games"], 2, "{first:#}");
+    assert_eq!(first["other_book"], false);
+    assert_eq!(review_counts(&mut a, doc, "b"), before, "the same counts in the other stores");
+    let again = import(&mut a);
+    assert_eq!(again["pack_id"], first["pack_id"]);
+    assert_eq!(review_counts(&mut a, doc, "b"), before, "imported twice: the same counts");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G5b (R2-03): a pack whose correction names `page = usize::MAX` imports the rest and
+/// counts it as discarded; a pack of another book is refused unless forced.
+#[test]
+fn a_review_pack_with_a_bad_correction_imports_the_rest() {
+    let (base, root) = workdir("review-pack-bad");
+    let (mut a, doc) = reviewed(&root);
+    ok(
+        &mut a,
+        "chess_review_pack_export",
+        json!({ "doc": doc, "out": "review.pack", "store": "a-corr", "reference_store": "a-ref", "games_store": "a-games" }),
+    );
+    let mut pack: Value = serde_json::from_slice(&std::fs::read(root.join("review.pack")).unwrap()).unwrap();
+    let good = pack["corrections"]["entries"][0].clone();
+    let mut bad = good.clone();
+    bad["uid"] = json!("0123456789abcdef0123456789abcdef");
+    bad["page"] = json!(u64::MAX);
+    pack["corrections"]["entries"] = json!([good, bad]);
+    std::fs::write(root.join("bad.pack"), pack.to_string()).unwrap();
+    let r = ok(
+        &mut a,
+        "chess_review_pack_import",
+        json!({ "doc": doc, "path": "bad.pack", "store": "c-corr", "reference_store": "c-ref", "games_store": "c-games" }),
+    );
+    assert_eq!(
+        (r["discarded"]["corrections"].as_u64(), r["imported"]["corrections"].as_u64(), r["imported"]["games"].as_u64()),
+        (Some(1), Some(1), Some(2)),
+        "{r:#}"
+    );
+    // Another book's pack.
+    pack["doc"]["id0"] = json!("05050505050505050505050505050505");
+    pack["doc"]["size"] = json!(7);
+    std::fs::write(root.join("other.pack"), pack.to_string()).unwrap();
+    match a.call(
+        "chess_review_pack_import",
+        &json!({ "doc": doc, "path": "other.pack", "store": "c-corr", "reference_store": "c-ref", "games_store": "c-games" }),
+    ) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("another book") && m.contains("force"), "{m}"),
+        other => panic!("another book's review imported: {other:?}"),
+    }
+    let forced = ok(
+        &mut a,
+        "chess_review_pack_import",
+        json!({ "doc": doc, "path": "other.pack", "force": true, "store": "c-corr", "reference_store": "c-ref", "games_store": "c-games" }),
+    );
+    assert_eq!(forced["other_book"], true);
+    let _ = std::fs::remove_dir_all(base);
+}
