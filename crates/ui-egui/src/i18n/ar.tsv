@@ -3818,6 +3818,18 @@ the move's comment	Move comment	تعليق النقلة
 	Alt+O switches between the board as read and the page's own picture.	يبدّل Alt+O بين الرقعة كما قُرئت وصورة الصفحة نفسها.
 	Original diagram, page {p}, diagram {n}	المخطط الأصلي، الصفحة {p}، المخطط {n}
 	The page's picture of this diagram shows once its page is drawn.	تظهر صورة الصفحة لهذا المخطط بعد رسم صفحته.
+	Export the book's review…	تصدير مراجعة الكتاب…
+	Import a book's review…	استيراد مراجعة كتاب…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	لا يُحفظ شطرنج هذا المستند المشفّر، كما اخترت: لا يمكن تصدير مراجعة منه أو استيرادها إليه.
+	There is nothing to export yet: this document keeps no correction, choice or game.	لا شيء للتصدير بعد: لا يحتفظ هذا المستند بأي تصحيح أو اختيار أو مباراة.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	صُدّرت المراجعة إلى {path} (التصحيحات: {corrections}، الاختيارات: {decisions}، المباريات: {games}). قد تحتوي تعليقات المباريات على نص الكتاب: احتفظ بالملف لاستخدامك الشخصي.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	استُوردت المراجعة من {name} (التصحيحات: {corrections}، الاختيارات: {decisions}، المباريات: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	تصحيحات لصفحات ليست في هذا المستند: {n} (محفوظة، دون مخطط).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	اختيارات تنتظر PGN الكتاب: {n} (حمّل PGN، ثم استورد المراجعة مرة أخرى).
+	Entries that couldn't be read and were left out: {n}.	إدخالات تعذّرت قراءتها فاستُبعدت: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} هو مراجعة لكتاب آخر ({pages} صفحة؛ وهذا فيه {here}). هل تريد استيراده إلى هذا المستند رغم ذلك؟
+	Another book's review	مراجعة كتاب آخر
+	Import anyway	استيراد على أي حال
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	غير مؤكد
 progress bar	Progress	التقدم
