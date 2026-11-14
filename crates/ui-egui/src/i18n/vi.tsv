@@ -3803,3 +3803,5 @@ progress bar	Progress	Tiến độ
 	The games of the list as a book, a page each, with their diagrams.	Các ván trong danh sách thành sách, mỗi ván một trang, kèm sơ đồ.
 	Nothing to export: an illegal position has no game.	Không có gì để xuất: thế cờ không hợp lệ không có ván.
 	Games left out (an illegal position has no game): {n}	Các ván bị bỏ qua (thế cờ không hợp lệ không có ván): {n}
+	Indexing the book's PGN…	Đang lập chỉ mục PGN của sách…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN của sách lớn hơn mức PdfCraft lập chỉ mục: chỉ {moves} nước đầu tiên của nó được liên kết với sách.

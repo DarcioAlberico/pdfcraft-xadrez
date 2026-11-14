@@ -1208,6 +1208,44 @@ fn another_books_pgn_keeps_the_choices_and_says_which_no_longer_match() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan A9-I3b (R8-06): a book's PGN past what the index holds (here more games than its cap of
+/// 4,096) is kept, and the app says it was cut and how many moves went in: when it is chosen,
+/// and when the document is opened again and the PGN kept for it is indexed. The games past the
+/// cap are not indexed, so 4,096 are said.
+#[test]
+fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
+    let dir = corrections_dir("book-pgn-cut");
+    std::fs::create_dir_all(&dir).unwrap();
+    let store = dir.join("reference");
+    let pgn: String = (1..=4097).map(|n| format!("[Event \"Game {n}\"]\n\n1. e4 *\n\n")).collect();
+    let cut = "The book's PGN is larger than PdfCraft indexes: only its first 4096 moves are linked to the book.";
+    {
+        let mut h = book_pgn_harness("chapter.pdf", None, chapter(), store.clone());
+        let id = h.state().views[0].id;
+        h.state_mut().set_book_pgn(id, "big.pgn", pgn.as_bytes());
+        h.run_steps(2);
+        let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+        assert!(said.starts_with("Book's PGN big.pgn: 4096 games, 4096 moves."), "{said}");
+        assert!(said.contains(cut), "{said}");
+        h.get_by_label("Book's PGN: big.pgn (4096 games)");
+    }
+    // Opened again (the Chess panel not shown, whose opening may put up a notice of its own).
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.chess.book_pgns.use_folder(store);
+        app.open_bytes("chapter.pdf", None, chapter()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(2);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert_eq!(said, cut, "said again when the kept PGN is indexed");
+    let id = h.state().views[0].id;
+    assert_eq!(h.state_mut().book_pgn_summary(id).map(|s| (s.games, s.moves)), Some((4096, 4096)));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Plan "Carregar PGN do livro", R6f: a PDF opened with a PGN of its name beside it gets the
 /// offer in the Chess panel. Not now is remembered with the settings, so the document opened
 /// again is not asked (the Text tab still offers it); Use keeps it as the book's PGN.
