@@ -3492,6 +3492,8 @@ the move's comment	Move comment	Коментар към хода
 	Tools panel collapsed	Панелът „Инструменти“ е свит
 	Show the page (F6)	Показване на страницата (F6)
 	The board is in the column beside.	Дъската е в съседната колона.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Добави шахматни отметки
 	More board actions	Още действия с дъската
 	Back to the moves	Обратно към ходовете
 	Back to the moves (Esc)	Обратно към ходовете (Esc)

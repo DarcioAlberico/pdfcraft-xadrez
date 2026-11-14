@@ -3804,6 +3804,8 @@ the move's comment	Move comment	تعليق النقلة
 	Tools panel collapsed	تم طي لوحة الأدوات
 	Show the page (F6)	إظهار الصفحة (F6)
 	The board is in the column beside.	الرقعة في العمود المجاور.
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	إضافة إشارات مرجعية للشطرنج
 	More board actions	إجراءات أخرى للرقعة
 	Back to the moves	العودة إلى النقلات
 	Back to the moves (Esc)	العودة إلى النقلات (Esc)

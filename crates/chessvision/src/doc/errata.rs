@@ -321,7 +321,7 @@ fn piece(p: Option<Piece>) -> char {
 /// A field of [`to_csv`]: quoted when it holds a comma, a quote or a line break (RFC 4180), and
 /// begun with `'` when a spreadsheet would take it for a formula (`=`, `+`, `-`, `@`, a tab or a
 /// carriage return first; the text is a PDF's, anyone's).
-fn csv_field(text: &str) -> String {
+pub(super) fn csv_field(text: &str) -> String {
     let mut text = text.to_owned();
     if text.starts_with(['=', '+', '-', '@', '\t', '\r']) {
         text.insert(0, '\'');
