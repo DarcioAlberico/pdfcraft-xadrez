@@ -1595,6 +1595,65 @@ impl ChessGames {
         c.anchored = Some(now);
     }
 
+    /// Document `id`'s games as its review pack takes them (plan A9-G5b): the list as it is now,
+    /// encoded as the autosave writes it (each game with the uid and revision it has, so the same
+    /// list gives the same games; nothing kept here changes), with what the store keeps of them
+    /// merged in. `None` when there is none.
+    pub(crate) fn review_games(&mut self, id: DocId) -> Option<pdfcraft_engine::chess::games_store::GamesFile> {
+        let c = self.docs.get(&id)?;
+        let keys = Self::store_keys(c);
+        // As a write takes them: a list of nothing but a blank game was never kept, and gives
+        // what the store has, if anything.
+        if !c.kept_content() && !c.autosave.stored {
+            return self.store.find(&keys).games;
+        }
+        // Untouched diagram games are not kept (plan A9-G8).
+        let kept: Vec<&GameEntry> = c.iter().filter(|e| !e.ephemeral()).collect();
+        let before_shown = c.iter().take(c.active_index().saturating_add(1)).filter(|e| !e.ephemeral()).count();
+        let mut stored: Vec<Option<chess_autosave::Stored>> = kept.iter().map(|e| e.stored.clone()).collect();
+        let mut known = c.known.clone();
+        let games = stored.iter_mut().zip(kept.iter().map(|e| &e.board)).collect();
+        let collected = chess_autosave::Collected {
+            cid: c.cid.as_str(),
+            keys: &keys,
+            games,
+            active: before_shown.saturating_sub(1),
+            known: &mut known,
+            trash: c.trash.stored(),
+            taken: c.taken.clone(),
+            fingerprints: c.anchored.clone(),
+        };
+        let mut file = chess_autosave::snapshot(collected).ok()?;
+        if let Some(kept) = self.store.find(&keys).games {
+            file.merge(&kept);
+        }
+        (!file.games.is_empty() || !file.trash.is_empty()).then_some(file)
+    }
+
+    /// Bring the live games of `theirs` (a review pack's, plan A9-G5b) into document `id`'s list,
+    /// at its end, leaving out those the list has had (by uid: importing a pack again brings
+    /// nothing), and the trash items it doesn't have, leaving out those taken out here; the
+    /// autosave writes them. How many games came in.
+    pub(crate) fn take_review(&mut self, id: DocId, theirs: &pdfcraft_engine::chess::games_store::GamesFile) -> usize {
+        let Some(c) = self.docs.get_mut(&id) else { return 0 };
+        let added = c.take_in(theirs.live().cloned().collect());
+        let have = c.trash.ids();
+        let mut items = c.trash.stored();
+        let before = items.len();
+        for t in &theirs.trash {
+            let tid = t.id();
+            if !have.contains(&tid) && !c.taken.contains(&tid) {
+                items.push(t.clone());
+            }
+        }
+        if items.len() > before {
+            // Oldest first, as the trash keeps them; the newest that fit stay.
+            items.sort_by_key(|t| t.at);
+            c.trash = crate::chess_trash::Trash::from_stored(items);
+        }
+        added
+    }
+
     /// Whether document `id`'s collection has games whose pages matter (plan A9-G2c).
     pub(crate) fn has_pages(&self, id: DocId) -> bool {
         self.docs.get(&id).is_some_and(|c| c.anchored.is_some() || c.kept_content())
@@ -2669,6 +2728,8 @@ impl PdfCraftApp {
         self.take_chess_uploads();
         #[cfg(target_arch = "wasm32")]
         self.take_book_pgn_uploads();
+        #[cfg(target_arch = "wasm32")]
+        self.take_chess_review_uploads();
         self.show_chess_notes();
     }
 

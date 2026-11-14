@@ -3544,3 +3544,15 @@ the move's comment	Move comment	Commentaire du coup
 	Alt+O switches between the board as read and the page's own picture.	Alt+O bascule entre l’échiquier tel qu’il a été lu et l’image de la page elle-même.
 	Original diagram, page {p}, diagram {n}	Diagramme d’origine, page {p}, diagramme {n}
 	The page's picture of this diagram shows once its page is drawn.	L’image de ce diagramme sur la page s’affiche dès que sa page est dessinée.
+	Export the book's review…	Exporter la révision du livre…
+	Import a book's review…	Importer la révision d'un livre…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Les échecs de ce document chiffré ne sont pas conservés, comme vous l'avez demandé : une révision ne peut pas en être exportée ni y être importée.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Il n'y a encore rien à exporter : ce document ne conserve aucune correction, aucun choix ni aucune partie.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Révision exportée vers {path} (corrections : {corrections}, choix : {decisions}, parties : {games}). Les commentaires des parties peuvent contenir le texte du livre : gardez le fichier pour votre usage personnel.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Révision importée de {name} (corrections : {corrections}, choix : {decisions}, parties : {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Corrections de pages que ce document n'a pas : {n} (conservées, sur aucun diagramme).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Choix en attente du PGN du livre : {n} (chargez le PGN, puis importez de nouveau la révision).
+	Entries that couldn't be read and were left out: {n}.	Entrées illisibles, laissées de côté : {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} est la révision d'un autre livre ({pages} pages ; celui-ci en a {here}). L'importer quand même dans ce document ?
+	Another book's review	Révision d'un autre livre
+	Import anyway	Importer quand même
