@@ -10,8 +10,17 @@
 //!
 //! The order, the game shown after each change, the blank game the last delete leaves, the names
 //! and the PGN split are the engine's ([`pdfcraft_engine::chess::collection`]), which the app's
-//! list goes through too, so the two never differ. The app's own collections (autosaved in its
-//! data folder, under its instance lock) are not touched: this tool works on PGN text and files.
+//! list goes through too, so the two never differ.
+//!
+//! **A document's own games** (plan A9-G3b): with `doc`, the collection starts from the games the
+//! app keeps for that document (`games_store`, by default the app's data folder: the engine's
+//! [`pdfcraft_engine::chess::games_store`]), and the games of `pgn` or `path`, when given, are added
+//! after them (an import). Once every operation was applied, the list is kept there again, merged
+//! game by game with what the store has then (by uid and revision), so the games another writer
+//! added are never lost; a game the operations changed takes a higher revision, one they deleted a
+//! tombstone. A document whose games a running PdfCraft autosaves is refused unless the call says
+//! `merge: true`; `keep: false` only reads. The games the tool can't list (a position that can't be
+//! played, a PGN it can't read) are kept as they are and counted.
 //!
 //! Both paths are confined to `--root` and resolved first, before anything is read. Each operation
 //! adds an entry to the report; one that is refused adds an error entry, changes nothing and stops
@@ -24,11 +33,14 @@
 //! call says `allow_truncate: true`. `out` may be `path` (editing the file in place is what the tool is for),
 //! never the file of an open document unless the call says `overwrite: true`.
 
+use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
+use pdfcraft_engine::chess::games_store::{self, GameRecord, GamesFile, Owner};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, PgnStopReason};
 use serde_json::{Map, Value, json};
 
-use crate::{Args, Automation, Result, ToolError, chess_pgn, write_atomic};
+use crate::chess_store_migrate::{GAMES, StoreAt};
+use crate::{Args, Automation, Result, ToolError, chess_pgn, failed, write_atomic};
 
 /// Most operations in one call.
 pub(crate) const MAX_OPS: usize = 1000;
@@ -42,11 +54,21 @@ struct Entry {
     game: Game,
     stopped: Option<String>,
     stop_reason: Option<PgnStopReason>,
+    /// The game as the document's store kept it (plan A9-G3b), with the game's revision when it
+    /// was read: changed since when that differs.
+    stored: Option<(GameRecord, u64)>,
+}
+
+impl Entry {
+    /// A game that is not the store's (yet).
+    fn new(game: Game, stopped: Option<String>, stop_reason: Option<PgnStopReason>) -> Entry {
+        Entry { game, stopped, stop_reason, stored: None }
+    }
 }
 
 impl ListedGame for Entry {
     fn blank() -> Entry {
-        Entry { game: Game::standard(), stopped: None, stop_reason: None }
+        Entry::new(Game::standard(), None, None)
     }
 
     fn is_blank(&self) -> bool {
@@ -88,7 +110,24 @@ impl Automation {
             self.check_outputs(a, &[("out", target.as_path())], &[])?;
         }
         let allow_truncate = a.opt_bool("allow_truncate")?.unwrap_or(false);
-        let mut list = read_games(&text)?;
+        let mut doc = self.games_doc(a)?;
+        let imported = read_games(&text)?;
+        let mut list = match &mut doc {
+            None => imported,
+            Some(d) => {
+                let mut games = d.entries();
+                d.listed = games.iter().filter_map(|e| e.stored.as_ref().map(|(r, _)| (r.uid.clone(), r.rev))).collect();
+                let room = MAX_GAMES.saturating_sub(games.len());
+                let (more, _) = imported.into_games();
+                let more: Vec<Entry> = more.into_iter().filter(|e| !e.is_blank()).collect();
+                if more.len() > room {
+                    return Err(Args::wrong("pgn", &format!("at most {MAX_GAMES} games with the document's {} games", games.len())));
+                }
+                games.extend(more);
+                let active = d.file.active_index();
+                GameList::from_games(games, active)
+            }
+        };
         if let Some(active) = a.opt_int("active")? {
             let shown = usize::try_from(active).ok().filter(|&i| list.switch_to(i));
             shown.ok_or_else(|| Args::wrong("active", &format!("a game of the list, 0 to {}", list.len().saturating_sub(1))))?;
@@ -139,6 +178,10 @@ impl Automation {
             _ => None,
         };
         let applied = report.iter().filter(|e| e["ok"] == true).count();
+        let store = match doc {
+            None => Value::Null,
+            Some(d) => self.keep_games(a, d, &list, refused)?,
+        };
         Ok(json!({
             "games": list_json(&list),
             "active": list.active_index(),
@@ -148,8 +191,150 @@ impl Automation {
             "report": report,
             "applied": applied,
             "written": written,
+            "store": store,
         }))
     }
+
+    /// The document `doc` names, with what its games' store keeps of it (plan A9-G3b). `None`
+    /// without `doc`.
+    fn games_doc(&self, a: &Args) -> Result<Option<DocGames>> {
+        let Some(id) = a.opt_int("doc")? else { return Ok(None) };
+        let id = DocId(u64::try_from(id).map_err(|_| Args::wrong("doc", "a document id"))?);
+        let keep = a.opt_bool("keep")?.unwrap_or(true);
+        let doc = self.session.get(id).ok_or_else(|| failed(format!("no open document with id {} (see doc_list)", id.0)))?;
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        if keep {
+            self.may_keep(a, id)?;
+        }
+        let dir = match self.chess_store_at(a, GAMES, keep)? {
+            StoreAt::Folder(dir) => Some(dir),
+            StoreAt::OutsideRoot => None,
+        };
+        let loaded = match &dir {
+            Some(dir) => Some(games_folder(dir).load(&keys, pages).map_err(failed)?),
+            None => None,
+        };
+        let file =
+            loaded.as_ref().map_or_else(|| GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&keys, pages)), |l| l.file.clone());
+        Ok(Some(DocGames { keys, pages, keep, dir, loaded, file, listed: Vec::new() }))
+    }
+
+    /// Keep `list` as document `d`'s games, merged with what its store has now (plan A9-G3b):
+    /// unless the call only reads (`keep: false`) or an operation was refused. What was kept, for
+    /// the reply.
+    fn keep_games(&self, a: &Args, d: DocGames, list: &GameList<Entry>, refused: bool) -> Result<Value> {
+        let listed = d.file.live().count();
+        let unlisted = listed.saturating_sub(d.listed.len());
+        let shown = d.dir.as_ref().map(|dir| self.shown_path(dir).0);
+        let Some(dir) = d.dir.as_ref().filter(|_| d.keep && !refused) else {
+            let mut reply = json!({ "folder": shown, "kept": false, "games": listed, "unlisted": unlisted, "outside_root": d.dir.is_none() });
+            if let Some(l) = &d.loaded {
+                reply = crate::chess_corrections::with_store_notes(reply, l);
+            }
+            return Ok(reply);
+        };
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |t| t.as_secs());
+        let mine = d.mine(list, now);
+        let merge = a.opt_bool("merge")?.unwrap_or(false);
+        let instances = self.chess_data.earlier.as_ref().and_then(|e| e.parent()).map(std::path::Path::to_path_buf);
+        let live = |name: &str| instances.as_ref().is_some_and(|dir| instance_alive(dir, name));
+        let owner = Owner { me: None, live: &live, merge };
+        let (kept, loaded) = games_folder(dir).keep(&d.keys, d.pages, mine, &owner).map_err(failed)?;
+        let reply = json!({
+            "folder": shown,
+            "file": loaded.name,
+            "kept": true,
+            "games": kept.file.live().count(),
+            "theirs": kept.theirs.len(),
+            "unlisted": unlisted,
+        });
+        Ok(crate::chess_corrections::with_store_notes(reply, &loaded))
+    }
+}
+
+/// A document's games as a call reads and keeps them (plan A9-G3b).
+struct DocGames {
+    keys: pdfcraft_engine::chess::DocKeys,
+    pages: usize,
+    /// Kept again once the operations are applied.
+    keep: bool,
+    /// The store's folder; `None`: the app's, outside the folders the tools are confined to.
+    dir: Option<std::path::PathBuf>,
+    loaded: Option<pdfcraft_engine::chess::store::Loaded<GamesFile>>,
+    file: GamesFile,
+    /// The stored games the list started with (uid, revision).
+    listed: Vec<(String, u64)>,
+}
+
+impl DocGames {
+    /// The stored games the list shows, in order: each one this build can read as a game.
+    fn entries(&self) -> Vec<Entry> {
+        self.file
+            .live()
+            .filter_map(|r| {
+                let (game, _) = r.game()?;
+                let revision = game.revision();
+                Some(Entry { game, stopped: None, stop_reason: None, stored: Some((r.clone(), revision)) })
+            })
+            .collect()
+    }
+
+    /// What the call keeps of `list` at `now`: each game the store had, as it was unless the
+    /// operations changed it (then at a higher revision), the games added with new uids, and a
+    /// tombstone for each game the store had that the list no longer has.
+    fn mine(&self, list: &GameList<Entry>, now: u64) -> GamesFile {
+        let mut mine = GamesFile::empty(pdfcraft_engine::chess::corrections::DocRecord::new(&self.keys, self.pages));
+        let salt = format!("{}-{}", std::process::id(), self.pages);
+        for (i, e) in list.iter().enumerate() {
+            let record = match &e.stored {
+                Some((r, revision)) if *revision == e.game.revision() => Some(r.clone()),
+                Some((r, _)) => GameRecord::of_game(r.uid.clone(), games_store::next_rev(r.rev, now), &e.game).map(|mut n| {
+                    n.flipped = r.flipped;
+                    n.origin = r.origin;
+                    n.other.clone_from(&r.other);
+                    n
+                }),
+                None if e.is_blank() => None,
+                None => GameRecord::of_game(games_store::new_uid(now, salt.as_bytes()), games_store::next_rev(0, now), &e.game),
+            };
+            if let Some(r) = record {
+                if i == list.active_index() {
+                    mine.active = Some(r.uid.clone());
+                }
+                mine.games.push(r);
+            }
+        }
+        let gone: Vec<GameRecord> = self
+            .listed
+            .iter()
+            .filter(|(uid, _)| !mine.games.iter().any(|m| m.uid == *uid))
+            .map(|(uid, rev)| GameRecord::tombstone(uid.clone(), games_store::next_rev(*rev, now)))
+            .collect();
+        mine.games.extend(gone);
+        mine
+    }
+}
+
+/// The games' store in the folder `dir`. The web build has no folders: there it keeps nothing.
+#[cfg(not(target_arch = "wasm32"))]
+fn games_folder(dir: &std::path::Path) -> games_store::DirStore {
+    games_store::DirStore::new(dir)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn games_folder(_: &std::path::Path) -> games_store::MemStore {
+    games_store::MemStore::new(0)
+}
+
+/// Whether the running PdfCraft whose lock file is `name` in `dir` autosaves still.
+#[cfg(not(target_arch = "wasm32"))]
+fn instance_alive(dir: &std::path::Path, name: &str) -> bool {
+    games_store::instance_alive(dir, name)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn instance_alive(_: &std::path::Path, _: &str) -> bool {
+    false
 }
 
 /// The games of `text`, the first shown; one blank game for none. Refused when a game cannot be
@@ -163,7 +348,7 @@ fn read_games(text: &str) -> Result<GameList<Entry>> {
     let mut games = Vec::with_capacity(chunks.len());
     for (i, chunk) in chunks.iter().enumerate() {
         let (game, report) = Game::from_pgn_report(chunk).map_err(|e| ToolError::InvalidArgs(format!("game {i}: {e}")))?;
-        games.push(Entry { game, stopped: report.stopped, stop_reason: report.stop_reason });
+        games.push(Entry::new(game, report.stopped, report.stop_reason));
     }
     Ok(GameList::from_games(games, 0))
 }
@@ -267,8 +452,8 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
         }
         "duplicate" => {
             let g = game_of(list, obj)?;
-            let copy =
-                list.get(g).map(|e| Entry { game: e.game.clone(), stopped: e.stopped.clone(), stop_reason: e.stop_reason }).ok_or("no such game")?;
+            // A copy is a game of its own: not the stored one.
+            let copy = list.get(g).map(|e| Entry::new(e.game.clone(), e.stopped.clone(), e.stop_reason)).ok_or("no such game")?;
             entry.insert("game".into(), json!(list.insert_after(g, copy)));
         }
         "delete" => {
@@ -296,13 +481,13 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
                 None => from.main_line().last().copied(),
             };
             let game = collection::game_from(from, node).map_err(|e| e.to_string())?;
-            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None, stop_reason: None })));
+            entry.insert("game".into(), json!(list.insert_after(g, Entry::new(game, None, None))));
         }
         "new_at" => {
             let g = game_of(list, obj)?;
             let fen = opt_text(obj, "fen")?.ok_or("fen is missing: the position the new game starts at")?;
             let game = Game::from_fen(fen).map_err(|e| format!("fen: {e}"))?;
-            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None, stop_reason: None })));
+            entry.insert("game".into(), json!(list.insert_after(g, Entry::new(game, None, None))));
         }
         "export" => {
             let only = match obj.get("game") {
