@@ -3549,4 +3549,6 @@ progress bar	Progress	Орындалу барысы
 	The games of the list as a book, a page each, with their diagrams.	Тізімдегі партиялар кітап ретінде, әрқайсысы бір беттен, диаграммаларымен.
 	Nothing to export: an illegal position has no game.	Экспорттайтын ештеңе жоқ: заңсыз позицияның партиясы болмайды.
 	Games left out (an illegal position has no game): {n}	Тысқары қалған партиялар (заңсыз позицияның партиясы болмайды): {n}
+	Indexing the book's PGN…	Кітаптың PGN файлы индекстелуде…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Кітаптың PGN файлы PdfCraft индекстейтін көлемнен үлкен: кітаппен оның алғашқы {moves} жүрісі ғана байланыстырылды.
 	Importing…	Импортталуда…

@@ -3552,4 +3552,6 @@ progress bar	Progress	Fortschritt
 	The games of the list as a book, a page each, with their diagrams.	Die Partien der Liste als Buch, je eine Seite, mit ihren Diagrammen.
 	Nothing to export: an illegal position has no game.	Nichts zu exportieren: Eine regelwidrige Stellung hat keine Partie.
 	Games left out (an illegal position has no game): {n}	Ausgelassene Partien (eine regelwidrige Stellung hat keine Partie): {n}
+	Indexing the book's PGN…	PGN des Buchs wird indiziert…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Das PGN des Buchs ist größer, als PdfCraft indiziert: nur seine ersten {moves} Züge sind mit dem Buch verknüpft.
 	Importing…	Wird importiert…
