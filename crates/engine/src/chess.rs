@@ -1826,6 +1826,7 @@ pub mod office;
 mod page_key;
 pub mod reference_store;
 pub mod replace;
+pub mod review_pack;
 pub mod samples;
 pub mod span;
 pub mod store;

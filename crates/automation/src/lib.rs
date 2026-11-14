@@ -24,6 +24,7 @@ mod chess_files;
 mod chess_games;
 mod chess_pgn;
 mod chess_reference;
+mod chess_review_pack;
 mod chess_sample;
 mod chess_states;
 mod chess_store_migrate;
@@ -871,6 +872,8 @@ impl Automation {
             "chess_reference_status" => self.chess_reference_status(&a)?,
             "chess_reference_clear" => self.chess_reference_clear(&a)?,
             "chess_store_migrate" => self.chess_store_migrate(&a)?,
+            "chess_review_pack_export" => self.chess_review_pack_export(&a)?,
+            "chess_review_pack_import" => self.chess_review_pack_import(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_errata" => self.chess_errata(&a)?,
