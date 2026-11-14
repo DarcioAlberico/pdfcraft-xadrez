@@ -18,6 +18,7 @@ mod a11y;
 mod batch;
 mod chess;
 mod chess_area;
+mod chess_bookmarks;
 mod chess_corrections;
 mod chess_errata;
 mod chess_files;
@@ -869,6 +870,7 @@ impl Automation {
             "chess_correction_delete" => self.chess_correction_delete(&a)?,
             "chess_reference_set" => self.chess_reference_set(&a)?,
             "chess_reference_status" => self.chess_reference_status(&a)?,
+            "chess_bookmarks" => self.chess_bookmarks(&a)?,
             "chess_reference_clear" => self.chess_reference_clear(&a)?,
             "chess_store_migrate" => self.chess_store_migrate(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,

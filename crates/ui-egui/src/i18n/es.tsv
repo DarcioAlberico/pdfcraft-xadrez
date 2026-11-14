@@ -3666,3 +3666,5 @@ the move's comment	Move comment	Comentario de la jugada
 	the page has more diagrams than are read on one page	la página tiene más diagramas de los que se leen en una página
 	the piece model failed: {e}	el modelo de piezas falló: {e}
 	the piece model's output is not a probability matrix: {e}	la salida del modelo de piezas no es una matriz de probabilidades: {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Añadir marcadores de ajedrez

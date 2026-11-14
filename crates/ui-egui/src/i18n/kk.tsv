@@ -3523,3 +3523,5 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	the page has more diagrams than are read on one page	бетте бір бетте оқылатыннан көп диаграмма бар
 	the piece model failed: {e}	фигуралар моделі сәтсіз болды: {e}
 	the piece model's output is not a probability matrix: {e}	фигуралар моделінің шығысы ықтималдықтар матрицасы емес: {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Шахмат бетбелгілерін қосу

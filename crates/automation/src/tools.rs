@@ -1443,6 +1443,28 @@ pub fn tools() -> Vec<ToolDef> {
                 },
                 &["doc"],
             )),
+        t("chess_bookmarks", "Make a chess book's bookmarks", "Chess ▸ the book's bookmarks (plan A9-N6): read pages (default all) as chess_document does (the corrections and scan settings alike) and make the book's outline under one new first bookmark, title (default Chess), the bookmarks there staying, in one undoable step (Add chess bookmarks): its chapters (its headings, level 1 or 2 as read; running heads, folios and text inside diagrams left out), its games (those whose header names both players, numbered in the book's order and titled as an index prints them: 3. Fischer–Spassky, Siegen 1970) and its exercises (the diagrams a caption numbers: exercise_label and the number, Exercise 185), in reading order, the games and exercises one level under the heading before them. include narrows the kinds. dry_run shows the outline and changes nothing (the preview). index gives the index of the book's games (those with a header) as csv (RFC 4180: number, white, black, event, site, date, round, result, eco, page, page_label; a cell a spreadsheet would run as a formula begun with ') or markdown (a table), returned as index, or written to out (confined to --root; bom puts a UTF-8 byte order mark first for Excel). Returns title, dry_run, applied (and why not: nothing to bookmark), document (as other edits do), entries, chapters, games, exercises, tree (level, kind, title, page from 1, page_label: as the book numbers it), pages, needs_ocr, notes, corrections, and index_games with index or out. Refused when the document does not allow assembling (bookmarks are an assembly change).")
+            .with(schema(
+                {
+                    let mut props = chess_props(true);
+                    if let Some(o) = props.as_object_mut() {
+                        o.insert("dry_run".into(), json!({ "type": "boolean", "description": "Show the outline without making it (default false)." }));
+                        o.insert("include".into(), json!({ "type": "array", "items": { "type": "string", "enum": ["chapters", "games", "exercises"] }, "maxItems": 3, "description": "The kinds of bookmarks to make (default all three)." }));
+                        o.insert("title".into(), json!({ "type": "string", "maxLength": 120, "description": "The book's own bookmark, which holds the others (default Chess)." }));
+                        o.insert("exercise_label".into(), json!({ "type": "string", "maxLength": 60, "description": "What an exercise's bookmark says before its number (default Exercise)." }));
+                        o.insert("index".into(), json!({ "type": "string", "enum": ["csv", "markdown"], "description": "Also give the index of the book's games, as CSV or a Markdown table." }));
+                        o.insert("out".into(), json!({ "type": "string", "description": "Write the index to this file (needs index; default: returned as index)." }));
+                        o.insert("overwrite".into(), json!({ "type": "boolean", "description": "Write out even when it is the file of an open document or a file this call reads (default false: refused)." }));
+                        o.insert("bom".into(), json!({ "type": "boolean", "description": "CSV to out: start the file with a UTF-8 byte order mark (default false)." }));
+                        o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language as a BCP 47 tag (en, de, fr, es, pt, it, nl, ru, …). Default: chosen from the pages." }));
+                        o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer, as chess_document: auto (default), off (a born-digital book) or all (a scanned book)." }));
+                        o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out of chess_document), to start chess OCR from." }));
+                    }
+                    insert_corrections(&mut props);
+                    props
+                },
+                &["doc"],
+            )),
         t("chess_add_lichess_links", "Add lichess links", "Chess ▸ Add lichess links: under each diagram whose position is known, a small blue label (Helvetica, default \"Analyze on lichess\", 8 pt) with a link to the position's lichess.org analysis board. Diagrams are found and read as chess_read does. A diagram corrected in the corrections folder (chess_correction_set) is linked to the position a person set, unless corrections is false. Only a legal position the decoder did not repair is linked, and by default only a reading that passed the gate (allow_unaccepted also takes legal readings with an uncertain square); a page that already links to the same position is skipped. The label goes below the diagram, else to its right, else above it, clear of the page edge and of other diagrams and labels. Returns the links added (page, index, fen, url, side, rect from the top-left of the displayed page, link_user) and the diagrams skipped with the reason. One undo step; the label is added text that can be moved or edited later. dry_run changes nothing. Nothing is fetched: the link opens when a reader clicks it. Needs permission to change the document.")
             .with(schema(
                 {

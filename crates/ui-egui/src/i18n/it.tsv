@@ -3737,3 +3737,5 @@ the move's comment	Move comment	Commento della mossa
 	the page has more diagrams than are read on one page	la pagina ha più diagrammi di quanti se ne leggano in una pagina
 	the piece model failed: {e}	il modello dei pezzi non è riuscito: {e}
 	the piece model's output is not a probability matrix: {e}	l'output del modello dei pezzi non è una matrice di probabilità: {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Aggiungi segnalibri degli scacchi

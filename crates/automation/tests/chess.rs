@@ -3737,3 +3737,116 @@ fn compat_an_earlier_build_reads_the_pgn_this_build_writes() {
     assert_eq!(unnumbered(&their_moves), unnumbered(&our_moves));
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Pages of Helvetica lines, `(top from the page's top, size, text)` each, one content stream a
+/// page.
+fn lines_pdf(pages: &[Vec<(f32, f32, &str)>]) -> Vec<u8> {
+    let n = pages.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
+    let mut objs: Vec<String> = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".into(),
+        format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into(),
+    ];
+    for (i, lines) in pages.iter().enumerate() {
+        let content: String = lines.iter().map(|(top, size, text)| format!("BT /F2 {size} Tf 60 {} Td ({text}) Tj ET\n", 800.0 - top)).collect();
+        objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F2 3 0 R >> >> >>", 5 + 2 * i));
+        objs.push(format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()));
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// A book of two chapters and three games, each under its header (plan A9-N6's check).
+fn two_chapter_book() -> Vec<u8> {
+    let moves = "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6";
+    lines_pdf(&[
+        vec![
+            (40.0, 24.0, "Chapter 1"),
+            (100.0, 11.0, "(1) Fischer,Robert (2760) - Spassky,Boris (2690) [C95]"),
+            (160.0, 11.0, "Siegen ol (5), 1970"),
+            (220.0, 11.0, moves),
+            (300.0, 11.0, "(2) Tal,Mikhail - Botvinnik,Mikhail"),
+            (360.0, 11.0, "Moscow, 1960"),
+            (420.0, 11.0, moves),
+        ],
+        vec![
+            (40.0, 24.0, "Chapter 2"),
+            (100.0, 11.0, "(3) Carlsen,Magnus - Anand,Viswanathan"),
+            (160.0, 11.0, "Chennai (9), 2013"),
+            (220.0, 11.0, moves),
+        ],
+    ])
+}
+
+/// Plan A9-N6 (A8-13): `chess_bookmarks {dry_run}` gives the book's tree (Chapters ▸ Games) and
+/// changes nothing; applied, the bookmarks are under one of their own, in one step, which undone
+/// leaves the document as it was; the index of games as CSV, and its file inside the root.
+#[test]
+fn chess_bookmarks_shows_then_makes_the_books_outline_in_one_step() {
+    let (base, root) = workdir("bookmarks");
+    std::fs::write(root.join("book.pdf"), two_chapter_book()).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "book.pdf" }))["doc"].as_u64().unwrap();
+    let shown = ok(&mut a, "chess_bookmarks", json!({ "doc": doc, "lang": "en", "dry_run": true, "index": "csv" }));
+    let tree: Vec<(u64, String, String, u64)> = shown["tree"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| {
+            (
+                e["level"].as_u64().unwrap(),
+                e["kind"].as_str().unwrap().to_owned(),
+                e["title"].as_str().unwrap().to_owned(),
+                e["page"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    let want: Vec<(u64, String, String, u64)> = [
+        (1, "chapter", "Chapter 1", 1),
+        (2, "game", "1. Fischer\u{2013}Spassky, Siegen ol 1970", 1),
+        (2, "game", "2. Tal\u{2013}Botvinnik, Moscow 1960", 1),
+        (1, "chapter", "Chapter 2", 2),
+        (2, "game", "3. Carlsen\u{2013}Anand, Chennai 2013", 2),
+    ]
+    .into_iter()
+    .map(|(l, k, t, p)| (l, k.to_owned(), t.to_owned(), p))
+    .collect();
+    assert_eq!(tree, want, "{shown:#}");
+    assert_eq!((shown["chapters"].as_u64(), shown["games"].as_u64(), shown["exercises"].as_u64()), (Some(2), Some(3), Some(0)));
+    let index = shown["index"].as_str().unwrap();
+    assert!(index.starts_with("number,white,black,event,site,date,round,result,eco,page,page_label\r\n"), "{index}");
+    assert!(index.contains("1,\"Fischer, Robert\",\"Spassky, Boris\",Siegen ol,,1970.??.??,5,*,C95,1,1\r\n"), "{index}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "a dry run changes nothing");
+    assert_eq!(ok(&mut a, "bookmark_list", json!({ "doc": doc }))["bookmarks"].as_array().map(Vec::len), Some(0));
+
+    let made = ok(&mut a, "chess_bookmarks", json!({ "doc": doc, "lang": "en", "title": "Xadrez" }));
+    assert_eq!(made["applied"], true, "{made:#}");
+    let listed = ok(&mut a, "bookmark_list", json!({ "doc": doc }));
+    let top: Vec<&str> = listed["bookmarks"].as_array().unwrap().iter().filter_map(|b| b["title"].as_str()).collect();
+    assert_eq!(top, ["Xadrez"], "{listed:#}");
+    ok(&mut a, "edit_undo", json!({ "doc": doc }));
+    assert_eq!(ok(&mut a, "bookmark_list", json!({ "doc": doc }))["bookmarks"].as_array().map(Vec::len), Some(0), "one step undone");
+
+    // The index to a file inside the root; outside it, refused before anything is read.
+    let written = ok(&mut a, "chess_bookmarks", json!({ "doc": doc, "lang": "en", "dry_run": true, "index": "markdown", "out": "index.md" }));
+    assert_eq!(written["out"], "index.md");
+    assert!(std::fs::read_to_string(root.join("index.md")).unwrap().contains("| 3 | Carlsen, Magnus | Anand, Viswanathan |"));
+    match a.call("chess_bookmarks", &json!({ "doc": doc, "dry_run": true, "index": "csv", "out": "../outside/index.csv" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("an index outside the root accepted: {other:?}"),
+    }
+    assert!(!base.join("outside").join("index.csv").exists());
+    let _ = std::fs::remove_dir_all(base);
+}

@@ -3525,3 +3525,5 @@ the move's comment	Move comment	Commentaire du coup
 	the page has more diagrams than are read on one page	la page a plus de diagrammes qu'il n'en est lu sur une page
 	the piece model failed: {e}	le modèle de pièces a échoué : {e}
 	the piece model's output is not a probability matrix: {e}	la sortie du modèle de pièces n'est pas une matrice de probabilités : {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Ajouter des signets d'échecs

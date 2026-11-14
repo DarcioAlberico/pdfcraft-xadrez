@@ -3800,3 +3800,5 @@ the move's comment	Move comment	تعليق النقلة
 	the page has more diagrams than are read on one page	في الصفحة مخططات أكثر مما يُقرأ في صفحة واحدة
 	the piece model failed: {e}	فشل نموذج القطع: {e}
 	the piece model's output is not a probability matrix: {e}	مخرجات نموذج القطع ليست مصفوفة احتمالات: {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	إضافة إشارات مرجعية للشطرنج

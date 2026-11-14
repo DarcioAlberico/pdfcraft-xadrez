@@ -3488,3 +3488,5 @@ the move's comment	Move comment	Коментар към хода
 	the page has more diagrams than are read on one page	страницата има повече диаграми, отколкото се четат на една страница
 	the piece model failed: {e}	моделът на фигурите се провали: {e}
 	the piece model's output is not a probability matrix: {e}	изходът на модела на фигурите не е матрица от вероятности: {e}
+# Plan A9-N6: the undo step of a chess book's bookmarks.
+	Add chess bookmarks	Добави шахматни отметки
