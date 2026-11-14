@@ -717,14 +717,14 @@ impl Automation {
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
         let path = self.resolve(&shown, true)?;
-        // PGN: the book's own PGN (plan "Carregar PGN do livro", R4; the kept one, R5), indexed
-        // before the pages are read.
-        let (reference, reference_kept) = if format == ChessFormat::Pgn {
-            let id = self.doc(a)?.id;
-            let (r, kept) = self.book_pgn(a, id)?;
-            (r.map(|r| (r.shown, std::sync::Arc::new(r.index))), kept)
-        } else {
-            (None, Value::Null)
+        // The book's own PGN (plan "Carregar PGN do livro", R4; the kept one, R5) and the user's
+        // games (games_pgn), for every format since plan A9-N2, indexed before the pages are read.
+        let id = self.doc(a)?.id;
+        let (book_pgn, reference_kept) = self.book_pgn(a, id)?;
+        let reference = book_pgn.map(|r| (r.shown, std::sync::Arc::new(r.index)));
+        let games = match a.opt_str("games_pgn")? {
+            Some(p) => Some((p.to_owned(), std::sync::Arc::new(read_reference(&self.resolve(p, false)?, p)?))),
+            None => None,
         };
         // Markdown's images go in a folder beside the file: `book.md` → `book_diagrams/`.
         let out = std::path::Path::new(&shown);
@@ -766,6 +766,7 @@ impl Automation {
         options.pgn_style = pgn_style;
         options.review_marks = a.opt_bool("review_marks")?;
         options.reference = reference.as_ref().map(|(_, index)| index.clone());
+        options.games = games.as_ref().map(|(_, index)| index.clone());
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder
@@ -786,6 +787,29 @@ impl Automation {
         let read = &made.read;
         let mut notes: Vec<Value> = read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect();
         notes.extend(made.notes.iter().map(|n| json!({ "note": n })));
+        // The links, in the order given to the engine: the user's games, then the book's PGN.
+        let mut linked = made.linked.iter();
+        let games_linked = games.as_ref().and_then(|_| linked.next());
+        let reference_linked = reference.as_ref().and_then(|_| linked.next());
+        // PGN: what the PGN written was given (the book's, else the user's games), as before, with
+        // its links; the other formats: the links, as chess_document says them.
+        let reference_json = if format == ChessFormat::Pgn {
+            let written = reference.as_ref().map(|r| (r, reference_linked)).or(games.as_ref().map(|g| (g, games_linked)));
+            written.zip(made.annotated.as_ref()).map(|(((p, index), l), n)| {
+                json!({
+                    "pgn": p,
+                    "games": n.games,
+                    "moves": index.moves(),
+                    "commented": n.commented,
+                    "book_only": n.book_only,
+                    "diagrams": n.diagrams,
+                    "linked": l.map(|l| l.alignment.counts),
+                })
+            })
+        } else {
+            reference.as_ref().zip(reference_linked).map(|((p, index), l)| reference_reply(p, index, l))
+        };
+        let games_json = games.as_ref().zip(games_linked).map(|((p, index), l)| reference_reply(p, index, l));
         Ok(json!({
             "out": shown,
             "bytes": bytes.len(),
@@ -817,14 +841,8 @@ impl Automation {
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
             "corrections": crate::chess_corrections::corrections_reply(loaded, read),
-            "reference": reference.as_ref().zip(made.annotated.as_ref()).map(|((p, index), n)| json!({
-                "pgn": p,
-                "games": n.games,
-                "moves": index.moves(),
-                "commented": n.commented,
-                "book_only": n.book_only,
-                "diagrams": n.diagrams,
-            })),
+            "reference": reference_json,
+            "games_reference": games_json,
             "reference_kept": reference_kept,
         }))
     }
@@ -847,10 +865,15 @@ impl Automation {
         Ok((seed, out))
     }
 
-    /// The files this call reads besides the document (the book's PGN, a saved cipher), resolved:
+    /// The files this call reads besides the document (the book's PGN, the user's games, a saved
+    /// cipher), resolved:
     /// an output may not be one of them unless the call says `overwrite` (plan A9, G7a).
     pub(crate) fn input_paths(&self, a: &Args) -> Result<Vec<std::path::PathBuf>> {
-        ["reference_pgn", "cipher_in"].into_iter().filter_map(|key| a.opt_str(key).transpose()).map(|p| self.resolve(p?, false)).collect()
+        ["reference_pgn", "games_pgn", "cipher_in"]
+            .into_iter()
+            .filter_map(|key| a.opt_str(key).transpose())
+            .map(|p| self.resolve(p?, false))
+            .collect()
     }
 
     /// Save `cipher` to `out` (when asked) and say what it holds.
