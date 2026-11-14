@@ -11,33 +11,16 @@
 use std::collections::VecDeque;
 
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
-use serde::{Deserialize, Serialize};
 
 /// Most games kept in one document's trash; the oldest goes first.
-pub const MAX_TRASHED: usize = 30;
+pub const MAX_TRASHED: usize = pdfcraft_engine::chess::games_store::MAX_TRASHED;
 
 /// Longest PGN kept in the trash.
-pub const MAX_TRASHED_PGN: usize = 256 << 10;
+pub const MAX_TRASHED_PGN: usize = pdfcraft_engine::chess::games_store::MAX_TRASHED_PGN;
 
-/// A game as it was before moves left it.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Trashed {
-    /// The game before the deletion, as PGN.
-    #[serde(default)]
-    pub pgn: String,
-    /// The game's name in the list then.
-    #[serde(default)]
-    pub name: String,
-    /// Its moves then, variations included.
-    #[serde(default)]
-    pub moves: usize,
-    /// How many of them went.
-    #[serde(default)]
-    pub deleted: usize,
-    /// When, in seconds since 1970 (0 when unknown).
-    #[serde(default)]
-    pub at: u64,
-}
+/// A game as it was before moves left it: the engine's, which the games' store keeps (plan
+/// A9-G3b).
+pub use pdfcraft_engine::chess::games_store::Trashed;
 
 /// A document's trash, oldest first.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -133,6 +116,11 @@ impl Trash {
     pub fn take_item(&mut self, item: &Trashed) -> Option<usize> {
         let index = self.items.iter().rposition(|t| t == item)?;
         self.items.remove(index).map(|_| index)
+    }
+
+    /// The items' ids ([`Trashed::id`]): what the autosave tells taken items by (plan A9-G3b).
+    pub fn ids(&self) -> std::collections::HashSet<String> {
+        self.items.iter().map(Trashed::id).collect()
     }
 
     /// As the autosave stores it, oldest first.
