@@ -2660,6 +2660,7 @@ impl PdfCraftApp {
             self.chess_games_action(GamesAction::NewFrom(Some(node)));
         }
         self.chess.games.autosave(Some(now));
+        self.chess_store_writes(None);
         self.ask_chess_games_keep();
         self.book_pgn_tick();
         #[cfg(target_arch = "wasm32")]
@@ -2682,7 +2683,24 @@ impl PdfCraftApp {
     /// became of them. A write still pending then counts as not kept.
     pub fn settle_chess_games(&mut self) {
         self.chess.games.settle(crate::chess_writer::SETTLE);
+        self.chess_store_writes(Some(crate::chess_writer::SETTLE));
         self.show_chess_notes();
+    }
+
+    /// What became of the diagram corrections' and the books' PGNs' changes held while another
+    /// writer had their folder (plan A9-G3b), after waiting at most `wait` for them (Close and
+    /// Quit): each one that failed is said.
+    fn chess_store_writes(&mut self, wait: Option<std::time::Duration>) {
+        let (corrections, books) = match wait {
+            Some(t) => (self.chess.corrections.store.settle(t), self.chess.book_pgns.store.settle(t)),
+            None => (self.chess.corrections.store.poll_held(), self.chess.book_pgns.store.poll_held()),
+        };
+        for e in corrections {
+            self.chess.games.notes.push(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", &e)]));
+        }
+        for e in books {
+            self.chess.games.notes.push(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
+        }
     }
 
     /// The documents whose games wait for the user's answer before they are written: asked

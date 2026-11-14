@@ -19,9 +19,16 @@
 //! one before the user's yes, or after a no, or one that doesn't allow copying. Its changes go to
 //! a memory store of their own ([`UiStore::at`]), never saved, which takes what the store held of
 //! it first ([`UiStore::hold`]); a yes merges them into the store by the kind's rule.
+//!
+//! **The interface never waits for another writer** (plan A9 §2.3, G3b): a folder's lock is tried
+//! once. When another writer (the command line, another window) holds it, the change is made in
+//! that same memory, from what the folder has, and the store's writer thread
+//! ([`crate::chess_writer`]) merges it in by the kind's rule once the lock is free
+//! ([`UiStore::change`]); until then the document's changes and reads go there, so nothing seen
+//! is lost. Quit waits for those writes as for the games' ([`UiStore::settle`]).
 
 use pdfcraft_engine::chess::DocKeys;
-use pdfcraft_engine::chess::store::{DocStore, MemBackend, Parsed, StoreKind};
+use pdfcraft_engine::chess::store::{DocStore, MemBackend, Parsed, StoreKind, file_name};
 
 /// The documents' files the memory for documents not written holds at most, at the kind's
 /// largest file each (plan A9-I1c).
@@ -48,7 +55,10 @@ macro_rules! in_store {
 pub(crate) use in_store;
 
 /// A kind of store, where the app keeps it.
-pub(crate) struct UiStore<K: StoreKind> {
+pub(crate) struct UiStore<K: StoreKind>
+where
+    K::File: Send + 'static,
+{
     pub(crate) place: Place<K>,
     /// The web's `Storage` key it is kept under (`None`: a folder, or the session's memory).
     key: Option<&'static str>,
@@ -61,8 +71,32 @@ pub(crate) struct UiStore<K: StoreKind> {
     /// That value, to keep under `<key>.bad` at the next save.
     bad: Option<String>,
     /// The documents whose chess is not written (plan A9-I1c): their changes, in memory for the
-    /// session, never saved. Always [`Place::Memory`].
+    /// session, never saved. Always [`Place::Memory`]. Also the changes held while another writer
+    /// has the folder (`held`).
     unkept: Place<K>,
+    /// The documents whose changes are held in memory until the writer thread merged them into
+    /// the folder (plan A9-G3b), by file name, with their last request's generation.
+    held: std::collections::HashMap<String, u64>,
+    /// The writer thread that merges them, made with the first held change.
+    #[cfg(not(target_arch = "wasm32"))]
+    writer: Option<HeldWriter<K::File>>,
+}
+
+/// The writer thread of a store's held changes.
+#[cfg(not(target_arch = "wasm32"))]
+type HeldWriter<F> = crate::chess_writer::StoreWriter<HeldJob<F>, Result<(), String>>;
+
+/// How many more times the writer thread waits for a folder another writer keeps (3 s each).
+#[cfg(not(target_arch = "wasm32"))]
+const HELD_TRIES: u32 = 10;
+
+/// A change held in memory while another writer had the folder: the document's file as it is
+/// there, for the writer thread to merge in (plan A9-G3b).
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) struct HeldJob<F> {
+    keys: DocKeys,
+    pages: usize,
+    file: F,
 }
 
 /// The files of a `Storage` value: each file's name and text, as [`UiStore::storage_values`]
@@ -96,7 +130,10 @@ fn merge_files<K: StoreKind>(mine: Vec<(String, Vec<u8>)>, theirs: Vec<(String, 
     out.into_iter().collect()
 }
 
-impl<K: StoreKind> UiStore<K> {
+impl<K: StoreKind> UiStore<K>
+where
+    K::File: Send + 'static,
+{
     /// The session's memory, within `budget` bytes, kept nowhere (tests, a session without a
     /// data folder).
     pub(crate) fn memory(budget: usize) -> Self {
@@ -108,6 +145,9 @@ impl<K: StoreKind> UiStore<K> {
             unreadable: None,
             bad: None,
             unkept: Place::Memory(DocStore::<K, MemBackend>::new(UNKEPT_FILES.saturating_mul(K::MAX_FILE_BYTES))),
+            held: std::collections::HashMap::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            writer: None,
         }
     }
 
@@ -131,10 +171,32 @@ impl<K: StoreKind> UiStore<K> {
         held.map(|_| ()).map_err(|e| e.to_string())
     }
 
-    /// The folder `dir` (the desktop; tests pass their own folder).
+    /// The folder `dir` (the desktop; tests pass their own folder). A change tries its lock once:
+    /// the interface never waits for another writer ([`Self::change`]).
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn folder(dir: std::path::PathBuf, budget: usize) -> Self {
-        UiStore { place: Place::Folder(DocStore::<K, pdfcraft_engine::chess::store::DirBackend>::new(dir)), ..Self::memory(budget) }
+        UiStore {
+            place: Place::Folder(DocStore::<K, pdfcraft_engine::chess::store::DirBackend>::waiting(dir, std::time::Duration::ZERO)),
+            ..Self::memory(budget)
+        }
+    }
+
+    /// Where the document named by `keys` is read now: the memory holding its changes while the
+    /// writer thread has not merged them yet (plan A9-G3b), else the store.
+    pub(crate) fn reading(&self, keys: &DocKeys) -> &Place<K> {
+        match file_name(keys, K::KIND) {
+            Some(name) if self.held.contains_key(&name) => &self.unkept,
+            _ => &self.place,
+        }
+    }
+
+    /// Whether another writer holds the folder now.
+    fn folder_busy(&self) -> bool {
+        match &self.place {
+            #[cfg(not(target_arch = "wasm32"))]
+            Place::Folder(s) => s.busy(),
+            Place::Memory(_) => false,
+        }
     }
 
     /// The web's `Storage` value under `key`, `text` (what it holds now). A value that can't be
@@ -224,6 +286,122 @@ impl<K: StoreKind> UiStore<K> {
     }
 }
 
+impl<K: StoreKind + 'static> UiStore<K>
+where
+    K::File: Send + 'static,
+    K::Error: std::fmt::Display,
+{
+    /// Make a change of the document named by `keys`, of `pages` pages, with `op` (run once, on
+    /// where the change goes): memory only when its chess is not written (`write` false, plan
+    /// A9-I1c); the store when it may be, unless another writer holds the folder now (plan A9 §2.3:
+    /// the interface tries the lock once) or the document has changes the writer thread has not
+    /// merged yet: then in memory, from what the folder has, and handed to the writer thread to
+    /// merge in. Why not, in words that follow "couldn't be saved:".
+    pub(crate) fn change<R>(
+        &mut self,
+        write: bool,
+        keys: &DocKeys,
+        pages: usize,
+        op: impl FnOnce(&Place<K>) -> Result<R, String>,
+    ) -> Result<R, String> {
+        if !write {
+            return op(&self.unkept);
+        }
+        self.writable()?;
+        let name = file_name(keys, K::KIND);
+        let held = name.as_ref().is_some_and(|n| self.held.contains_key(n));
+        let Some(name) = name.filter(|_| held || self.folder_busy()) else {
+            let out = op(&self.place)?;
+            self.wrote();
+            return Ok(out);
+        };
+        if !held {
+            let now = in_store!(&self.place, s => s.load(keys, pages)).map_err(|e| e.to_string())?;
+            if let Some(version) = now.newer {
+                return Err(<K::Error as pdfcraft_engine::chess::store::StoreFailure>::newer(version).to_string());
+            }
+            self.hold(keys, pages, now.file)?;
+        }
+        let out = op(&self.unkept)?;
+        let file = in_store!(&self.unkept, s => s.load(keys, pages)).map_err(|e| e.to_string())?.file;
+        let generation = self.submit(&name, keys, pages, file);
+        self.held.insert(name, generation);
+        Ok(out)
+    }
+
+    /// Have the writer thread merge `file`, the document's held changes, into the folder.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn submit(&mut self, name: &str, keys: &DocKeys, pages: usize, file: K::File) -> u64 {
+        let Place::Folder(store) = &self.place else { return 0 };
+        let dir = store.dir().to_path_buf();
+        let writer = self.writer.get_or_insert_with(|| {
+            crate::chess_writer::StoreWriter::new(
+                "chess-store-writer",
+                move |_name: &str, job: HeldJob<K::File>| {
+                    let store = DocStore::<K, pdfcraft_engine::chess::store::DirBackend>::new(&dir);
+                    // Each try waits the store's 3 s for the lock; a writer that keeps it longer is
+                    // waited for again, a few times, off the interface thread.
+                    let mut tries = 0u32;
+                    loop {
+                        // The error type the store's own failures convert from (a generic `K` takes the
+                        // `From<io::Error>` its `StoreFailure` gives).
+                        let merged = store.update(&job.keys, job.pages, |f| {
+                            K::merge(f, &job.file);
+                            Ok::<(), std::io::Error>(())
+                        });
+                        match merged {
+                            Ok(_) => return Ok(()),
+                            Err(_) if tries < HELD_TRIES && store.busy() => tries = tries.saturating_add(1),
+                            Err(e) => return Err(e.to_string()),
+                        }
+                    }
+                },
+                |panic| Err(format!("the writer stopped: {panic}")),
+            )
+        });
+        writer.submit(name, HeldJob { keys: keys.clone(), pages, file })
+    }
+
+    /// The web build has no folders, so nothing is ever held.
+    #[cfg(target_arch = "wasm32")]
+    fn submit(&mut self, _name: &str, _keys: &DocKeys, _pages: usize, _file: K::File) -> u64 {
+        0
+    }
+
+    /// Take in what became of the held changes the writer thread merged: a document whose last
+    /// one is in the folder is read there again. Why each one that failed did (it stays held, and
+    /// the next change of it tries again).
+    pub(crate) fn poll_held(&mut self) -> Vec<String> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(w) = &self.writer {
+            let mut failed = Vec::new();
+            for d in w.take_done() {
+                match d.result {
+                    Ok(()) if self.held.get(&d.file) == Some(&d.generation) => {
+                        self.held.remove(&d.file);
+                    }
+                    Ok(()) => {}
+                    Err(why) => failed.push(why),
+                }
+            }
+            return failed;
+        }
+        Vec::new()
+    }
+
+    /// Wait at most `timeout` for the held changes to be merged in (Close and Quit), then take in
+    /// what became of them ([`Self::poll_held`]).
+    pub(crate) fn settle(&mut self, timeout: std::time::Duration) -> Vec<String> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(w) = &self.writer {
+            w.settle(timeout);
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = timeout;
+        self.poll_held()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -236,13 +414,12 @@ mod tests {
 
     /// One correction of page 1's diagram at `y`, in a document of one page.
     fn put(store: &mut UiStore<Corrections>, y: f32) -> Result<String, String> {
-        store.writable()?;
         let fps = vec!["fnv:p0".to_owned()];
         let new =
             NewCorrection { page: 0, rect: [0.1, y, 0.4, y + 0.2], orig: None, fen: "4k3/8/8/8/8/8/8/4K3 w - - 0 1".into(), kind: Kind::Corrected };
-        let uid = in_store!(&store.place, s => s.update(&keys(), 1, |f| f.set(new, 1, &fps))).map(|(uid, _)| uid).map_err(|e| e.to_string())?;
-        store.wrote();
-        Ok(uid)
+        store.change(true, &keys(), 1, |place| {
+            in_store!(place, s => s.update(&keys(), 1, |f| f.set(new, 1, &fps))).map(|(uid, _)| uid).map_err(|e| e.to_string())
+        })
     }
 
     fn live(value: &str) -> usize {
@@ -266,6 +443,35 @@ mod tests {
         let saved = store.storage_values(None, |_| false);
         let (_, value) = saved.iter().find(|(k, _)| k == "k").expect("the key's value");
         assert_eq!(live(value), 1);
+    }
+
+    /// Plan A9-G3b (§2.3): the interface never waits for another writer's lock. While another
+    /// writer (the command line, another window) holds the folder, a correction is made at once in
+    /// memory and read back from there; the writer thread merges it in once the lock is free, and
+    /// Quit waits for it. Before: the interface waited up to 3 s, then refused.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_change_never_waits_for_another_writer() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-ui-store-busy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut store = UiStore::<Corrections>::folder(dir.clone(), 1 << 20);
+        let other = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("corrections.flock")).unwrap();
+        other.try_lock().expect("another writer holds the folder");
+        let started = std::time::Instant::now();
+        let uid = put(&mut store, 0.1).expect("made at once");
+        assert!(started.elapsed() < std::time::Duration::from_millis(1500), "waited {:?}", started.elapsed());
+        let seen = in_store!(store.reading(&keys()), s => s.load(&keys(), 1)).unwrap();
+        assert_eq!(seen.file.live().map(|c| c.uid.clone()).collect::<Vec<_>>(), std::slice::from_ref(&uid), "read back from memory");
+        let on_disk = || pdfcraft_engine::chess::corrections::DirStore::new(&dir).load(&keys(), 1).unwrap().file.live().count();
+        assert_eq!(on_disk(), 0, "nothing written while the other writer holds it");
+        other.unlock().unwrap();
+        assert!(store.settle(std::time::Duration::from_secs(5)).is_empty());
+        assert_eq!(on_disk(), 1, "merged in once the lock was free");
+        // A second change, the folder free: straight to the store.
+        put(&mut store, 0.6).unwrap();
+        assert_eq!(on_disk(), 2);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Plan A9-I1b (finding A4-15): before writing, the value another tab wrote since this one
