@@ -332,6 +332,12 @@ impl PlacementKey {
         }
         PlacementKey(words)
     }
+
+    /// Its 256 bits, four a square from a1: for an index of many positions that keys them in
+    /// fewer bits (plan A9-I3b, the book's PGN's index digests them).
+    pub fn words(self) -> [u64; 4] {
+        self.0
+    }
 }
 
 /// A piece as four bits, never 0 (an empty square): 1–6 White's, 9–14 Black's.

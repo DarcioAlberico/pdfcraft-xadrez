@@ -68,7 +68,7 @@ impl Automation {
             }
             reference_reply = crate::chess::reference_reply(&r.shown, &r.index, &linked);
         }
-        let all = errata::errata(&read.doc, reference.as_ref().map(|r| &r.index));
+        let all = errata::errata(&read.doc, reference.as_ref().map(|r| &*r.index));
         // The moves in conflict with the PGN that are no row: read by OCR, or a word repaired.
         let conflicts = read
             .doc
