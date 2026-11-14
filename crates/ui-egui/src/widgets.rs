@@ -295,10 +295,14 @@ fn segments<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T
     let enabled = ui.is_enabled();
     let mut changed = false;
     let mut x = rect.min.x;
+    // The segments' ids come from the switch's own place, its ui's unique id (that of the radio
+    // group too), never from `ui.id()`: two sibling rows have the same `id()`, and two switches
+    // in them took each other's clicks.
+    let base = ui.unique_id();
     for (i, ((choice, label), width)) in choices.iter().zip(&widths).enumerate() {
         let r = Rect::from_min_size(egui::pos2(x, rect.min.y), vec2(*width, HEIGHT));
         x += width;
-        let resp = ui.interact(r, ui.id().with(("segment", i)), Sense::click());
+        let resp = ui.interact(r, base.with(("segment", i)), Sense::click());
         let selected = *value == *choice;
         resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, enabled, selected, *label));
         let fill = if selected {
@@ -915,6 +919,42 @@ mod tests {
             assert!(r.right() <= edge, "{name} ends inside the row: {r:?}, edge {edge}");
         }
         assert!(h.get_by_label("Black").rect().top() > white.top(), "Black went to the next row");
+    }
+
+    /// Two segmented switches in sibling rows each work: a click changes only its own (the two
+    /// rows' ids are the same, and the segments' ids came from their row's, so a click on one
+    /// switch was taken by both; the Diagram tab worked around it with `push_id` in #366).
+    #[test]
+    fn segmented_switches_in_sibling_rows_each_take_their_own_clicks() {
+        use egui_kittest::kittest::Queryable;
+        let mut fonts = false;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
+            move |ui, (shown, side): &mut (u8, u8)| {
+                // The segments' font is the app's, from the next frame.
+                if !fonts {
+                    ui.ctx().set_fonts(theme::font_definitions());
+                    fonts = true;
+                    return;
+                }
+                ui.horizontal(|ui| {
+                    segmented(ui, "Diagram shown", shown, &[(0, "Read"), (1, "Original")]);
+                });
+                ui.horizontal(|ui| {
+                    segmented(ui, "To move", side, &[(0, "White"), (1, "Black")]);
+                });
+            },
+            (0, 0),
+        );
+        h.run();
+        h.get_by_label("Black").click();
+        h.run();
+        assert_eq!(*h.state(), (0, 1), "Black is chosen, and only in its own switch");
+        h.get_by_label("Original").click();
+        h.run();
+        assert_eq!(*h.state(), (1, 1), "Original is chosen, and Black stays");
+        h.get_by_label("White").click();
+        h.run();
+        assert_eq!(*h.state(), (1, 0), "White is chosen, and Original stays");
     }
 
     /// In a right-to-left wrapping row, as in a left-to-right one, a radio button that does not
