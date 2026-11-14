@@ -391,6 +391,10 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.reference.clear", "Remove the book's PGN", None, None, Document, "file-x"),
     // Every page read and linked to it: the summary and its games' pages (R6d).
     c("chess.reference.link", "Link the whole book to its PGN", None, None, Copying, "link"),
+    // A book's review to and from another machine (plan A9-G5b): its corrections, its choices on
+    // the book's PGN and its games, in one file.
+    c("chess.review.export", "Export the book's review…", None, None, Copying, "file-output"),
+    c("chess.review.import", "Import a book's review…", None, None, Copying, "folder-open"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),

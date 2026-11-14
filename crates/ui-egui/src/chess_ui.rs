@@ -129,6 +129,11 @@ pub struct ChessState {
     pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
+    /// Another book's review, waiting for the question before it is imported (plan A9-G5b).
+    pub(crate) review_import: Option<crate::chess_review_ui::PendingImport>,
+    /// Review packs the browser read, imported at the next frame (plan A9-G5b).
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) review_uploads: std::sync::Arc<std::sync::Mutex<Vec<(DocId, String, Result<Vec<u8>, String>)>>>,
     /// The file Open folder last showed (what tests see instead of the file manager).
     pub last_revealed: Option<std::path::PathBuf>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
@@ -686,6 +691,10 @@ pub enum PanelAction {
     /// The answer to the offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f).
     PgnOffer {
         use_it: bool,
+    },
+    /// Export the book's review… (`false`) or Import a book's review… (`true`; plan A9-G5b).
+    Review {
+        import: bool,
     },
 }
 
@@ -1741,6 +1750,8 @@ impl PdfCraftApp {
             }
             PanelAction::ReviewNow => self.review_chess_now(),
             PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
+            PanelAction::Review { import: false } => self.export_chess_review(),
+            PanelAction::Review { import: true } => self.import_chess_review(),
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

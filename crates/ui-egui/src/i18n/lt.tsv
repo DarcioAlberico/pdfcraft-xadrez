@@ -3794,6 +3794,18 @@ the move's comment	Move comment	Ėjimo komentaras
 	Alt+O switches between the board as read and the page's own picture.	Alt+O perjungia nuskaitytą lentą ir paties puslapio paveikslą.
 	Original diagram, page {p}, diagram {n}	Originali diagrama, {p} puslapis, {n} diagrama
 	The page's picture of this diagram shows once its page is drawn.	Šios diagramos puslapio paveikslas parodomas, kai jos puslapis nupiešiamas.
+	Export the book's review…	Eksportuoti knygos peržiūrą…
+	Import a book's review…	Importuoti knygos peržiūrą…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Kaip nurodėte, šio užšifruoto dokumento šachmatai nesaugomi: peržiūros iš jo negalima eksportuoti ir į jį importuoti.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Kol kas nėra ką eksportuoti: šiame dokumente nėra išsaugotų pataisų, pasirinkimų ar partijų.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Peržiūra eksportuota į {path} (pataisos: {corrections}, pasirinkimai: {decisions}, partijos: {games}). Partijų komentaruose gali būti knygos teksto: failą laikykite asmeniniam naudojimui.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Peržiūra importuota iš {name} (pataisos: {corrections}, pasirinkimai: {decisions}, partijos: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Pataisos puslapiams, kurių šiame dokumente nėra: {n} (išsaugotos, be diagramos).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Pasirinkimai, laukiantys knygos PGN: {n} (įkelkite PGN, tada vėl importuokite peržiūrą).
+	Entries that couldn't be read and were left out: {n}.	Įrašai, kurių nepavyko perskaityti ir kurie praleisti: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} yra kitos knygos peržiūra ({pages} psl.; ši turi {here}). Vis tiek importuoti į šį dokumentą?
+	Another book's review	Kitos knygos peržiūra
+	Import anyway	Vis tiek importuoti
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Nepatvirtinta
 progress bar	Progress	Eiga
