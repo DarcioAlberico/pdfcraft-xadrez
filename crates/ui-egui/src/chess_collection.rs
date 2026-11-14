@@ -106,6 +106,9 @@ fn new_cid() -> String {
 pub struct GameEntry {
     pub board: BoardState,
     uid: u64,
+    /// The game as the store has it (its uid there and revision; plan A9-G3b): `None` until it
+    /// is first written.
+    pub(crate) stored: Option<chess_autosave::Stored>,
     /// Opened from a diagram (double-click, Open on the board). While it is untouched it gives
     /// way to the next diagram opened, counts toward no cap and is not autosaved: it is opened
     /// again from its diagram (plan A9-G8, A5-01).
@@ -135,7 +138,7 @@ impl ListedGame for GameEntry {
 
 impl GameEntry {
     pub fn new(board: BoardState) -> GameEntry {
-        GameEntry { board, uid: next_uid(), from_diagram: false }
+        GameEntry { board, uid: next_uid(), stored: None, from_diagram: false }
     }
 
     /// Opened from a diagram and never changed since ([`Self::from_diagram`]): it gives way to
@@ -399,8 +402,20 @@ pub struct ChessCollection {
     games: GameList<GameEntry>,
     /// Deletes, moves and adds to undo.
     history: ListHistory,
-    /// The collection's id in the store.
+    /// The collection's id: its writes' slot in the store's writer.
     cid: String,
+    /// Its document, while it is open (the diagrams of games another writer adds are in it).
+    doc: Option<DocId>,
+    /// The store's file it was read from, so another collection does not read it too.
+    file: Option<String>,
+    /// Every uid the collection's games have had in the store, with its revision and whether it
+    /// is deleted there: a game no longer in the list is written deleted (plan A9-G3b).
+    known: HashMap<String, (u64, bool)>,
+    /// The trash items the store had or was given ([`crate::chess_trash::Trashed::id`]); those no
+    /// longer in the trash were taken out, and are written so (`taken`).
+    trash_seen: HashSet<String>,
+    /// The trash items taken out, by id.
+    taken: Vec<String>,
     autosave: Autosave,
     /// The games as they were before moves left them, kept with the games (plan A8 §7, V5).
     trash: crate::chess_trash::Trash,
@@ -432,6 +447,11 @@ impl ChessCollection {
             games: GameList::new(),
             history: ListHistory::default(),
             cid,
+            doc: None,
+            file: None,
+            known: HashMap::new(),
+            trash_seen: HashSet::new(),
+            taken: Vec::new(),
             autosave: Autosave::default(),
             trash: crate::chess_trash::Trash::default(),
             labels: std::sync::Arc::from(Vec::new()),
@@ -443,11 +463,65 @@ impl ChessCollection {
 
     /// The games `boards`, `active` shown (the first when out of range); one blank game when
     /// there are none.
-    fn from_boards(keys: DocKeys, cid: String, boards: Vec<BoardState>, active: usize) -> ChessCollection {
+    fn from_boards(keys: DocKeys, cid: String, boards: Vec<(BoardState, Option<chess_autosave::Stored>)>, active: usize) -> ChessCollection {
         let mut c = ChessCollection::new(keys, cid);
-        c.games = GameList::from_games(boards.into_iter().map(GameEntry::new).collect(), active);
+        let entries = boards
+            .into_iter()
+            .map(|(board, stored)| {
+                let mut e = GameEntry::new(board);
+                e.stored = stored;
+                e
+            })
+            .collect();
+        c.games = GameList::from_games(entries, active);
         c.settle();
         c
+    }
+
+    /// The games the store keeps in `file` (the file `name`), for document `doc` (plan A9-G3b),
+    /// with its trash and every uid it has; and how many games couldn't be read.
+    fn from_file(
+        keys: DocKeys,
+        cid: String,
+        file: &pdfcraft_engine::chess::games_store::GamesFile,
+        name: String,
+        doc: Option<DocId>,
+    ) -> (ChessCollection, usize) {
+        let (boards, lost) = chess_autosave::decode(file, doc);
+        let active = file.active.as_deref().and_then(|a| boards.iter().position(|(_, s)| s.uid == a)).unwrap_or(0);
+        let mut c = ChessCollection::from_boards(keys, cid, boards.into_iter().map(|(b, s)| (b, Some(s))).collect(), active);
+        c.trash = crate::chess_trash::Trash::from_stored(file.trash.clone());
+        c.trash_seen = c.trash.ids();
+        c.known = file.games.iter().map(|g| (g.uid.clone(), (g.rev, g.deleted))).collect();
+        c.file = Some(name);
+        c.doc = doc;
+        c.autosave.stored = true;
+        c.settle();
+        (c, lost)
+    }
+
+    /// Take in the games the store had and this collection did not (plan A9-G3b: a tool imported
+    /// them, another tab added them), after its own: how many.
+    fn take_in(&mut self, added: Vec<pdfcraft_engine::chess::games_store::GameRecord>) -> usize {
+        let mut n = 0usize;
+        for record in added {
+            if self.known.contains_key(&record.uid) || self.len() >= chess_autosave::MAX_GAMES {
+                continue;
+            }
+            let Some(board) = chess_autosave::restore(&record, self.doc) else { continue };
+            let stamp = chess_autosave::board_stamp(&board);
+            self.known.insert(record.uid.clone(), (record.rev, false));
+            let mut e = GameEntry::new(board);
+            e.stored = Some(chess_autosave::Stored { uid: record.uid, rev: record.rev, stamp });
+            if self.len() == 1 && self.active().is_blank() {
+                self.games.add(e);
+            } else {
+                let end = self.len();
+                self.games.insert(end, e, false);
+            }
+            n = n.saturating_add(1);
+        }
+        n
     }
 
     /// The current state counts as written.
@@ -1067,7 +1141,23 @@ pub struct ChessGames {
     /// Save PGN… starts the file with a byte order mark (Preferences; off by default, decision
     /// D18).
     pub pgn_bom: bool,
+    /// The folder the games are kept in on the desktop ([`Self::use_games_folder`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    games_dir: Option<std::path::PathBuf>,
 }
+
+/// Bring the `<id>.games` files earlier builds kept in `earlier` into the games' store in `dir`
+/// (plan A9-G3b; [`pdfcraft_engine::chess::games_store::DirStore::migrate_v1`]): merged, and again
+/// only when an earlier build changed one since; `earlier` is only read.
+#[cfg(not(target_arch = "wasm32"))]
+fn bring_in_v1(dir: &std::path::Path, earlier: &std::path::Path) {
+    if let Err(e) = pdfcraft_engine::chess::games_store::DirStore::new(dir).migrate_v1(earlier) {
+        log::warn!("chess games of an earlier build not brought in: {e}");
+    }
+}
+
+/// Most trash items taken out a collection remembers.
+const MAX_TAKEN: usize = 8 * crate::chess_trash::MAX_TRASHED;
 
 /// A collection whose games the autosave doesn't keep ([`ChessGames::unsaved`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1305,16 +1395,49 @@ impl ChessGames {
         self.store.is_on()
     }
 
-    /// Autosave into the `chess` folder of the recovery folder, under its instance lock, and take
-    /// back the games kept for no document.
+    /// Autosave under the recovery folder's instance lock, into the folder
+    /// [`Self::use_games_folder`] gave (the app's data folder's `chess/games`, plan A9-G3b), else
+    /// the recovery folder's `chess/games`, bringing in the `<id>.games` files of before kept beside
+    /// it; then take back the games kept for no document.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn autosave_to_files(&mut self, recovery: &crate::RecoveryStore) {
-        self.store = Store::Files(chess_autosave::FileStore::new(recovery.dir().join("chess"), recovery.clone()));
+        let dir = match self.games_dir.clone() {
+            Some(dir) => dir,
+            None => {
+                let (earlier, dir) = (recovery.dir().join("chess"), recovery.dir().join("chess").join("games"));
+                bring_in_v1(&dir, &earlier);
+                dir
+            }
+        };
+        self.store = Store::Files(chess_autosave::FileStore::new(dir, recovery.clone()));
         self.take_back_no_document();
     }
 
-    /// Autosave into the web's `Storage` value `text` (what it holds now).
-    pub(crate) fn autosave_to_storage(&mut self, text: Option<&str>) {
-        let (store, bad) = chess_autosave::MemoryStore::load(text);
+    /// The web build has no folders: its games are kept in eframe's `Storage`
+    /// ([`Self::autosave_to_storage`]).
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn autosave_to_files(&mut self, _recovery: &crate::RecoveryStore) {}
+
+    /// Keep the games in the folder `dir` (plan A9-G3b: the app's data folder's `chess/games`),
+    /// after bringing in the `<id>.games` files earlier builds kept in `earlier`, which are only
+    /// read. Autosaving starts with the recovery folder's lock ([`Self::autosave_to_files`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn use_games_folder(&mut self, dir: std::path::PathBuf, earlier: Option<&std::path::Path>) {
+        if let Some(earlier) = earlier {
+            bring_in_v1(&dir, earlier);
+        }
+        self.games_dir = Some(dir.clone());
+        if let Store::Files(f) = &self.store {
+            let recovery = f.recovery().clone();
+            self.store = Store::Files(chess_autosave::FileStore::new(dir, recovery));
+            self.take_back_no_document();
+        }
+    }
+
+    /// Autosave into the web's `Storage` value `text` (what it holds now; `v1`, the value of
+    /// before plan A9-G3b, brought in while there is none).
+    pub(crate) fn autosave_to_storage(&mut self, text: Option<&str>, v1: Option<&str>) {
+        let (store, bad) = chess_autosave::MemoryStore::load(text, v1);
         if bad {
             self.notes.push(tl!("Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.").to_string());
         }
@@ -1328,13 +1451,9 @@ impl ChessGames {
             return;
         }
         let keys = DocKeys { name: Some(NO_DOCUMENT.to_owned()), size: Some(0), ..DocKeys::default() };
-        let found = self.store.find(&keys, &HashSet::new());
-        self.set_aside_notes(&found.set_aside);
-        if let Some((cid, body)) = found.games {
-            let (boards, lost) = chess_autosave::decode(&body, None);
-            let mut c = ChessCollection::from_boards(DocKeys::default(), cid, boards, body.active);
-            c.trash = crate::chess_trash::Trash::from_stored(body.trash);
-            c.autosave.stored = true;
+        let found = self.store.find(&keys);
+        if let Some(file) = found.games {
+            let (mut c, lost) = ChessCollection::from_file(DocKeys::default(), NO_DOCUMENT.to_owned(), &file, found.name, None);
             self.read_only(&mut c, found.newer);
             self.none = c;
             if lost > 0 {
@@ -1348,12 +1467,6 @@ impl ChessGames {
         if c.cid == NO_DOCUMENT { DocKeys { name: Some(NO_DOCUMENT.to_owned()), size: Some(0), ..DocKeys::default() } } else { c.keys.clone() }
     }
 
-    fn set_aside_notes(&mut self, names: &[String]) {
-        for name in names {
-            self.notes.push(crate::i18n::fmt(tl!("A file of saved chess games couldn't be read. It was kept as {name}."), &[("name", name)]));
-        }
-    }
-
     /// `c` was read from a file a newer PdfCraft wrote, in format version `newer` (plan A9-G12):
     /// its games are only read here. Said now, once, and on the list.
     fn read_only(&mut self, c: &mut ChessCollection, newer: Option<u32>) {
@@ -1364,9 +1477,9 @@ impl ChessGames {
         }
     }
 
-    /// The ids of every collection in memory.
+    /// The store's files of every collection in memory.
     fn taken(&self) -> HashSet<String> {
-        self.docs.values().chain(self.closed.iter()).chain(std::iter::once(&self.none)).map(|c| c.cid.clone()).collect()
+        self.docs.values().chain(self.closed.iter()).chain(std::iter::once(&self.none)).filter_map(|c| c.file.clone()).collect()
     }
 
     /// Give document `id` (named by `keys`) its collection: one kept from earlier this session,
@@ -1380,13 +1493,9 @@ impl ChessGames {
                 restored = Some((self.closed.remove(i), 0));
             } else {
                 let taken = self.taken();
-                let found = self.store.find(&keys, &taken);
-                self.set_aside_notes(&found.set_aside);
-                if let Some((cid, body)) = found.games {
-                    let (boards, lost) = chess_autosave::decode(&body, Some(id));
-                    let mut c = ChessCollection::from_boards(keys.clone(), cid, boards, body.active);
-                    c.trash = crate::chess_trash::Trash::from_stored(body.trash);
-                    c.autosave.stored = true;
+                let found = self.store.find(&keys);
+                if let Some(file) = found.games.filter(|_| !taken.contains(&found.name)) {
+                    let (mut c, lost) = ChessCollection::from_file(keys.clone(), new_cid(), &file, found.name, Some(id));
                     self.read_only(&mut c, found.newer);
                     restored = Some((c, lost));
                 }
@@ -1407,6 +1516,7 @@ impl ChessGames {
             (None, None) => ChessCollection::new(keys.clone(), new_cid()),
         };
         c.keys = keys;
+        c.doc = Some(id);
         c.autosave.keeping = keeping;
         self.docs.insert(id, c);
     }
@@ -1556,11 +1666,23 @@ impl Writer<'_> {
         let keys = ChessGames::store_keys(c);
         // Untouched diagram games are not kept (plan A9-G8): they are opened again from their
         // diagram. The game shown is the kept game at or before its place.
-        let boards: Vec<&BoardState> = c.iter().filter(|e| !e.ephemeral()).map(|e| &e.board).collect();
         let before_shown = c.iter().take(c.active_index().saturating_add(1)).filter(|e| !e.ephemeral()).count();
         let active = before_shown.saturating_sub(1);
-        match self.store.write(&c.cid, &keys, active, &boards, &c.trash.stored()) {
-            Ok(chess_autosave::Written::Now) => self.landed(c, fp, Ok(())),
+        // The trash items taken out since the last write (plan A9-G3b), so a merge never puts
+        // them back.
+        let trash_now = c.trash.ids();
+        let gone: Vec<String> = c.trash_seen.difference(&trash_now).cloned().collect();
+        c.taken.extend(gone);
+        let over = c.taken.len().saturating_sub(MAX_TAKEN);
+        c.taken.drain(..over);
+        c.trash_seen = trash_now;
+        let trash = c.trash.stored();
+        let ChessCollection { games, known, taken, cid, .. } = &mut *c;
+        let entries: Vec<(&mut Option<chess_autosave::Stored>, &BoardState)> =
+            games.iter_mut().filter(|e| !e.ephemeral()).map(|e| (&mut e.stored, &e.board)).collect();
+        let collected = chess_autosave::Collected { cid: cid.as_str(), keys: &keys, games: entries, active, known, trash, taken: taken.clone() };
+        match self.store.write(collected) {
+            Ok(chess_autosave::Written::Now(synced)) => self.landed(c, fp, Ok(synced)),
             Ok(chess_autosave::Written::Queued(generation)) => {
                 c.autosave.pending = Some((generation, fp));
                 false
@@ -1572,11 +1694,19 @@ impl Writer<'_> {
         }
     }
 
-    /// The write of `c`'s games as they were at fingerprint `fp` ended with `result`: kept, or
-    /// not and why, said once. Whether they are in the store as they are now.
-    fn landed(&mut self, c: &mut ChessCollection, fp: u64, result: Result<(), Blocked>) -> bool {
+    /// The write of `c`'s games as they were at fingerprint `fp` ended with `result`: kept, with
+    /// the games the store had that `c` did not taken in, or not and why, said once. Whether they
+    /// are in the store as they are now.
+    fn landed(&mut self, c: &mut ChessCollection, fp: u64, result: chess_autosave::WriteResult) -> bool {
         match result {
-            Ok(()) => {
+            Ok(synced) => {
+                if let Some(name) = &synced.set_aside {
+                    self.notes.push(crate::i18n::fmt(tl!("A file of saved chess games couldn't be read. It was kept as {name}."), &[("name", name)]));
+                }
+                let added = c.take_in(synced.added);
+                if added > 0 {
+                    self.notes.push(crate::i18n::fmt(tl!("Chess games restored: {n}"), &[("n", &added.to_string())]));
+                }
                 c.autosave.saved = fp;
                 c.autosave.stored = true;
                 c.autosave.blocked = None;
@@ -2484,12 +2614,12 @@ impl PdfCraftApp {
     /// [`Self::flush_chess_games`], then hand the web's value to eframe's `Storage`.
     pub(crate) fn chess_games_to_storage(&mut self, storage: &mut dyn eframe::Storage) {
         self.flush_chess_games();
+        // The games (plan A9-G3b), as the corrections and the books' PGNs below: what the
+        // `Storage` holds now merged in first, a value that couldn't be read kept aside.
         if let Store::Memory(m) = &mut self.chess.games.store {
-            if let Some(value) = m.take_value() {
-                storage.set_string(chess_autosave::STORAGE_KEY, value);
-            }
-            if let Some(bad) = m.take_bad() {
-                storage.set_string(chess_autosave::STORAGE_BAD_KEY, bad);
+            let current = storage.get_string(chess_autosave::STORAGE_KEY);
+            for (key, value) in m.storage_values(current.as_deref(), |k| storage.get_string(k).is_some()) {
+                storage.set_string(&key, value);
             }
         }
         // The diagram corrections, under their own key (plan A8, P3b2), and the books' PGNs under
@@ -2508,7 +2638,8 @@ impl PdfCraftApp {
     /// The web build: autosave the chess games in eframe's `Storage` (read from it now).
     pub fn chess_games_from_storage(&mut self, storage: Option<&dyn eframe::Storage>) {
         let text = storage.and_then(|s| s.get_string(chess_autosave::STORAGE_KEY));
-        self.chess.games.autosave_to_storage(text.as_deref());
+        let v1 = storage.and_then(|s| s.get_string(chess_autosave::STORAGE_KEY_V1));
+        self.chess.games.autosave_to_storage(text.as_deref(), v1.as_deref());
         let corrections = storage.and_then(|s| s.get_string(crate::chess_corrections_ui::STORAGE_KEY));
         self.chess.corrections.use_storage(corrections.as_deref());
         if let Some(why) = self.chess.corrections.unreadable() {
@@ -3559,13 +3690,7 @@ mod tests {
         app.flush_chess_games();
         app.settle_chess_games();
         assert_eq!(app.chess.games.collection().autosave.blocked, None, "not counted, so all is kept");
-        let stored = std::fs::read_dir(dir.join("chess"))
-            .unwrap()
-            .flatten()
-            .filter_map(|e| std::fs::read_to_string(e.path()).ok())
-            .find_map(|t| t.lines().next().and_then(|h| serde_json::from_str::<serde_json::Value>(h).ok()))
-            .and_then(|h| h["games"].as_u64());
-        assert_eq!(stored, Some(chess_autosave::MAX_GAMES as u64), "the diagram game is not written");
+        assert_eq!(stored_games(&dir).len(), chess_autosave::MAX_GAMES, "the diagram game is not written");
         // Taking its place was no step: Undo of "Load the diagram" takes the second one out.
         assert_eq!(app.chess.games.history_step(true).as_deref(), Some("Load the diagram"));
         assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
@@ -3578,16 +3703,18 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// The document's games file, read: its header and the PGN of its games.
+    /// The document's games file (plan A9-G3b: `<hash>.games.json` in the recovery folder's
+    /// `chess/games`, the app being given no data folder here).
+    fn games_file(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+        std::fs::read_dir(dir.join("chess").join("games")).ok()?.flatten().map(|e| e.path()).find(|p| p.to_string_lossy().ends_with(".games.json"))
+    }
+
+    /// The PGN of the live games in the document's games file.
     fn stored_games(dir: &std::path::Path) -> Vec<String> {
-        let text = std::fs::read_dir(dir.join("chess"))
-            .unwrap()
-            .flatten()
-            .filter(|e| e.path().extension().is_some_and(|x| x == "games"))
-            .find_map(|e| std::fs::read_to_string(e.path()).ok())
-            .unwrap_or_default();
-        let body: serde_json::Value = text.lines().nth(1).and_then(|l| serde_json::from_str(l).ok()).unwrap_or_default();
-        body["games"].as_array().into_iter().flatten().map(|g| g["pgn"].as_str().unwrap_or_default().to_owned()).collect()
+        let text = games_file(dir).and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
+        let file: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+        let live = file["games"].as_array().into_iter().flatten().filter(|g| g["deleted"] != true);
+        live.map(|g| g["pgn"].as_str().unwrap_or_default().to_owned()).collect()
     }
 
     /// Plan A9-I3b: the autosave of a document's games is the store's writer thread's: the
@@ -3626,10 +3753,9 @@ mod tests {
         play(app.chess.games.collection_mut(), "d2d4");
         app.flush_chess_games();
         app.settle_chess_games();
-        let file =
-            std::fs::read_dir(dir.join("chess")).unwrap().flatten().map(|e| e.path()).find(|p| p.extension().is_some_and(|x| x == "games")).unwrap();
+        let file = games_file(&dir).unwrap();
         // A newer PdfCraft writes the file meanwhile.
-        let newer = std::fs::read_to_string(&file).unwrap().replacen("\"version\":1", "\"version\":9", 1);
+        let newer = std::fs::read_to_string(&file).unwrap().replacen("\"version\":2", "\"version\":9", 1);
         std::fs::write(&file, &newer).unwrap();
         play(app.chess.games.collection_mut(), "d7d5");
         app.flush_chess_games();
