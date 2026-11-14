@@ -131,6 +131,11 @@ pub struct ChessState {
     pub export: crate::chess_export_ui::ExportChoices,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
+    /// Another book's review, waiting for the question before it is imported (plan A9-G5b).
+    pub(crate) review_import: Option<crate::chess_review_ui::PendingImport>,
+    /// Review packs the browser read, imported at the next frame (plan A9-G5b).
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) review_uploads: std::sync::Arc<std::sync::Mutex<Vec<(DocId, String, Result<Vec<u8>, String>)>>>,
     /// The file Open folder last showed (what tests see instead of the file manager).
     pub last_revealed: Option<std::path::PathBuf>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
@@ -187,6 +192,9 @@ pub struct ChessState {
     /// The time a frame gives a scan run a page at a time, as the web runs it (tests; the web
     /// takes 50 ms when `None`, the desktop scans on a worker; plan A9-I2).
     pub frame_budget_ms: Option<f64>,
+    /// How many threads the desktop's scan uses (plan A9-V10b; tests and measurements): `None`,
+    /// `ChessScanJob::default_workers` (the cores less one, at most four).
+    pub scan_workers: Option<usize>,
     /// The book being exported or aligned to its PGN, off the interface thread, one at a time:
     /// a slot of its own, so the page read never waits for it (plan A9-I2, finding A5-12).
     pub long: Option<crate::chess_text_ui::ChessJob>,
@@ -686,6 +694,10 @@ pub enum PanelAction {
     PgnOffer {
         use_it: bool,
     },
+    /// Export the book's review… (`false`) or Import a book's review… (`true`; plan A9-G5b).
+    Review {
+        import: bool,
+    },
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -1157,8 +1169,12 @@ impl PdfCraftApp {
         let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
         let pages: Vec<usize> = pages.into_iter().filter(|p| *p < count).collect();
         let settings = self.chess_scan_settings();
-        // `chunks` needs a batch size above zero: PAGES_PER_JOB is 8.
-        let jobs: Vec<ChessScanJob> = pages.chunks(PAGES_PER_JOB).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
+        // A batch for each worker to take pages of (plan A9-V10b), the list shown batch by batch:
+        // PAGES_PER_JOB (8) pages for each worker; on the web, which scans a page at a time, 8.
+        let workers =
+            if self.chess_frame_budget().is_some() { 1 } else { self.chess.scan_workers.unwrap_or_else(ChessScanJob::default_workers).max(1) };
+        let batch = PAGES_PER_JOB.saturating_mul(workers).max(1);
+        let jobs: Vec<ChessScanJob> = pages.chunks(batch).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
         let pages: Vec<usize> = jobs.iter().flat_map(ChessScanJob::pages).collect();
         // Results for this document from before it changed give way; another document's stay
         // (plan A9-I1a, finding A6-01).
@@ -1175,7 +1191,7 @@ impl PdfCraftApp {
             lock(&progress).model = Some(ModelNote::of(&models));
             ScanWork::Steps(Box::new(StepScan { models, jobs: jobs.into(), current: None, base: 0, cancelled: false }))
         } else {
-            ScanWork::Thread(Self::scan_on_a_worker(p, jobs, settings, self.run_inline))
+            ScanWork::Thread(Self::scan_on_a_worker(p, jobs, settings, self.run_inline, workers))
         };
         self.chess.run = Some(ChessRun { doc: id, quiet, progress, work, found: 0, stale: false, pages, all });
         if !quiet {
@@ -1184,12 +1200,15 @@ impl PdfCraftApp {
         self.poll_chess();
     }
 
-    /// The scan of `jobs` on a worker thread (inline when `inline`), into `p`.
+    /// The scan of `jobs` on a worker thread (inline when `inline`), into `p`, each batch on
+    /// `workers` threads (plan A9-V10b, R8-02: the app's scan used one core of six): pages in
+    /// order, Stop looked at between two pages of each worker. One worker scans a page at a time.
     fn scan_on_a_worker(
         p: Arc<Mutex<ChessProgress>>,
         jobs: Vec<ChessScanJob>,
         settings: pdfcraft_engine::chess::ChessScanSettings,
         inline: bool,
+        workers: usize,
     ) -> crate::chess_job::Job<()> {
         crate::chess_job::Job::spawn("pdfcraft-chess", inline, move |ctl| {
             let models = pdfcraft_engine::chess::models(settings.models_dir.as_deref());
@@ -1197,7 +1216,7 @@ impl PdfCraftApp {
             let mut base: usize = 0;
             for job in jobs {
                 let size = job.pages().len();
-                let scan = job.run(&models, |done, _| {
+                let scan = job.run_parallel(&models, workers, |done, _| {
                     lock(&p).done = base.saturating_add(done);
                     !ctl.cancelled()
                 });
@@ -1729,6 +1748,8 @@ impl PdfCraftApp {
             }
             PanelAction::ReviewNow => self.review_chess_now(),
             PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
+            PanelAction::Review { import: false } => self.export_chess_review(),
+            PanelAction::Review { import: true } => self.import_chess_review(),
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

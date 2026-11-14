@@ -3546,6 +3546,18 @@ the move's comment	Move comment	手のコメント
 	Alt+O switches between the board as read and the page's own picture.	Alt+O で、読み取った盤面とページそのものの画像を切り替えます。
 	Original diagram, page {p}, diagram {n}	元の局面図、{p} ページ、局面図 {n}
 	The page's picture of this diagram shows once its page is drawn.	この局面図のページの画像は、そのページが描画されると表示されます。
+	Export the book's review…	本のレビューを書き出す…
+	Import a book's review…	本のレビューを読み込む…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	ご指定のとおり、この暗号化された文書のチェス情報は保存しません。この文書からレビューを書き出すことも、読み込むこともできません。
+	There is nothing to export yet: this document keeps no correction, choice or game.	まだ書き出すものがありません。この文書には修正も選択も対局も保存されていません。
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	レビューを {path} に書き出しました（修正: {corrections}、選択: {decisions}、対局: {games}）。対局のコメントに本の文章が含まれることがあります。ファイルは個人の利用にとどめてください。
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	{name} からレビューを読み込みました（修正: {corrections}、選択: {decisions}、対局: {games}）。
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	この文書にないページの修正: {n}（保存済み、どの図にも適用されません）。
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	本の PGN を待っている選択: {n}（PGN を読み込んでから、レビューをもう一度読み込んでください）。
+	Entries that couldn't be read and were left out: {n}.	読み取れずに除外した項目: {n}。
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} は別の本のレビューです（{pages} ページ。この本は {here} ページ）。それでもこの文書に読み込みますか？
+	Another book's review	別の本のレビュー
+	Import anyway	それでも読み込む
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	未確定
 progress bar	Progress	進行状況
@@ -3555,6 +3567,8 @@ progress bar	Progress	進行状況
 	Games left out (an illegal position has no game): {n}	除いた対局 (不正な局面には対局がありません): {n}
 	Indexing the book's PGN…	本の PGN を索引付けしています…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本の PGN は PdfCraft が索引付けできる大きさを超えています: 本に関連付けられるのは最初の {moves} 手だけです。
+	Engine: {name}, in {folder}	エンジン: {name}（{folder}）
+	Importing…	インポートしています…
 	PGN — exercises	PGN — 練習問題
 	Anki — cards	Anki — カード
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	本の番号付き局面図とその解答を、標準的な問題の PGN として。

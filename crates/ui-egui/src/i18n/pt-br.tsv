@@ -3561,6 +3561,18 @@ the move's comment	Move comment	Comentário do lance
 	Alt+O switches between the board as read and the page's own picture.	Alt+O alterna entre o tabuleiro como foi lido e a imagem da própria página.
 	Original diagram, page {p}, diagram {n}	Diagrama original, página {p}, diagrama {n}
 	The page's picture of this diagram shows once its page is drawn.	A imagem da página deste diagrama aparece assim que a página dele é desenhada.
+	Export the book's review…	Exportar revisão do livro…
+	Import a book's review…	Importar revisão de um livro…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	O xadrez deste documento criptografado não é guardado, como você disse: não é possível exportar uma revisão dele nem importar uma para ele.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Ainda não há nada para exportar: este documento não guarda nenhuma correção, escolha ou partida.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Revisão exportada para {path} (correções: {corrections}, escolhas: {decisions}, partidas: {games}). Os comentários das partidas podem ter texto do livro: guarde o arquivo para uso pessoal.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Revisão importada de {name} (correções: {corrections}, escolhas: {decisions}, partidas: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Correções de páginas que este documento não tem: {n} (guardadas, em nenhum diagrama).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Escolhas à espera do PGN do livro: {n} (carregue o PGN e importe a revisão de novo).
+	Entries that couldn't be read and were left out: {n}.	Entradas que não puderam ser lidas e ficaram de fora: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} é a revisão de outro livro ({pages} páginas; este tem {here}). Importar mesmo assim para este documento?
+	Another book's review	Revisão de outro livro
+	Import anyway	Importar mesmo assim
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Não confirmado
 progress bar	Progress	Progresso
@@ -3570,6 +3582,8 @@ progress bar	Progress	Progresso
 	Games left out (an illegal position has no game): {n}	Partidas deixadas de fora (uma posição ilegal não tem partida): {n}
 	Indexing the book's PGN…	Indexando o PGN do livro…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	O PGN do livro é maior do que o PdfCraft indexa: só os primeiros {moves} lances dele estão ligados ao livro.
+	Engine: {name}, in {folder}	Motor: {name}, em {folder}
+	Importing…	Importando…
 	PGN — exercises	PGN — exercícios
 	Anki — cards	Anki — cartões
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Os diagramas numerados do livro com as soluções, como um PGN de problemas padrão.

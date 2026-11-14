@@ -3566,6 +3566,18 @@ the move's comment	Move comment	Коментар до ходу
 	Alt+O switches between the board as read and the page's own picture.	Alt+O перемикає між дошкою, як її прочитано, і зображенням самої сторінки.
 	Original diagram, page {p}, diagram {n}	Оригінальна діаграма, сторінка {p}, діаграма {n}
 	The page's picture of this diagram shows once its page is drawn.	Зображення цієї діаграми зі сторінки з’явиться, щойно її сторінку буде намальовано.
+	Export the book's review…	Експорт перевірки книги…
+	Import a book's review…	Імпорт перевірки книги…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Шахи цього зашифрованого документа не зберігаються, як ви вказали: перевірку не можна ні експортувати з нього, ні імпортувати в нього.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Поки немає чого експортувати: для цього документа не збережено ні виправлень, ні виборів, ні партій.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Перевірку експортовано до {path} (виправлення: {corrections}, вибори: {decisions}, партії: {games}). У коментарях до партій може бути текст книги: зберігайте файл для особистого використання.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Перевірку імпортовано з {name} (виправлення: {corrections}, вибори: {decisions}, партії: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Виправлення для сторінок, яких немає в цьому документі: {n} (збережено, без діаграми).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Вибори, що чекають на PGN книги: {n} (завантажте PGN, потім імпортуйте перевірку знову).
+	Entries that couldn't be read and were left out: {n}.	Записи, які не вдалося прочитати й пропущено: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} — перевірка іншої книги ({pages} стор.; у цій {here}). Однаково імпортувати в цей документ?
+	Another book's review	Перевірка іншої книги
+	Import anyway	Однаково імпортувати
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Не підтверджено
 progress bar	Progress	Хід виконання
@@ -3575,6 +3587,8 @@ progress bar	Progress	Хід виконання
 	Games left out (an illegal position has no game): {n}	Пропущені партії (недопустима позиція не має партії): {n}
 	Indexing the book's PGN…	PGN книги індексується…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN книги більший, ніж індексує PdfCraft: з книгою пов'язано лише перші {moves} ходів.
+	Engine: {name}, in {folder}	Рушій: {name}, у {folder}
+	Importing…	Імпорт…
 	PGN — exercises	PGN — вправи
 	Anki — cards	Anki — картки
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Пронумеровані діаграми книги з розв'язками, як стандартний PGN задач.

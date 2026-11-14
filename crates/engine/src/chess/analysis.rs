@@ -8,10 +8,18 @@
 //! not reach PdfCraft. Desktop only: the web build cannot start processes.
 //!
 //! The engine is untrusted, like a file. Its lines are read bounded ([`pdfcraft_chess::uci`]), a
-//! line about a position it is no longer analysing is dropped, an engine that never finishes the
-//! handshake is reported after [`HANDSHAKE_TIMEOUT`], and dropping the [`Analyser`] ends the
-//! process. Commands go through a writer thread, so an engine that stops reading cannot hold up
-//! the interface.
+//! line about a position it is no longer analysing is dropped, and commands go through a writer
+//! thread, so an engine that stops reading cannot hold up the interface.
+//!
+//! **The process ends with the analysis** (plan A9-I13, A4-19). A program that has not finished
+//! the handshake after [`HANDSHAKE_TIMEOUT`] is not a UCI engine: it is refused
+//! ([`AnalysisError::NotUci`]) and ended there and then, as is one that closes its output before
+//! the handshake. Dropping the [`Analyser`] ends the process before the drop returns: killed at
+//! once, then waited for up to [`END_WAIT`] (a process that is still there after that is left,
+//! so closing never hangs on it). What stays: a PdfCraft that crashes, or is ended from outside,
+//! does not drop the analyser, and its engine runs on until its input closes (Stockfish then
+//! quits); ending it with the app would take a Windows job object, which needs `unsafe` or a
+//! dependency that wraps it.
 //!
 //! The lines found for the last [`MAX_KEPT`] positions are kept for the session: back on one of
 //! them (or on the position it was stopped on), the analyser shows them at once and searches on,
@@ -60,8 +68,12 @@ const MAX_DIR_ENTRIES: usize = 256;
 /// one deeper (`engine/stockfish-17/stockfish/stockfish.exe`).
 const MAX_FOLDER_DEPTH: usize = 3;
 
-/// How long a closed engine has to quit before it is killed.
-const QUIT_GRACE: Duration = Duration::from_millis(400);
+/// How long an ended engine is waited for after it was killed (plan A9-I13): the process is
+/// normally gone within a few milliseconds, and closing never waits longer than this.
+pub const END_WAIT: Duration = Duration::from_millis(500);
+
+/// How often the handshake is looked at while it may still come.
+const HANDSHAKE_POLL: Duration = Duration::from_millis(50);
 
 /// Moves of a line turned into SAN (the rest stay in UCI).
 const MAX_SAN: usize = 24;
@@ -89,10 +101,39 @@ pub fn test_engine() -> Result<Option<PathBuf>, String> {
 /// in the `engine` folder of `install` (the folder the app is installed in: the executable's,
 /// which the frontend resolves) or in a folder inside it. `None` without either.
 pub fn find_engine(install: Option<&Path>) -> Option<PathBuf> {
+    locate_engine(install).map(|found| found.path)
+}
+
+/// Where an engine found without being picked came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EngineSource {
+    /// `$PDFCRAFT_CHESS_ENGINE`.
+    Variable,
+    /// The `engine` folder beside the app, or a folder inside it.
+    Folder,
+}
+
+/// The engine [`locate_engine`] found, and the programs it passed over (plan A9-I13): the
+/// interface says which program it uses and where, so that a second program in the `engine`
+/// folder does not lose silently.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FoundEngine {
+    /// The program used.
+    pub path: PathBuf,
+    pub source: EngineSource,
+    /// The other programs as near the top of the `engine` folder, by name: the first by name
+    /// among them and `path` is used. Empty for [`EngineSource::Variable`].
+    pub others: Vec<PathBuf>,
+}
+
+/// [`find_engine`], saying where the program came from and what else was there (plan A9-I13).
+pub fn locate_engine(install: Option<&Path>) -> Option<FoundEngine> {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_ENGINE").map(PathBuf::from).filter(|p| p.is_file()) {
-        return Some(path);
+        return Some(FoundEngine { path, source: EngineSource::Variable, others: Vec::new() });
     }
-    program_in(&install?.join("engine"))
+    let mut programs = programs_in(&install?.join("engine")).into_iter();
+    let path = programs.next()?;
+    Some(FoundEngine { path, source: EngineSource::Folder, others: programs.collect() })
 }
 
 /// The first program in `dir`, by name: an `.exe` on Windows, a file anyone may execute
@@ -103,16 +144,24 @@ pub fn find_engine(install: Option<&Path>) -> Option<PathBuf> {
 /// The search is bounded: [`MAX_DIR_ENTRIES`] entries in all and that depth, so a folder of
 /// thousands of files, or links that lead round in a circle, cannot hold it up.
 pub fn program_in(dir: &Path) -> Option<PathBuf> {
+    programs_in(dir).into_iter().next()
+}
+
+/// Every program at the first depth below `dir` that has one, in the order [`program_in`] takes
+/// them (folder by folder, by name): its first is [`program_in`]'s. Within the same bounds.
+fn programs_in(dir: &Path) -> Vec<PathBuf> {
     let mut budget = MAX_DIR_ENTRIES;
     let mut folders = vec![dir.to_path_buf()];
     for _ in 0..MAX_FOLDER_DEPTH {
+        let mut found = Vec::new();
         let mut below = Vec::new();
         for folder in &folders {
             let (programs, inside) = entries_of(folder, &mut budget);
-            if let Some(program) = programs.into_iter().next() {
-                return Some(program);
-            }
+            found.extend(programs);
             below.extend(inside);
+        }
+        if !found.is_empty() {
+            return found;
         }
         if below.is_empty() || budget == 0 {
             break;
@@ -120,7 +169,7 @@ pub fn program_in(dir: &Path) -> Option<PathBuf> {
         below.sort();
         folders = below;
     }
-    None
+    Vec::new()
 }
 
 /// The programs and the folders directly in `dir`, each sorted by name, taking no more than
@@ -324,7 +373,8 @@ struct Shared {
     nodes: Option<u64>,
     nps: Option<u64>,
     error: Option<AnalysisError>,
-    /// The process is being closed: its end is not an error.
+    /// The process is being closed, or was refused (plan A9-I13): its end is not an error, and
+    /// a handshake it finishes now does not count.
     quitting: bool,
 }
 
@@ -332,7 +382,8 @@ struct Shared {
 pub struct Analyser {
     shared: Arc<Mutex<Shared>>,
     commands: Sender<String>,
-    child: Option<Child>,
+    /// The process, while it runs; taken by whoever ends it (the drop, or the handshake's watch).
+    child: Arc<Mutex<Option<Child>>>,
     started: Instant,
 }
 
@@ -340,15 +391,42 @@ fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
+/// The process out of `child`, to end it: `None` when it was taken already.
+fn take_child(child: &Mutex<Option<Child>>) -> Option<Child> {
+    child.lock().unwrap_or_else(std::sync::PoisonError::into_inner).take()
+}
+
+/// End `child` now (plan A9-I13): killed at once, then waited for, a few milliseconds at a time,
+/// up to [`END_WAIT`]; past that it is left, so the caller never hangs on a process the system
+/// has not ended. Whether it ended.
+fn end_child(child: &mut Child) -> bool {
+    let _ = child.kill();
+    let until = Instant::now() + END_WAIT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return true,
+            Err(_) => return false,
+            Ok(None) if Instant::now() >= until => return false,
+            Ok(None) => std::thread::sleep(Duration::from_millis(5)),
+        }
+    }
+}
+
 impl Analyser {
     /// Start the engine at `path`. It runs from its own folder, where engines look for their
     /// network files.
     pub fn start(path: &Path, options: AnalysisOptions, notify: Notify) -> Result<Analyser, AnalysisError> {
         let mut command = Command::new(path);
-        command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
         if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
             command.current_dir(dir);
         }
+        Analyser::start_command(command, options, notify, HANDSHAKE_TIMEOUT)
+    }
+
+    /// Start the program `command` runs, refusing and ending it when it has not finished the UCI
+    /// handshake after `handshake` (plan A9-I13).
+    fn start_command(mut command: Command, options: AnalysisOptions, notify: Notify, handshake: Duration) -> Result<Analyser, AnalysisError> {
+        command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -357,12 +435,13 @@ impl Analyser {
         }
         let mut child = command.spawn().map_err(|e| AnalysisError::Start(e.to_string()))?;
         let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
-            let _ = child.kill();
-            let _ = child.wait();
+            end_child(&mut child);
             return Err(AnalysisError::Start("no standard input or output".into()));
         };
-        let mut analyser = Analyser::with_streams(stdout, stdin, options, notify);
-        analyser.child = Some(child);
+        let analyser = Analyser::with_streams(stdout, stdin, options, Arc::clone(&notify));
+        *analyser.child.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(child);
+        let (shared, child) = (Arc::clone(&analyser.shared), Arc::clone(&analyser.child));
+        std::thread::spawn(move || watch_handshake(&shared, &child, &notify, handshake));
         Ok(analyser)
     }
 
@@ -408,7 +487,7 @@ impl Analyser {
         let reader_commands = commands.clone();
         std::thread::spawn(move || read_engine(output, &reader_shared, &reader_commands, &notify));
         let _ = commands.send("uci".to_owned());
-        Analyser { shared, commands, child: None, started: Instant::now() }
+        Analyser { shared, commands, child: Arc::new(Mutex::new(None)), started: Instant::now() }
     }
 
     /// Analyse `fen`; what was found for the position before is kept for when it comes back. A
@@ -538,25 +617,45 @@ impl Analyser {
 }
 
 impl Drop for Analyser {
+    /// The process is ended before this returns (plan A9-I13): a thread left to do it would die
+    /// with an app that is quitting, and leave the engine running.
     fn drop(&mut self) {
         lock(&self.shared).quitting = true;
         let _ = self.commands.send("stop".to_owned());
         let _ = self.commands.send("quit".to_owned());
-        // Killed in the background if it does not quit, so closing never waits on the engine.
-        if let Some(mut child) = self.child.take() {
-            std::thread::spawn(move || {
-                let until = Instant::now() + QUIT_GRACE;
-                while Instant::now() < until {
-                    if child.try_wait().is_ok_and(|s| s.is_some()) {
-                        return;
-                    }
-                    std::thread::sleep(Duration::from_millis(20));
-                }
-                let _ = child.kill();
-                let _ = child.wait();
-            });
+        if let Some(mut child) = take_child(&self.child) {
+            end_child(&mut child);
         }
     }
+}
+
+/// Watch the handshake of the program in `child` (plan A9-I13, A4-19): once it is done, or the
+/// analyser is closing, there is nothing to do; a program that has not finished it after
+/// `handshake`, or that closed its output first, is refused ([`AnalysisError::NotUci`], unless
+/// it already said why) and ended.
+fn watch_handshake(shared: &Mutex<Shared>, child: &Mutex<Option<Child>>, notify: &Notify, handshake: Duration) {
+    let until = Instant::now() + handshake;
+    loop {
+        {
+            let mut s = lock(shared);
+            if s.ready || s.quitting {
+                return;
+            }
+            let now = Instant::now();
+            if s.error.is_some() || now >= until {
+                s.error.get_or_insert(AnalysisError::NotUci);
+                // Its end that follows is this refusal, not a stop.
+                s.quitting = true;
+                s.searching = false;
+                break;
+            }
+        }
+        std::thread::sleep(until.saturating_duration_since(Instant::now()).min(HANDSHAKE_POLL));
+    }
+    if let Some(mut process) = take_child(child) {
+        end_child(&mut process);
+    }
+    notify();
 }
 
 /// Stop the search, if one runs. `drop_result`: the `bestmove` it ends with belongs to no
@@ -749,7 +848,8 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
     match message {
         Message::Name(name) => s.name = Some(name),
         Message::UciOk => {
-            if s.ready {
+            // Once, and never from a program refused for answering too late (plan A9-I13).
+            if s.ready || s.quitting {
                 return false;
             }
             s.ready = true;
@@ -1211,5 +1311,135 @@ mod tests {
     fn a_missing_program_is_a_start_error() {
         let r = Analyser::start(Path::new("this-engine-does-not-exist-anywhere"), AnalysisOptions::default(), Arc::new(|| {}));
         assert!(matches!(r, Err(AnalysisError::Start(_))));
+    }
+
+    /// Plan A9-I13: with two programs in folders of the `engine` folder, the first by name is
+    /// used and the other is named too, so that the interface can say which it took.
+    #[test]
+    fn the_engine_found_is_named_with_the_others_beside_it() {
+        let install = std::env::temp_dir().join(format!("pdfcraft-engine-two-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&install);
+        let exe = |name: &str| if cfg!(windows) { format!("{name}.exe") } else { name.to_owned() };
+        let aux = install.join("engine").join("aux").join(exe("x"));
+        let stockfish = install.join("engine").join("stockfish").join(exe("stockfish"));
+        write_program(&stockfish);
+        write_program(&aux);
+        // Deeper still: not as near the top, so not among the others.
+        write_program(&install.join("engine").join("stockfish").join("old").join(exe("sf")));
+        assert_eq!(programs_in(&install.join("engine")), [aux.clone(), stockfish.clone()]);
+        assert_eq!(program_in(&install.join("engine")), Some(aux.clone()), "the first by name, as before");
+        if std::env::var_os("PDFCRAFT_CHESS_ENGINE").is_none() {
+            let found = locate_engine(Some(&install)).unwrap();
+            assert_eq!(found, FoundEngine { path: aux.clone(), source: EngineSource::Folder, others: vec![stockfish] });
+            assert_eq!(find_engine(Some(&install)), Some(aux));
+            assert_eq!(locate_engine(None), None);
+        }
+        let _ = std::fs::remove_dir_all(&install);
+    }
+
+    /// What the program [`pretend_program`] is to be: `silent` (no UCI) or `uci`.
+    const PRETEND: &str = "PDFCRAFT_TEST_PRETEND_ENGINE";
+    /// The file it writes a count to, about a hundred times a second, while it runs.
+    const BEAT: &str = "PDFCRAFT_TEST_PRETEND_BEAT";
+
+    /// Not a test: the program the tests below start (this test binary, running only this),
+    /// when [`PRETEND`] says what to be; otherwise it returns at once. `silent` reads its input
+    /// and says nothing; `uci` answers the handshake and, once told `go`, reports a line over
+    /// and over. Neither ever stops on `stop`, `quit` or the end of its input, as an engine
+    /// that has hung would not: it runs until it is killed, or for 20 seconds. It writes the
+    /// count of its rounds to [`BEAT`].
+    #[test]
+    fn pretend_program() {
+        let Some(kind) = std::env::var_os(PRETEND) else { return };
+        let beat = std::env::var_os(BEAT).map(PathBuf::from);
+        let uci = kind == "uci";
+        let (lines, heard) = channel();
+        std::thread::spawn(move || {
+            for line in std::io::stdin().lines() {
+                let Ok(line) = line else { break };
+                if lines.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+        let mut out = std::io::stdout();
+        // Serial libtest printed its test's label without a newline.
+        let _ = writeln!(out);
+        let (until, mut round, mut going) = (Instant::now() + Duration::from_secs(20), 0u64, false);
+        while Instant::now() < until {
+            while let Ok(line) = heard.try_recv() {
+                if uci && line == "uci" {
+                    let _ = writeln!(out, "id name Pretend\nuciok");
+                }
+                going |= uci && line.starts_with("go");
+            }
+            round += 1;
+            if going {
+                let _ = writeln!(out, "info depth 1 multipv 1 score cp 10 nodes {round} pv e2e4");
+            }
+            if let Some(beat) = &beat {
+                let _ = std::fs::write(beat, round.to_string());
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    /// [`pretend_program`] as `kind`, counting into `beat`.
+    fn pretend(kind: &str, beat: &Path) -> Command {
+        let mut command = Command::new(std::env::current_exe().unwrap());
+        command.args(["--exact", "chess::analysis::tests::pretend_program", "--nocapture", "--test-threads=1"]).env(PRETEND, kind).env(BEAT, beat);
+        command
+    }
+
+    /// Whether the program counting into `beat` counted on over 150 ms: it is still running.
+    fn beating(beat: &Path) -> bool {
+        let before = std::fs::read(beat).ok();
+        std::thread::sleep(Duration::from_millis(150));
+        before.is_some() && std::fs::read(beat).ok() != before
+    }
+
+    /// Wait (up to five seconds) until `done`.
+    fn until(done: impl Fn() -> bool) -> bool {
+        let end = Instant::now() + Duration::from_secs(5);
+        while Instant::now() < end {
+            if done() {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Plan A9-I13 (A4-19): a program that does not answer the handshake in time is refused and
+    /// ended, not left running behind an error.
+    #[test]
+    fn a_program_that_does_not_speak_uci_is_refused_and_ended() {
+        let beat = std::env::temp_dir().join(format!("pdfcraft-pretend-silent-{}", std::process::id()));
+        let _ = std::fs::remove_file(&beat);
+        let a = Analyser::start_command(pretend("silent", &beat), AnalysisOptions::default(), Arc::new(|| {}), Duration::from_millis(300)).unwrap();
+        assert!(until(|| beating(&beat)), "the program runs");
+        a.analyse(START);
+        let s = wait(&a, |s| s.error.is_some());
+        assert_eq!(s.error, Some(AnalysisError::NotUci), "refused");
+        assert!(until(|| !beating(&beat)), "and ended, while the analyser is still there");
+        assert_eq!(a.snapshot().error, Some(AnalysisError::NotUci), "its end is the refusal, not a stop");
+        drop(a);
+        let _ = std::fs::remove_file(&beat);
+    }
+
+    /// Plan A9-I13 (A4-19): the engine is ended by the time the analyser is dropped, also while
+    /// it analyses and when it does not obey `quit`: a thread left to end it later would die
+    /// with an app that is quitting.
+    #[test]
+    fn dropping_the_analyser_ends_its_engine_before_the_drop_returns() {
+        let beat = std::env::temp_dir().join(format!("pdfcraft-pretend-uci-{}", std::process::id()));
+        let _ = std::fs::remove_file(&beat);
+        let a = Analyser::start_command(pretend("uci", &beat), AnalysisOptions { lines: 1, depth: 20 }, Arc::new(|| {}), HANDSHAKE_TIMEOUT).unwrap();
+        a.analyse(START);
+        let s = wait(&a, |s| s.searching && !s.lines.is_empty());
+        assert_eq!((s.name.as_deref(), s.searching, s.error), (Some("Pretend"), true, None), "it analyses");
+        assert!(beating(&beat), "the engine runs");
+        drop(a);
+        assert!(!beating(&beat), "the engine still ran after the analyser was dropped");
+        let _ = std::fs::remove_file(&beat);
     }
 }

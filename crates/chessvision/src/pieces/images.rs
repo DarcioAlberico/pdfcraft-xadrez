@@ -9,10 +9,21 @@
 //! opaque silhouette in black, then its light parts in white on top. The outlines are iso-lines
 //! of the image at half intensity, found with marching squares on a bilinear upsampling, so an
 //! anti-aliased image gives smooth edges at any size.
+//!
+//! **Large images** (plan A9-V6b, finding A3-07: twelve PNGs of 2,048 px took 2.4 s, on the
+//! interface's thread). An image wider or taller than [`TARGET_GRID`] pixels is reduced to it by
+//! an area average of its two fields (silhouette and light parts) before it is traced: the
+//! outline is the same within a fraction of a pixel of the reduced grid, for a sixteenth of the
+//! points. **Traced once**: each image's outlines are kept by the SHA-256 of its bytes
+//! ([`MAX_CACHED_GLYPHS`] of them), so the set checked by an import, its copy checked again before
+//! it takes the old one's place, its preview and the boards drawn with it are traced once in all.
 
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
+
+use sha2::Digest as _;
 
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, PieceSet, Rgb, Segment, Subpath};
 use pdfcraft_chess::placement::{Color, PieceKind};
@@ -25,8 +36,11 @@ const MAX_IMAGE_BYTES: usize = 8 << 20;
 const MAX_SIDE: u32 = 2048;
 /// Grid points per image pixel along each side, for images up to `TARGET_GRID` pixels wide.
 const MAX_UPSAMPLE: usize = 4;
-/// Upsampling stops once the grid is about this many points wide.
+/// Upsampling stops once the grid is about this many points wide, and a larger image is reduced to
+/// this many pixels on its longer side before it is traced.
 const TARGET_GRID: usize = 512;
+/// Most piece images whose outlines are kept (four sets of twelve).
+pub const MAX_CACHED_GLYPHS: usize = 48;
 /// How far a simplified outline may stray from the traced one, in image pixels.
 const TOLERANCE_PX: f32 = 0.08;
 /// Loops enclosing less than this many square pixels are specks and dropped.
@@ -115,11 +129,41 @@ pub fn from_image_dir(dir: &Path) -> Result<PieceSet, PieceError> {
             return Err(PieceError::Image { path: path.clone(), reason: format!("{size} bytes, more than the {MAX_IMAGE_BYTES} accepted") });
         }
         let bytes = std::fs::read(path).map_err(|source| PieceError::Read { path: path.clone(), source })?;
-        let glyph = if is_svg(path) { super::svg::glyph_from_svg(&bytes) } else { decode_png(&bytes).map(|image| glyph_from_image(&image)) };
-        *slot = glyph.map_err(|reason| PieceError::Image { path: path.clone(), reason })?;
+        *slot = glyph_of(&bytes, is_svg(path)).map_err(|reason| PieceError::Image { path: path.clone(), reason })?;
     }
     let name = dir.file_name().and_then(|n| n.to_str()).filter(|n| !n.is_empty()).unwrap_or("images").to_owned();
     Ok(PieceSet { glyphs, name })
+}
+
+/// The outlines of the piece image `bytes` (an SVG when `svg`, else a PNG), traced once: the same
+/// bytes give the outlines kept from before ([`MAX_CACHED_GLYPHS`], the oldest forgotten first).
+/// An image that can't be read is not kept, and says why each time.
+fn glyph_of(bytes: &[u8], svg: bool) -> Result<PieceGlyph, String> {
+    /// The outlines kept, by the SHA-256 of the image's bytes and its kind, the newest last.
+    static KEPT: Mutex<Vec<([u8; 32], bool, PieceGlyph)>> = Mutex::new(Vec::new());
+    let digest: [u8; 32] = sha2::Sha256::digest(bytes).into();
+    let kept = KEPT.lock().unwrap_or_else(PoisonError::into_inner).iter().find(|(d, s, _)| *d == digest && *s == svg).map(|(_, _, g)| g.clone());
+    if let Some(glyph) = kept {
+        return Ok(glyph);
+    }
+    // Traced with the lock let go: another thread may trace other pieces meanwhile.
+    let glyph = if svg { super::svg::glyph_from_svg(bytes)? } else { glyph_from_image(&decode_png(bytes)?) };
+    #[cfg(test)]
+    TRACED.with(|n| n.set(n.get() + 1));
+    let mut kept = KEPT.lock().unwrap_or_else(PoisonError::into_inner);
+    kept.retain(|(d, s, _)| !(*d == digest && *s == svg));
+    if kept.len() >= MAX_CACHED_GLYPHS {
+        let over = kept.len().saturating_add(1).saturating_sub(MAX_CACHED_GLYPHS).min(kept.len());
+        kept.drain(..over);
+    }
+    kept.push((digest, svg, glyph.clone()));
+    Ok(glyph)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// The images [`glyph_of`] traced on this thread.
+    static TRACED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// A decoded image: straight (not premultiplied) RGBA, 8 bits per channel, row-major.
@@ -177,14 +221,90 @@ pub(crate) fn glyph_from_image(image: &Rgba) -> PieceGlyph {
             luma * f32::from(p[3]) / 255.0
         })
         .collect();
+    // A large image is traced at the grid it would be traced at anyway (plan A9-V6b).
+    let (width, height) = reduced_size(image.width, image.height);
+    let alpha = shrink(&alpha, image.width, image.height, width, height);
+    let light = shrink(&light, image.width, image.height, width, height);
     let mut layers = Vec::new();
     for (field, color) in [(&alpha, Rgb::BLACK), (&light, Rgb::WHITE)] {
-        let subpaths = trace(field, image.width, image.height);
+        let subpaths = trace(field, width, height);
         if !subpaths.is_empty() {
             layers.push(Layer { subpaths, paint: Paint::Fill { color, even_odd: true } });
         }
     }
     PieceGlyph { layers }
+}
+
+/// The size an image of `width × height` pixels is traced at: itself up to [`TARGET_GRID`]
+/// pixels on its longer side, else reduced to that, its proportions kept (each side at least 1).
+fn reduced_size(width: usize, height: usize) -> (usize, usize) {
+    let longer = width.max(height);
+    if longer <= TARGET_GRID {
+        return (width, height);
+    }
+    let side = |n: usize| (n.saturating_mul(TARGET_GRID).saturating_add(longer / 2) / longer).clamp(1, TARGET_GRID);
+    (side(width), side(height))
+}
+
+/// `field` (`width × height` values) reduced to `to_w × to_h` by an area average: each value the
+/// mean of the part of the field its cell covers, fractions of a value weighed by the part
+/// covered, so the field keeps its extent and an edge stays where it was. As it is when the size
+/// does not shrink.
+fn shrink(field: &[f32], width: usize, height: usize, to_w: usize, to_h: usize) -> Vec<f32> {
+    if (to_w >= width && to_h >= height) || to_w == 0 || to_h == 0 {
+        return field.to_vec();
+    }
+    // A whole number of pixels per cell each way (2,048 to 512, say): a plain block average.
+    let k = width / to_w;
+    if k > 0 && width == k.saturating_mul(to_w) && height == k.saturating_mul(to_h) {
+        let mut out = vec![0.0f32; to_w.saturating_mul(to_h)];
+        for (y, row) in field.chunks(width).take(height).enumerate() {
+            let line = (y / k).saturating_mul(to_w);
+            for (x, v) in row.iter().enumerate() {
+                if let Some(slot) = out.get_mut(line.saturating_add(x / k)) {
+                    *slot += *v;
+                }
+            }
+        }
+        let cell = k.saturating_mul(k) as f32;
+        out.iter_mut().for_each(|v| *v /= cell);
+        return out;
+    }
+    let rows = shrink_axis(field, width, height, to_w, true);
+    shrink_axis(&rows, to_w, height, to_h, false)
+}
+
+/// One axis of [`shrink`]: along the rows (`along_x`, `width` values to `to`) or the columns
+/// (`height` values to `to`).
+fn shrink_axis(field: &[f32], width: usize, height: usize, to: usize, along_x: bool) -> Vec<f32> {
+    let (from, lines) = if along_x { (width, height) } else { (height, width) };
+    if to == 0 || from == 0 {
+        return Vec::new();
+    }
+    let (out_w, out_h) = if along_x { (to, height) } else { (width, to) };
+    let mut out = vec![0.0f32; out_w.saturating_mul(out_h)];
+    let step = from as f64 / to as f64;
+    let at = |line: usize, i: usize| -> f32 {
+        let index = if along_x { line * width + i } else { i * width + line };
+        field.get(index).copied().unwrap_or(0.0)
+    };
+    for line in 0..lines {
+        for o in 0..to {
+            let (a, b) = (o as f64 * step, (o + 1) as f64 * step);
+            let mut sum = 0.0f64;
+            let first = a.floor() as usize;
+            let last = (b.ceil() as usize).min(from);
+            for i in first..last {
+                let cover = (b.min((i + 1) as f64) - a.max(i as f64)).max(0.0);
+                sum += f64::from(at(line, i)) * cover;
+            }
+            let index = if along_x { line * out_w + o } else { o * out_w + line };
+            if let Some(slot) = out.get_mut(index) {
+                *slot = (sum / step) as f32;
+            }
+        }
+    }
+    out
 }
 
 /// The closed outlines where `field` (`width × height` values in 0..1) crosses one half, in the
@@ -424,6 +544,131 @@ mod tests {
         let points: Vec<(f32, f32)> = (0..10_000).map(|i| (i as f32, ((i / 2) % 2) as f32 * 3.0)).collect();
         let kept = std::thread::Builder::new().stack_size(64 * 1024).spawn(move || simplify_open(&points, 0.5).len()).unwrap().join().unwrap();
         assert!(kept > 2);
+    }
+
+    /// A black disc filling 80 % of a `size` px image, anti-aliased by its cover of each pixel
+    /// (4 × 4 samples).
+    fn disc(size: usize) -> Rgba {
+        let (c, r) = (size as f32 / 2.0, size as f32 * 0.4);
+        let pixels = (0..size * size)
+            .map(|i| {
+                let (x, y) = ((i % size) as f32, (i / size) as f32);
+                let inside = (0..16).filter(|k| (x + (k % 4) as f32 / 4.0 + 0.125 - c).hypot(y + (k / 4) as f32 / 4.0 + 0.125 - c) <= r).count();
+                [0, 0, 0, (inside * 255 / 16) as u8]
+            })
+            .collect();
+        Rgba { width: size, height: size, pixels }
+    }
+
+    /// The silhouette's points and segments of `glyph`, in the unit square.
+    fn silhouette(glyph: &PieceGlyph) -> Vec<Vec<(f32, f32)>> {
+        let layer = glyph.layers.first().expect("a silhouette");
+        layer
+            .subpaths
+            .iter()
+            .map(|p| {
+                let mut points = vec![p.start];
+                points.extend(p.segments.iter().filter_map(|s| if let Segment::Line(x, y) = s { Some((*x, *y)) } else { None }));
+                points
+            })
+            .collect()
+    }
+
+    /// The farthest a point of `a` is from the closed polylines of `b`, both ways (Hausdorff).
+    fn hausdorff(a: &[Vec<(f32, f32)>], b: &[Vec<(f32, f32)>]) -> f32 {
+        fn to_segment(p: (f32, f32), s: (f32, f32), e: (f32, f32)) -> f32 {
+            let (dx, dy) = (e.0 - s.0, e.1 - s.1);
+            let len = dx * dx + dy * dy;
+            let t = if len > 0.0 { (((p.0 - s.0) * dx + (p.1 - s.1) * dy) / len).clamp(0.0, 1.0) } else { 0.0 };
+            (p.0 - s.0 - t * dx).hypot(p.1 - s.1 - t * dy)
+        }
+        fn one_way(a: &[Vec<(f32, f32)>], b: &[Vec<(f32, f32)>]) -> f32 {
+            let segments: Vec<((f32, f32), (f32, f32))> =
+                b.iter().flat_map(|l| l.iter().zip(l.iter().cycle().skip(1)).map(|(s, e)| (*s, *e))).collect();
+            a.iter().flatten().map(|p| segments.iter().map(|(s, e)| to_segment(*p, *s, *e)).fold(f32::MAX, f32::min)).fold(0.0, f32::max)
+        }
+        one_way(a, b).max(one_way(b, a))
+    }
+
+    /// Plan A9-V6b (A3-07): an image larger than the grid is traced reduced to it, an area average:
+    /// a 2,048 px disc gives the outline the 512 px one gives (Hausdorff under 0.5 % of the side),
+    /// with about as many points, not the four times as many a 2,048 px grid draws.
+    #[test]
+    fn a_large_image_is_traced_reduced_to_the_same_outline() {
+        let (big, small) = (silhouette(&glyph_from_image(&disc(2048))), silhouette(&glyph_from_image(&disc(512))));
+        assert_eq!((big.len(), small.len()), (1, 1), "one loop each");
+        let distance = hausdorff(&big, &small);
+        assert!(distance < 0.005, "Hausdorff {distance} of the side");
+        let (b, s) = (big.iter().map(Vec::len).sum::<usize>(), small.iter().map(Vec::len).sum::<usize>());
+        assert!(b * 4 <= s * 5, "traced at the reduced grid: {b} points against {s}");
+    }
+
+    /// The area average keeps a field's extent and its mean at any ratio, whole or not.
+    #[test]
+    fn the_area_average_keeps_the_mean_and_the_edges() {
+        for (w, h) in [(2048, 1024), (1000, 700), (513, 2048), (600, 600)] {
+            let field: Vec<f32> = (0..w * h).map(|i| if (i % w) < w / 2 { 1.0 } else { 0.0 }).collect();
+            let (tw, th) = reduced_size(w, h);
+            assert!(tw.max(th) == TARGET_GRID && tw >= 1 && th >= 1, "{w}x{h} to {tw}x{th}");
+            let out = shrink(&field, w, h, tw, th);
+            assert_eq!(out.len(), tw * th);
+            let mean = |f: &[f32]| f.iter().map(|v| f64::from(*v)).sum::<f64>() / f.len() as f64;
+            assert!((mean(&out) - mean(&field)).abs() < 1e-3, "{w}x{h}: {} against {}", mean(&out), mean(&field));
+            // The left half stays full and the right half empty, past the cell the edge falls in.
+            let row = &out[..tw];
+            assert!(row[..tw / 2 - 1].iter().all(|v| (*v - 1.0).abs() < 1e-4) && row[tw / 2 + 1..].iter().all(|v| v.abs() < 1e-4), "{w}x{h}");
+        }
+        assert_eq!(reduced_size(512, 300), (512, 300), "not larger: as it is");
+        assert_eq!(reduced_size(2048, 1), (512, 1), "a side never goes to 0");
+    }
+
+    /// Plan A9-V6b: the same image's bytes are traced once; other bytes, or the same bytes read as
+    /// the other kind, are not taken for it.
+    #[test]
+    fn the_same_image_is_traced_once() {
+        let mut png = Vec::new();
+        {
+            let image = disc(64);
+            let mut e = png::Encoder::new(&mut png, 64, 64);
+            e.set_color(png::ColorType::Rgba);
+            e.set_depth(png::BitDepth::Eight);
+            let rgba: Vec<u8> = image.pixels.iter().flatten().copied().collect();
+            e.write_header().unwrap().write_image_data(&rgba).unwrap();
+        }
+        let traced = || TRACED.with(std::cell::Cell::get);
+        let before = traced();
+        let first = glyph_of(&png, false).unwrap();
+        assert_eq!(glyph_of(&png, false).unwrap(), first);
+        assert_eq!(traced() - before, 1, "traced once");
+        assert!(glyph_of(&png, true).is_err(), "a PNG read as an SVG is no glyph, never the PNG's");
+        assert!(glyph_of(b"not an image", false).is_err());
+    }
+
+    /// Plan A9-V6b (A3-07): tracing a 2,048 px piece takes under an eighth of the time it took at
+    /// its full size, in release.
+    /// `cargo test --release -p pdfcraft-chessvision --lib perf_trace_a_large_piece -- --ignored`.
+    #[test]
+    #[ignore = "a timing, in release"]
+    fn perf_trace_a_large_piece() {
+        let image = disc(2048);
+        let alpha: Vec<f32> = image.pixels.iter().map(|p| f32::from(p[3]) / 255.0).collect();
+        let best = |f: &dyn Fn() -> usize| {
+            (0..3)
+                .map(|_| {
+                    let t = std::time::Instant::now();
+                    assert_eq!(f(), 1, "one loop");
+                    t.elapsed().as_secs_f64() * 1000.0
+                })
+                .fold(f64::MAX, f64::min)
+        };
+        let full = best(&|| trace(&alpha, 2048, 2048).len());
+        let reduced = best(&|| {
+            let (w, h) = reduced_size(2048, 2048);
+            trace(&shrink(&alpha, 2048, 2048, w, h), w, h).len()
+        });
+        println!("PERF trace_large_piece {reduced:.0}");
+        println!("trace of a 2,048 px disc: {reduced:.1} ms reduced, {full:.1} ms at its full size");
+        assert!(reduced * 8.0 < full, "{reduced:.1} ms against {full:.1} ms");
     }
 
     fn square_image(size: usize, from: usize, to: usize, rgba: [u8; 4]) -> Rgba {
