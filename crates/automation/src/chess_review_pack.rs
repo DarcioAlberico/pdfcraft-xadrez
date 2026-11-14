@@ -22,20 +22,11 @@
 
 use pdfcraft_engine::chess::corrections::{DocRecord, Located};
 use pdfcraft_engine::chess::games_store::{self, GamesStoreError};
-use pdfcraft_engine::chess::review_pack::{self, MAX_PACK_BYTES, Unpacked};
+use pdfcraft_engine::chess::review_pack::{self, MAX_PACK_BYTES, Unpacked, same_book};
 use serde_json::{Value, json};
 
 use crate::chess_store_migrate::{GAMES, StoreAt};
 use crate::{Args, Automation, Result, failed, write_atomic};
-
-/// Whether `pack` (a pack's document) is `doc`: the same identifier when both have one, else the
-/// same size and page count.
-fn same_book(pack: &DocRecord, doc: &DocRecord) -> bool {
-    match (&pack.id0, &doc.id0) {
-        (Some(a), Some(b)) => a == b,
-        _ => pack.size == doc.size && pack.pages == doc.pages,
-    }
-}
 
 impl Automation {
     /// The games' store folder, to read (`None`: the app's, outside the folders the tools are

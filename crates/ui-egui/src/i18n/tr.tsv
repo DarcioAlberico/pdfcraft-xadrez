@@ -3540,6 +3540,18 @@ the move's comment	Move comment	Hamlenin yorumu
 	Alt+O switches between the board as read and the page's own picture.	Alt+O, okunduğu hâliyle tahta ile sayfanın kendi görüntüsü arasında geçiş yapar.
 	Original diagram, page {p}, diagram {n}	Özgün diyagram, sayfa {p}, diyagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Bu diyagramın sayfa görüntüsü, sayfası çizildiğinde görünür.
+	Export the book's review…	Kitabın incelemesini dışa aktar…
+	Import a book's review…	Bir kitabın incelemesini içe aktar…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Söylediğiniz gibi, bu şifreli belgenin satrancı saklanmıyor: ondan inceleme dışa aktarılamaz ve ona içe aktarılamaz.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Henüz dışa aktarılacak bir şey yok: bu belge hiçbir düzeltme, seçim veya oyun saklamıyor.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	İnceleme {path} konumuna aktarıldı (düzeltmeler: {corrections}, seçimler: {decisions}, oyunlar: {games}). Oyunların yorumları kitabın metnini içerebilir: dosyayı kişisel kullanımınız için saklayın.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	İnceleme {name} dosyasından içe aktarıldı (düzeltmeler: {corrections}, seçimler: {decisions}, oyunlar: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Bu belgede olmayan sayfalar için düzeltmeler: {n} (saklandı, hiçbir diyagramda değil).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Kitabın PGN'ini bekleyen seçimler: {n} (PGN'i yükleyin, sonra incelemeyi yeniden içe aktarın).
+	Entries that couldn't be read and were left out: {n}.	Okunamayan ve dışarıda bırakılan girdiler: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} başka bir kitabın incelemesi ({pages} sayfa; bu kitapta {here}). Yine de bu belgeye içe aktarılsın mı?
+	Another book's review	Başka bir kitabın incelemesi
+	Import anyway	Yine de içe aktar
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Onaylanmadı
 progress bar	Progress	İlerleme
