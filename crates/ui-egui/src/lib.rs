@@ -38,6 +38,7 @@ mod chess_board_tab;
 mod chess_board_ui;
 mod chess_bookmarks_ui;
 mod chess_capture;
+mod chess_cipher_ui;
 mod chess_collection;
 mod chess_correct;
 mod chess_corrections_ui;

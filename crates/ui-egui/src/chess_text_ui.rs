@@ -301,9 +301,18 @@ pub enum TextAction {
 }
 
 /// The book's PGN row: what the document keeps, and the button to load or remove it; with none
-/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too.
-fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>, sibling: Option<&str>) -> Option<TextAction> {
+/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too. While a PGN is being
+/// indexed (`indexing`, plan A9-I3b) the row says so instead of offering one.
+fn book_pgn_row(
+    ui: &mut egui::Ui,
+    book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
+    sibling: Option<&str>,
+    indexing: bool,
+) -> Option<TextAction> {
     let mut action = None;
+    if indexing {
+        ui.label(tl!("Indexing the book's PGN…"));
+    }
     match book_pgn {
         Some(s) => {
             let name = s.name.as_deref().unwrap_or("PGN");
@@ -315,6 +324,7 @@ fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::
                 action = Some(TextAction::BookPgn(false));
             }
         }
+        None if indexing => {}
         None => {
             if ui
                 .button(tl!("Load the book's PGN…"))
@@ -512,7 +522,7 @@ pub fn text_tab(
         }
     });
     ui.horizontal_wrapped(|ui| {
-        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref()) {
+        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref(), pgn.indexing) {
             action = Some(a);
         }
     });
@@ -944,12 +954,6 @@ impl PdfCraftApp {
         });
     }
 
-    /// The book cipher document `id`'s reads have taught so far, if any: the session keeps one per
-    /// document (plan A9-I1a), so reading another book never takes it.
-    pub fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
-        self.session.chess_cipher(id)
-    }
-
     /// Where document `id`'s pages came from, as the user said (Auto when not said).
     pub fn chess_origin(&self, id: DocId) -> BookOrigin {
         self.session.chess_origin(id)
@@ -1056,7 +1060,7 @@ impl PdfCraftApp {
                     || ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
                 let text = match read {
                     Ok(read) => {
-                        self.session.set_chess_cipher(job.doc, read.cipher.clone());
+                        self.keep_chess_cipher(job.doc, read.cipher.clone());
                         let pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
                         let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
                         let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
@@ -1104,7 +1108,7 @@ impl PdfCraftApp {
                 if self.session.chess_stamp(job.doc) != Some(stamp) {
                     return;
                 }
-                self.session.set_chess_cipher(job.doc, read.cipher);
+                self.keep_chess_cipher(job.doc, read.cipher);
                 match read.span.at {
                     Some(node) => self.put_book_game(job.doc, &read.span.doc, node),
                     None => self.notify(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
@@ -1113,7 +1117,7 @@ impl PdfCraftApp {
             #[cfg(not(target_arch = "wasm32"))]
             (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
                 if let Ok(m) = &made {
-                    self.session.set_chess_cipher(job.doc, m.read.cipher.clone());
+                    self.keep_chess_cipher(job.doc, m.read.cipher.clone());
                 }
                 self.write_chess_export(made, &path, &image_dir);
             }

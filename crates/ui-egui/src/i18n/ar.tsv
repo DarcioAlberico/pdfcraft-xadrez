@@ -3840,3 +3840,5 @@ progress bar	Progress	التقدم
 	The games of the list as a book, a page each, with their diagrams.	مباريات القائمة ككتاب، صفحة لكل منها، مع مخططاتها.
 	Nothing to export: an illegal position has no game.	لا شيء للتصدير: الوضع غير القانوني ليست له مباراة.
 	Games left out (an illegal position has no game): {n}	مباريات مستبعدة (الوضع غير القانوني ليست له مباراة): {n}
+	Indexing the book's PGN…	جارٍ فهرسة PGN الكتاب…
+	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN الكتاب أكبر مما يفهرسه PdfCraft: لم تُربط بالكتاب إلا أول {moves} نقلة منه.

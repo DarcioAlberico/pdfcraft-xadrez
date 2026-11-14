@@ -18,6 +18,15 @@
 //! it was loaded under, and in each document's view ([`crate::chess_ui::DocChess`]) the PGN beside
 //! the PDF it offers and what Link the whole book found.
 //!
+//! **Indexed on a worker** (plan A9-I3b, R8-06). A PGN loaded from the store or chosen by the user
+//! is indexed in a [`Job`] through the session's memo of indexes
+//! ([`pdfcraft_engine::Session::chess_book_indexes`]: the same text is indexed once a session), and
+//! the frame's poll takes the index ([`PdfCraftApp::poll_book_pgn_indexing`]); meanwhile the Text
+//! tab says the PGN is being indexed ([`BookPgnView::indexing`]). A chosen PGN is kept in the store
+//! only once it is indexed, and then said. An index that stopped at its cap
+//! ([`ReferenceIndex::cut`]) is said with the moves that went in. In tests and on the web the job
+//! runs on the calling thread, so the PGN is there at once.
+//!
 //! **What uses it.** Chess ▸ Load the book's PGN… (`chess.reference.load`) keeps the PGN chosen
 //! for the active document, and Remove the book's PGN (`chess.reference.clear`) removes it. Each
 //! page the Text tab reads is linked to it (`reference::link`, off the interface thread): a move
@@ -35,13 +44,15 @@ use std::sync::Arc;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::BookPgn;
 use pdfcraft_engine::chess::DocKeys;
+use pdfcraft_engine::chess::pdfcraft_chess::pgn::PgnEncoding;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::ChessPage;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{IndexMemo, MAX_REFERENCE_BYTES, ReferenceIndex};
 use pdfcraft_engine::chess::reference_store::{Choice, Decision, Decisions, Kept, KeptPgn, Loaded, Reference, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
 use pdfcraft_engine::chess::store::StoreKind;
 
 use crate::PdfCraftApp;
+use crate::chess_job::Job;
 use crate::chess_store_ui::{UiStore, in_store};
 
 /// The web build's `Storage` key for the books' PGNs.
@@ -185,8 +196,11 @@ pub struct BookPgnView {
     /// The user's decisions on moves in conflict with the PGN (R6e).
     pub decisions: Decisions,
     /// The PGN beside the PDF, by its file name, when the panel offers it (R6f): the document
-    /// keeps none and the user did not say Not now to it.
+    /// keeps none, none is being indexed, and the user did not say Not now to it.
     pub offer: Option<String>,
+    /// A PGN for the document is being indexed on a worker (plan A9-I3b): loaded from the store,
+    /// or chosen and kept once indexed.
+    pub indexing: bool,
 }
 
 impl BookPgnView {
@@ -206,6 +220,27 @@ struct DocPgn {
     held: bool,
 }
 
+/// A book's PGN being indexed off the interface thread (plan A9-I3b, R8-06: 7-8 s at the caps
+/// on the interface's thread before the compact index, 1.4-1.8 s after it). One per document: a
+/// newer one, or Remove the book's PGN, drops it, which asks it to stop.
+struct Indexing {
+    doc: DocId,
+    /// The file name of a PGN the user chose; `None` for the one the store kept.
+    chosen: Option<String>,
+    job: Job<Indexed>,
+}
+
+/// What a job indexed.
+enum Indexed {
+    /// The PGN the store kept for the document, with the decisions kept with it.
+    Kept { index: Arc<ReferenceIndex>, name: Option<String>, decisions: Decisions },
+    /// A PGN the user chose, ready to be kept: its index, the record for the store and how its
+    /// bytes were read.
+    Chosen { index: Arc<ReferenceIndex>, pgn: KeptPgn, encoding: PgnEncoding },
+    /// A PGN the user chose that has no game: refused.
+    NoGame,
+}
+
 /// The books' PGNs in the app.
 pub struct BookPgns {
     pub(crate) store: Store,
@@ -216,6 +251,8 @@ pub struct BookPgns {
     pub declined: Vec<String>,
     /// The documents told this session that a PGN sits beside them (R6f).
     told: Vec<DocId>,
+    /// The PGNs being indexed (plan A9-I3b), at most one per document.
+    indexing: Vec<Indexing>,
     /// PGN files the browser read for a document, picked up on the next frame.
     #[cfg(target_arch = "wasm32")]
     pub(crate) uploads: Arc<std::sync::Mutex<Vec<(DocId, String, Result<Vec<u8>, String>)>>>,
@@ -228,6 +265,7 @@ impl Default for BookPgns {
             docs: Vec::new(),
             declined: Vec::new(),
             told: Vec::new(),
+            indexing: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             uploads: Default::default(),
         }
@@ -266,6 +304,20 @@ impl BookPgns {
     }
 }
 
+/// `{name} was not kept as the book's PGN: {e}`.
+fn refused(name: &str, e: &dyn std::fmt::Display) -> String {
+    crate::i18n::fmt(tl!("{name} was not kept as the book's PGN: {e}"), &[("name", name), ("e", &e.to_string())])
+}
+
+/// What to say of an index that stopped at its cap (plan A9-I3b): the moves that went in.
+fn cut_note(index: &ReferenceIndex) -> Option<String> {
+    index.cut()?;
+    Some(crate::i18n::fmt(
+        tl!("The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book."),
+        &[("moves", &index.moves().to_string())],
+    ))
+}
+
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
@@ -292,10 +344,7 @@ impl PdfCraftApp {
                     self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
                 }
                 if let Some(pgn) = loaded.pgn() {
-                    match ReferenceIndex::from_pgn(&pgn.text) {
-                        Ok(i) => kept = Some(BookPgn { name: pgn.name.clone(), index: Arc::new(i), decisions: Decisions::of(&loaded.file) }),
-                        Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
-                    }
+                    kept = Some((pgn.text.clone(), pgn.name.clone(), Decisions::of(&loaded.file)));
                 }
             }
             // No keys: nothing is kept for it.
@@ -305,9 +354,118 @@ impl PdfCraftApp {
         // The folder is looked through only when there is something to offer.
         let sibling = if kept.is_none() { find_sibling_pgn(&keys) } else { None };
         self.chess.doc_mut(id).pgn_sibling = sibling;
-        self.session.set_chess_book_pgn(id, kept);
+        // The session holds it once it is indexed, off the interface thread (plan A9-I3b).
+        self.session.set_chess_book_pgn(id, None);
         self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held: false });
+        if let Some((text, name, decisions)) = kept {
+            self.index_kept_book_pgn(id, text, name, decisions);
+        }
         true
+    }
+
+    /// Index the PGN `text` the store kept for document `id`, named `name`, with its `decisions`.
+    fn index_kept_book_pgn(&mut self, id: DocId, text: String, name: Option<String>, decisions: Decisions) {
+        self.index_book_pgn(id, None, move |memo| {
+            let index = memo.index(&text).map_err(|e| e.to_string())?;
+            Ok(Indexed::Kept { index, name, decisions })
+        });
+    }
+
+    /// A PGN the user chose was refused: the one the store keeps for document `id`, whose
+    /// indexing gave way to the chosen one's when the session did not hold it yet, is indexed
+    /// again.
+    fn index_kept_book_pgn_again(&mut self, id: DocId) {
+        if self.session.chess_book_pgn(id).is_some() {
+            return;
+        }
+        let Some(keys) = self.chess.book_pgns.doc(id).map(|d| d.keys.clone()) else { return };
+        let pages = self.session.get(id).map_or(0, |d| d.info.pages.len());
+        let Ok(loaded) = self.chess.book_pgns.store.load(&keys, pages) else { return };
+        if let Some(pgn) = loaded.pgn() {
+            let (text, name) = (pgn.text.clone(), pgn.name.clone());
+            self.index_kept_book_pgn(id, text, name, Decisions::of(&loaded.file));
+        }
+    }
+
+    /// Index a book's PGN for document `id` with `work` in a [`Job`] (plan A9-I3b), in place of one
+    /// being indexed for it; `chosen`: the file name of a PGN the user chose. The work is given
+    /// the session's memo of indexes. In tests and on the web the job runs here, and its index is
+    /// taken at once.
+    fn index_book_pgn(&mut self, id: DocId, chosen: Option<String>, work: impl FnOnce(&IndexMemo) -> Result<Indexed, String> + Send + 'static) {
+        let memo = self.session.chess_book_indexes();
+        let job = Job::spawn("pdfcraft-book-pgn", self.run_inline, move |_| work(&memo));
+        let indexing = &mut self.chess.book_pgns.indexing;
+        indexing.retain(|i| i.doc != id);
+        indexing.push(Indexing { doc: id, chosen, job });
+        if self.run_inline || cfg!(target_arch = "wasm32") {
+            self.poll_book_pgn_indexing();
+        }
+    }
+
+    /// Whether a PGN for document `id` is being indexed (plan A9-I3b): its job has not been taken
+    /// by a frame yet.
+    pub fn book_pgn_indexing(&self, id: DocId) -> bool {
+        self.chess.book_pgns.indexing.iter().any(|i| i.doc == id)
+    }
+
+    /// Wait until every PGN being indexed is indexed, or `timeout` passed; whether they are. The
+    /// next frame takes them. The tests wait for the work this way, not by the clock (plan A9-Q4b).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn wait_book_pgn_indexing(&self, timeout: std::time::Duration) -> bool {
+        self.chess.book_pgns.indexing.iter().all(|i| i.job.wait(timeout))
+    }
+
+    /// Every frame: take what the jobs indexing books' PGNs finished (plan A9-I3b). A PGN the
+    /// store kept goes to the session; one the user chose is kept in the store and said.
+    pub(crate) fn poll_book_pgn_indexing(&mut self) {
+        if self.chess.book_pgns.indexing.is_empty() {
+            return;
+        }
+        let open: Vec<DocId> = self.session.docs().iter().map(|d| d.id).collect();
+        let mut finished = Vec::new();
+        self.chess.book_pgns.indexing.retain_mut(|i| {
+            if !open.contains(&i.doc) {
+                return false;
+            }
+            match i.job.poll() {
+                Some(result) => {
+                    finished.push((i.doc, i.chosen.take(), result));
+                    false
+                }
+                None => true,
+            }
+        });
+        // A frame comes back to look again while one is indexing.
+        if !self.chess.book_pgns.indexing.is_empty()
+            && let Some(ctx) = &self.ctx
+        {
+            ctx.request_repaint_after(std::time::Duration::from_millis(200));
+        }
+        for (id, chosen, result) in finished {
+            match (result, chosen) {
+                (Ok(Indexed::Kept { index, name, decisions }), _) => {
+                    if let Some(cut) = cut_note(&index) {
+                        self.notify(cut);
+                    }
+                    self.session.set_chess_book_pgn(id, Some(BookPgn { name, index, decisions }));
+                    // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
+                    self.chess.doc_mut(id).text = None;
+                    self.refresh_chess_kinds(id);
+                }
+                (Ok(Indexed::Chosen { index, pgn, encoding }), Some(name)) => self.keep_book_pgn(id, &name, index, pgn, encoding),
+                (Ok(Indexed::NoGame), Some(name)) => {
+                    self.notify(refused(&name, &tl!("no game in it")));
+                    self.index_kept_book_pgn_again(id);
+                }
+                (Err(e), Some(name)) => {
+                    self.notify(refused(&name, &e));
+                    self.index_kept_book_pgn_again(id);
+                }
+                (Err(e), None) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e)])),
+                // A chosen PGN's job always says its name.
+                (Ok(Indexed::Chosen { .. } | Indexed::NoGame), None) => {}
+            }
+        }
     }
 
     /// Where document `id`'s PGN and decisions are changed (plan A9-I1c, [`crate::chess_keep`]):
@@ -385,13 +543,15 @@ impl PdfCraftApp {
             .map(|n| n.to_string_lossy().into_owned());
         let declined =
             pgns.doc(id).and_then(|d| pdfcraft_engine::chess::corrections::file_name(&d.keys)).is_none_or(|key| pgns.declined.contains(&key));
+        let indexing = self.book_pgn_indexing(id);
         BookPgnView {
             summary: self.kept_book_pgn(id),
-            offer: sibling.clone().filter(|_| !declined),
+            offer: sibling.clone().filter(|_| !declined && !indexing),
             sibling,
             link: view.and_then(|v| v.book_link.clone()),
             aligning,
             decisions: kept.map(|p| p.decisions.clone()).unwrap_or_default(),
+            indexing,
         }
     }
 
@@ -442,26 +602,38 @@ impl PdfCraftApp {
     }
 
     /// Keep the PGN `bytes`, read from a file named `name`, for document `id`, in place of the
-    /// one it kept, and say what it holds. A PGN with no game in it is refused.
+    /// one it kept, and say what it holds. A PGN with no game in it is refused. It is indexed on a
+    /// worker first (plan A9-I3b): the Text tab says so meanwhile, and the frame that takes the
+    /// index keeps it ([`Self::keep_book_pgn`]).
     pub fn set_book_pgn(&mut self, id: DocId, name: &str, bytes: &[u8]) {
+        // Its keys first, so keeping the chosen PGN never loads the one kept after it.
+        if !self.book_pgn_for(id) {
+            return;
+        }
+        if bytes.len() > MAX_REFERENCE_BYTES {
+            return self.notify(refused(name, &tl!("the file is too large")));
+        }
+        let (bytes, at) = (bytes.to_vec(), now());
+        let file = name.to_owned();
+        self.index_book_pgn(id, Some(name.to_owned()), move |memo| {
+            let (text, encoding) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
+            let index = memo.index(&text).map_err(|e| e.to_string())?;
+            if index.games().is_empty() {
+                return Ok(Indexed::NoGame);
+            }
+            let pgn = KeptPgn::new(Some(&file), text, index.games().len(), index.moves(), at).map_err(|e| e.to_string())?.read_from(&bytes);
+            Ok(Indexed::Chosen { index, pgn, encoding })
+        });
+    }
+
+    /// The PGN `pgn` that the user chose from a file named `name`, indexed as `index`, kept for
+    /// document `id` in place of the one it kept, and said: its games and moves, how its bytes
+    /// were read, where the index stopped at its cap, and the choices naming a move it doesn't have.
+    fn keep_book_pgn(&mut self, id: DocId, name: &str, index: Arc<ReferenceIndex>, pgn: KeptPgn, encoding: PgnEncoding) {
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let refused =
-            |e: &dyn std::fmt::Display| crate::i18n::fmt(tl!("{name} was not kept as the book's PGN: {e}"), &[("name", name), ("e", &e.to_string())]);
-        if bytes.len() > MAX_REFERENCE_BYTES {
-            return self.notify(refused(&tl!("the file is too large")));
-        }
-        let (text, encoding) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(bytes);
-        let index = match ReferenceIndex::from_pgn(&text) {
-            Ok(i) if !i.games().is_empty() => i,
-            Ok(_) => return self.notify(refused(&tl!("no game in it"))),
-            Err(e) => return self.notify(refused(&e)),
-        };
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
-        let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now()).map_err(|e| e.to_string()).and_then(|pgn| {
-            let write = self.book_pgn_place(id)?;
-            self.chess.book_pgns.store.set(write, &keys, pages, pgn.read_from(bytes), |san| index.has_move(san))
-        });
+        let kept = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.set(write, &keys, pages, pgn, |san| index.has_move(san)));
         // The decisions stay, with the same PGN (plan A9-F1) and with another (decision D25, plan
         // A9-G4); those naming a move the new one doesn't have are said.
         let (decisions, unmatched) = match kept {
@@ -469,12 +641,13 @@ impl PdfCraftApp {
                 self.say_book_pgn_set_aside(&loaded);
                 (Decisions::of(&loaded.file), kept.unmatched)
             }
-            Err(e) => return self.notify(refused(&e)),
+            Err(e) => return self.notify(refused(name, &e)),
         };
         let held = self.chess.book_pgns.doc(id).is_some_and(|d| d.held);
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
         self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held });
-        self.session.set_chess_book_pgn(id, Some(BookPgn { name: Some(name.to_owned()), index: Arc::new(index), decisions }));
+        let cut = cut_note(&index);
+        self.session.set_chess_book_pgn(id, Some(BookPgn { name: Some(name.to_owned()), index, decisions }));
         // It keeps one now: nothing beside it to offer (Remove the book's PGN looks again), and the
         // whole book is linked to another PGN no more.
         let view = self.chess.doc_mut(id);
@@ -490,6 +663,10 @@ impl PdfCraftApp {
         if let Some(latin) = crate::chess_collection::encoding_note(encoding) {
             note.push_str(" · ");
             note.push_str(&latin);
+        }
+        if let Some(cut) = cut {
+            note.push_str(" · ");
+            note.push_str(&cut);
         }
         if unmatched > 0 {
             note.push_str(" · ");
@@ -595,9 +772,11 @@ impl PdfCraftApp {
         }
     }
 
-    /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document.
+    /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document, and stop
+    /// indexing one for it.
     pub fn clear_book_pgn(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
+        self.chess.book_pgns.indexing.retain(|i| i.doc != id);
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         let cleared = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.clear(write, &keys, pages));
@@ -687,6 +866,7 @@ impl PdfCraftApp {
     /// document keeps a book's PGN, the page is read for the Text tab, linked to it, so the
     /// tab can offer the PGN's suggestion ([`suggestion`]).
     pub(crate) fn book_pgn_tick(&mut self) {
+        self.poll_book_pgn_indexing();
         let Some((vi, id)) = self.active_ids() else { return };
         // The PGN beside a document opened is offered (R6f): looked for once per document, and
         // said once per session.
