@@ -21,10 +21,12 @@ mod chess_area;
 mod chess_bookmarks;
 mod chess_corrections;
 mod chess_errata;
+mod chess_evals;
 mod chess_files;
 mod chess_games;
 mod chess_pgn;
 mod chess_reference;
+mod chess_review_pack;
 mod chess_sample;
 mod chess_states;
 mod chess_store_migrate;
@@ -870,9 +872,12 @@ impl Automation {
             "chess_correction_delete" => self.chess_correction_delete(&a)?,
             "chess_reference_set" => self.chess_reference_set(&a)?,
             "chess_reference_status" => self.chess_reference_status(&a)?,
+            "chess_evals" => self.chess_evals(&a)?,
             "chess_bookmarks" => self.chess_bookmarks(&a)?,
             "chess_reference_clear" => self.chess_reference_clear(&a)?,
             "chess_store_migrate" => self.chess_store_migrate(&a)?,
+            "chess_review_pack_export" => self.chess_review_pack_export(&a)?,
+            "chess_review_pack_import" => self.chess_review_pack_import(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_errata" => self.chess_errata(&a)?,
