@@ -10,9 +10,11 @@
 /// Helpers that are only called with a resolved path. `doc_batch` (batch.rs) resolves its inputs
 /// and out_dir, walks only inside them (skipping links) and resolves every discovered file again
 /// before `process` reads it or `publish` writes it. `read_reference_text` (chess.rs) reads the
-/// book's PGN that `read_reference` and `chess_reference_set` resolve first.
+/// book's PGN that `read_reference` and `chess_reference_set` resolve first. `write_images`
+/// (chess.rs) writes Markdown's diagram images into the folder `Automation::image_folder`
+/// resolved, for the exports of a document and of games.
 pub const RESOLVED_BY_CALLER: &[&str] =
-    &["write_atomic", "write_atomic_with", "read_review_sidecar", "process", "linked", "walk", "publish", "read_reference_text"];
+    &["write_atomic", "write_atomic_with", "read_review_sidecar", "process", "linked", "walk", "publish", "read_reference_text", "write_images"];
 
 /// Whether the file is one the scan reads: a `.rs` file of `src/` that is not this guard's own
 /// (`file_access.rs`, `file_access_scan.rs`) nor a test file.

@@ -1,11 +1,11 @@
 //! The scan cache across edits (plan A8 P3a2): an edit reads again only the pages it touched,
 //! pages moved by inserting or removing pages are found at their new index, and an undo reads
-//! nothing again. Counted with `ChessCache::scanned`, on a book of 703 synthetic pages.
+//! nothing again. Counted with `ChessCache::scanned`, on a book of 48 synthetic pages, and of
+//! 703 in the plan's measure, which the everyday tests leave out (plan A9-Q4b, finding A7-17:
+//! about a minute, for an invariant that does not depend on the length).
 
 use super::*;
 
-/// The book's length, as the plan's measure has it ("editing page 5 of 703 reads 1 page").
-const PAGES: usize = 703;
 /// The pages (0-based) with a board set in Chess Merida; the others say their number.
 const BOARDS: [usize; 2] = [4, 40];
 
@@ -73,9 +73,23 @@ fn boards(pages: &[Arc<ChessPage>]) -> Vec<(usize, String)> {
 
 #[test]
 fn an_edit_reads_again_only_the_pages_it_touched() {
-    let (mut s, id) = open(book(PAGES));
+    edits_read_again_only_the_pages_they_touched(48);
+}
+
+/// The plan's measure, "editing page 5 of 703 reads 1 page": `cargo xtask chess-gate --full`
+/// runs it (stage 5).
+#[test]
+#[ignore = "the plan's measure on 703 pages, about a minute: run with --ignored (chess-gate stage 5)"]
+fn an_edit_reads_again_only_the_pages_it_touched_in_703_pages() {
+    edits_read_again_only_the_pages_they_touched(703);
+}
+
+/// Scan a book of `pages` pages, then turn, undo, insert and delete pages, counting the pages
+/// each scan reads again.
+fn edits_read_again_only_the_pages_they_touched(pages: usize) {
+    let (mut s, id) = open(book(pages));
     let (first, scanned) = scan_all(&mut s, id);
-    assert_eq!((first.len(), scanned), (PAGES, PAGES));
+    assert_eq!((first.len(), scanned), (pages, pages));
     let found = boards(&first);
     assert_eq!(found.iter().map(|b| b.0).collect::<Vec<_>>(), BOARDS, "{found:?}");
     assert!(found.iter().all(|b| b.1.starts_with(START)), "{found:?}");
@@ -99,7 +113,7 @@ fn an_edit_reads_again_only_the_pages_it_touched() {
     // there with its new index.
     s.apply(id, Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }).unwrap();
     let (shifted, scanned) = scan_all(&mut s, id);
-    assert_eq!((shifted.len(), scanned), (PAGES + 1, 1));
+    assert_eq!((shifted.len(), scanned), (pages + 1, 1));
     assert!(shifted.iter().enumerate().all(|(i, p)| p.page == i), "each page carries its index now");
     assert_eq!(boards(&shifted), found.iter().map(|(p, fen)| (p + 1, fen.clone())).collect::<Vec<_>>());
 
@@ -329,13 +343,15 @@ fn a_carried_whole_scan_covers_every_page() {
     assert_eq!(scan_all(&mut s, id).1, 0);
 }
 
-/// A closed document's scan is not carried.
+/// A closed document's scan is not carried, and that is the reason given (plan A9-Q4b, finding
+/// A7-18: any error passed).
 #[test]
 fn a_carry_needs_the_document() {
     let (mut s, id) = open(book(2));
     let then = s.chess_stamp(id).unwrap();
+    assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_ok(), "carried while it is open");
     s.close(id);
-    assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_err());
+    assert_eq!(s.chess_carry(id, then, &[], true, &quick(), true).err().as_deref(), Some("no such document"));
 }
 
 // ─── Plan A9, G11: the book read once per session ──────────────────────────────────────────────

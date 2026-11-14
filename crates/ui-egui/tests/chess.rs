@@ -11,6 +11,8 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
 use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
 
+#[path = "common/gpu.rs"]
+mod gpu;
 mod support;
 
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -138,6 +140,11 @@ fn row_menu(h: &mut Harness<'static, PdfCraftApp>, row: &str) {
     h.get_all_by_label_contains(row).next().expect("the row is listed").click_secondary();
     h.run_steps(2);
 }
+
+/// How long a test waits for work on another thread before it gives up: a net against a hang,
+/// never a clock the test races. The waits are woken by the work (plan A9-Q4b, finding A7-15:
+/// they slept and polled for 4–10 s, which a machine busy with other builds overran).
+const NET: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// The harness on the PDF `bytes`.
 fn harness_on(bytes: Vec<u8>, step_dt: f32) -> Harness<'static, PdfCraftApp> {
@@ -286,27 +293,40 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 0)));
 }
 
-/// A document that does not allow copying its content can't be scanned.
+/// A document that does not allow copying its content can't be scanned, and the user is told
+/// why; the same document allowing it is scanned (plan A9-Q4b, finding A7-18: "nothing was
+/// scanned" alone held for a scan that never starts, too).
 #[test]
 fn a_document_that_forbids_copying_is_not_scanned() {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
-        user_password: "",
-        owner_password: "owner",
-        // Print only: no copying.
-        permissions: 0b0100,
-        encrypt_metadata: true,
-        seed: [7; 32],
-    })
-    .unwrap();
-    let locked = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
-    let mut app = PdfCraftApp::new();
-    app.set_option("language", "en").unwrap();
-    app.run_inline = true;
-    app.open_bytes("locked.pdf", None, locked).unwrap();
-    app.start_chess_scan(true);
+    let scanned = |permissions: i32| {
+        let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
+        doc.set_encryption(&pdfcraft_cos::NewEncryption {
+            algorithm: pdfcraft_cos::Algorithm::Aes256,
+            user_password: "",
+            owner_password: "owner",
+            permissions,
+            encrypt_metadata: true,
+            seed: [7; 32],
+        })
+        .unwrap();
+        let locked = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
+        let mut h = harness_on(locked, 0.25);
+        h.state_mut().start_chess_scan(true);
+        h.run_steps(3);
+        h
+    };
+    // Print only: no copying.
+    let h = scanned(0b0100);
+    let app = h.state();
     assert!(app.chess.run.is_none() && app.chess.results().is_none(), "nothing was scanned");
+    let said = app.toast.as_ref().map(|t| t.0.as_str());
+    assert_eq!(said, Some("The document's security settings don't allow copying text and images"));
+    // Print and copy: the same document is scanned.
+    let h = scanned(0b1_0100);
+    let app = h.state();
+    let id = app.views[0].id;
+    assert!(app.chess.results_of(id).is_some_and(|r| r.diagram(0, 0).is_some()), "scanned when copying is allowed");
+    assert!(app.toast.as_ref().is_none_or(|t| !t.0.contains("security settings")), "{:?}", app.toast);
 }
 
 /// The position the user set in the editor (blueprint S17), for the drawn board no model read.
@@ -434,9 +454,7 @@ fn the_editors_labels_are_not_broken_into_letters() {
     // The side to move keeps its label: To move:, White and Black on one row.
     let (to_move, white) = (h.get_by_label("To move:").rect(), h.get_by_label("White").rect());
     assert!((to_move.center().y - black.center().y).abs() < 1.0 && (white.center().y - black.center().y).abs() < 1.0, "{to_move:?} {black:?}");
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("diagram-tab.png")).unwrap();
-    }
+    shot(&mut h, "diagram-tab.png");
 }
 
 /// The move number is a field of its own: 35 with Black to move is `b … 35` in the FEN.
@@ -918,9 +936,7 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
         assert_eq!(moves[4], ("Bb5".to_owned(), Some("Recovered".to_owned())), "{moves:?}");
         assert_eq!(moves[0].1.as_deref(), Some("Confirmed"), "{moves:?}");
         assert_eq!(correction_files(&store).len(), 1, "kept in the store");
-        if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-            h.render().unwrap().save(std::path::Path::new(&dir).join("book-pgn-text-tab.png")).unwrap();
-        }
+        shot(&mut h, "book-pgn-text-tab.png");
         // A PGN with no game is refused, and the one kept stays.
         h.state_mut().set_book_pgn(id, "empty.pgn", b"[Event \"x\"]\n\n*\n");
         h.run_steps(2);
@@ -1024,9 +1040,7 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
     assert_eq!(ed.fen().split(' ').next(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"), "was {before}");
     assert!(ed.dirty(), "an unconfirmed change");
     assert!(h.state().chess.results().is_some_and(|r| r.kind(0, 0).is_none()), "nothing kept");
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("book-pgn-suggestion.png")).unwrap();
-    }
+    shot(&mut h, "book-pgn-suggestion.png");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -1283,9 +1297,7 @@ fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
             let r = h.get_by_label(label).rect();
             assert!(r.max.x <= edge, "{theme}: {label} at {r:?}, the panel ends at {edge}");
         }
-        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("pgn-offer-1366-{theme}.png"))).unwrap();
-        }
+        shot(&mut h, &format!("pgn-offer-1366-{theme}.png"));
         // The Text tab's own Use wraps its long name inside the row.
         h.get_by_label("Text").click();
         h.run_steps(4);
@@ -1342,9 +1354,7 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
         h.key_press(egui::Key::Tab);
         h.run_steps(1);
         assert!(h.get_by_label("Align again").is_focused(), "{theme}: Remove → Align again");
-        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("book-pgn-1366-{theme}.png"))).unwrap();
-        }
+        shot(&mut h, &format!("book-pgn-1366-{theme}.png"));
     }
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -1395,14 +1405,9 @@ fn the_page_is_read_off_the_interface_thread() {
     h.get_by_label("Text").click();
     h.run_steps(1);
     assert!(h.state().chess.reading.is_some() || h.state().chess.text().is_some(), "a read was started");
-    for _ in 0..200 {
-        if h.state().chess.text().is_some() && h.state().chess.reading.is_none() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        h.step();
-    }
+    assert!(h.state().chess.reading.as_ref().is_none_or(|job| job.wait(NET)), "the worker ended");
     h.run_steps(2);
+    assert!(h.state().chess.reading.is_none(), "taken");
     h.get_by_label("Chapter 1");
     // An edit while a page is being read: the reading, of a state that is gone, is dropped.
     let app = h.state_mut();
@@ -1418,14 +1423,9 @@ fn the_page_is_read_off_the_interface_thread() {
         contents: String::new(),
         author: String::new(),
     }));
-    for _ in 0..500 {
-        app.poll_chess_job();
-        if app.chess.reading.is_none() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-    }
-    assert!(app.chess.reading.is_none(), "the worker finished");
+    assert!(app.chess.reading.as_ref().is_none_or(|job| job.wait(NET)), "the worker finished");
+    app.poll_chess_job();
+    assert!(app.chess.reading.is_none(), "taken");
     assert!(app.chess.text().is_none(), "the stale reading was not shown");
 }
 
@@ -1999,20 +1999,39 @@ fn the_chosen_engine_is_remembered_and_bad_settings_are_ignored() {
     assert_eq!((h.state().chess.study.engine_path.as_deref(), h.state().chess.study.lines), (None, 1), "good lines kept beside a bad path");
 }
 
+/// What the pretend engine was told ([`fake_engine`]), and a signal each time it was told
+/// something or the analyser had news for the app (its repaint callback): [`wait_for`] waits for
+/// those, not for the clock.
+struct EngineLog {
+    told: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+    news: std::sync::Mutex<std::sync::mpsc::Receiver<()>>,
+}
+
+impl std::ops::Deref for EngineLog {
+    type Target = std::sync::Mutex<Vec<String>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.told
+    }
+}
+
 /// A pretend UCI engine on the other end of two pipes: it reports depths 1–3 of a line from
 /// e2e4 (e7e5 for Black) at +0.30 for the side to move, then waits for `stop`, as an engine
 /// searching deeper does. Every command it is given goes into the log.
-fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
     use std::io::{BufRead, Write};
     let (engine_in, our_out) = std::io::pipe().unwrap();
     let (our_in, mut engine_out) = std::io::pipe().unwrap();
-    let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-    let commands = std::sync::Arc::clone(&log);
+    let told = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let commands = std::sync::Arc::clone(&told);
+    let (news_to, news) = std::sync::mpsc::channel::<()>();
+    let heard = news_to.clone();
     std::thread::spawn(move || {
         let mut position = String::new();
         for line in std::io::BufReader::new(engine_in).lines() {
             let Ok(line) = line else { break };
             commands.lock().unwrap().push(line.clone());
+            let _ = heard.send(());
             let mv = if position.contains(" b ") { "e7e5" } else { "e2e4" };
             let mut say = |text: &str| {
                 let _ = writeln!(engine_out, "{text}");
@@ -2037,20 +2056,30 @@ fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, std::sync::Arc<
     });
     // The study board's own options, so that none changes when it takes the engine.
     let options = pdfcraft_engine::chess::analysis::AnalysisOptions::default();
-    (pdfcraft_engine::chess::analysis::Analyser::with_streams(our_in, our_out, options, std::sync::Arc::new(|| {})), log)
+    let repaint = std::sync::Arc::new(move || {
+        let _ = news_to.send(());
+    });
+    let analyser = pdfcraft_engine::chess::analysis::Analyser::with_streams(our_in, our_out, options, repaint);
+    (analyser, EngineLog { told, news: std::sync::Mutex::new(news) })
 }
 
-/// Run frames until `done` holds (at most about five seconds: the engine answers on its own
-/// threads).
-fn wait_for(h: &mut Harness<'static, PdfCraftApp>, done: impl Fn(&Harness<'static, PdfCraftApp>) -> bool) -> bool {
-    for _ in 0..100 {
+/// Run frames until `done` holds. Between two frames it waits for the engine's next event (a
+/// command it was given, or news the analyser has for the app), a frame at least every 20 ms
+/// for what the app does on its own; [`NET`] in all, a net against a hang (finding A7-15: five
+/// seconds of 50 ms naps).
+fn wait_for(h: &mut Harness<'static, PdfCraftApp>, log: &EngineLog, done: impl Fn(&Harness<'static, PdfCraftApp>) -> bool) -> bool {
+    let deadline = std::time::Instant::now() + NET;
+    let news = log.news.lock().unwrap();
+    loop {
         h.run_steps(1);
         if done(h) {
             return true;
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        if std::time::Instant::now() >= deadline {
+            return false;
+        }
+        let _ = news.recv_timeout(std::time::Duration::from_millis(20));
     }
-    false
 }
 
 /// With an engine, the Analysis section's switch starts and closes the analysis: the lines in
@@ -2066,7 +2095,7 @@ fn the_analysis_section_switches_the_engine() {
     h.run_steps(2);
     h.get_by_label("Analysis").click();
     // The score twice: the line's, and the bar's name.
-    let reported = wait_for(&mut h, |h| h.query_by_label_contains("Fake Engine 1").is_some() && h.query_all_by_label("+0.30").count() == 2);
+    let reported = wait_for(&mut h, &log, |h| h.query_by_label_contains("Fake Engine 1").is_some() && h.query_all_by_label("+0.30").count() == 2);
     assert!(reported, "the engine's line is shown");
     // Drawn frame after frame, the board keeps the one search going: it is not stopped and
     // started again each frame.
@@ -2079,9 +2108,7 @@ fn the_analysis_section_switches_the_engine() {
     let board = h.get_by_label("Board, White to move, move 1").rect();
     let bar = h.get_all_by_label("+0.30").map(|n| n.rect()).find(|r| r.max.x <= board.min.x).expect("the evaluation bar");
     assert!((bar.height() - board.height()).abs() < 1.0 && bar.width() < 20.0, "{bar:?} {board:?}");
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("study-board-analysis.png")).unwrap();
-    }
+    shot(&mut h, "study-board-analysis.png");
     // A click on the line's move plays it.
     h.get_by_label("e4").click();
     h.run_steps(3);
@@ -2091,7 +2118,7 @@ fn the_analysis_section_switches_the_engine() {
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
     assert!(h.query_by_label_contains("0.30").is_none(), "no bar, no lines");
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
 }
 
 /// The engine rests while the Board panel is not drawn (T5c: the board is the study board, so
@@ -2105,18 +2132,18 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     let (engine, log) = fake_engine();
     h.state_mut().chess.study.use_engine(engine);
     let searching = |log: &std::sync::Mutex<Vec<String>>| log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count();
-    assert!(wait_for(&mut h, |_| searching(&log) == 1), "the engine analyses the board shown");
+    assert!(wait_for(&mut h, &log, |_| searching(&log) == 1), "the engine analyses the board shown");
     assert!(!log.lock().unwrap().iter().any(|c| c == "stop"));
     h.state_mut().docking.set_visible(board, false).unwrap();
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
     assert!(h.state().chess.study.analysis, "analysis stays on, to go on when the board is back");
     // Back, on the position it was stopped on: it searches on.
     h.state_mut().show_chess_board();
-    assert!(wait_for(&mut h, |_| searching(&log) == 2), "the engine searches on: {:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |_| searching(&log) == 2), "the engine searches on: {:?}", log.lock().unwrap());
     // On a new position: analysed.
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert!(wait_for(&mut h, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
     let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
 }
@@ -2150,8 +2177,8 @@ fn analyze_on_the_diagram_tab_analyses_the_edited_position() {
     // The section is open without a click on it: its switch shows.
     h.get_by_label("Engine analysis");
     let sent = format!("position fen {edited}");
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
-    assert!(wait_for(&mut h, |h| h.query_by_label_contains("Fake Engine 1").is_some()), "the engine's line is shown");
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |h| h.query_by_label_contains("Fake Engine 1").is_some()), "the engine's line is shown");
 }
 
 /// Plan A8, P7: Analyze in a Diagrams list row's menu opens the diagram on the board, analysed.
@@ -2171,12 +2198,12 @@ fn analyze_in_the_list_opens_the_diagram_analysed() {
     assert!(h.state().chess.study.analysis);
     h.get_by_label("Engine analysis");
     let sent = format!("position fen {START_FEN}");
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
     // The board's own Analyze is on, and switches it off.
     h.get_by_label("Stop the analysis").click();
     h.run_steps(3);
     assert!(!h.state().chess.study.analysis);
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
 }
 
 /// The node labelled `label` inside the dialog card `id`.
@@ -2241,14 +2268,16 @@ fn the_board_panel_analyses_with_a_real_engine() {
     h.run_steps(2);
     h.state_mut().chess.study.engine_path = Some(engine);
     h.get_by_label("Engine analysis").click();
+    // The app's own analyser has no hook here: frames until the line shows, NET at most.
+    let deadline = std::time::Instant::now() + NET;
     let mut found = false;
-    for _ in 0..200 {
+    while std::time::Instant::now() < deadline {
         h.run_steps(1);
         if h.query_by_label_contains("depth ").is_some() && h.query_all_by_label("1.").next().is_some() {
             found = true;
             break;
         }
-        std::thread::sleep(std::time::Duration::from_millis(50));
+        std::thread::sleep(std::time::Duration::from_millis(20));
     }
     assert!(found, "the engine reported a line");
     // A click on the first move of the best line plays it.
@@ -2562,6 +2591,8 @@ fn the_games_come_back_exactly_in_the_next_session() {
         h.run_steps(10);
         assert!(chess_files(&s).is_empty(), "not before the changes have rested");
         h.run_steps(40);
+        // The store's writer thread writes the file (plan A9-I3b): waited for, as Quit does.
+        h.state_mut().settle_chess_games();
         assert_eq!(chess_files(&s).len(), 1, "written once they have");
         let state = game_state(h.state());
         assert_eq!(state.len(), 2);
@@ -2605,6 +2636,7 @@ fn saving_a_pdf_without_an_id_rekeys_its_games() {
         let mut h = session(&s, "book.pdf", Some(&path.to_string_lossy()), boards());
         h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         assert_eq!(chess_files(&s).len(), 1);
         let app = h.state_mut();
         assert!(app.apply_edit(Edit::RotatePages { pages: vec![0], degrees: 90 }));
@@ -2672,6 +2704,7 @@ fn a_newer_games_file_of_this_document_is_only_read() {
     assert!(toast.contains("saved by a newer PdfCraft (format 2)"), "{toast}");
     h.state_mut().chess.board_mut().play_uci_line(&["c2c4".into()]);
     h.state_mut().flush_chess_games();
+    h.state_mut().settle_chess_games();
     h.state_mut().show_chess_board();
     h.run_steps(3);
     assert!(h.query_by_label_contains("Saved by a newer PdfCraft: these games are only read here.").is_some(), "the list says why");
@@ -2688,6 +2721,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     let mut first = session(&s, "boards.pdf", None, boards());
     first.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
     first.state_mut().flush_chess_games();
+    first.state_mut().settle_chess_games();
     let files = chess_files(&s);
     assert_eq!(files.len(), 1);
     let file = s.dir().join("chess").join(&files[0]);
@@ -2698,6 +2732,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     assert_eq!(games(second.state()).0, ["1. e4"]);
     second.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
     second.state_mut().flush_chess_games();
+    second.state_mut().settle_chess_games();
     assert_eq!(std::fs::read(&file).unwrap(), written, "the first window's file is untouched");
     let toast = second.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
     assert!(toast.contains("autosaved by another PdfCraft window"), "{toast}");
@@ -2705,6 +2740,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     drop(first);
     drop(s);
     second.state_mut().flush_chess_games();
+    second.state_mut().settle_chess_games();
     assert!(String::from_utf8_lossy(&std::fs::read(&file).unwrap()).contains("1. e4 e5"), "written once the first window is gone");
 }
 
@@ -2740,6 +2776,7 @@ fn a_protected_document_asks_before_its_games_are_written() {
         click_square(&mut h, "e2");
         click_square(&mut h, "e4");
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         h.run_steps(2);
         assert!(chess_files(&s).is_empty(), "{tag}: nothing before the user answers");
         match answer {
@@ -2754,6 +2791,7 @@ fn a_protected_document_asks_before_its_games_are_written() {
         click_square(&mut h, "e7");
         click_square(&mut h, "e5");
         h.state_mut().flush_chess_games();
+        h.state_mut().settle_chess_games();
         h.run_steps(2);
         assert!(h.query_by_label(ASKED).is_none(), "{tag}: asked once");
         assert_eq!(chess_files(&s).len(), usize::from(answer == Some(true)), "{tag}");
@@ -3100,9 +3138,7 @@ fn the_fen_field_never_takes_the_games_moves() {
     h.run_steps(2);
     assert_eq!(movetext(&h), FORKS_TEXT, "asked first");
     h.get_by_label("Replace this game");
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("board-fen-choice.png")).unwrap();
-    }
+    shot(&mut h, "board-fen-choice.png");
     // New game has the keyboard: Enter takes it.
     h.key_press(Key::Enter);
     h.run_steps(3);
@@ -4182,14 +4218,9 @@ fn a_diagram_of_the_text_tab_opens_once_its_page_is_scanned() {
     assert!(h.state().chess.results().is_none(), "nothing scanned yet");
     h.state_mut().run_inline = false;
     h.get_by_label("Diagram 1").click();
-    for _ in 0..300 {
-        h.step();
-        if h.state().chess.editor.is_some() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-    }
-    h.run_steps(2);
+    h.run_steps(1);
+    assert!(h.state().chess.run.as_ref().is_some_and(|run| run.wait(NET)), "the text's page is scanned on a worker, which ended");
+    h.run_steps(3);
     let ed = h.state().chess.editor.as_ref().expect("the first click opened the editor");
     assert_eq!((ed.page, ed.index), (4, 0));
 }
@@ -4353,9 +4384,7 @@ fn each_document_keeps_its_own_diagrams_and_cipher() {
     h.get_by_label_contains("Diagram 2 · ");
     assert!(h.state().chess_cipher(a).is_some(), "A's book cipher stays after reading B");
     // With PDFCRAFT_CHESS_SHOTS set, a picture of the window back on A, at 1366 x 768.
-    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&shots).join("i1a-back-to-a.png")).unwrap();
-    }
+    shot(&mut h, "i1a-back-to-a.png");
     let to_review = h.state().chess.results_of(a).map_or(0, |r| r.review_queue().len());
     assert!(to_review > 0, "the drawn board is to review");
     h.state_mut().save_override = Some(dir.join("a.pgn").to_string_lossy().into_owned());
@@ -4470,9 +4499,7 @@ fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
     assert!(dialog.accesskit_node().data().is_modal());
     assert!(h.get_by_label("Review first").is_focused(), "the keyboard on the first control that writes nothing");
     // With PDFCRAFT_CHESS_SHOTS set, a picture of the window with the question, at 1400 x 1000.
-    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&shots).join("i11a-dialog.png")).unwrap();
-    }
+    shot(&mut h, "i11a-dialog.png");
     h.key_press(egui::Key::Escape);
     h.run_steps(3);
     assert!(h.query_by(|n| n.role() == Role::Dialog).is_none(), "Esc closes it");
@@ -4825,7 +4852,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     h.state_mut().chess.study.analysis = false;
     g.click(&mut h, "Analyze on the board");
     let sent = format!("position fen {}", h.state().chess.board().game.fen());
-    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
     journey("d) Analyse with an engine", g.take(), 1);
 
     // e) Back to the diagram from the board: its link.
@@ -5030,9 +5057,7 @@ fn read_mode_corrects_a_diagram_in_the_panel() {
         h.get_by_label("Edit Diagram 1, page 1");
         h.state_mut().chess.confirm_only = true;
         h.run_steps(1);
-        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("read-mode-editor-1366-{theme}.png"))).unwrap();
-        }
+        shot(&mut h, &format!("read-mode-editor-1366-{theme}.png"));
         // Confirm is in sight under the board at 1366 × 768, with no scrolling.
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1360.0, 705.0));
         let confirm = h.get_by_label("Only confirm").rect();
@@ -5215,6 +5240,7 @@ fn newer_corrections_file(h: &Harness<'static, PdfCraftApp>, dir: &std::path::Pa
 /// one (to look at the result at 1366 × 768).
 fn shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        let _gpu = gpu::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join(name)).unwrap();
     }
 }
@@ -5434,9 +5460,7 @@ fn the_move_tree_folds_trails_forks_and_tells_of_new_variations() {
     h.run_steps(3);
     assert!(h.query_by_label("c3").is_none() && h.query_by_label("d6").is_none(), "folded: its inner moves are hidden");
     assert!(h.query_by_label_contains("3 more moves").is_some());
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("tree-folded.png")).unwrap();
-    }
+    shot(&mut h, "tree-folded.png");
     h.get_by_label("Expand this variation").click();
     h.run_steps(3);
     assert!(h.query_by_label("c3").is_some(), "unfolded again");
@@ -5444,9 +5468,7 @@ fn the_move_tree_folds_trails_forks_and_tells_of_new_variations() {
     put_game(&mut h, FORKS, &[0, 1, 1]);
     assert_eq!(shown(&h), "c3");
     assert!(h.query_by_label("Main line").is_some() && h.query_by_label("1…c5").is_some(), "the trail");
-    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("tree-trail.png")).unwrap();
-    }
+    shot(&mut h, "tree-trail.png");
     h.get_by_label("Main line").click();
     h.run_steps(2);
     assert_eq!(shown(&h), "e4", "the main line's move the variation forks from");
@@ -5733,9 +5755,7 @@ fn with_nothing_to_review_confirm_has_no_menu_and_then_says_confirmed() {
     h.run_steps(3);
     assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
     assert!(h.get_by_label("Confirmed").accesskit_node().is_disabled());
-    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&shots).join("diagram-tab-confirmed.png")).unwrap();
-    }
+    shot(&mut h, "diagram-tab-confirmed.png");
     // A change: Confirm again.
     h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
     h.run_steps(2);
@@ -5811,11 +5831,11 @@ fn the_analysis_board_says_its_side_move_and_pieces() {
     let board = h.get_by_label("Board, White to move, move 1");
     let pieces = board.accesskit_node().description().unwrap_or_default();
     assert!(pieces.starts_with("White: Ke1, Qd1") && pieces.contains("Black: Ke8"), "{pieces}");
-    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+    if std::env::var("PDFCRAFT_CHESS_SHOTS").is_ok() {
         for theme in ["light", "dark"] {
             h.state_mut().set_option("theme", theme).unwrap();
             h.run_steps(3);
-            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("analysis-board-{theme}.png"))).unwrap();
+            shot(&mut h, &format!("analysis-board-{theme}.png"));
         }
     }
 }

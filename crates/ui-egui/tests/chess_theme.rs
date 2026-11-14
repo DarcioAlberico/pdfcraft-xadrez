@@ -5,6 +5,9 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_ui_egui::PdfCraftApp;
 
+#[path = "common/gpu.rs"]
+mod gpu;
+
 const PDF: &[u8] = b"%PDF-1.7
 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 300 400] >> endobj
@@ -38,6 +41,7 @@ fn harness(settings: &str, prefs: bool) -> Harness<'static, PdfCraftApp> {
 /// With PDFCRAFT_CHESS_SHOTS set, a picture of the window there.
 fn shot(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        let _gpu = gpu::gpu();
         h.render().unwrap().save(std::path::Path::new(&dir).join(name)).unwrap();
     }
 }
@@ -125,9 +129,6 @@ fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
     assert!(h.state_mut().set_option("board-frame", "triple").unwrap_err().contains("none, thin or double"));
 }
 
-/// Renders (wgpu) one at a time: two devices compiling shaders at once have crashed test runs.
-static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
 /// The colour at `at` (in points) on the window as drawn now.
 fn pixel(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) -> [u8; 3] {
     let image = h.render().unwrap();
@@ -145,7 +146,7 @@ fn apart(a: [u8; 3], b: [u8; 3]) -> f32 {
 /// choice is kept with the preferences.
 #[test]
 fn the_last_move_is_marked_under_the_piece_as_the_look_says() {
-    let _gpu = GPU.lock().unwrap_or_else(|e| e.into_inner());
+    let _gpu = gpu::gpu();
     let mut h = harness("", false);
     h.state_mut().set_option("board-theme", "green").unwrap();
     // A white pawn on a dark square, so that a tint over it shows.
@@ -236,16 +237,43 @@ fn the_last_move_mark_is_chosen_in_the_menu_and_the_preferences() {
     shot(&mut h, "last-move-preferences.png");
 }
 
-/// Plan HC5: every textured theme draws the board (the book's dark squares hatched as paths).
+/// How much the colour changes across the inside of the empty dark square c5 of the board shown:
+/// the largest distance from its first sample, over a 6 × 6 grid of samples, in one picture.
+fn spread_on_c5(h: &mut Harness<'static, PdfCraftApp>) -> f32 {
+    let board = h.get_by_label_contains("Board, ").rect();
+    let cell = board.width() / 8.0;
+    let c5 = egui::Rect::from_min_size(board.min + egui::vec2(cell * 2.0, cell * 3.0), egui::vec2(cell, cell)).shrink(cell * 0.15);
+    let image = h.render().unwrap();
+    let scale = h.ctx.pixels_per_point();
+    let at = |x: f32, y: f32| {
+        let p = c5.min + egui::vec2(c5.width() * x / 5.0, c5.height() * y / 5.0);
+        let [r, g, b, _] = image.get_pixel((p.x * scale) as u32, (p.y * scale) as u32).0;
+        [r, g, b]
+    };
+    let first = at(0.0, 0.0);
+    (0..36).map(|i| apart(first, at((i % 6) as f32, (i / 6) as f32))).fold(0.0, f32::max)
+}
+
+/// Plan HC5: every textured theme draws the board (the book's dark squares hatched as paths),
+/// its texture seen in the dark squares' pixels, where a plain theme has one colour (plan
+/// A9-Q4b, finding A7-18: the board's name and no error were all it saw, which a board drawn
+/// plain gives too).
 #[test]
 fn textured_themes_draw_the_board() {
+    let _gpu = gpu::gpu();
     let mut h = harness("", false);
     h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into(), "e7e5".into()]);
+    h.run_steps(3);
+    let plain = spread_on_c5(&mut h);
+    assert!(plain < 2.0, "brown is one colour: {plain}");
     for id in ["wood", "marble", "paper", "book"] {
         h.state_mut().set_option("board-theme", id).unwrap();
         h.run_steps(3);
         assert!(h.query_by_label_contains("Board, ").is_some(), "{id}: the board is drawn");
         assert!(h.query_by_label_contains("The board couldn't be drawn").is_none(), "{id}");
+        let spread = spread_on_c5(&mut h);
+        // Measured 21 (wood), 14 (marble), 6.4 (paper) and 151 (book); brown 0.
+        assert!(spread > 3.0, "{id}: its texture shows in a dark square: {spread}");
         shot(&mut h, &format!("theme-{id}.png"));
     }
 }

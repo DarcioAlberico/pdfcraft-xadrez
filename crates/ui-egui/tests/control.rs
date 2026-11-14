@@ -1838,3 +1838,157 @@ fn ui_state_reports_the_chess_windows_geometry() {
     let w = ok(&mut h, &c, "ui.state", json!({}))["chess_window"].clone();
     assert_eq!((&w["detached"], &w["shown"]), (&json!(false), &Value::Null), "{w}");
 }
+
+// ─── Plan A9-Q5: the control channel reaches the chess keyboard ───────────────────────────────
+
+/// A 600 × 800 pt page with the start position set in the Chess Merida font, top left.
+fn chess_fixture() -> Vec<u8> {
+    const ROWS: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
+    let mut content = String::from("BT /F1 20 Tf 60 724 Td ");
+    for (i, line) in ROWS.iter().enumerate() {
+        if i > 0 {
+            content.push_str("0 -20 Td ");
+        }
+        content.push_str(&format!("({line}) Tj "));
+    }
+    content.push_str("ET\n");
+    let widths = vec!["1000"; 95].join(" ");
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// The app on [`chess_fixture`] with the control channel, its jobs inline and no piece model.
+fn chess_harness() -> (Harness<'static, PdfCraftApp>, ControlClient) {
+    let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+    pdfcraft_engine::chess::install_models(Some(none));
+    let slot: Arc<Mutex<Option<ControlClient>>> = Arc::default();
+    let s = slot.clone();
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        *s.lock().unwrap() = Some(app.attach_control(&cc.egui_ctx));
+        app.open_bytes("chess.pdf", None, chess_fixture()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    for _ in 0..4 {
+        host_step(&mut h);
+    }
+    let client = slot.lock().unwrap().take().unwrap();
+    (h, client)
+}
+
+/// One frame as the desktop app runs it: the frame's raw input goes through `raw_input_hook`
+/// first, where the control channel's injected events join it and the chess key scope takes its
+/// keys (kittest itself skips the hook).
+fn host_step(h: &mut Harness<'static, PdfCraftApp>) {
+    use eframe::App as _;
+    let ctx = h.ctx.clone();
+    let mut raw = std::mem::take(h.input_mut());
+    h.state_mut().raw_input_hook(&ctx, &mut raw);
+    *h.input_mut() = raw;
+    h.step();
+}
+
+/// [`ok`], each frame run as the desktop app runs it ([`host_step`]).
+fn host_ok(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, method: &str, params: Value) -> Value {
+    let rx = c.send(method, params);
+    for _ in 0..30 {
+        host_step(h);
+        if let Ok(r) = rx.try_recv() {
+            return r.unwrap_or_else(|e| panic!("{method}: {e}"));
+        }
+    }
+    panic!("{method}: no reply after 30 frames");
+}
+
+/// The first widget `ui.inspect` finds for `params`.
+fn first(h: &mut Harness<'static, PdfCraftApp>, c: &ControlClient, params: Value) -> Value {
+    host_ok(h, c, "ui.inspect", params)["widgets"][0].clone()
+}
+
+/// Plan A9-Q5 (finding A6-19): a key the control channel injects reaches the chess keyboard as a
+/// pressed one does, so an agent can walk the keyboard journeys of the installed app. The Diagram
+/// tab: → moves the board's cursor (what `ui.inspect` now says as the board's
+/// `active_descendant`), a piece's letter puts it there, Ctrl+Z takes it back, Esc gives the
+/// keyboard back to the diagram's row. The board: → steps the game. `ui.inspect` also says `live`
+/// and `modal`.
+#[test]
+fn the_control_channel_reaches_the_chess_keyboard() {
+    let (mut h, c) = chess_harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    for _ in 0..4 {
+        host_step(&mut h);
+    }
+    h.state_mut().edit_chess_diagram(0, 0, true);
+    for _ in 0..4 {
+        host_step(&mut h);
+    }
+    let start = h.state().chess.editor.as_ref().expect("the editor opened").fen();
+    let grid = first(&mut h, &c, json!({ "role": "Grid" }));
+    let before = grid["active_descendant"].as_str().expect("the board names its cursor's square").to_owned();
+    host_ok(&mut h, &c, "ui.key", json!({ "key": "ArrowRight" }));
+    let after = first(&mut h, &c, json!({ "role": "Grid" }))["active_descendant"].as_str().unwrap_or_default().to_owned();
+    assert_ne!(before, after, "→ moved the cursor");
+    host_ok(&mut h, &c, "ui.key", json!({ "key": "Q" }));
+    let queened = h.state().chess.editor.as_ref().unwrap().fen();
+    assert_ne!(queened, start, "Q put a queen under the cursor");
+    host_ok(&mut h, &c, "ui.key", json!({ "key": "Z", "modifiers": ["command"] }));
+    assert_eq!(h.state().chess.editor.as_ref().unwrap().fen(), start, "Ctrl+Z took it back");
+    host_ok(&mut h, &c, "ui.key", json!({ "key": "Escape" }));
+    let row = first(&mut h, &c, json!({ "focused": true }));
+    assert!(row["label"].as_str().is_some_and(|l| l.starts_with("Diagram 1")), "Esc: the row has the keyboard: {row}");
+    // What a screen reader is told: the tab's announcement is live.
+    let all = host_ok(&mut h, &c, "ui.inspect", json!({ "limit": 2000 }));
+    assert!(all["widgets"].as_array().unwrap().iter().any(|w| w["live"] == "polite"), "a polite live region");
+    // A draft asked about before closing: the dialog is modal.
+    h.state_mut().chess.editor.as_mut().unwrap().position =
+        pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1").unwrap();
+    host_step(&mut h);
+    h.state_mut().request_close_tab(0);
+    host_step(&mut h);
+    assert_eq!(first(&mut h, &c, json!({ "role": "Dialog" }))["modal"], true);
+}
+
+/// Plan A9-Q5: → injected by the control channel steps the board's game once the chess scope is
+/// on (a click on the panel), as the keyboard's does.
+#[test]
+fn the_control_channel_steps_the_board() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let (mut h, c) = chess_harness();
+    h.state_mut().show_chess_board();
+    for _ in 0..3 {
+        host_step(&mut h);
+    }
+    let (mut game, _) = Game::from_pgn("1. e4 e5 2. Nf3 *").unwrap();
+    game.go_to_node(0);
+    h.state_mut().chess.board_mut().game = game;
+    for _ in 0..2 {
+        host_step(&mut h);
+    }
+    let title = first(&mut h, &c, json!({ "query": "To move:", "role": "Label" }));
+    let r = title["rect"].as_array().expect("the label's rect").iter().map(|v| v.as_f64().unwrap_or(0.0)).collect::<Vec<_>>();
+    host_ok(&mut h, &c, "ui.click", json!({ "x": (r[0] + r[2]) / 2.0, "y": (r[1] + r[3]) / 2.0 }));
+    assert!(h.state().chess.in_scope(), "the click put the chess scope on");
+    host_ok(&mut h, &c, "ui.key", json!({ "key": "ArrowRight" }));
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.san(game.current()), "e4", "→ stepped the game");
+}

@@ -9,6 +9,9 @@ use egui_kittest::kittest::Queryable;
 use pdfcraft_engine::chess::export::ChessFormat;
 use pdfcraft_ui_egui::PdfCraftApp;
 
+#[path = "common/gpu.rs"]
+mod gpu;
+
 /// The start position in the Chess Merida layout, top rank first.
 const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
 
@@ -157,13 +160,12 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     h.run_steps(1);
     assert!(h.state().chess.long.is_some(), "the book is still being aligned");
     assert!(h.state().chess.reading.is_some() || h.state().chess.text().is_some(), "the page is read while the book is aligned");
-    for _ in 0..1000 {
-        if h.state().chess.text().is_some() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        h.step();
-    }
+    // The page's job is waited for, not the clock (plan A9-Q4b, finding A7-15).
+    assert!(
+        h.state().chess.reading.as_ref().is_none_or(|job| job.wait(std::time::Duration::from_secs(60))),
+        "the page is read on a worker while the book is aligned"
+    );
+    h.run_steps(1);
     assert!(h.state().chess.text().is_some(), "the page was read while the book is aligned");
     assert!(h.state().chess.long.is_some(), "the book is still being aligned");
     h.run_steps(1);
@@ -171,6 +173,7 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     h.get_by_label_contains("Aligning the book to the PGN: page ");
     // With PDFCRAFT_CHESS_SHOTS set, a picture of the Text tab with the long job's row.
     if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        let _gpu = gpu::gpu();
         h.render().unwrap().save(std::path::Path::new(&shots).join("i2-long-job-1366.png")).unwrap();
     }
     h.get_by_label("Stop").click();

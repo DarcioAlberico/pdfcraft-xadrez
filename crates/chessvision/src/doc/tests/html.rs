@@ -176,7 +176,14 @@ proptest! {
 fn the_users_figurine_font_is_embedded_for_the_chess_symbols_only() {
     let pieces = PieceSet::geometric();
     let doc = showcase_doc();
-    let font = crate::text_font::from_bytes(b"wOF2 figurine font".to_vec(), "dejavu").unwrap();
+    // A Unicode figurine font, as the export takes it (a WOFF2 is refused when read, plan A9-V5).
+    let font = crate::text_font::TextFont {
+        bytes: b"wOF2 figurine font".to_vec(),
+        format: crate::text_font::FontFormat::Woff2,
+        role: crate::text_font::FontRole::Unicode,
+        family: String::new(),
+        path: None,
+    };
     let html = write(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) });
     // One face, from a data URL, kept to the chess symbols; first in both families.
     assert_eq!(html.matches("@font-face").count(), 1);
