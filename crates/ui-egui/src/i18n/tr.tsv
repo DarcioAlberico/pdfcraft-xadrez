@@ -3547,3 +3547,4 @@ progress bar	Progress	İlerleme
 	The games of the list as a book, a page each, with their diagrams.	Listedeki oyunlar kitap olarak, her biri bir sayfada, diyagramlarıyla.
 	Nothing to export: an illegal position has no game.	Dışa aktarılacak bir şey yok: kural dışı bir konumun oyunu olmaz.
 	Games left out (an illegal position has no game): {n}	Dışarıda bırakılan oyunlar (kural dışı bir konumun oyunu olmaz): {n}
+	Engine: {name}, in {folder}	Motor: {name}, konum: {folder}

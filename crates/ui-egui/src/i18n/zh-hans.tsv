@@ -3515,3 +3515,4 @@ progress bar	Progress	进度
 	The games of the list as a book, a page each, with their diagrams.	将列表中的对局导出为书，每局一页，附带棋图。
 	Nothing to export: an illegal position has no game.	没有可导出的内容：非法局面没有对局。
 	Games left out (an illegal position has no game): {n}	未导出的对局（非法局面没有对局）：{n}
+	Engine: {name}, in {folder}	引擎：{name}，位于 {folder}

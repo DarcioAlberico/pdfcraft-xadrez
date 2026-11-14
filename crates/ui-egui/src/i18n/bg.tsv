@@ -3514,3 +3514,4 @@ progress bar	Progress	Напредък
 	The games of the list as a book, a page each, with their diagrams.	Партиите от списъка като книга, по страница за всяка, с диаграмите им.
 	Nothing to export: an illegal position has no game.	Няма какво да се експортира: непозволена позиция няма партия.
 	Games left out (an illegal position has no game): {n}	Пропуснати партии (непозволена позиция няма партия): {n}
+	Engine: {name}, in {folder}	Енджин: {name}, в {folder}

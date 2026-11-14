@@ -2288,6 +2288,27 @@ fn analyze_without_an_engine_shows_the_assistant() {
     assert!(study.analysis, "analysis goes on with the program picked");
 }
 
+/// Plan A9-I13: the board's menu names the program the engine was started from, and its folder,
+/// also when it would not start (here a file that is not a program).
+#[test]
+fn the_boards_menu_names_the_engines_program_and_its_folder() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-engine-named-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let program = dir.join("aux").join("x.exe");
+    std::fs::create_dir_all(program.parent().unwrap()).unwrap();
+    std::fs::write(&program, "not a program").unwrap();
+    let mut h = harness();
+    h.state_mut().chess.study.engine_path = Some(program.clone());
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    h.get_by_label("Analyze").click();
+    h.run_steps(3);
+    board_menu(&mut h);
+    let named = format!("Engine: x.exe, in {}", program.parent().unwrap().display());
+    assert!(h.query_by_label(&named).is_some(), "{named} in the board's menu");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// With a real UCI engine (`PDFCRAFT_CHESS_TEST_ENGINE`, e.g. Stockfish), the Board panel's
 /// Analysis section shows its lines and plays one when its move is clicked. Skipped when the
 /// variable is not set.

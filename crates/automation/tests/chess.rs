@@ -142,6 +142,70 @@ fn chess_detect_lists_the_diagrams_in_reading_order() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The PNG of `content`, decoded to gray: its width, height and pixels.
+fn gray_png(content: &[Content]) -> (u32, u32, Vec<u8>) {
+    let data = content.iter().find_map(|c| if let Content::Png { data, .. } = c { Some(data) } else { None }).expect("a PNG");
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(data.as_slice()));
+    decoder.set_transformations(png::Transformations::EXPAND);
+    let mut reader = decoder.read_info().unwrap();
+    let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+    let info = reader.next_frame(&mut pixels).unwrap();
+    let channels = info.color_type.samples();
+    let gray = pixels[..info.buffer_size()].chunks(channels).map(|px| px[0]).collect();
+    (info.width, info.height, gray)
+}
+
+/// Plan A9-I13: `chess_diagram_crop` renders a diagram's place on its page, alone: inline, or
+/// written to a file inside the root; a file outside the root is refused before anything is
+/// rendered, and nothing is written there. The document is not changed.
+#[test]
+fn chess_diagram_crop_renders_a_diagram_and_writes_only_inside_the_root() {
+    let (base, root) = workdir("crop");
+    let (mut a, doc) = opened(&root);
+    // Diagram 2 is the board drawn as squares: 160 pt a side, half of it dark (0.45 gray).
+    let got = a.call("chess_diagram_crop", &json!({ "doc": doc, "page": 1, "index": 2, "image_dpi": 72 })).unwrap();
+    let reply = json_of(got.clone());
+    let (w, h, gray) = gray_png(&got);
+    assert_eq!((reply["width"].as_u64(), reply["height"].as_u64()), (Some(u64::from(w)), Some(u64::from(h))), "{reply:#}");
+    assert!((159..=162).contains(&w) && (159..=162).contains(&h), "{w} x {h}: {reply:#}");
+    let dark = gray.iter().filter(|g| (100..=130).contains(*g)).count() as f64 / gray.len() as f64;
+    assert!((0.4..=0.6).contains(&dark), "the board's dark squares, half the picture: {dark}");
+    assert_eq!(reply["written"], Value::Null);
+    assert_eq!((reply["page"].as_u64(), reply["index"].as_u64(), reply["dpi"].as_f64()), (Some(1), Some(2), Some(72.0)));
+    // At 144 dpi with 10 pt of the page around it: twice the pixels, and 20 pt more each way.
+    let wide = a.call("chess_diagram_crop", &json!({ "doc": doc, "page": 1, "index": 2, "image_dpi": 144, "margin": 10 })).unwrap();
+    let (ww, wh, _) = gray_png(&wide);
+    assert!((ww as i64 - 2 * (w as i64 + 20)).abs() <= 3 && (wh as i64 - 2 * (h as i64 + 20)).abs() <= 3, "{ww} x {wh}");
+    // Written inside the root: the same picture.
+    let written = ok(&mut a, "chess_diagram_crop", json!({ "doc": doc, "page": 1, "index": 2, "image_dpi": 72, "out": "board.png" }));
+    assert_eq!(written["written"], "board.png", "{written:#}");
+    let on_disk = std::fs::read(root.join("board.png")).unwrap();
+    assert_eq!(gray_png(&[Content::Png { data: on_disk, width: w, height: h }]), (w, h, gray));
+    // Outside the root: refused, and nothing is written there.
+    for out in ["../outside/x.png".to_string(), base.join("outside").join("y.png").to_string_lossy().into_owned()] {
+        match a.call("chess_diagram_crop", &json!({ "doc": doc, "page": 1, "index": 2, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{out}: {m}"),
+            other => panic!("{out} accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    // Over the open document's own file: refused unless overwrite.
+    let e = a.call("chess_diagram_crop", &json!({ "doc": doc, "page": 1, "index": 1, "out": "board.pdf" })).unwrap_err();
+    assert!(e.to_string().contains("overwrite"), "{e}");
+    assert_eq!(std::fs::read(root.join("board.pdf")).unwrap(), chess_pdf(), "the document's file is as it was");
+    // Out of range.
+    for (args, says) in [
+        (json!({ "doc": doc, "page": 1, "index": 4 }), "page 1 has 3 diagrams"),
+        (json!({ "doc": doc, "page": 1, "index": 1, "image_dpi": 1000 }), "image_dpi"),
+        (json!({ "doc": doc, "page": 1, "index": 1, "margin": -1 }), "margin"),
+    ] {
+        let e = a.call("chess_diagram_crop", &args).unwrap_err();
+        assert!(e.to_string().contains(says), "{args}: {e}");
+    }
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "the document is not changed");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Without a model, the font diagram is read exactly, with its lichess link; the other two are
 /// found and say why they were not read. The document is not changed.
 #[test]

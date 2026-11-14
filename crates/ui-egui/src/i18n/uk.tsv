@@ -3573,3 +3573,4 @@ progress bar	Progress	Хід виконання
 	The games of the list as a book, a page each, with their diagrams.	Партії зі списку як книга, по сторінці на кожну, з їхніми діаграмами.
 	Nothing to export: an illegal position has no game.	Нічого експортувати: недопустима позиція не має партії.
 	Games left out (an illegal position has no game): {n}	Пропущені партії (недопустима позиція не має партії): {n}
+	Engine: {name}, in {folder}	Рушій: {name}, у {folder}
