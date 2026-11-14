@@ -4039,6 +4039,8 @@ version = "0.9.0"
 dependencies = [
  "cozy-chess",
  "proptest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

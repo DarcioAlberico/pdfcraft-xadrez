@@ -11,7 +11,7 @@ use std::fmt;
 use pdfcraft_chessvision::chess_text::{PoorReason, TextQuality};
 
 /// One thing a scan or a reading of a page noted, so a partial result is never silent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ScanNote {
     /// The page draws more paths than the scan looks at.
     PathsCapped,
