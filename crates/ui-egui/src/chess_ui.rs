@@ -95,6 +95,8 @@ pub struct ChessState {
     pub corrections: crate::chess_corrections_ui::Corrections,
     /// The books' own PGNs, and where they are kept (plan "Carregar PGN do livro", R6a).
     pub book_pgns: crate::chess_reference_ui::BookPgns,
+    /// The books' ciphers, and where they are kept (plan A9-G3c).
+    pub ciphers: crate::chess_cipher_ui::Ciphers,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,

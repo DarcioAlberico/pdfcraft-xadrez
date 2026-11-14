@@ -2693,10 +2693,14 @@ impl PdfCraftApp {
     /// writer had their folder (plan A9-G3b), after waiting at most `wait` for them (Close and
     /// Quit): each one that failed is said.
     fn chess_store_writes(&mut self, wait: Option<std::time::Duration>) {
-        let (corrections, books) = match wait {
-            Some(t) => (self.chess.corrections.store.settle(t), self.chess.book_pgns.store.settle(t)),
-            None => (self.chess.corrections.store.poll_held(), self.chess.book_pgns.store.poll_held()),
+        let (corrections, books, ciphers) = match wait {
+            Some(t) => (self.chess.corrections.store.settle(t), self.chess.book_pgns.store.settle(t), self.chess.ciphers.store.settle(t)),
+            None => (self.chess.corrections.store.poll_held(), self.chess.book_pgns.store.poll_held(), self.chess.ciphers.store.poll_held()),
         };
+        // The books' ciphers are learned again by reading: a write that failed is logged.
+        for e in ciphers {
+            log::warn!("the book's cipher could not be kept: {e}");
+        }
         for e in corrections {
             self.chess.games.notes.push(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", &e)]));
         }

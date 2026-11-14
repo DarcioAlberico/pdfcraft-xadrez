@@ -4358,13 +4358,13 @@ fn each_document_keeps_its_own_diagrams_and_cipher() {
         h.state_mut().read_chess_text(0, false);
         h.run_steps(3);
         assert_eq!(count(&h, id), Some(2), "document {i} detected");
-        assert!(h.state().chess_cipher(id).is_some(), "document {i} read");
+        assert!(h.state().session.chess_cipher(id).is_some(), "document {i} read");
     }
     h.state_mut().active = Some(0);
     h.run_steps(3);
     assert_eq!(count(&h, a), Some(2), "A's list stays after detecting in B");
     h.get_by_label_contains("Diagram 2 · ");
-    assert!(h.state().chess_cipher(a).is_some(), "A's book cipher stays after reading B");
+    assert!(h.state().session.chess_cipher(a).is_some(), "A's book cipher stays after reading B");
     // With PDFCRAFT_CHESS_SHOTS set, a picture of the window back on A, at 1366 x 768.
     shot(&mut h, "i1a-back-to-a.png");
     let to_review = h.state().chess.results_of(a).map_or(0, |r| r.review_queue().len());
@@ -6544,4 +6544,33 @@ fn original_shows_the_pages_diagram_in_the_boards_square() {
     h.run_steps(2);
     assert_eq!(h.get_by_label_contains("Diagram board, ").rect(), board, "the board, where it was");
     assert!(h.query_by_label("Original diagram, page 1, diagram 1").is_none());
+}
+
+/// Plan A9-G3c, V4b (finding R3-10): the app keeps a book's cipher in its data folder's
+/// `chess/cipher`: a book opened again starts its reading from the cipher kept for it (loaded
+/// the first time a reading asks), and keeps what the reading ends with.
+#[test]
+fn a_books_kept_cipher_is_where_its_reading_starts_in_the_app() {
+    use pdfcraft_engine::chess::cipher_store::DirStore;
+    use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
+    let dir = corrections_dir("chess-cipher");
+    let data = dir.join("data").join("chess");
+    let mut h = harness_on(boards(), 0.25);
+    h.state_mut().use_chess_data(data.clone(), None);
+    let id = h.state().views[0].id;
+    let (keys, pages) = h.state().session.get(id).map(|d| (d.doc_keys(), d.info.pages.len())).unwrap();
+    let seed = BookCipher::from_json(r#"{"entries":{"W":{"evidence":{"Q":{"legality":6,"glyph":0}},"examples":[]}}}"#).unwrap();
+    DirStore::new(data.join("cipher")).keep(&keys, pages, &seed).unwrap();
+    assert!(h.state().session.chess_cipher(id).is_none(), "nothing loaded before a reading asks");
+    assert_eq!(h.state_mut().chess_cipher(id), Some(seed.clone()), "the kept cipher, loaded");
+    // What the session learned since (another symbol) goes with the reading, and is kept after it.
+    let mut learned = seed.clone();
+    learned.merge(&BookCipher::from_json(r#"{"entries":{"X":{"evidence":{"R":{"legality":0,"glyph":2}},"examples":[]}}}"#).unwrap());
+    h.state_mut().session.set_chess_cipher(id, learned.clone());
+    h.state_mut().read_chess_text(0, false);
+    h.run_steps(3);
+    assert_eq!(h.state().session.chess_cipher(id).map(|c| c.proven().len()), Some(1), "the reading started from it");
+    let kept = DirStore::new(data.join("cipher")).load(&keys, pages).unwrap().file.cipher;
+    assert_eq!(kept, learned, "and kept what it ended with");
+    let _ = std::fs::remove_dir_all(dir);
 }

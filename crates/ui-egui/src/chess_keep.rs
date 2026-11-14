@@ -97,6 +97,10 @@ impl PdfCraftApp {
                 self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
             }
             self.flush_chess_games();
+            // What its readings taught meanwhile (plan A9-G3c).
+            if let Some(cipher) = self.session.chess_cipher(id) {
+                self.keep_chess_cipher(id, cipher);
+            }
         }
     }
 }

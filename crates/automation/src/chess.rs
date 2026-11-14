@@ -589,7 +589,8 @@ impl Automation {
             }
             reference_reply(&r.shown, &r.index, &linked)
         });
-        let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
+        let mut cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
+        cipher["kept"] = self.keep_cipher(a, id, &read.cipher)?;
         let corrections = crate::chess_corrections::corrections_reply(loaded, &read);
         let doc = &read.doc;
         let blocks = doc.pages.iter().flat_map(|p| &p.blocks);
@@ -786,6 +787,8 @@ impl Automation {
             reference.as_ref().zip(reference_linked).map(|((p, index), l)| reference_reply(p, index, l))
         };
         let games_json = games.as_ref().zip(games_linked).map(|((p, index), l)| reference_reply(p, index, l));
+        let mut cipher_json = Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?;
+        cipher_json["kept"] = self.keep_cipher(a, id, &made.read.cipher)?;
         Ok(json!({
             "out": shown,
             "bytes": bytes.len(),
@@ -809,7 +812,7 @@ impl Automation {
                 "diagram": s.at.index.saturating_add(1),
                 "reason": s.reason.name(),
             })).collect::<Vec<_>>(),
-            "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
+            "cipher": cipher_json,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
             "corrections": crate::chess_corrections::corrections_reply(loaded, read),
             "reference": reference_json,
@@ -895,10 +898,12 @@ impl Automation {
         Ok((image_dir, folder))
     }
 
-    /// `cipher_in`: a book cipher saved by an earlier run (JSON), to start from; `cipher_out`:
-    /// where to save the cipher these pages taught. Both confined to the root.
+    /// `cipher_in`: a book cipher saved by an earlier run (JSON), to start from; without it, the
+    /// cipher kept for the document in `cipher_store` (plan A9-G3c), unless `cipher_kept` is
+    /// false; `cipher_out`: where to save the cipher these pages taught. All confined to the root.
     pub(crate) fn cipher_args(&self, a: &Args) -> Result<(Option<BookCipher>, Option<CipherOut>)> {
         let seed = match a.opt_str("cipher_in")? {
+            None if a.opt_bool("cipher_kept")?.unwrap_or(true) => self.kept_cipher(a)?,
             None => None,
             Some(p) => {
                 let path = self.resolve(p, false)?;
@@ -931,6 +936,64 @@ impl Automation {
             crate::write_atomic(path, text.as_bytes())?;
         }
         Ok(json!({ "rows": cipher.entries().len(), "settled": cipher.proven().len(), "saved": out.map(|(shown, _)| shown.clone()) }))
+    }
+
+    /// The cipher kept for the document `a` names, in `cipher_store` (the app's own by default;
+    /// plan A9-G3c): `None` when none is kept, or the app's folder is outside the folders the tools
+    /// are confined to. Only read.
+    fn kept_cipher(&self, a: &Args) -> Result<Option<BookCipher>> {
+        let doc = self.doc(a)?;
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let crate::chess_store_migrate::StoreAt::Folder(dir) = self.chess_store_at(a, crate::chess_store_migrate::CIPHER, false)? else {
+            return Ok(None);
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let loaded = pdfcraft_engine::chess::cipher_store::DirStore::new(dir).load(&keys, pages);
+            // No keys keep nothing; a file that can't be read is said by the store's own tools.
+            Ok(loaded.ok().map(|l| l.file.cipher).filter(|c| !c.is_empty()))
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = (dir, keys, pages);
+            Ok(None)
+        }
+    }
+
+    /// With `keep_cipher`, keep `cipher` (what the pages taught) for document `id` in
+    /// `cipher_store`, merged by page with what is kept there (plan A9-G3c): never for a document
+    /// that does not allow copying, and for an encrypted one only with `allow_encrypted` (the store
+    /// keeps it unencrypted). The file kept in, or null when not asked.
+    fn keep_cipher(&self, a: &Args, id: pdfcraft_engine::DocId, cipher: &BookCipher) -> Result<Value> {
+        if !a.opt_bool("keep_cipher")?.unwrap_or(false) {
+            return Ok(Value::Null);
+        }
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
+        match pdfcraft_engine::chess::store::persist_policy(doc) {
+            pdfcraft_engine::chess::store::Persist::Never => {
+                return Err(failed("the document's permissions don't allow copying its content, so its cipher is not kept"));
+            }
+            pdfcraft_engine::chess::store::Persist::Ask if !a.opt_bool("allow_encrypted")?.unwrap_or(false) => {
+                return Err(failed("the document is encrypted and the cipher is kept unencrypted: give allow_encrypted to keep it"));
+            }
+            _ => {}
+        }
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let crate::chess_store_migrate::StoreAt::Folder(dir) = self.chess_store_at(a, crate::chess_store_migrate::CIPHER, true)? else {
+            return Err(failed("no folder to keep the cipher in"));
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let store = pdfcraft_engine::chess::cipher_store::DirStore::new(&dir);
+            store.keep(&keys, pages, cipher).map_err(failed)?;
+            let name = pdfcraft_engine::chess::store::file_name(&keys, "cipher").unwrap_or_default();
+            Ok(json!(self.shown_path(&dir.join(name)).0))
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = (dir, keys, pages, cipher);
+            Err(failed("the web build keeps no cipher"))
+        }
     }
 
     /// `chess_mate`: a mate in n solved (plan A9-N4).

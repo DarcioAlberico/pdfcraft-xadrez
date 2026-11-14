@@ -330,6 +330,8 @@ impl PdfCraftApp {
         }
         self.chess.corrections.use_folder(corrections);
         self.chess.book_pgns.use_folder(reference);
+        // The books' ciphers beside them (plan A9-G3c).
+        self.chess.ciphers.use_folder(dir.join("cipher"));
         self.chess.games.use_games_folder(dir.join("games"), earlier.as_deref());
     }
 

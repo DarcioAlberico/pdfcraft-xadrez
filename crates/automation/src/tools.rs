@@ -100,6 +100,16 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// The book's cipher kept per document (plan A9-G3c), for a tool that reads pages with chess OCR.
+fn insert_cipher_store(props: &mut Value) {
+    if let Some(o) = props.as_object_mut() {
+        o.insert("cipher_kept".into(), json!({ "type": "boolean", "description": "Without cipher_in, start chess OCR from the book cipher kept for doc in cipher_store (default true): what earlier readings of the book proved its figurine font's symbols to be." }));
+        o.insert("keep_cipher".into(), json!({ "type": "boolean", "description": "Keep the cipher these pages taught for doc in cipher_store, merged by page with what is kept there (default false). Refused for a document that does not allow copying, and for an encrypted one unless allow_encrypted. The reply's cipher.kept names the file." }));
+        o.insert("cipher_store".into(), json!({ "type": "string", "description": "A file path to the folder of the books' ciphers, one file per document, <hash>.cipher.json (relative to --root when set). Default: the app's own (chess/cipher in its data folder, where the app keeps them); with --root or the automation roots it must be inside them, else none is read there and keeping is refused: give cipher_store." }));
+        o.insert("allow_encrypted".into(), json!({ "type": "boolean", "description": "Keep what is kept of an encrypted document too, unencrypted (default false: refused). Never a document that does not allow copying." }));
+    }
+}
+
 /// The diagram corrections a reading tool takes from the corrections folder (plan A8, P3a3).
 fn insert_corrections(props: &mut Value) {
     if let Some(o) = props.as_object_mut() {
@@ -153,6 +163,7 @@ fn chess_export_schema() -> Value {
     schema(
         {
             let mut props = chess_props(true);
+            insert_cipher_store(&mut props);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
                 o.insert("overwrite".into(), json!({ "type": "boolean", "description": "Write an output even when it is the file of an open document or a file this call reads (default false: refused, so a book or its PGN is never replaced unasked). Two outputs of one call never share a file." }));
@@ -1416,6 +1427,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN (a course's or an e-book's games), at most 32 MiB and 4,096 games (without it, the one kept for doc, see reference): each move of the text is linked to it as confirmed, recovered (the reader could not play it, the PGN did: its status is kept and it gets a from_reference review flag with the PGN's move), conflict (played to a position the PGN does not have) or absent, and each move of the document JSON gets reference {kind, game, node}, its game counting from 0. The reply's reference field sums it up: games, moves, stopped_games, linked counts, cut (null, or games, moves or memory: the cap past which the index left the rest of the PGN out, at most 4,096 games, a million moves and 22 MiB of index, about 250,000 moves; plan A9-I3b), diagrams placed on a PGN move, the game each page discusses (pages and games from 1) and warnings, one of them when under 30% of the moves on the first 20 pages read are in the PGN and one when it was cut. The PGN is indexed once a session for the same text. Diagrams (R3): one whose pieces are those of the PGN move it was aligned with is confirmed, and shows that move's position, side to move, castling and move number (reference.fen; its reading stays what was printed); when one shows another position than its reading (or its reading only assumed the side), the moves after it are walked again from it and aligned once more, and reference.walked_again is true (plan A9-L8); one 1 or 2 squares from a position linked on its page or the pages beside it gets a suggestion, its reading left alone (reference {kind: suggested, fen, changes: [{square, from, to}]}); a position a person set is never changed, and nothing is written to the corrections. reference.diagrams counts linked, confirmed and suggested. The text is not changed." }));
                         insert_kept_reference(o);
                     }
+                    insert_cipher_store(&mut props);
                     insert_corrections(&mut props);
                     props
                 },
