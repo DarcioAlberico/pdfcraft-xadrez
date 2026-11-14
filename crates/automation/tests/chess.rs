@@ -2570,6 +2570,48 @@ fn chess_games_refuses_what_the_list_does_not_allow() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N9 (A8-12): games of a PGN written as a book, a page per game, a diagram at each `$220`
+/// and at a start position of its own: an EPUB and a Word file inside the root, the games picked
+/// in the order given, Markdown with its images beside it; PGN, a game listed twice and out or
+/// path outside the root are refused, and nothing is written outside it.
+#[test]
+fn chess_games_book_writes_games_as_a_book_inside_the_root_only() {
+    let (base, root) = workdir("games-book");
+    let pgn = "[White \"Morphy\"]\n[Black \"Duke\"]\n\n1.e4 e5 2.Nf3 d6 $220 3.d4 Bg4 1-0\n\n\
+               [White \"Anderssen\"]\n[Black \"Kieseritzky\"]\n\n1.e4 e5 2.f4 exf4 $220 3.Bc4 *\n\n\
+               [SetUp \"1\"]\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1\"]\n\n1.Rd8# 1-0\n";
+    std::fs::write(root.join("games.pgn"), pgn).unwrap();
+    std::fs::write(base.join("outside").join("games.pgn"), pgn).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let epub =
+        ok(&mut a, "chess_games_book", json!({ "path": "games.pgn", "games": [0, 1], "format": "epub", "out": "book.epub", "pieces": "geometric" }));
+    assert_eq!((epub["games"].as_u64(), epub["diagrams"].as_u64(), epub["diagrams_drawn"].as_u64()), (Some(2), Some(2), Some(2)), "{epub:#}");
+    assert_eq!((epub["moves"].as_u64(), epub["format"].as_str(), epub["out"].as_str()), (Some(11), Some("epub"), Some("book.epub")));
+    let bytes = std::fs::read(root.join("book.epub")).unwrap();
+    assert_eq!(&bytes[30..58], b"mimetypeapplication/epub+zip");
+    // The third game starts from a position of its own: a diagram before its move.
+    let word = ok(&mut a, "chess_games_book", json!({ "path": "games.pgn", "games": [2, 0], "format": "docx", "out": "book.docx", "title": "Two" }));
+    assert_eq!((word["games"].as_u64(), word["diagrams"].as_u64()), (Some(2), Some(2)), "{word:#}");
+    let md = ok(&mut a, "chess_games_book", json!({ "pgn": pgn, "format": "markdown", "out": "book.md" }));
+    assert_eq!((md["games"].as_u64(), md["image_dir"].as_str()), (Some(3), Some("book_diagrams")), "{md:#}");
+    assert_eq!(std::fs::read_dir(root.join("book_diagrams")).unwrap().count(), 3);
+    for (args, needle) in [
+        (json!({ "path": "games.pgn", "format": "pgn", "out": "x.pgn" }), "format"),
+        (json!({ "path": "games.pgn", "games": [0, 0], "format": "html", "out": "x.html" }), "games"),
+        (json!({ "path": "games.pgn", "games": [3], "format": "html", "out": "x.html" }), "games"),
+        (json!({ "format": "html", "out": "x.html" }), "no game"),
+        (json!({ "path": "../outside/games.pgn", "format": "html", "out": "x.html" }), "outside the allowed directory"),
+        (json!({ "path": "games.pgn", "format": "html", "out": "../outside/x.html" }), "outside the allowed directory"),
+        (json!({ "path": "games.pgn", "format": "html", "out": "games.pgn" }), "a file this call reads"),
+    ] {
+        let e = a.call("chess_games_book", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{args}: {e}");
+    }
+    assert!(!root.join("x.html").exists() && !root.join("x.pgn").exists());
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 1, "nothing written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// The collection read from a file and written to another, both inside the root; either path
 /// outside it is refused before anything is read or written. The control call, the same with
 /// both paths inside, succeeds, so the refusals can only come from resolving the paths.
