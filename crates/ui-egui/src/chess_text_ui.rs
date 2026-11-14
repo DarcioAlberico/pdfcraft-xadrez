@@ -148,6 +148,14 @@ impl JobKind {
 }
 
 impl ChessJob {
+    /// Wait until the work is done (its result waiting for the next frame) or `timeout` passed;
+    /// whether it is done. For tests, which wait for the work and not for the clock (plan
+    /// A9-Q4b, finding A7-15); the app never blocks on a job.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn wait(&self, timeout: std::time::Duration) -> bool {
+        self.job.wait(timeout)
+    }
+
     /// What the panel says while it runs.
     pub fn label(&self) -> &'static str {
         match self.kind {

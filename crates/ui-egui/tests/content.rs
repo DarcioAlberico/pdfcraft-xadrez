@@ -6,16 +6,9 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_ui_egui::{PdfCraftApp, QuickTool};
 
-/// Tests that render pixels (`h.render()`) take this first, so only one wgpu device compiles
-/// shaders at a time: Microsoft's WARP, wgpu's fallback without a GPU, crashes with an access
-/// violation when two devices compile at once (see `tests/view.rs`). Held for the whole test, it
-/// is released after the harness and its device are dropped.
-static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn gpu() -> std::sync::MutexGuard<'static, ()> {
-    // A test that panicked while holding it leaves nothing to clean up.
-    GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
+#[path = "common/gpu.rs"]
+mod gpu;
+use gpu::gpu;
 
 fn harness() -> Harness<'static, PdfCraftApp> {
     harness_with_step_dt(0.25)

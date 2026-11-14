@@ -15,17 +15,9 @@ const PAGES: &[u8] = b"%PDF-1.7
 trailer << /Root 1 0 R >>
 %%EOF";
 
-/// Tests that render pixels (`h.render()`) take this first, so only one wgpu device compiles
-/// shaders at a time. On machines without a GPU, wgpu falls back to Microsoft's WARP, whose ARM64
-/// pixel-shader JIT crashes (access violation in `d3d10warp!PixelJitProgram::ClassifyVars`) when
-/// two devices compile at once, as on GitHub's Windows 11 ARM64 runner. Hold it for the whole
-/// test (declared before the harness, so it's released after the device is dropped).
-static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
-
-fn gpu() -> std::sync::MutexGuard<'static, ()> {
-    // A test that panicked while holding it leaves nothing to clean up.
-    GPU.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-}
+#[path = "common/gpu.rs"]
+mod gpu;
+use gpu::gpu;
 
 fn harness(options: &'static [(&'static str, &'static str)]) -> Harness<'static, PdfCraftApp> {
     harness_stepping(1.0 / 4.0, options)

@@ -1,11 +1,12 @@
 //! Chess ▸ notation errata as a tool (plan A9-N19): `chess_errata` reads the pages as
 //! `chess_document` does, links them to the book's PGN when there is one, and lists what the book
-//! printed that its moves do not bear out (`pdfcraft_chessvision::doc::errata`), as CSV or
-//! Markdown, inline or to a file confined to `--root`.
+//! printed that its moves do not bear out (`pdfcraft_chessvision::doc::errata`), misprints first
+//! and then the rows to check (A9-N19b, `kind` filters them), as CSV or Markdown, inline or to a
+//! file confined to `--root`.
 
 use pdfcraft_engine::chess::pdfcraft_chess::pgn;
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::errata::{self, Issue};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::errata::{self, Issue, Kind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Inline, MoveAt, PageLabel};
 use pdfcraft_engine::chess::reference_store::Choice;
@@ -33,6 +34,11 @@ impl Automation {
             None | Some("csv") => Format::Csv,
             Some("markdown") => Format::Markdown,
             Some(_) => return Err(Args::wrong("format", "\"csv\" or \"markdown\"")),
+        };
+        // Plan A9-N19b: only the misprints, or only the rows to check; both by default.
+        let only = match a.opt_str("kind")? {
+            None | Some("all") => None,
+            Some(name) => Some(Kind::from_name(name).ok_or_else(|| Args::wrong("kind", "\"misprint\", \"check\" or \"all\""))?),
         };
         // Resolved before reading, so a path outside the root costs nothing.
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p.to_owned(), r))).transpose()?;
@@ -72,7 +78,11 @@ impl Automation {
             .filter(|i| matches!(i, Inline::Move(m) if m.reference.as_ref().is_some_and(|r| r.kind == LinkKind::Conflict)))
             .count();
         let not_judged = conflicts.saturating_sub(all.iter().filter(|e| e.issue == Issue::BookPgn).count());
-        let (rows, set_aside): (Vec<_>, Vec<_>) = all.into_iter().partition(|e| !(e.issue == Issue::BookPgn && kept_as_printed.contains(&e.at)));
+        let (found, set_aside): (Vec<_>, Vec<_>) = all.into_iter().partition(|e| !(e.issue == Issue::BookPgn && kept_as_printed.contains(&e.at)));
+        // Counted before the filter, so a call for one kind still says how many of the other.
+        let kinds: serde_json::Map<String, Value> =
+            Kind::ALL.iter().map(|k| (k.name().to_owned(), json!(found.iter().filter(|e| e.issue.kind() == *k).count()))).collect();
+        let rows: Vec<_> = found.into_iter().filter(|e| only.is_none_or(|k| e.issue.kind() == k)).collect();
         if let Some(o) = reference_reply.as_object_mut() {
             o.insert("kept_as_printed".into(), json!(set_aside.len()));
             o.insert("not_judged".into(), json!(not_judged));
@@ -90,6 +100,8 @@ impl Automation {
         let mut result = json!({
             "format": if format == Format::Csv { "csv" } else { "markdown" },
             "rows": rows.len(),
+            "kind": only.map_or("all", Kind::name),
+            "kinds": kinds,
             "issues": issues,
             "pages": doc.pages.len(),
             "born_digital_pages": doc.pages.iter().filter(|p| errata::born_digital(p)).count(),

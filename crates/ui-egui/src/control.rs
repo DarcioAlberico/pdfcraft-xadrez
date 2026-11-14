@@ -19,7 +19,11 @@
 //!   pixels per point, monitor scale and size as it last showed), so a check across monitors can
 //!   be recorded by script.
 //! - `ui.inspect {query?, role?, focused?, limit?}`: widgets in tree order with `id` (a string), `role`, `label`,
-//!   `value`, `rect` (points), `enabled`, `toggled`, `selected`, `clickable`, `focusable`, `focused`, `depth`.
+//!   `value`, `rect` (points, the node's bounds), `enabled`, `toggled`, `selected`, `clickable`, `focusable`,
+//!   `focused`, `depth`; and when the node says them (plan A9-Q5, so an agent can check the app's
+//!   WCAG matrix): `live` (`polite`/`assertive`), `modal`, `expanded`, `has_popup` and
+//!   `active_descendant` (the id of the node a composite widget points at, such as the editor
+//!   board's square under its cursor).
 //! - `ui.click {id}` | `{label}` | `{x, y, button?}`: click a widget (by its AccessKit action) or a
 //!   point (`button`: primary, secondary, or middle).
 //! - `ui.focus {id}` | `{label}`: focus one enabled widget through its AccessKit action.
@@ -141,6 +145,9 @@ struct Shared {
     /// The viewports whose passes are in progress, innermost last: `output_hook` learns from it
     /// which viewport's pass just ended (egui has already left that viewport by then).
     running: Vec<egui::ViewportId>,
+    /// The app hands the main window's batches to its own raw input ([`Control::feed`]), where its
+    /// key filters see them as they see the keyboard's: the plugin no longer injects them there.
+    app_feeds_root: bool,
 }
 
 impl Shared {
@@ -152,6 +159,14 @@ impl Shared {
             self.running.clear();
         }
         self.running.push(viewport);
+        if viewport == egui::ViewportId::ROOT && self.app_feeds_root {
+            return None;
+        }
+        self.take_batch(viewport)
+    }
+
+    /// The next batch queued for `viewport`, if any.
+    fn take_batch(&mut self, viewport: egui::ViewportId) -> Option<Vec<egui::Event>> {
         let queue = self.inject.get_mut(&viewport)?;
         let batch = queue.pop_front();
         if queue.is_empty() {
@@ -250,6 +265,25 @@ pub fn attach(ctx: &egui::Context) -> (Control, ControlClient) {
     ctx.enable_accesskit();
     let (tx, rx) = channel();
     (Control { rx, shared, pending: Vec::new(), next_tag: 1 }, ControlClient { tx, ctx: ctx.clone() })
+}
+
+impl Control {
+    /// The main window's raw input, before the app's `raw_input_hook` filters it: the next batch
+    /// injected for it joins the keyboard's events there (plan A9-Q5, finding A6-19), so the chess
+    /// key scope takes an injected key as it takes a pressed one (`chess_tools::take_scope_keys`).
+    /// From the first call on, the plugin leaves the main window's batches to it; another
+    /// window's pass keeps its own (it never goes through `raw_input_hook`). A pass of the main
+    /// window where kittest skips the hook still has the plugin inject, until a test calls it.
+    pub(crate) fn feed(&self, raw: &mut egui::RawInput) {
+        if raw.viewport_id != egui::ViewportId::ROOT {
+            return;
+        }
+        let Ok(mut s) = self.shared.lock() else { return };
+        s.app_feeds_root = true;
+        if let Some(batch) = s.take_batch(egui::ViewportId::ROOT) {
+            raw.events.extend(batch);
+        }
+    }
 }
 
 /// What a request needs from the app (implemented by `PdfCraftApp`).
@@ -666,6 +700,22 @@ fn widget(id: NodeId, n: &accesskit::Node, depth: usize, focused: bool) -> Value
     }
     if focused {
         obj.insert("focused".into(), json!(true));
+    }
+    // What a screen reader is told of the node besides its name (plan A9-Q5).
+    if let Some(live) = n.live() {
+        obj.insert("live".into(), json!(format!("{live:?}").to_lowercase()));
+    }
+    if n.is_modal() {
+        obj.insert("modal".into(), json!(true));
+    }
+    if let Some(e) = n.is_expanded() {
+        obj.insert("expanded".into(), json!(e));
+    }
+    if let Some(p) = n.has_popup() {
+        obj.insert("has_popup".into(), json!(format!("{p:?}").to_lowercase()));
+    }
+    if let Some(d) = n.active_descendant() {
+        obj.insert("active_descendant".into(), json!(d.0.to_string()));
     }
     if let Value::Object(m) = &mut w {
         m.extend(more);
