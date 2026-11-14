@@ -1820,6 +1820,7 @@ pub mod corrections;
 pub mod document;
 pub mod epub;
 pub mod export;
+pub mod games_store;
 pub mod keys;
 pub mod links;
 pub mod notes;
