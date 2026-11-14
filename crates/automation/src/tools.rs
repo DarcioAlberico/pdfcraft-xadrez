@@ -188,6 +188,9 @@ fn chess_export_schema() -> Value {
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
                 o.insert("pieces".into(), json!({ "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." }));
+                o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB and 4,096 games (relative to --root when set; without it, the one kept for doc, see reference). The pages read are linked to it as chess_document links them (plan A9-N2: one truth of the games for every export): a diagram it confirms shows its position, the moves are walked again from it, and in HTML and EPUB a move the reader could not play and the PGN did gets the PGN's position as data-fen, data-reference=\"recovered\", the PGN's move as data-reference-san and the class linked, its printed text and data-status the reader's. The reply's reference is chess_document's." }));
+                o.insert("games_pgn".into(), json!({ "type": "string", "description": "The user's own games for the book (the document's games saved as PGN, at most 32 MiB; relative to --root when set): linked before the book's PGN, so they outrank it, and the reading comes last; the reply's games_reference says how they linked." }));
+                insert_kept_reference(o);
             }
             insert_corrections(&mut props);
             props
@@ -228,9 +231,8 @@ fn chess_export_pgn_schema() -> Value {
         );
         props.insert(
             "reference_pgn".into(),
-            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only and diagrams." }),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference; without either, games_pgn's games are written so). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only, diagrams and linked (how the text linked to it: confirmed, recovered, conflict, absent)." }),
         );
-        insert_kept_reference(props);
     }
     s
 }
@@ -1662,6 +1664,29 @@ pub fn tools() -> Vec<ToolDef> {
                     },
                 }),
                 &[],
+            )),
+        t("chess_games_book", "Export chess games as a book", "Chess ▸ Board ▸ Games in this document ▸ Export as book, without the interface (plan A9-N9): games of a PGN (inline in pgn or the .pgn file path, read as chess_games reads them; at most 256 games and 32 MiB), those listed in games (0-based, in the order given; default all), written to out as a book by the writers of Chess ▸ Export (format html, epub, docx, rtf or markdown, as chess_export_html and the others write a book read from a PDF): a page per game with a heading (its players, else its event, else Game n), a line of its event, site, date and round, a diagram of its start position when it has one of its own (SetUp/FEN), and its moves in paragraphs, the main line in bold and the variations of a main-line move in a paragraph of their own between brackets, comments and annotation glyphs where they are, the result at the end, and a diagram of the position after each move marked $220 ($221: from Black's side). Diagrams, figurines, pieces, links, board_theme, diagram_px and the user's fonts as the chess exports take them; lang is the language of the book's text (BCP 47, default English); title defaults to out's file name. Markdown's images go in a folder beside out, as chess_export_markdown's. An EPUB's identifier is made from the games' PGN (the same games make the same book) and it has no cover. PGN is refused: the games are their own PGN (chess_games). out (and Markdown's folder) is confined to --root, and may not be path or an open document's file unless overwrite. Returns out, bytes, format, games, diagrams, diagrams_drawn, moves, image_dir, encoding, pgn_stopped (games read only up to a move that could not be played, written up to there with the rest as a comment), text_font, sign_font, pieces and notes. epubcheck is not run.")
+            .with(schema(
+                json!({
+                    "pgn": { "type": "string", "maxLength": 33554432, "description": "The games in PGN. Not with path." },
+                    "path": { "type": "string", "description": "A file path to a .pgn file to read the games from (relative to --root when set). Not with pgn." },
+                    "games": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 }, "maxItems": 256, "description": "The games to write (0-based, each once, in the order given). Default: all." },
+                    "format": { "type": "string", "enum": ["html", "epub", "docx", "rtf", "markdown"], "description": "The book's format." },
+                    "out": { "type": "string", "description": "The file to write (relative to --root when set)." },
+                    "overwrite": { "type": "boolean", "description": "Write out even when it is path or the file of an open document (default false: refused)." },
+                    "title": { "type": "string", "maxLength": 200, "description": "The book's title (default: out's file name)." },
+                    "lang": { "type": "string", "maxLength": 35, "description": "The language of the book's text, a BCP 47 tag (en, pt-BR, …; default: English)." },
+                    "diagrams": { "type": "string", "enum": ["svg", "fen"], "description": "Diagrams as drawn boards (default) or as FEN text." },
+                    "figurines": { "type": "string", "enum": ["unicode", "letters", "printed"], "description": "Pieces in moves as Unicode figurines (default), letters, or as written in the PGN (English letters)." },
+                    "letters_lang": { "type": "string", "maxLength": 16, "description": "With figurines: letters, the language of the letters (default en)." },
+                    "links": { "type": "boolean", "description": "A lichess link under each diagram (default true)." },
+                    "link_text": { "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." },
+                    "pieces": { "type": "string", "enum": pieces_values(), "description": "installed (default), geometric, or a set PdfCraft ships, by id, as the chess exports take it." },
+                    "board_theme": board_theme(),
+                    "diagram_px": { "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word, RTF and Markdown: the diagram images' side in pixels (default 900)." },
+                    "review_marks": { "type": "boolean", "description": "HTML and EPUB: highlight what is to review (games played have nothing; default as the exports)." },
+                }),
+                &["format", "out"],
             )),
         t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
             .with(schema(
