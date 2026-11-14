@@ -892,6 +892,7 @@ impl Automation {
             "chess_export_markdown" => self.chess_export_markdown(&a)?,
             "chess_export_pgn" => self.chess_export_pgn(&a)?,
             "chess_export_exercises" => self.chess_export_exercises(&a)?,
+            "chess_export_anki" => self.chess_export_anki(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
             "accessibility_review_record" => self.a11y_review_record(&a)?,
             "accessibility_review_save" => self.a11y_review_save(&a)?,
