@@ -3796,6 +3796,18 @@ the move's comment	Move comment	Bình luận của nước đi
 	Alt+O switches between the board as read and the page's own picture.	Alt+O chuyển giữa bàn cờ như đã đọc và hình của chính trang.
 	Original diagram, page {p}, diagram {n}	Sơ đồ gốc, trang {p}, sơ đồ {n}
 	The page's picture of this diagram shows once its page is drawn.	Hình trên trang của sơ đồ này hiện khi trang của nó đã được vẽ.
+	Export the book's review…	Xuất bản rà soát của sách…
+	Import a book's review…	Nhập bản rà soát của một cuốn sách…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Theo lựa chọn của bạn, cờ vua của tài liệu được mã hóa này không được lưu: không thể xuất bản rà soát từ nó hoặc nhập vào nó.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Chưa có gì để xuất: tài liệu này chưa lưu sửa chữa, lựa chọn hay ván cờ nào.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Đã xuất bản rà soát tới {path} (sửa chữa: {corrections}, lựa chọn: {decisions}, ván cờ: {games}). Lời bình của các ván cờ có thể chứa văn bản của sách: hãy giữ tệp cho mục đích cá nhân.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Đã nhập bản rà soát từ {name} (sửa chữa: {corrections}, lựa chọn: {decisions}, ván cờ: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Sửa chữa cho các trang mà tài liệu này không có: {n} (được giữ lại, không gắn với sơ đồ nào).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Lựa chọn đang chờ PGN của sách: {n} (tải PGN, rồi nhập lại bản rà soát).
+	Entries that couldn't be read and were left out: {n}.	Mục không đọc được và đã bị bỏ qua: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} là bản rà soát của một cuốn sách khác ({pages} trang; cuốn này có {here}). Vẫn nhập vào tài liệu này?
+	Another book's review	Bản rà soát của sách khác
+	Import anyway	Vẫn nhập
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Chưa xác nhận
 progress bar	Progress	Tiến độ
@@ -3806,3 +3818,4 @@ progress bar	Progress	Tiến độ
 	Indexing the book's PGN…	Đang lập chỉ mục PGN của sách…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN của sách lớn hơn mức PdfCraft lập chỉ mục: chỉ {moves} nước đầu tiên của nó được liên kết với sách.
 	Engine: {name}, in {folder}	Engine: {name}, trong {folder}
+	Importing…	Đang nhập…

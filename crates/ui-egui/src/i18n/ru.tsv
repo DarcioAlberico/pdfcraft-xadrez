@@ -3457,6 +3457,18 @@ the move's comment	Move comment	Комментарий к ходу
 	Alt+O switches between the board as read and the page's own picture.	Alt+O переключает между доской, как она прочитана, и изображением самой страницы.
 	Original diagram, page {p}, diagram {n}	Исходная диаграмма, страница {p}, диаграмма {n}
 	The page's picture of this diagram shows once its page is drawn.	Изображение этой диаграммы со страницы появится, как только её страница будет нарисована.
+	Export the book's review…	Экспорт проверки книги…
+	Import a book's review…	Импорт проверки книги…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Шахматы этого зашифрованного документа не сохраняются, как вы указали: проверку нельзя ни экспортировать из него, ни импортировать в него.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Пока нечего экспортировать: для этого документа не сохранено ни исправлений, ни выборов, ни партий.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Проверка экспортирована в {path} (исправления: {corrections}, выборы: {decisions}, партии: {games}). В комментариях к партиям может быть текст книги: храните файл для личного использования.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Проверка импортирована из {name} (исправления: {corrections}, выборы: {decisions}, партии: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Исправления для страниц, которых нет в этом документе: {n} (сохранены, без диаграммы).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Выборы, ожидающие PGN книги: {n} (загрузите PGN, затем импортируйте проверку снова).
+	Entries that couldn't be read and were left out: {n}.	Записи, которые не удалось прочитать и которые пропущены: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} — проверка другой книги ({pages} стр.; в этой {here}). Всё равно импортировать в этот документ?
+	Another book's review	Проверка другой книги
+	Import anyway	Всё равно импортировать
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Не подтверждено
 progress bar	Progress	Ход выполнения
@@ -3467,3 +3479,4 @@ progress bar	Progress	Ход выполнения
 	Indexing the book's PGN…	PGN книги индексируется…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN книги больше, чем индексирует PdfCraft: с книгой связаны только первые {moves} ходов.
 	Engine: {name}, in {folder}	Движок: {name}, в {folder}
+	Importing…	Импорт…

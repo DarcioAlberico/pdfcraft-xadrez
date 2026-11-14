@@ -509,6 +509,8 @@ impl PdfCraftApp {
             "chess.reference.load" => self.load_book_pgn(),
             "chess.reference.clear" => self.clear_book_pgn(),
             "chess.reference.link" => self.link_whole_book(),
+            "chess.review.export" => self.export_chess_review(),
+            "chess.review.import" => self.import_chess_review(),
             "chess.models" => self.choose_chess_models(),
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),

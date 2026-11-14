@@ -3507,6 +3507,18 @@ the move's comment	Move comment	Коментар към хода
 	Alt+O switches between the board as read and the page's own picture.	Alt+O превключва между дъската, както е прочетена, и собственото изображение на страницата.
 	Original diagram, page {p}, diagram {n}	Оригинална диаграма, страница {p}, диаграма {n}
 	The page's picture of this diagram shows once its page is drawn.	Изображението на страницата за тази диаграма се показва, щом страницата ѝ бъде изчертана.
+	Export the book's review…	Експортиране на прегледа на книгата…
+	Import a book's review…	Импортиране на преглед на книга…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Шахматът на този шифрован документ не се пази, както казахте: от него не може да се експортира преглед, нито да се импортира в него.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Все още няма какво да се експортира: този документ не пази корекции, избори или партии.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Прегледът е експортиран в {path} (корекции: {corrections}, избори: {decisions}, партии: {games}). Коментарите на партиите може да съдържат текст от книгата: пазете файла за лична употреба.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Прегледът е импортиран от {name} (корекции: {corrections}, избори: {decisions}, партии: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Корекции за страници, които този документ няма: {n} (запазени, без диаграма).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Избори, които чакат PGN на книгата: {n} (заредете PGN, после импортирайте прегледа отново).
+	Entries that couldn't be read and were left out: {n}.	Записи, които не можаха да се прочетат и бяха пропуснати: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} е преглед на друга книга ({pages} страници; тази има {here}). Да се импортира ли въпреки това в този документ?
+	Another book's review	Преглед на друга книга
+	Import anyway	Импортиране въпреки това
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Непотвърдено
 progress bar	Progress	Напредък
@@ -3517,3 +3529,4 @@ progress bar	Progress	Напредък
 	Indexing the book's PGN…	PGN на книгата се индексира…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN на книгата е по-голям, отколкото PdfCraft индексира: с книгата са свързани само първите {moves} хода.
 	Engine: {name}, in {folder}	Енджин: {name}, в {folder}
+	Importing…	Импортиране…
