@@ -111,6 +111,11 @@ pub struct ChessExportOptions {
     /// §2.9): linked first, so they outrank [`ChessExportOptions::reference`], and the reading
     /// comes last. PGN: without `reference`, the PGN written is these games with the book's text.
     pub games: Option<Arc<ReferenceIndex>>,
+    /// PGN: the book's exercises alone, as a standard problem PGN (plan A9-N10,
+    /// [`pdfcraft_chessvision::doc::exercises::exercises_pgn`]): `SetUp`/`FEN`, the solution as
+    /// the main line, the statement before it; in place of the games, the positions and a
+    /// reference's annotated PGN (the references still link the pages first).
+    pub exercises: bool,
 }
 
 impl ChessExportOptions {
@@ -142,6 +147,7 @@ impl ChessExportOptions {
             review_marks: None,
             reference: None,
             games: None,
+            exercises: false,
         }
     }
 }
@@ -165,6 +171,9 @@ pub struct ChessExport {
     /// PGN was given.
     /// Boxed: the export's result travels in the interface's job messages, which it would make large.
     pub annotated: Option<Box<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>>,
+    /// PGN with [`ChessExportOptions::exercises`]: the exercises written and the numbered
+    /// diagrams left out. Boxed, as [`ChessExport::annotated`].
+    pub exercises: Option<Box<pdfcraft_chessvision::doc::exercises::ExercisesPgn>>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
     /// The links to [`ChessExportOptions::games`] and [`ChessExportOptions::reference`], in that
@@ -318,6 +327,7 @@ impl Session {
         let mut positions_skipped = Vec::new();
         let mut pgn_warnings = Vec::new();
         let mut annotated = None;
+        let mut exercises = None;
         let written = match format {
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).
@@ -326,7 +336,13 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                let bytes = if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
+                let bytes = if o.exercises {
+                    let made = pdfcraft_chessvision::doc::exercises::exercises_pgn(&read.doc, &book, o.pgn_style);
+                    let bytes = made.pgn.clone().into_bytes();
+                    pgn_warnings.clone_from(&made.warnings);
+                    exercises = Some(Box::new(made));
+                    bytes
+                } else if let Some(index) = o.reference.as_ref().or(o.games.as_ref()) {
                     let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.positions, o.pgn_style);
                     let bytes = made.pgn.clone().into_bytes();
                     position_games = Some(made.positions);
@@ -380,7 +396,7 @@ impl Session {
             }
         };
         let Written { bytes, images, drawn } = written;
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes, linked })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, exercises, notes, linked })
     }
 }
 

@@ -38,6 +38,7 @@
 pub mod bookmarks;
 mod build;
 pub mod errata;
+pub mod exercises;
 pub mod fragment;
 pub mod from_games;
 pub mod games;

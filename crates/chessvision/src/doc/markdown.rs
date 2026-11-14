@@ -389,7 +389,7 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
 
 /// A game of the document with its origin: the diagram it starts at, else the page of its first
 /// move.
-fn with_origin(doc: &ChessDoc, book: &PgnBook, game: &super::games::Game) -> GameScore {
+pub(crate) fn with_origin(doc: &ChessDoc, book: &PgnBook, game: &super::games::Game) -> GameScore {
     let (page, diagram) = match game.origin {
         GameOrigin::Diagram { page, diagram, .. } => (page, Some(diagram)),
         GameOrigin::Initial => (game.page, None),

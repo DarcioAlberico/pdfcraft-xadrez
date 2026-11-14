@@ -237,6 +237,20 @@ fn chess_export_pgn_schema() -> Value {
     s
 }
 
+/// [`chess_export_pgn_schema`] for the exercises alone (plan A9-N10): no positions, and the
+/// book's PGN only links the pages.
+fn chess_export_exercises_schema() -> Value {
+    let mut s = chess_export_pgn_schema();
+    if let Some(props) = s.get_mut("properties").and_then(Value::as_object_mut) {
+        props.remove("positions");
+        props.insert(
+            "reference_pgn".into(),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set; without it, the one kept for doc, see reference): the pages read are linked to it first, so a diagram it confirms gives its solution the PGN's position. The PGN written is still the exercises alone." }),
+        );
+    }
+    s
+}
+
 /// The book's PGN kept for the document, which a reading tool takes when it is not given
 /// reference_pgn (plan "Carregar PGN do livro", R5).
 fn insert_kept_reference(o: &mut serde_json::Map<String, Value>) {
@@ -1492,6 +1506,8 @@ pub fn tools() -> Vec<ToolDef> {
             .with(chess_export_schema()),
         t("chess_export_pgn", "Export chess games as PGN", "Chess ▸ Export ▸ PGN: every game found in the text (roster, SetUp/FEN from the diagram it starts at, NAGs, comments, variations), for each legal, unrepaired diagram positions asks for a game with no moves holding its position (unused, the default: those no game starts from or reprints; all; none), and $220 on the move whose position a diagram reprints, all with PdfPage (the physical page, from 1) and PdfDiagram tags, PdfPageLabel when the page's printed number differs, SourceTitle (the export title), and a first comment naming the page and diagram in the book's language (Page xvii · diagram 1 of 2); a position's game has the title as its Event and Round -; in the order of the book, written to out. A position whose reading did not pass review says so in a comment. Reply as chess_export_html, plus position_games (how many such games were added) and positions_skipped (each diagram positions asked a game for that got none: page from 1, diagram from 1, reason not_read, illegal or repaired) and pgn_warnings (what writing left out of a game, never in silence: game from 1, kind moves_left_out, a move no legal move explains with the moves after it, game_left_out, a game whose start is no position, comment_cut, tag_cut or tags_dropped). With the book's PGN (reference) its games come first, with the book's text as comments, then the diagrams' games positions asks for (unused: those linked to no move of it). Every PGN is written the same way: lines of at most 79 characters (a longer word alone on its line), a comment printed after a move's variations right before the next move, figurines in comments as letters. variations, comments and nags leave things out of the moves (all kept by default; the tags are always written). The document is not changed.")
             .with(chess_export_pgn_schema()),
+        t("chess_export_exercises", "Export a chess book's exercises as PGN", "Chess ▸ Export ▸ Exercises (plan A9-N10, decision D20): read pages (default all) as chess_export_pgn does (corrections, scan settings, OCR and the book's PGN alike) and write the book's exercises to out as a standard problem PGN, the one ChessBase's Replay training, lichess studies, Chessable private courses and the Anki add-ons that take PGN read. An exercise is a diagram the book numbers (its caption's number: №185, 1675, Exercise 12) whose solution was read, from the moves after it or from a solution that names its number pages later. Each is a game with SetUp \"1\" and FEN (the position its solution starts from), its solution as the main line with the book's variations and comments, Result as printed (else 1-0 or 0-1 when the main line ends in mate, else *), Event the title when the game has none, Round its number, the origin's tags (PdfPage, PdfPageLabel, PdfDiagram, PdfPuzzle, SourceTitle), and before the first move the statement in the book's language: the side to move and the number, then where it is (White to move (№ 185). Page 275 · diagram 1 of 6). ChessBase's training command (%tqu) is not written. Reply as chess_export_pgn, plus exercises (each written: page and diagram from 1, number, moves of its main line) and exercises_left_out (each numbered diagram not written: page, diagram, number, reason no_solution, no solution read, or no_position, none to start from). The document is not changed.")
+            .with(chess_export_exercises_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, a pieces folder of images beside the executable, an installed Chess Merida, or plain geometric pieces), and piece_leftovers: folders a replaced piece set left beside the sets in that pieces folder (an import's .<name>.import-… staging folder that stopped, or an old .<name>.old-… set kept aside because it held a folder of its own), never offered as sets. Diagrams in chess fonts are read without any model. version and build say which PdfCraft answers (build: the short commit and date the release script built, or dev), so builds kept side by side can be told apart.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
