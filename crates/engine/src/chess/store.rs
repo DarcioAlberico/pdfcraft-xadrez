@@ -424,12 +424,35 @@ pub(super) fn aside_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<Str
 #[cfg(not(target_arch = "wasm32"))]
 pub struct DirBackend {
     dir: std::path::PathBuf,
+    /// How long a change waits for another writer ([`LOCK_WAIT`] by default).
+    wait: std::time::Duration,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl DirBackend {
     pub fn new(dir: impl Into<std::path::PathBuf>) -> DirBackend {
-        DirBackend { dir: dir.into() }
+        DirBackend { dir: dir.into(), wait: LOCK_WAIT }
+    }
+
+    /// The same folder, a change waiting at most `wait` for another writer (plan A9 §2.3: the
+    /// interface tries once, `Duration::ZERO`, and never waits).
+    pub fn waiting(mut self, wait: std::time::Duration) -> DirBackend {
+        self.wait = wait;
+        self
+    }
+
+    /// Whether another writer holds the store of kind `kind` now (one try of its lock, let go of
+    /// at once). `false` when it can't be told (no folder yet, no file locks).
+    pub fn busy(&self, kind: &str) -> bool {
+        let Ok(file) = std::fs::OpenOptions::new().read(true).write(true).open(self.dir.join(format!("{kind}.flock"))) else { return false };
+        match file.try_lock() {
+            Ok(()) => {
+                let _ = file.unlock();
+                false
+            }
+            Err(std::fs::TryLockError::WouldBlock) => true,
+            Err(std::fs::TryLockError::Error(_)) => false,
+        }
     }
 
     /// The folder.
@@ -547,7 +570,7 @@ impl StoreBackend for DirBackend {
         std::fs::create_dir_all(&self.dir)?;
         let path = self.dir.join(format!("{kind}.flock"));
         let file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
-        let deadline = std::time::Instant::now().checked_add(LOCK_WAIT);
+        let deadline = std::time::Instant::now().checked_add(self.wait);
         let file = loop {
             match file.try_lock() {
                 Ok(()) => break Some(file),
@@ -655,6 +678,17 @@ impl<K: StoreKind> DocStore<K, DirBackend> {
     /// The folder.
     pub fn dir(&self) -> &std::path::Path {
         self.backend.dir()
+    }
+
+    /// The store in the folder `dir`, a change waiting at most `wait` for another writer
+    /// ([`DirBackend::waiting`]).
+    pub fn waiting(dir: impl Into<std::path::PathBuf>, wait: std::time::Duration) -> Self {
+        DocStore::on(DirBackend::new(dir).waiting(wait))
+    }
+
+    /// Whether another writer holds the store now ([`DirBackend::busy`]).
+    pub fn busy(&self) -> bool {
+        self.backend.busy(K::KIND)
     }
 
     /// Merge into this store what the folder `from` keeps of this kind (plan A9-G5a, decision
