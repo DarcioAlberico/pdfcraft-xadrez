@@ -590,6 +590,10 @@ pub(crate) fn board_view(
         response.request_focus();
     }
     let focused = response.has_focus();
+    // Its ring is its cursor's, on the square (below).
+    if focused {
+        crate::widgets::own_ring(ui.ctx(), id);
+    }
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, name));
     let here = crate::chess_diagram_keys::square_text(ed, ed.cursor);
     let cell = rect.width() / 8.0;

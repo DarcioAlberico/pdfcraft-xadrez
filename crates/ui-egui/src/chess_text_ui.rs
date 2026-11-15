@@ -856,6 +856,9 @@ pub fn text_tab(
                                 }
                             });
                         }
+                        if r.has_focus() {
+                            crate::widgets::own_ring(ui.ctx(), r.id);
+                        }
                         responses.push((part, r.hovered(), r.has_focus()));
                     }
                     // Every row of a move shows it pointed at and with the keyboard (plan A9-I9b).

@@ -439,6 +439,7 @@ fn row(
         painter.rect_filled(rect.shrink2(vec2(0.0, 1.0)), 4.0, t.hover);
     }
     if focused {
+        crate::widgets::own_ring(ui.ctx(), resp.id);
         painter.rect_stroke(rect.shrink(1.0), 4.0, Stroke::new(2.0, t.accent), egui::StrokeKind::Inside);
     }
     let icon = Rect::from_center_size(pos2(rect.min.x + 16.0, rect.center().y), egui::Vec2::splat(16.0));

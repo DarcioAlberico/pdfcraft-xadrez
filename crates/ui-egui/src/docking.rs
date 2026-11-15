@@ -630,7 +630,11 @@ impl DockContent<Panel> for Content<'_> {
                     },
                 }
             }
-            Panel::Tools => crate::panels::left_panel(app, ui),
+            Panel::Tools => {
+                // Where the Tools are, for the keyboard they hold when they collapse (plan A9-I11b).
+                ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-tools-body"), ui.max_rect()));
+                crate::panels::left_panel(app, ui);
+            }
             Panel::Inspector => {
                 ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-inspector-body"), ui.max_rect()));
                 crate::panels::right_panel(app, ui);

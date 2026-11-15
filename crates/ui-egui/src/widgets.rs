@@ -69,6 +69,10 @@ fn show_dialog<R>(ctx: &egui::Context, id: &str, title: Option<&str>, content: i
         // The frame's stroke sits outside this content rect; the stored card is the fill.
         let card = ui.min_rect().expand2(egui::vec2(f32::from(DIALOG_PAD_X), f32::from(DIALOG_PAD_Y)));
         ui.ctx().data_mut(|d| d.insert_temp(stored.with("card"), card));
+        // A chess question (the titled ones are): its controls have the focus ring (plan A9-I11b).
+        if title.is_some() {
+            ring_zone(ui.ctx(), card);
+        }
         ui.ctx().accesskit_node_builder(dialog, |node| {
             node.set_role(egui::accesskit::Role::Dialog);
             node.set_modal();
@@ -254,6 +258,7 @@ pub fn pill_button(ui: &mut egui::Ui, label: &str, primary: bool) -> Response {
 /// A8 P1a): the pills draw their own frame, so egui's focus stroke would not show.
 pub(crate) fn focus_ring(ui: &egui::Ui, resp: &Response, rect: Rect, radius: u8) {
     if resp.has_focus() {
+        own_ring(ui.ctx(), resp.id);
         let t = Tokens::get(ui.ctx());
         ui.painter().rect_stroke(
             rect.expand(2.0),
@@ -262,6 +267,84 @@ pub(crate) fn focus_ring(ui: &egui::Ui, resp: &Response, rect: Rect, radius: u8)
             egui::StrokeKind::Outside,
         );
     }
+}
+
+/// Where this pass's chess surfaces are, in this viewport ([`paint_focus_ring`]).
+fn ring_zones_id(ctx: &egui::Context) -> egui::Id {
+    egui::Id::new("pdfcraft-ring-zones").with(ctx.viewport_id())
+}
+
+/// The control that painted its own focus ring this pass, in this viewport.
+fn own_ring_id(ctx: &egui::Context) -> egui::Id {
+    egui::Id::new("pdfcraft-own-ring").with(ctx.viewport_id())
+}
+
+/// `rect` is a chess surface this pass (the Chess column, the Move list, the chess window, a
+/// chess dialog): the control in it with the keyboard gets the focus ring at the pass's end
+/// ([`paint_focus_ring`]; plan A9-I11b).
+pub(crate) fn ring_zone(ctx: &egui::Context, rect: Rect) {
+    // A handful a pass; capped, should a pass end without painting the ring.
+    const MAX_ZONES: usize = 32;
+    // The id first: `data_mut` holds the context's lock, which `viewport_id` takes too.
+    let key = ring_zones_id(ctx);
+    ctx.data_mut(|d| {
+        let zones = d.get_temp_mut_or_default::<Vec<Rect>>(key);
+        if zones.len() < MAX_ZONES {
+            zones.push(rect);
+        }
+    });
+}
+
+/// The control `id`, which has the keyboard, paints its own focus ring this pass (a
+/// [`focus_ring`], a list's row, a move of the Text tab, a board's cursor): [`paint_focus_ring`]
+/// leaves it alone.
+pub(crate) fn own_ring(ctx: &egui::Context, id: egui::Id) {
+    let key = own_ring_id(ctx);
+    ctx.data_mut(|d| d.insert_temp(key, id));
+}
+
+/// The end of a viewport's pass (plan A9-I11b, WCAG 2.4.7, finding A6-20): the control with the
+/// keyboard, when it is in a chess surface ([`ring_zone`]) and paints no ring of its own
+/// ([`own_ring`]), gets a 2-point ring in the accent colour (3:1 on every surface, `theme`'s
+/// tests), on its own layer, around the part of it in sight. egui's own sign of the keyboard on a
+/// stock button, field or check box is a 1-point outline in the text colour. Nothing while the
+/// window is not in use, as egui does.
+pub(crate) fn paint_focus_ring(ctx: &egui::Context) {
+    let (zones_key, own_key) = (ring_zones_id(ctx), own_ring_id(ctx));
+    let zones = ctx.data_mut(|d| d.remove_temp::<Vec<Rect>>(zones_key)).unwrap_or_default();
+    let own = ctx.data_mut(|d| {
+        let own = d.get_temp::<egui::Id>(own_key);
+        d.remove::<egui::Id>(own_key);
+        own
+    });
+    let Some(id) = ctx.memory(|m| m.focused()) else { return };
+    if own == Some(id) || !ctx.input(|i| i.focused) {
+        return;
+    }
+    let Some(r) = ctx.read_response(id) else { return };
+    if !r.rect.is_finite() || !zones.iter().any(|z| z.contains(r.rect.center())) {
+        return;
+    }
+    let t = Tokens::get(ctx);
+    ctx.layer_painter(r.layer_id).with_clip_rect(r.interact_rect.expand(4.0)).rect_stroke(
+        r.rect.expand(2.0),
+        CornerRadius::same(t.radius.saturating_add(2)),
+        Stroke::new(2.0, t.accent),
+        egui::StrokeKind::Outside,
+    );
+}
+
+/// The end of a scroll area's contents (plan A9-I11b, WCAG 2.4.11): the control that took the
+/// keyboard this pass, when it is in `ui` and not wholly in sight, is scrolled into sight, at
+/// once. egui moves the keyboard with Tab and leaves the area where it was.
+pub(crate) fn follow_focus(ui: &egui::Ui) {
+    let ctx = ui.ctx();
+    let Some(id) = ctx.memory(|m| m.focused()) else { return };
+    let Some(r) = ctx.read_response(id) else { return };
+    if !r.gained_focus() || r.layer_id != ui.layer_id() || !ui.min_rect().contains_rect(r.rect) || ui.clip_rect().contains_rect(r.rect) {
+        return;
+    }
+    ui.scroll_to_rect_animation(r.rect.expand(4.0), None, egui::style::ScrollAnimation::none());
 }
 
 /// A segmented control (plan A8, P6, spec §2.1): one button per choice, joined in one frame, the
@@ -342,43 +425,66 @@ fn segments<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T
 
 /// Tabs drawn as the docking workspace draws its own (plan A8, P6): a strip in the chrome colour,
 /// the chosen tab and the one under the pointer filled, its label in the text colour and the
-/// others muted. Each is a selectable item named by its label. Whether the value changed.
-pub(crate) fn dock_tabs<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str)]) -> bool {
+/// others muted. To assistive technology a tab list named `name` of tabs named by their labels,
+/// each with its place among them and the chosen one selected (plans A9-I15 and I11b); ← and →
+/// move the keyboard along them (egui's moves by direction), Enter or Space chooses. Each tab's
+/// id is `ui.id().with(("dock-tab", i))`. The chosen tab's id, which names its panel
+/// ([`tab_panel`]).
+pub(crate) fn dock_tabs<T: PartialEq + Copy>(ui: &mut egui::Ui, name: &str, value: &mut T, choices: &[(T, &str)]) -> Option<egui::Id> {
     const HEIGHT: f32 = 26.0;
     const PAD: f32 = 12.0;
     let t = Tokens::get(ui.ctx());
     let font = theme::medium(12.0);
-    let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEIGHT), Sense::hover());
-    ui.painter().rect_filled(strip, 0.0, t.chrome);
-    ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
-    let mut changed = false;
-    let mut x = strip.min.x;
-    for (i, (choice, label)) in choices.iter().enumerate() {
-        let width = (text_width(ui, label, &font) + 2.0 * PAD).min((strip.max.x - x).max(0.0));
-        let r = Rect::from_min_size(egui::pos2(x, strip.min.y), vec2(width, HEIGHT));
-        x += width;
-        let resp = ui.interact(r, ui.id().with(("dock-tab", i)), Sense::click());
-        let selected = *value == *choice;
-        resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
-        // A tab, chosen or not, to assistive technology: egui has no tab widget, and a
-        // selectable label is said as a button (plan A9-I15).
-        ui.ctx().accesskit_node_builder(resp.id, |node| {
-            node.set_role(egui::accesskit::Role::Tab);
-            node.clear_toggled();
-            node.set_selected(selected);
+    let base = ui.id();
+    let tab_id = |i: usize| base.with(("dock-tab", i));
+    ui.scope(|ui| {
+        ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+            node.set_role(egui::accesskit::Role::TabList);
+            node.set_label(name);
         });
-        if selected || resp.hovered() {
-            ui.painter().rect_filled(r, 0.0, t.selected);
+        let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEIGHT), Sense::hover());
+        ui.painter().rect_filled(strip, 0.0, t.chrome);
+        ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
+        let mut x = strip.min.x;
+        for (i, (choice, label)) in choices.iter().enumerate() {
+            let width = (text_width(ui, label, &font) + 2.0 * PAD).min((strip.max.x - x).max(0.0));
+            let r = Rect::from_min_size(egui::pos2(x, strip.min.y), vec2(width, HEIGHT));
+            x += width;
+            let resp = ui.interact(r, tab_id(i), Sense::click());
+            let selected = *value == *choice;
+            resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
+            // A tab, chosen or not, to assistive technology: egui has no tab widget, and a
+            // selectable label is said as a button (plan A9-I15).
+            ui.ctx().accesskit_node_builder(resp.id, |node| {
+                node.set_role(egui::accesskit::Role::Tab);
+                node.clear_toggled();
+                node.set_selected(selected);
+                node.set_position_in_set(i.saturating_add(1));
+                node.set_size_of_set(choices.len());
+            });
+            if selected || resp.hovered() {
+                ui.painter().rect_filled(r, 0.0, t.selected);
+            }
+            let ink = if selected { t.text } else { t.text_muted };
+            ui.painter().with_clip_rect(r).text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
+            focus_ring(ui, &resp, r, 0);
+            if resp.clicked() && !selected {
+                *value = *choice;
+            }
         }
-        let ink = if selected { t.text } else { t.text_muted };
-        ui.painter().with_clip_rect(r).text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
-        focus_ring(ui, &resp, r, 0);
-        if resp.clicked() && !selected {
-            *value = *choice;
-            changed = true;
+    });
+    choices.iter().position(|(choice, _)| *choice == *value).map(tab_id)
+}
+
+/// Makes `ui`'s own node the panel of the tab `tab` ([`dock_tabs`]), named by it: what is put in
+/// `ui` is that tab's contents to assistive technology (plan A9-I11b).
+pub(crate) fn tab_panel(ui: &egui::Ui, tab: Option<egui::Id>) {
+    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+        node.set_role(egui::accesskit::Role::TabPanel);
+        if let Some(tab) = tab {
+            node.push_labelled_by(tab.accesskit_id());
         }
-    }
-    changed
+    });
 }
 
 /// Icon + label, transparent until hovered.

@@ -4985,6 +4985,240 @@ fn every_focusable_control_has_a_name() {
     h.get_by_label_contains("Book origin");
 }
 
+// ─── Plan A9-I11b: the Chess column's tabs, master-detail and focus ─────────────────────────
+
+/// The focus rings the last frame painted (plan A9-I11b): each rectangle stroked 2 pt or more in
+/// the accent colour (whose contrast `theme`'s tests hold at 3:1 on every surface), with the clip
+/// it was painted in.
+fn focus_rings(h: &Harness<'static, PdfCraftApp>) -> Vec<(egui::Rect, egui::Rect)> {
+    fn walk(shape: &egui::Shape, clip: egui::Rect, accent: egui::Color32, out: &mut Vec<(egui::Rect, egui::Rect)>) {
+        match shape {
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| walk(s, clip, accent, out)),
+            egui::Shape::Rect(r) if r.stroke.width >= 2.0 && r.stroke.color == accent => out.push((r.rect, clip)),
+            _ => {}
+        }
+    }
+    let accent = pdfcraft_ui_egui::theme::Tokens::get(&h.ctx).accent;
+    let mut out = Vec::new();
+    for c in &h.output().shapes {
+        walk(&c.shape, c.clip_rect, accent, &mut out);
+    }
+    out
+}
+
+/// Plan A9-I11b: Tab from the first control of the Chess column through every control in it
+/// (above its foot or below it, scrolled out of sight), until the keyboard leaves it or comes back
+/// to a control it reached. What is wrong at a stop (no name, WCAG 4.1.2; no ring of 2 pt in the
+/// accent colour around it, 2.4.7; not wholly in sight, in the column and inside the ring's clip,
+/// 2.4.11), and the names of the stops, in order. On a grid the keyboard is on its cursor's square
+/// (its active descendant), and the ring is that square's.
+fn tab_through(h: &mut Harness<'static, PdfCraftApp>, what: &str) -> (Vec<String>, Vec<String>) {
+    use egui::accesskit::Action;
+    let region = chess_column(h);
+    // The column and what scrolls under its foot.
+    let band = egui::Rect::from_x_y_ranges(region.x_range(), egui::Rangef::new(region.min.y, f32::INFINITY));
+    let first = h
+        .query_all_by(|n| n.data().supports_action(Action::Focus))
+        .filter(|n| region.contains(n.rect().center()))
+        .min_by(|a, b| (a.rect().min.y, a.rect().min.x).partial_cmp(&(b.rect().min.y, b.rect().min.x)).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or_else(|| panic!("{what}: a control in {region:?}"));
+    first.focus();
+    h.run_steps(2);
+    let (mut seen, mut names, mut wrong) = (Vec::new(), Vec::new(), Vec::new());
+    for _ in 0..400 {
+        let Some(node) = h.query_by(|n| n.is_focused()) else {
+            wrong.push(format!("{what}: the keyboard went nowhere after {:?}", names.last()));
+            break;
+        };
+        let (id, rect, role) = (node.accesskit_node().id(), node.rect(), node.accesskit_node().role());
+        if !band.contains(rect.center()) || seen.contains(&id) {
+            break;
+        }
+        seen.push(id);
+        let name = node
+            .accesskit_node()
+            .label()
+            .filter(|l| !l.trim().is_empty())
+            .or_else(|| node.accesskit_node().value().filter(|v| !v.trim().is_empty()))
+            .unwrap_or_default();
+        if name.is_empty() {
+            wrong.push(format!("{what}: a {role:?} at {rect:?} has no name"));
+        }
+        let around = |ring: &egui::Rect| ring.expand(1.0).contains_rect(rect.shrink(1.0)) && rect.expand(8.0).contains_rect(*ring);
+        let rings = focus_rings(h);
+        if !rings.iter().any(|(ring, _)| around(ring)) {
+            wrong.push(format!("{what}: {name:?} ({role:?} at {rect:?}) has no focus ring"));
+        } else if !region.contains_rect(rect.shrink(1.0)) || !rings.iter().any(|(ring, clip)| around(ring) && clip.contains_rect(rect.shrink(1.0))) {
+            wrong.push(format!("{what}: {name:?} ({role:?} at {rect:?}) is not wholly in sight"));
+        }
+        names.push(name);
+        h.key_press(egui::Key::Tab);
+        h.run_steps(2);
+    }
+    (names, wrong)
+}
+
+/// The harness on [`chapter_with`]`(moves)` at `size`, its Chess column open (plan A9-I11b).
+fn chapter_column(moves: &str, size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+    no_piece_model();
+    let bytes = chapter_with(moves);
+    let mut h = Harness::builder().with_size(size).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("chapter.pdf", None, bytes).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    h
+}
+
+/// Plan A9-I11b (§2.8.1, WCAG 2.4.3, 2.4.7, 4.1.2; finding A6-20): at 1366 × 768, with the window
+/// in use, Tab goes through every control of the Chess column on each of its tabs and through a
+/// diagram's editor in the list's place: each has a name and a ring of 2 pt in the accent colour,
+/// in sight. Before, a stock button, field or list took the keyboard with egui's 1 pt outline only.
+#[test]
+fn tab_goes_through_the_chess_column_with_a_ring_on_every_control() {
+    let mut h = chapter_column("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6", egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    to_list(&mut h);
+    let mut wrong = Vec::new();
+    let (diagrams, w) = tab_through(&mut h, "Diagrams");
+    wrong.extend(w);
+    for name in ["Diagrams", "Text", "Board", "Detect diagrams"] {
+        if !diagrams.iter().any(|n| n == name) {
+            wrong.push(format!("Tab reaches {name}: {diagrams:?}"));
+        }
+    }
+    assert!(diagrams.iter().any(|n| n.starts_with("Diagram 1 · ")), "and the list's row: {diagrams:?}");
+    // A diagram's editor in the list's place.
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(4);
+    assert!(h.state().chess_diagram_shown());
+    let (editor, w) = tab_through(&mut h, "the diagram's editor");
+    wrong.extend(w);
+    // The board takes the keyboard on its cursor's square (the grid's active descendant).
+    assert!(editor.iter().any(|n| n == "Back to Diagrams") && editor.iter().any(|n| n.starts_with("a8, ")), "{editor:?}");
+    // With PDFCRAFT_CHESS_SHOTS set, a picture of the ring on a stock button, at 1366 × 768.
+    h.get_by_label("Details").focus();
+    h.run_steps(2);
+    shot(&mut h, "i11b-editor-ring.png");
+    h.get_by_label("Back to Diagrams").click();
+    h.run_steps(3);
+    for tab in ["Text", "Board"] {
+        column_tab(&mut h, tab);
+        h.run_steps(4);
+        let (names, w) = tab_through(&mut h, tab);
+        wrong.extend(w);
+        assert!(names.len() > 3, "{tab}: {names:?}");
+    }
+    assert_eq!(wrong, Vec::<String>::new());
+}
+
+/// Plan A9-I11b (WCAG 2.4.11, focus not obscured): a move of the Text tab below the fold, reached
+/// with Tab, scrolls into sight. Before, egui moved the keyboard there and left the tab where it
+/// was, the move and its ring out of sight under the column's foot.
+#[test]
+fn tab_brings_a_move_below_the_fold_into_sight() {
+    let moves: Vec<String> = (1..=150).map(|n| if n % 2 == 1 { format!("{n}.Nf3 Nf6") } else { format!("{n}.Ng1 Ng8") }).collect();
+    let mut h = chapter_column(&moves.join(" "), egui::vec2(1366.0, 768.0));
+    column_tab(&mut h, "Text");
+    h.run_steps(4);
+    let column = chess_column(&h);
+    let below = h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus)).filter(|n| n.rect().min.y > column.max.y).count();
+    let ys: Vec<(String, f32)> = h
+        .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
+        .filter(|n| column.x_range().contains(n.rect().center().x))
+        .map(|n| (n.accesskit_node().label().unwrap_or_default(), n.rect().max.y))
+        .collect();
+    assert!(below > 10, "the text runs past the column's foot: {below} moves below it; {column:?} {ys:?}");
+    let (names, wrong) = tab_through(&mut h, "Text");
+    assert!(names.len() >= 300, "every move: {}", names.len());
+    assert_eq!(wrong, Vec::<String>::new());
+}
+
+/// Plan A9-I11b (§2.8.1, WCAG 1.3.1 and 4.1.2): the Chess column's tabs are a tab list named
+/// Chess, each tab with its place among the three and the chosen one selected, over the panel of
+/// the tab shown, which they name. Before, the three tabs had no list and the panel no role.
+#[test]
+fn the_chess_columns_tabs_are_a_tab_list_over_their_panel() {
+    use egui::accesskit::Role;
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    let names = ["Diagrams", "Text", "Board"];
+    for (i, name) in names.iter().enumerate() {
+        let tab = h.get_by(|n| n.role() == Role::Tab && n.label().is_some_and(|l| l == *name));
+        let node = tab.accesskit_node();
+        let list = node.parent().expect("the tab has a parent");
+        assert_eq!((list.role(), list.label().as_deref()), (Role::TabList, Some("Chess")), "{name}'s parent");
+        assert_eq!((node.data().position_in_set(), node.data().size_of_set()), (Some(i + 1), Some(3)), "{name}");
+        assert_eq!(node.is_selected(), Some(i == 0), "{name}");
+    }
+    let panel = h.get_by_role(Role::TabPanel);
+    assert_eq!(panel.accesskit_node().label().as_deref(), Some("Diagrams"), "named by the tab shown");
+    panel.get_by_label("Detect diagrams");
+    column_tab(&mut h, "Text");
+    h.run_steps(3);
+    let panel = h.get_by_role(Role::TabPanel);
+    assert_eq!(panel.accesskit_node().label().as_deref(), Some("Text"));
+    panel.get_by_label("Read with OCR");
+    column_tab(&mut h, "Board");
+    h.run_steps(3);
+    assert_eq!(h.get_by_role(Role::TabPanel).accesskit_node().label().as_deref(), Some("Board"));
+}
+
+/// Plan A9-I11b (§2.8.1, master-detail): with the keyboard only, Enter on a row of the list opens
+/// the diagram's editor with the keyboard on its board; Esc goes back to the list, the keyboard on
+/// the row it came from.
+#[test]
+fn the_keyboard_opens_a_diagram_on_its_board_and_comes_back_to_its_row() {
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_by_label_contains("Diagram 2 · ").focus();
+    h.run_steps(2);
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert!(h.state().chess_diagram_shown(), "Enter opens the editor in the list's place");
+    // On the board's cursor square, the grid's active descendant: the grid is above it.
+    let focused = h.query_by(|n| n.is_focused()).expect("the keyboard is somewhere");
+    let grid = std::iter::successors(focused.accesskit_node().parent(), |n| n.parent()).take(4).find(|n| n.role() == egui::accesskit::Role::Grid);
+    let on = grid.and_then(|g| g.label());
+    assert!(on.as_deref().is_some_and(|l| l.starts_with("Diagram board, page 1, diagram 2")), "the keyboard on its board: {on:?}");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert!(!h.state().chess_diagram_shown(), "Esc: the list again");
+    assert!(h.get_by_label_contains("Diagram 2 · ").is_focused(), "the keyboard on the row it came from");
+}
+
+/// Plan A9-I11b (§2.8.1): the Tools panel collapsed for the Chess column, at 1366 × 768, never
+/// leaves the keyboard on a control that is gone: from the Tools it goes to the column's tab
+/// shown. Before, egui dropped it, and Tab started again from the window's top.
+#[test]
+fn collapsing_the_tools_takes_the_keyboard_to_the_chess_column() {
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    assert!(h.state().left_open, "the Tools panel shows");
+    // Left of the page, under the window's top bar: the lowest control there is in the panel's
+    // body (its docking tab is at its top).
+    let page = h.state().views[0].viewport_rect();
+    let tools = egui::Rect::from_min_max(egui::pos2(0.0, page.min.y), egui::pos2(page.min.x, page.max.y));
+    h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
+        .filter(|n| tools.contains_rect(n.rect()))
+        .max_by(|a, b| a.rect().min.y.total_cmp(&b.rect().min.y))
+        .expect("a control in the Tools panel")
+        .focus();
+    h.run_steps(2);
+    assert!(h.query_by(|n| n.is_focused()).is_some_and(|n| tools.contains_rect(n.rect())), "the keyboard in the Tools");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(4);
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    let focused = h.query_by(|n| n.is_focused()).map(|n| (n.accesskit_node().role(), n.accesskit_node().label()));
+    assert_eq!(focused, Some((egui::accesskit::Role::Tab, Some("Diagrams".to_owned()))), "the keyboard on the column's tab shown");
+}
+
 /// Plan A9-G2b (R3-06, R8-04): the marks are the engine's one rule, the rule the exports apply,
 /// taken from the session's copy of the corrections. Here the first diagram's box is laid over the
 /// second's, as two detectors' boxes of one board would be if they were not merged: a correction
