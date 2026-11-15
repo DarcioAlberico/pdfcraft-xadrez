@@ -2036,6 +2036,7 @@ pub mod samples;
 pub mod span;
 pub mod store;
 pub mod text_ocr;
+pub mod worksheet;
 
 #[cfg(test)]
 mod tests;

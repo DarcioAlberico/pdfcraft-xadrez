@@ -65,6 +65,9 @@ pub enum MaterialError {
     TooMany,
     /// A side with no piece.
     EmptySide,
+    /// A side without its king (plan A9-N16a2): a position always has both, so it would match
+    /// none.
+    NoKing,
 }
 
 impl fmt::Display for MaterialError {
@@ -76,6 +79,7 @@ impl fmt::Display for MaterialError {
             MaterialError::OutOfOrder(c) => write!(f, "a side's pieces go in the order K Q R B N P: '{c}' comes too late"),
             MaterialError::TooMany => write!(f, "a side has at most {MAX_PIECES_A_SIDE} pieces"),
             MaterialError::EmptySide => write!(f, "a side has no piece: each has its king at least, as K-K"),
+            MaterialError::NoKing => write!(f, "each side has its king first, as KR-K: a position always has both"),
         }
     }
 }
@@ -123,6 +127,9 @@ impl Material {
                 if let Some(n) = counts.get_mut(half).and_then(|s| s.get_mut(at)) {
                     *n = n.saturating_add(1);
                 }
+            }
+            if counts.get(half).and_then(|s| s.first()).is_none_or(|k| *k == 0) {
+                return Err(MaterialError::NoKing);
             }
         }
         Ok(Material { counts })
@@ -310,8 +317,15 @@ impl Query {
     }
 
     /// Whether `placement` is a position it looks for (every position, when it asks for nothing).
+    ///
+    /// With [`Query::either_side`], a position whose material is the signature with the colours
+    /// swapped is held to the pawns with their side swapped too (plan A9-N16a2): the side is the
+    /// one holding the material, as [`Query::mirrored`] has it.
     pub fn matches(&self, placement: &Placement) -> bool {
-        self.material.is_none_or(|m| Material::of(placement).matches(&m, self.either_side)) && self.pawns.matches(placement)
+        let Some(wanted) = self.material else { return self.pawns.matches(placement) };
+        let found = Material::of(placement);
+        let swapped = PawnQuery { side: self.pawns.side.map(Color::opponent), ..self.pawns };
+        (found == wanted && self.pawns.matches(placement)) || (self.either_side && found == wanted.mirrored() && swapped.matches(placement))
     }
 
     /// The same query for the board turned to the other side ([`mirrored`]): the material's and the

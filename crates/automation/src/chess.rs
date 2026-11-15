@@ -76,8 +76,19 @@ fn pieces_expected() -> String {
 
 /// Two decimals: enough for points, and stable in test output.
 /// A piece-letter language by its tag, or what `key` takes.
-fn lang_of(key: &str, tag: &str) -> Result<Lang> {
+pub(crate) fn lang_of(key: &str, tag: &str) -> Result<Lang> {
     Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"))
+}
+
+/// `text_lang`: the book's language as the user says it, a BCP 47 tag (the exports' and the
+/// exercise sheet's, plan A9-X2 and A9-N12a2).
+pub(crate) fn text_lang_arg(a: &Args) -> Result<Option<LangTag>> {
+    match a.opt_str("text_lang")? {
+        None => Ok(None),
+        Some(t) => {
+            Some(LangTag::parse(t)).filter(|tag| !tag.is_empty()).map(Some).ok_or_else(|| Args::wrong("text_lang", "a BCP 47 language tag (pt-BR)"))
+        }
+    }
 }
 
 /// What a chess export's reply says of how it looked ([`Automation::export_look`]): the piece set
@@ -823,12 +834,7 @@ impl Automation {
         }
         // The book's language and the diagrams' descriptions, as the app's export dialog says
         // them (plan A9-X2).
-        options.text_lang = match a.opt_str("text_lang")? {
-            None => None,
-            Some(t) => {
-                Some(Some(LangTag::parse(t)).filter(|tag| !tag.is_empty()).ok_or_else(|| Args::wrong("text_lang", "a BCP 47 language tag (pt-BR)"))?)
-            }
-        };
+        options.text_lang = text_lang_arg(a)?;
         options.naming = match a.opt_str("descriptions")? {
             None => pdfcraft_engine::chess::pdfcraft_chess::describe::Naming::Letters,
             Some(name) => pdfcraft_engine::chess::pdfcraft_chess::describe::Naming::from_name(name)
@@ -925,7 +931,7 @@ impl Automation {
     /// pages taken from it (not read), read and kept, read and not kept (the disk nearly full, the
     /// book alone past the budget, an encrypted document without allow_encrypted), and the entries
     /// set aside (their pages read again). `null` without `cache`.
-    fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
+    pub(crate) fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
         let Some(cache) = cache else { return Value::Null };
         let now = self.session.chess_disk();
         json!({
