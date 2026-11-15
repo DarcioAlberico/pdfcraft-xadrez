@@ -856,6 +856,29 @@ fn chapter_harness() -> Harness<'static, PdfCraftApp> {
     h
 }
 
+/// Open (or, open, close) the Text tab's menu (⋯, plan A9-I9).
+#[track_caller]
+fn text_menu(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("More Text tab actions").click();
+    h.run_steps(2);
+}
+
+/// Whether the Text tab's menu has an item `label`: the menu opened, then closed again.
+fn text_menu_has(h: &mut Harness<'static, PdfCraftApp>, label: &str) -> bool {
+    text_menu(h);
+    let has = h.query_by_label(label).is_some();
+    text_menu(h);
+    has
+}
+
+/// Click item `label` of the Text tab's menu.
+#[track_caller]
+fn text_menu_item(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+    text_menu(h);
+    h.get_by_label(label).click();
+    h.run_steps(3);
+}
+
 /// The Text tab reads the page beside it: the heading, the moves (each outlining itself on the
 /// page when clicked) and the diagram, which opens in the editor.
 #[test]
@@ -873,8 +896,9 @@ fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
         .filter_map(|i| if let pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline::Move(m) = i { Some(m.san.clone()) } else { None })
         .collect();
     assert_eq!(moves, ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
-    // A move is shown with its figurine when the fonts have it, else as printed.
-    h.get_all_by_label_contains("e4").next().expect("the move 1.e4 is shown").click();
+    // A move is shown with its figurine when the fonts have it, else as printed; it is named in
+    // words (plan A9-I9).
+    h.get_by_label("1. e4").click();
     h.run_steps(2);
     let flash = h.state().views[0].flash.expect("the move is outlined on the page");
     assert_eq!(flash.0, 0);
@@ -883,6 +907,82 @@ fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
     h.get_by_label("Diagram 1").click();
     h.run_steps(4);
     assert!(h.state().chess.editor.as_ref().is_some_and(|e| (e.page, e.index) == (0, 0)), "the editor is on the diagram");
+}
+
+/// Plan A9-I9 (A6-06, A6-07, R5-12, WCAG 2.4.3 and 4.1.2): a paragraph of the Text tab is one
+/// galley whose prose is read but never a stop of the keyboard: the page's stops are its moves and
+/// its diagrams, each move named in words; the top holds the page read, Read with OCR and the menu
+/// with the rest.
+#[test]
+fn the_text_tab_stops_only_at_moves_and_diagrams() {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline};
+    let mut h = chapter_harness();
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    h.get_by_label("Recognised text of page 1");
+    let (moves, diagrams) = {
+        let text = h.state().chess.text().expect("the page was read");
+        let blocks = &text.chess.pages[0].blocks;
+        let moves = blocks.iter().flat_map(|b| b.inlines()).filter(|i| matches!(i, Inline::Move(_))).count();
+        (moves, blocks.iter().filter(|b| matches!(b, Block::Diagram(_))).count())
+    };
+    assert!(moves >= 6 && diagrams >= 1, "{moves} moves, {diagrams} diagrams");
+    // The page's content: under the top row, in the column.
+    let top = h.get_by_label("Read with OCR").rect().max.y;
+    let column = chess_column(&h);
+    let stops: Vec<String> = h
+        .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
+        .filter(|n| n.rect().min.y > top && column.contains(n.rect().center()))
+        .map(|n| n.accesskit_node().label().or_else(|| n.accesskit_node().value()).unwrap_or_default())
+        .collect();
+    assert!(stops.len() <= moves + diagrams, "{} stops for {moves} moves and {diagrams} diagrams: {stops:?}", stops.len());
+    assert!(stops.len() >= moves, "every move takes the keyboard: {stops:?}");
+    // A move is said in words, with its number.
+    assert!(stops.iter().any(|s| s == "3. bishop b5"), "{stops:?}");
+    // The book's origin and PGN, and the export, are in the menu.
+    assert!(h.query_by_label("Load the book's PGN…").is_none(), "not on the top any more");
+    text_menu(&mut h);
+    h.get_by_label("Load the book's PGN…");
+    h.get_by_label_contains("Book origin");
+}
+
+/// Plan A9-I9 (sketch c): at 1366 × 768, 1440 × 900 and 1920 × 1080 the Text tab's top row holds
+/// the page read, Read with OCR and the menu on screen, the title not cut to nothing, and the
+/// menu opens on screen with Remove the book's PGN last.
+#[test]
+fn the_text_tabs_top_and_menu_fit_the_reference_screens() {
+    for (w, h_pt) in [(1366.0, 768.0), (1440.0, 900.0), (1920.0, 1080.0)] {
+        let mut h = Harness::builder().with_size(egui::vec2(w, h_pt)).build_eframe(|_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.open_bytes("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6")).unwrap();
+            app.run_inline = true;
+            app
+        });
+        h.run_steps(4);
+        h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+        h.run_steps(2);
+        h.get_by_label("Text").click();
+        h.run_steps(4);
+        let id = h.state().views[0].id;
+        h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h_pt));
+        let title = h.get_by_label("Recognised text of page 1").rect();
+        let ocr = h.get_by_label("Read with OCR").rect();
+        let menu = h.get_by_label("More Text tab actions").rect();
+        for (name, r) in [("title", title), ("Read with OCR", ocr), ("menu", menu)] {
+            assert!(screen.contains_rect(r) && r.width() > 0.0, "{w}: {name} at {r:?}");
+        }
+        assert!(title.width() > 60.0 && title.max.x <= ocr.min.x && ocr.max.x <= menu.min.x, "{w}: {title:?} {ocr:?} {menu:?}");
+        assert!((title.center().y - menu.center().y).abs() < 4.0, "{w}: one row");
+        shot(&mut h, &format!("i9-text-tab-{w}.png"));
+        text_menu(&mut h);
+        let remove = h.get_by_label("Remove the book's PGN").rect();
+        let align = h.get_by_label("Align the book to the PGN").rect();
+        assert!(screen.contains_rect(remove) && remove.min.y > align.max.y, "{w}: {remove:?} under {align:?}");
+        shot(&mut h, &format!("i9-text-menu-{w}.png"));
+    }
 }
 
 /// The book's PGN of [`chapter`]'s line, the Ruy Lopez to 3...a6.
@@ -931,7 +1031,7 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
     let (store, out) = (dir.join("reference"), dir.join("saved copy.pdf"));
     {
         let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6"), store.clone());
-        h.get_by_label("Load the book's PGN…");
+        assert!(text_menu_has(&mut h, "Load the book's PGN…"));
         assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "no PGN, no link");
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
@@ -958,9 +1058,9 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
     // Removed: the page is read again without it, and the store keeps no PGN. Its file stays,
     // saying when the PGN was removed, so an earlier build's copy does not bring it back (plan
     // A9-G3a).
-    h.get_by_label("Remove the book's PGN").click();
-    h.run_steps(4);
-    h.get_by_label("Load the book's PGN…");
+    text_menu_item(&mut h, "Remove the book's PGN");
+    h.run_steps(1);
+    assert!(text_menu_has(&mut h, "Load the book's PGN…"));
     assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "{:?}", linked_moves(&h));
     let files = correction_files(&store);
     assert!(files.len() == 1 && files[0].ends_with(".reference.json"), "{files:?}");
@@ -1000,7 +1100,7 @@ fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
     // The export dialog's choice (plan A9-X2), from the Text tab.
     h.get_by_label("Text").click();
     h.run_steps(3);
-    h.get_all_by_label("Export book…").last().expect("the Text tab's Export book…").click();
+    h.get_all_by_label("Export book…").last().expect("an Export book… that opens the dialog").click();
     h.run_steps(2);
     h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("PGN games from")).click();
     h.run_steps(2);
@@ -1053,7 +1153,9 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
 
 /// A secondary click on the one widget whose label holds `part` (a move shown with its figurine).
 fn right_click_contains(h: &mut Harness<'static, PdfCraftApp>, part: &str) {
-    let at = h.get_by_label_contains(part).rect().center();
+    // The move's own node, not its paragraph's text (plan A9-I9).
+    let at =
+        h.get_by(|n| n.role() == egui::accesskit::Role::Label && n.label().or_else(|| n.value()).is_some_and(|l| l.contains(part))).rect().center();
     h.hover_at(at);
     h.run_steps(1);
     for pressed in [true, false] {
@@ -1087,7 +1189,8 @@ fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
     std::fs::write(dir.join("book.pgn"), pgn).unwrap();
     let mut h = book_pgn_harness("book.pdf", Some(pdf.to_string_lossy().into_owned()), bytes, dir.join("reference"));
     // The Text tab's button (the Chess panel offers it too, R6f).
-    h.get_all_by_label("Use book.pgn").last().expect("the Text tab's button").click();
+    text_menu(&mut h);
+    h.get_all_by_label("Use book.pgn").last().expect("the Text tab's menu item").click();
     h.run_steps(4);
     h.get_by_label("Book's PGN: book.pgn (1 games)");
     for kept in ["Use book.pgn", "Use book.pgn as the book's PGN"] {
@@ -1116,10 +1219,10 @@ fn linking_the_whole_book_says_what_it_found_and_lists_the_pgns_games() {
     let pgn = format!("{RUY_PGN}\n[Event \"Chapter 2\"]\n\n1.d4 d5 *\n");
     h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
     h.run_steps(4);
-    h.get_by_label("Align the book to the PGN").click();
-    h.run_steps(4);
+    text_menu_item(&mut h, "Align the book to the PGN");
+    h.run_steps(1);
     h.get_by_label("Whole book: 6 of 6 moves linked (2 read from the PGN), 0 in conflict, on 1 of 1 pages.");
-    h.get_by_label("Align again");
+    assert!(text_menu_has(&mut h, "Align again"));
     h.get_by_label_contains("Games of the book's PGN (2)").click();
     h.run_steps(2);
     h.get_by_label("Chapter 2 (no page discusses it)");
@@ -1266,7 +1369,7 @@ fn the_pgn_beside_a_pdf_opened_is_offered_once() {
         h.get_by_label("Not now: don't use book.pgn as the book's PGN").click();
         h.run_steps(3);
         assert!(h.query_by_label(offered).is_none(), "answered");
-        h.get_by_label("Use book.pgn");
+        assert!(text_menu_has(&mut h, "Use book.pgn"));
         h.state().persist()
     };
     // Opened again with the settings: not asked again; the Text tab still offers it.
@@ -1288,7 +1391,7 @@ fn the_pgn_beside_a_pdf_opened_is_offered_once() {
     h.get_by_label("Text").click();
     h.run_steps(4);
     assert!(h.query_by_label(offered).is_none(), "Not now is remembered");
-    h.get_by_label("Use book.pgn");
+    assert!(text_menu_has(&mut h, "Use book.pgn"));
     // Without that answer, Use in the offer keeps it.
     let mut h = book_pgn_harness("book.pdf", Some(path), bytes, dir.join("reference"));
     h.get_by_label(offered);
@@ -1343,11 +1446,13 @@ fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
             assert!(r.max.x <= edge, "{theme}: {label} at {r:?}, the panel ends at {edge}");
         }
         shot(&mut h, &format!("pgn-offer-1366-{theme}.png"));
-        // The Text tab's own Use wraps its long name inside the row.
+        // The Text tab's own Use, in its menu (plan A9-I9), is on screen.
         h.get_by_label("Text").click();
         h.run_steps(4);
+        text_menu(&mut h);
         let r = h.get_by_label(&format!("Use {name}")).rect();
-        assert!(r.max.x <= edge, "{theme}: the Text tab's Use at {r:?}");
+        assert!(r.max.x <= size.x && r.min.x >= 0.0, "{theme}: the Text tab's Use at {r:?}");
+        text_menu(&mut h);
         h.get_by_label(&not_now).click();
         h.run_steps(3);
         assert!(h.query_by_label(&offered).is_none(), "{theme}: Not now, by the mouse");
@@ -1381,24 +1486,32 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
         h.run_steps(4);
-        h.get_by_label("Align the book to the PGN").click();
-        h.run_steps(4);
+        text_menu_item(&mut h, "Align the book to the PGN");
+        h.run_steps(1);
         h.get_by_label_contains("Games of the book's PGN (1)").click();
         h.run_steps(3);
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1366.0, 768.0));
-        for label in ["Remove the book's PGN", "Align again", "p. 1 · Chapter 1 · Ruy"] {
-            let r = h.get_by_label(label).rect();
-            assert!(screen.contains_rect(r) && r.width() > 0.0, "{theme}: {label} is on screen: {r:?}");
-        }
+        let r = h.get_by_label("p. 1 · Chapter 1 · Ruy").rect();
+        assert!(screen.contains_rect(r) && r.width() > 0.0, "{theme}: the PGN's game is on screen: {r:?}");
         h.get_by_label_contains("Whole book: 6 of 6 moves linked");
         // Named in words: the two moves read from the PGN, and only they.
         assert_eq!(h.get_all_by_label_contains(", read from the book's PGN").count(), 2, "{theme}");
-        // The keyboard: Remove, then Link the whole book.
-        h.get_by_label("Remove the book's PGN").focus();
+        // The menu (plan A9-I9): on screen, Align again before the export and Remove last; the
+        // keyboard goes from Align again to the export, then to Remove.
+        text_menu(&mut h);
+        for label in ["Remove the book's PGN", "Align again", "Export book…"] {
+            let r = h.get_all_by_label_contains(label).last().expect(label).rect();
+            assert!(screen.contains_rect(r) && r.width() > 0.0, "{theme}: {label} is on screen: {r:?}");
+        }
+        let y = |h: &Harness<'static, PdfCraftApp>, label: &str| h.get_all_by_label_contains(label).last().expect(label).rect().min.y;
+        assert!(y(&h, "Align again") < y(&h, "Export book…") && y(&h, "Export book…") < y(&h, "Remove the book's PGN"), "{theme}");
+        h.get_by_label("Align again").focus();
         h.run_steps(1);
         h.key_press(egui::Key::Tab);
         h.run_steps(1);
-        assert!(h.get_by_label("Align again").is_focused(), "{theme}: Remove → Align again");
+        h.key_press(egui::Key::Tab);
+        h.run_steps(1);
+        assert!(h.get_by_label("Remove the book's PGN").is_focused(), "{theme}: Align again → Export book… → Remove");
         shot(&mut h, &format!("book-pgn-1366-{theme}.png"));
     }
     let _ = std::fs::remove_dir_all(dir);
@@ -1486,14 +1599,20 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
     h.get_by_label("Text").click();
     h.run_steps(4);
     assert_eq!(h.state().chess.text().map(|t| t.origin), Some(BookOrigin::Auto));
-    // The combo box shows the origin chosen; each choice reads the page again.
+    // The tab's menu ▸ Book origin (plan A9-I9) checks the origin chosen; each choice reads the
+    // page again.
     for (shown, label, origin) in [
         ("Auto (page by page)", "Born digital (text layer only)", BookOrigin::Digital),
         ("Born digital (text layer only)", "Scanned (chess OCR on every page)", BookOrigin::Scanned),
     ] {
-        // A combo box shows its choice as its value.
-        h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.value().is_some_and(|v| v == shown)).click();
+        text_menu(&mut h);
+        h.get_by_label_contains("Book origin").hover();
         h.run_steps(2);
+        h.get_by(|n| {
+            n.role() == egui::accesskit::Role::MenuItemRadio
+                && n.label().as_deref() == Some(shown)
+                && n.data().toggled() == Some(egui::accesskit::Toggled::True)
+        });
         h.get_all_by_label(label).last().expect("the choice is listed").click();
         h.run_steps(4);
         let app = h.state();
@@ -4703,7 +4822,9 @@ fn every_focusable_control_has_a_name() {
     h.get_by_label("Text").click();
     h.run_steps(4);
     assert_eq!(nameless(&h), Vec::<String>::new(), "the Text tab");
-    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book origin"));
+    // Its menu (plan A9-I9): the book's origin is there (a submenu: its name ends in its arrow).
+    text_menu(&mut h);
+    h.get_by_label_contains("Book origin");
 }
 
 /// Plan A9-G2b (R3-06, R8-04): the marks are the engine's one rule, the rule the exports apply,

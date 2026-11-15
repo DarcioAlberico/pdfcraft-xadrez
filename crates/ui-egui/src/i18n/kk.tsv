@@ -3609,3 +3609,11 @@ progress bar	Progress	Орындалу барысы
 	Language: {lang}	Тіл: {lang}
 	from the book's text	кітап мәтіні бойынша
 	Games: read from the text, linked to the book's PGN	Партиялар: мәтіннен оқылады, кітаптың PGN-імен байланысады
+	More Text tab actions	Мәтін қойындысының басқа әрекеттері
+	Read with OCR	OCR арқылы оқу
+	illegal	ережеге қайшы
+	ambiguous	екіұшты
+	out of sequence	реттен тыс
+	not reached	жетпеген
+	not checked	тексерілмеген
+	caption	жазу

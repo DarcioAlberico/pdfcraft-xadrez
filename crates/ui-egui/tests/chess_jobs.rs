@@ -152,6 +152,8 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     h.get_by_label("Recognised text of page 1");
     // From here the jobs run on workers.
     h.state_mut().run_inline = false;
+    h.get_by_label("More Text tab actions").click();
+    h.run_steps(2);
     h.get_by_label("Align the book to the PGN").click();
     h.run_steps(1);
     assert!(h.state().chess.long.is_some(), "the book is being aligned on a worker");
@@ -181,6 +183,8 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     assert!(h.state().chess.long.is_none(), "stopped at once");
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Aligning was stopped: the book's link is as it was."));
     // Nothing linked: Align again would say the book was.
+    h.get_by_label("More Text tab actions").click();
+    h.run_steps(2);
     h.get_by_label("Align the book to the PGN");
     let _ = std::fs::remove_dir_all(dir);
 }
