@@ -243,6 +243,10 @@ pub struct Snapshot {
     pub fen: Option<String>,
     /// The lines found for it, best first.
     pub lines: Vec<Line>,
+    /// The last exact line of each of the search's lines, best first: a search stopped on a
+    /// bound (a [`Line::bound`] not exact) still has the deepest line it found for sure, one
+    /// depth short (plan A9-N17a3). Of the search running, or last run, on the position.
+    pub exact: Vec<Line>,
     /// The engine is still searching it.
     pub searching: bool,
     pub nodes: Option<u64>,
@@ -371,6 +375,8 @@ struct Shared {
     pending: Option<Asked>,
     /// The lines of the search running (or last run) on the position.
     lines: Vec<Line>,
+    /// The last exact line of each of [`Shared::lines`] ([`Snapshot::exact`]).
+    exact: Vec<Line>,
     /// Lines kept from an earlier search of the position, shown instead of [`Shared::lines`]
     /// until the search's best line is deeper.
     seed: Vec<Line>,
@@ -477,6 +483,7 @@ impl Analyser {
             side: Color::White,
             pending: None,
             lines: Vec::new(),
+            exact: Vec::new(),
             seed: Vec::new(),
             searching: false,
             stopping: false,
@@ -574,6 +581,7 @@ impl Analyser {
         // UCI allows setoption only between searches.
         stop_search(&mut s, &self.commands, true);
         s.lines.clear();
+        s.exact.clear();
         configure(&mut s, &self.commands);
         if let Some(asked) = again {
             start_search(&mut s, &self.commands, asked);
@@ -606,6 +614,7 @@ impl Analyser {
         // UCI allows setoption only between searches.
         stop_search(&mut s, &self.commands, true);
         s.lines.clear();
+        s.exact.clear();
         send_lines(&mut s, &self.commands);
         if let Some(asked) = again {
             start_search(&mut s, &self.commands, asked);
@@ -621,6 +630,7 @@ impl Analyser {
             ready: s.ready,
             fen: s.asked.as_ref().map(|a| a.fen.clone()),
             lines: shown(&s).to_vec(),
+            exact: s.exact.clone(),
             searching: s.searching,
             nodes: s.nodes,
             nps: s.nps,
@@ -706,6 +716,7 @@ fn shown(s: &Shared) -> &[Line] {
 fn remember(s: &mut Shared) {
     let lines = if s.seed.is_empty() { std::mem::take(&mut s.lines) } else { std::mem::take(&mut s.seed) };
     s.lines.clear();
+    s.exact.clear();
     let Some(asked) = s.asked.clone() else { return };
     if lines.is_empty() {
         return;
@@ -907,6 +918,14 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
                 return false;
             }
             let line = Line { multipv: info.multipv, depth, score: score.for_white(s.side), bound: info.bound, uci: info.pv, san };
+            // A bound replaces the line shown, not the last exact one (plan A9-N17a3).
+            if line.bound == Bound::Exact {
+                match s.exact.iter_mut().find(|l| l.multipv == line.multipv) {
+                    Some(old) => *old = line.clone(),
+                    None => s.exact.push(line.clone()),
+                }
+                s.exact.sort_by_key(|l| l.multipv);
+            }
             match s.lines.iter_mut().find(|l| l.multipv == line.multipv) {
                 Some(old) => *old = line,
                 None => s.lines.push(line),
