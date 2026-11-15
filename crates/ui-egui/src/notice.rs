@@ -89,6 +89,9 @@ pub struct Notice {
     /// An error's: the errors said in the same pass after the first (`about`), joined in it, none
     /// lost; the text shows the first [`JOINED`] and counts the rest, all in its hover.
     more: Vec<String>,
+    /// An error's: how many errors said in the same pass past the [`MAX_KEPT_ERRORS`] kept, only
+    /// counted.
+    dropped: usize,
     /// An error's: the action that raised it ([`PdfCraftApp::post_error_for`]), whose success
     /// later takes it away ([`PdfCraftApp::settle_error`]); `None` once errors of other actions
     /// joined it.
@@ -105,6 +108,24 @@ pub struct Notice {
 /// How many errors said in the same pass an error notice shows in its text.
 pub const JOINED: usize = 3;
 
+/// How many errors said in one pass an error notice keeps for its hover, the first included; the
+/// rest are only counted (plan A9-I17: a loop of failures never builds an unbounded tooltip).
+pub const MAX_KEPT_ERRORS: usize = 20;
+
+/// How many characters of one error an error notice keeps (a path or an engine's message can be
+/// long); a longer one is cut, with … at its end.
+pub const MAX_ERROR_CHARS: usize = 300;
+
+/// `text` cut to [`MAX_ERROR_CHARS`] characters (at a character's boundary), with … when cut.
+fn cut_error(text: String) -> String {
+    if text.chars().count() <= MAX_ERROR_CHARS {
+        return text;
+    }
+    let mut cut: String = text.chars().take(MAX_ERROR_CHARS).collect();
+    cut.push('…');
+    cut
+}
+
 /// The next number of a notice or an announcement.
 fn next_serial() -> u64 {
     static SERIAL: AtomicU64 = AtomicU64::new(1);
@@ -115,7 +136,18 @@ impl Notice {
     /// A notice saying `text`, with `action`'s button when given.
     pub fn new(text: String, action: Option<(String, NoticeAction)>) -> Notice {
         let about = text.clone();
-        Notice { about, text, action, level: Level::Info, more: Vec::new(), key: None, focus_before: None, shown: None, serial: next_serial() }
+        Notice {
+            about,
+            text,
+            action,
+            level: Level::Info,
+            more: Vec::new(),
+            dropped: 0,
+            key: None,
+            focus_before: None,
+            shown: None,
+            serial: next_serial(),
+        }
     }
 
     /// An error notice saying `text`, shown until it is dismissed.
@@ -131,7 +163,7 @@ impl Notice {
     /// Its text: the first [`JOINED`] errors, and how many more ("… (and 2 more)").
     fn joined_text(&self) -> String {
         let mut text = self.all().take(JOINED).collect::<Vec<_>>().join(" · ");
-        let rest = (1 + self.more.len()).saturating_sub(JOINED);
+        let rest = self.more.len().saturating_add(1).saturating_add(self.dropped).saturating_sub(JOINED);
         if rest > 0 {
             text.push(' ');
             text.push_str(&crate::i18n::fmt(tl!("(and {n} more)"), &[("n", &rest.to_string())]));
@@ -153,11 +185,18 @@ impl PdfCraftApp {
     /// so that neither the words nor the button are lost.
     pub(crate) fn post_notice(&mut self, text: String, action: Option<(String, NoticeAction)>) {
         let mut notice = Notice::new(text, action);
-        if notice.action.is_none()
-            && let Some(waiting) = self.notice.take().filter(|n| n.shown.is_none() && n.action.is_some())
-        {
-            notice.text = format!("{} · {}", notice.text, waiting.text);
-            (notice.action, notice.about) = (waiting.action, waiting.about);
+        match self.notice.take().filter(|n| n.shown.is_none()) {
+            // A plain one said after one with a button, still waiting: it joins it, first.
+            Some(waiting) if notice.action.is_none() && waiting.action.is_some() => {
+                notice.text = format!("{} · {}", notice.text, waiting.text);
+                (notice.action, notice.about) = (waiting.action, waiting.about);
+            }
+            // One with a button said after a plain one, still waiting: the plain one's words go
+            // first, the button (and what it names) is the new one's.
+            Some(waiting) if notice.action.is_some() && waiting.action.is_none() => {
+                notice.text = format!("{} · {}", waiting.text, notice.text);
+            }
+            _ => {}
         }
         self.notice = Some(notice);
         self.toast = None;
@@ -189,8 +228,13 @@ impl PdfCraftApp {
     }
 
     fn raise(&mut self, key: Option<&'static str>, text: String) {
+        let text = cut_error(text);
         if let Some(waiting) = self.alert.as_mut().filter(|a| a.shown.is_none()) {
-            waiting.more.push(text);
+            if waiting.more.len().saturating_add(1) < MAX_KEPT_ERRORS {
+                waiting.more.push(text);
+            } else {
+                waiting.dropped = waiting.dropped.saturating_add(1);
+            }
             waiting.text = waiting.joined_text();
             if waiting.key != key {
                 waiting.key = None;
@@ -457,7 +501,12 @@ fn draw(ctx: &egui::Context, t: &Tokens, n: &Notice, area: egui::Rect, bottom: f
                         }
                         let words = ui.add(egui::Label::new(egui::RichText::new(&n.text).color(ink)).wrap());
                         if n.more.len() >= JOINED {
-                            words.on_hover_text(n.all().collect::<Vec<_>>().join("\n"));
+                            let mut all = n.all().collect::<Vec<_>>().join("\n");
+                            if n.dropped > 0 {
+                                all.push('\n');
+                                all.push_str(&crate::i18n::fmt(tl!("(and {n} more)"), &[("n", &n.dropped.to_string())]));
+                            }
+                            words.on_hover_text(all);
                         }
                         if let Some((label, action)) = &n.action {
                             let button = ui.add(egui::Button::new(label.as_str()).min_size(vec2(0.0, crate::widgets::MIN_TARGET)));
@@ -568,5 +617,40 @@ mod tests {
             }
         }
         assert!(found.is_empty(), "chess notices still on the toast:\n{}", found.join("\n"));
+    }
+
+    /// Plan A9-I17 (review of #404): a notice with no button said first, then one with a button
+    /// in the same pass, keeps both: the first's words go first, the button is the second's.
+    /// Before, the second took the first's place and its words were never drawn (a capture's "The
+    /// rest is too long to keep as a comment…" before its summary with Undo).
+    #[test]
+    fn a_notice_with_a_button_after_a_plain_one_keeps_its_words() {
+        let mut app = crate::PdfCraftApp::default();
+        app.inform("The rest is too long to keep as a comment; it is still on the page.");
+        app.post_notice("Diagram 2, page 1: Captured".to_owned(), Some(("Undo".to_owned(), super::NoticeAction::ReopenTools)));
+        let n = app.notice.as_ref().expect("a notice");
+        assert_eq!(n.text, "The rest is too long to keep as a comment; it is still on the page. · Diagram 2, page 1: Captured");
+        assert_eq!(n.action.as_ref().map(|(label, _)| label.as_str()), Some("Undo"));
+        assert_eq!(n.about, "Diagram 2, page 1: Captured", "the button says what it takes back");
+        // The other way round, as before: the plain one joins the waiting one with a button.
+        let mut app = crate::PdfCraftApp::default();
+        app.post_notice("Diagram 2, page 1: Captured".to_owned(), Some(("Undo".to_owned(), super::NoticeAction::ReopenTools)));
+        app.inform("Review done");
+        assert_eq!(app.notice.as_ref().map(|n| n.text.as_str()), Some("Review done · Diagram 2, page 1: Captured"));
+    }
+
+    /// Plan A9-I17 (review of #404): errors said in one pass are joined, and what is kept of them
+    /// is bounded, in count and in each one's length, the count of the rest exact.
+    #[test]
+    fn errors_joined_in_one_pass_are_bounded() {
+        let mut app = crate::PdfCraftApp::default();
+        let long = "x".repeat(10 * super::MAX_ERROR_CHARS);
+        for _ in 0..1000 {
+            app.post_error(long.clone());
+        }
+        let n = app.alert.as_ref().expect("an error");
+        assert!(n.more.len() < super::MAX_KEPT_ERRORS, "{} kept", n.more.len());
+        assert!(n.all().all(|e| e.chars().count() <= super::MAX_ERROR_CHARS + 1), "each one cut");
+        assert!(n.text.ends_with(&crate::i18n::fmt(tl!("(and {n} more)"), &[("n", "997")])), "{}", n.text);
     }
 }
