@@ -93,9 +93,16 @@ fn printed(h: &Harness<'static, PdfCraftApp>, san: &str) -> (usize, [f32; 4]) {
     (page.index as usize, [r.x0, r.y0, r.x1, r.y1])
 }
 
-/// The Text tab's label of move `shown` (as printed: `e5`, `a6`).
+/// The Text tab's label of move `shown` (as printed: `e5`, `a6`), named by it and, after a comma,
+/// its state (plan A9-I9: "d6, not checked").
 fn text_move<'a>(h: &'a Harness<'static, PdfCraftApp>, shown: &'a str) -> egui_kittest::Node<'a> {
-    h.get_all_by_label(shown).find(|n| n.accesskit_node().role() == Role::Label).unwrap_or_else(|| panic!("{shown} in the Text tab"))
+    let stated = format!("{shown}, ");
+    h.query_all_by(move |n| {
+        let name = n.label().or_else(|| n.value()).unwrap_or_default();
+        n.role() == Role::Label && (name == shown || name.starts_with(&stated))
+    })
+    .next()
+    .unwrap_or_else(|| panic!("{shown} in the Text tab"))
 }
 
 /// The board's notation's button for move `san`.
@@ -386,8 +393,9 @@ fn prose_after_the_moves_wraps_back_to_the_left_edge() {
     )
     .to_string()]));
     let left = h.get_by_label("Chapter 1").rect().left();
+    // The paragraph's text, one node (plan A9-I9).
     let prose: Vec<egui::Rect> = h
-        .get_all_by_role(Role::Label)
+        .get_all_by_role(Role::Paragraph)
         .filter(|n| {
             let text = n.accesskit_node().label().or_else(|| n.accesskit_node().value()).unwrap_or_default();
             ["priest", "sixteenth", "strongest"].iter().any(|w| text.contains(w))

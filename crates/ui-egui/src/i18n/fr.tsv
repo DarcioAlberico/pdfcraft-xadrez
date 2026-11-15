@@ -3611,6 +3611,14 @@ progress bar	Progress	Progression
 	Language: {lang}	Langue : {lang}
 	from the book's text	d'après le texte du livre
 	Games: read from the text, linked to the book's PGN	Parties : lues dans le texte, liées au PGN du livre
+	More Text tab actions	Autres actions de l'onglet Texte
+	Read with OCR	Lire avec l'OCR
+	illegal	illégal
+	ambiguous	ambigu
+	out of sequence	hors séquence
+	not reached	non atteint
+	not checked	non vérifié
+	caption	légende
 	Analyze the position	Analyser la position
 	Export chess book…	Exporter le livre d'échecs…
 	Chess shortcuts	Raccourcis d'échecs

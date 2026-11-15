@@ -3607,6 +3607,14 @@ progress bar	Progress	İlerleme
 	Language: {lang}	Dil: {lang}
 	from the book's text	kitabın metninden
 	Games: read from the text, linked to the book's PGN	Oyunlar: metinden okunur, kitabın PGN'ine bağlanır
+	More Text tab actions	Metin sekmesinin diğer eylemleri
+	Read with OCR	OCR ile oku
+	illegal	kuraldışı
+	ambiguous	belirsiz
+	out of sequence	sıra dışı
+	not reached	ulaşılmadı
+	not checked	denetlenmedi
+	caption	altyazı
 	Analyze the position	Konumu çözümle
 	Export chess book…	Satranç kitabını dışa aktar…
 	Chess shortcuts	Satranç kısayolları

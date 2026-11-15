@@ -3628,6 +3628,14 @@ progress bar	Progress	Progresso
 	Language: {lang}	Idioma: {lang}
 	from the book's text	do texto do livro
 	Games: read from the text, linked to the book's PGN	Partidas: lidas do texto, ligadas ao PGN do livro
+	More Text tab actions	Mais ações da aba Texto
+	Read with OCR	Ler com OCR
+	illegal	ilegal
+	ambiguous	ambíguo
+	out of sequence	fora de sequência
+	not reached	não alcançado
+	not checked	não conferido
+	caption	legenda
 	Analyze the position	Analisar a posição
 	Export chess book…	Exportar livro de xadrez…
 	Chess shortcuts	Atalhos de xadrez

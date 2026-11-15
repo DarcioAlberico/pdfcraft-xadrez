@@ -307,9 +307,10 @@ fn declared_lang(doc: &pdfcraft_engine::Document) -> LangTag {
     LangTag::parse(doc.initial_view().language.as_deref().unwrap_or_default())
 }
 
-/// Export book…: the one entry that opens the dialog (the Text tab's row).
+/// Export book…: the one entry that opens the dialog, an item of the Text tab's ⋯ menu (plan
+/// A9-I9).
 pub fn entry(ui: &mut egui::Ui) -> Option<TextAction> {
-    ui.button(tl!("Export book…")).clicked().then_some(TextAction::OpenExport)
+    crate::widgets::menu_entry(ui, true, egui::Button::new(tl!("Export book…"))).clicked().then_some(TextAction::OpenExport)
 }
 
 impl PdfCraftApp {

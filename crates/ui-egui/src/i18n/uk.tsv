@@ -3633,6 +3633,14 @@ progress bar	Progress	Хід виконання
 	Language: {lang}	Мова: {lang}
 	from the book's text	за текстом книги
 	Games: read from the text, linked to the book's PGN	Партії: прочитано з тексту, пов'язано з PGN книги
+	More Text tab actions	Інші дії вкладки «Текст»
+	Read with OCR	Прочитати з OCR
+	illegal	неможливий
+	ambiguous	неоднозначний
+	out of sequence	поза послідовністю
+	not reached	не досягнуто
+	not checked	не перевірено
+	caption	підпис
 	Analyze the position	Аналізувати позицію
 	Export chess book…	Експортувати шахову книгу…
 	Chess shortcuts	Шахові сполучення клавіш

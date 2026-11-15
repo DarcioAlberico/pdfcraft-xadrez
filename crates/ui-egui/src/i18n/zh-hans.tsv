@@ -3575,6 +3575,14 @@ progress bar	Progress	进度
 	Language: {lang}	语言：{lang}
 	from the book's text	根据书的正文
 	Games: read from the text, linked to the book's PGN	对局：从正文读取，并关联到书中的 PGN
+	More Text tab actions	“文本”选项卡的更多操作
+	Read with OCR	用 OCR 识别
+	illegal	不合规则
+	ambiguous	有歧义
+	out of sequence	顺序不符
+	not reached	未到达
+	not checked	未核对
+	caption	图注
 	Analyze the position	分析局面
 	Export chess book…	导出国际象棋书…
 	Chess shortcuts	国际象棋快捷键

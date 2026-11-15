@@ -3616,6 +3616,14 @@ progress bar	Progress	Napredek
 	Language: {lang}	Jezik: {lang}
 	from the book's text	po besedilu knjige
 	Games: read from the text, linked to the book's PGN	Partije: prebrane iz besedila, povezane s PGN knjige
+	More Text tab actions	Več dejanj zavihka Besedilo
+	Read with OCR	Preberi z OCR
+	illegal	neveljavna
+	ambiguous	dvoumna
+	out of sequence	zunaj zaporedja
+	not reached	ni dosežena
+	not checked	ni preverjena
+	caption	napis
 	Analyze the position	Analiziraj pozicijo
 	Export chess book…	Izvozi šahovsko knjigo…
 	Chess shortcuts	Šahovske bližnjice

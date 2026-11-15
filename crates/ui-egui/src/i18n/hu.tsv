@@ -3610,6 +3610,14 @@ progress bar	Progress	Előrehaladás
 	Language: {lang}	Nyelv: {lang}
 	from the book's text	a könyv szövege alapján
 	Games: read from the text, linked to the book's PGN	Játszmák: a szövegből olvasva, a könyv PGN-jéhez kapcsolva
+	More Text tab actions	A Szöveg lap további műveletei
+	Read with OCR	Olvasás OCR-rel
+	illegal	szabálytalan
+	ambiguous	kétértelmű
+	out of sequence	sorrenden kívül
+	not reached	nem elért
+	not checked	nem ellenőrzött
+	caption	képaláírás
 	Analyze the position	Állás elemzése
 	Export chess book…	Sakkönyv exportálása…
 	Chess shortcuts	Sakk billentyűparancsok

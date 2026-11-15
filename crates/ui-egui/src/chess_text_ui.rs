@@ -24,7 +24,7 @@
 
 use std::sync::Arc;
 
-use egui::{Color32, FontId, TextureHandle};
+use egui::{FontId, TextureHandle};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::ScanStamp;
 use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
@@ -285,34 +285,34 @@ pub enum TextAction {
     Decide { at: MoveAt, san: String, san_read: String, choice: pdfcraft_engine::chess::reference_store::Choice },
 }
 
-/// The book's PGN row: what the document keeps, and the button to load or remove it; with none
-/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too. While a PGN is being
-/// indexed (`indexing`, plan A9-I3b) the row says so instead of offering one.
-fn book_pgn_row(
-    ui: &mut egui::Ui,
-    book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
-    sibling: Option<&str>,
-    indexing: bool,
-) -> Option<TextAction> {
+/// The Text tab's menu (⋯; plan A9-I9, sketch c): where the book's pages came from, its PGN
+/// (load one, or the one beside the PDF; align the book to it) and the export, with Remove the
+/// book's PGN last, in the danger colour. While a PGN is being indexed (`pgn.indexing`, plan
+/// A9-I3b) none is offered.
+fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
     let mut action = None;
-    if indexing {
-        ui.label(tl!("Indexing the book's PGN…"));
-    }
-    match book_pgn {
-        Some(s) => {
-            let name = s.name.as_deref().unwrap_or("PGN");
-            let said = crate::i18n::fmt(tl!("Book's PGN: {name} ({games} games)"), &[("name", name), ("games", &s.games.to_string())]);
-            ui.label(said).on_hover_text(tl!(
-                "The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics)."
-            ));
-            if ui.button(tl!("Remove the book's PGN")).clicked() {
-                action = Some(TextAction::BookPgn(false));
+    let entry = |ui: &mut egui::Ui, text: egui::WidgetText| crate::widgets::menu_entry(ui, true, egui::Button::new(text));
+    // A submenu, not a list: egui keeps one popup open, so a list would close the menu.
+    ui.menu_button(tl!("Book origin"), |ui| {
+        for o in BookOrigin::ALL {
+            if crate::widgets::menu_radio(ui, o == origin, origin_label(o)).clicked() && o != origin {
+                action = Some(TextAction::Origin(o));
             }
         }
-        None if indexing => {}
+        ui.label(
+            egui::RichText::new(tl!(
+                "Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model)."
+            ))
+            .small()
+            .color(t.text_muted),
+        );
+    });
+    ui.separator();
+    let book_pgn = pgn.summary.as_ref();
+    match book_pgn {
+        None if pgn.indexing => {}
         None => {
-            if ui
-                .button(tl!("Load the book's PGN…"))
+            if entry(ui, tl!("Load the book's PGN…").into())
                 .on_hover_text(tl!(
                     "A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it."
                 ))
@@ -320,39 +320,56 @@ fn book_pgn_row(
             {
                 action = Some(TextAction::BookPgn(true));
             }
-            if let Some(name) = sibling
-                && ui
-                    .button(crate::i18n::fmt(tl!("Use {name}"), &[("name", name)]))
+            if let Some(name) = pgn.sibling.as_deref()
+                && entry(ui, crate::i18n::fmt(tl!("Use {name}"), &[("name", name)]).into())
                     .on_hover_text(tl!("A PGN with the same name sits beside this PDF: keep it as the book's PGN."))
                     .clicked()
             {
                 action = Some(TextAction::SiblingPgn);
             }
         }
+        // Aligning: the long job's row at the top says how far it is, with Stop.
+        Some(_) if pgn.aligning => {}
+        Some(_) => {
+            let label = if pgn.link.is_some() { tl!("Align again") } else { tl!("Align the book to the PGN") };
+            if entry(ui, label.into())
+                .on_hover_text(tl!(
+                    "Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book."
+                ))
+                .clicked()
+            {
+                action = Some(TextAction::LinkBook);
+            }
+        }
+    }
+    // Export book… opens the export dialog (plan A9-X2), which holds the format and its choices.
+    if let Some(a) = crate::chess_export_ui::entry(ui) {
+        action = Some(a);
+    }
+    if book_pgn.is_some() {
+        ui.separator();
+        if entry(ui, egui::RichText::new(tl!("Remove the book's PGN")).color(t.danger_text).into()).clicked() {
+            action = Some(TextAction::BookPgn(false));
+        }
     }
     action
 }
 
-/// The whole book and the PGN (R6d): Link the whole book, its progress, what it found and the PGN's
-/// games, each with the first page that discusses it.
-fn book_link_section(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
+/// What the document keeps of the book's PGN, in a line.
+fn book_pgn_line(ui: &mut egui::Ui, t: &Tokens, s: &crate::chess_reference_ui::BookPgnSummary) {
+    let name = s.name.as_deref().unwrap_or("PGN");
+    let said = crate::i18n::fmt(tl!("Book's PGN: {name} ({games} games)"), &[("name", name), ("games", &s.games.to_string())]);
+    ui.label(egui::RichText::new(said).small().color(t.text_muted)).on_hover_text(tl!(
+        "The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics)."
+    ));
+}
+
+/// The whole book and the PGN (R6d): what Align the book found, and the PGN's games, each with
+/// the first page that discusses it.
+fn book_link_summary(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
     let mut action = None;
     view.summary.as_ref()?;
-    // Aligning: the long job's row at the top says how far it is, with Stop.
-    if view.aligning {
-        return None;
-    }
-    let label = if view.link.is_some() { tl!("Align again") } else { tl!("Align the book to the PGN") };
-    if ui
-        .button(label)
-        .on_hover_text(tl!(
-            "Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book."
-        ))
-        .clicked()
-    {
-        action = Some(TextAction::LinkBook);
-    }
-    let Some(link) = &view.link else { return action };
+    let link = view.link.as_ref().filter(|_| !view.aligning)?;
     let said = crate::i18n::fmt(
         tl!("Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages."),
         &[
@@ -410,39 +427,6 @@ fn origin_label(o: BookOrigin) -> &'static str {
     }
 }
 
-/// The Book origin choice.
-fn origin_menu(ui: &mut egui::Ui, origin: BookOrigin) -> Option<TextAction> {
-    let mut action = None;
-    let named = ui.label(tl!("Book origin"));
-    let mut chosen = origin;
-    egui::ComboBox::from_id_salt("chess-book-origin")
-        .selected_text(origin_label(origin))
-        .show_ui(ui, |ui| {
-            for o in BookOrigin::ALL {
-                ui.selectable_value(&mut chosen, o, origin_label(o));
-            }
-        })
-        .response
-        .labelled_by(named.id)
-        .on_hover_text(tl!(
-            "Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model)."
-        ));
-    if chosen != origin {
-        action = Some(TextAction::Origin(chosen));
-    }
-    action
-}
-
-fn status_colour(s: MoveStatus, t: &Tokens) -> Color32 {
-    match s {
-        MoveStatus::Valid => t.success_text,
-        MoveStatus::Illegal | MoveStatus::Ambiguous => t.danger_text,
-        MoveStatus::OutOfSequence | MoveStatus::NotReached => t.warning_text,
-        MoveStatus::Unchecked => Color32::GRAY,
-        MoveStatus::Caption => Color32::from_rgb(0x3B, 0x82, 0xC4),
-    }
-}
-
 pub(crate) fn status_label(s: MoveStatus) -> &'static str {
     match s {
         MoveStatus::Valid => tl!("Valid move"),
@@ -453,6 +437,101 @@ pub(crate) fn status_label(s: MoveStatus) -> &'static str {
         MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
         MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
     }
+}
+
+/// A move of the Text tab as it is drawn, said and acted on (plan A9-I9).
+struct MoveView {
+    at: MoveAt,
+    look: crate::chess_text_para::Look,
+    /// Its name for assistive technology: the number, the move in words, its state and its link.
+    name: String,
+    tip: String,
+    /// A double-click opens its game on the board (it has one, or may go on from the page before).
+    opens: bool,
+    /// Linked to the book's PGN: the PGN's game and node it opens there (R6c).
+    in_pgn: Option<(usize, usize)>,
+    /// In conflict with the book's PGN, and the user's choice there (R6e).
+    conflict: bool,
+    choice: Option<Choice>,
+}
+
+/// [`MoveView`] of move `m`, at `at`, with the choices made on its page (`chosen`); `caption`:
+/// the font has the caption's shape (▸), else a plain one stands in.
+fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::reference_store::OnPage, t: &Tokens, caption: bool) -> MoveView {
+    let mut tip = status_label(m.status).to_string();
+    let linked = reference_note(m);
+    // A conflict the user decided says what they chose (R6e).
+    let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
+    let choice = if conflict { chosen.found.iter().find(|(f, _)| *f == at).map(|(_, c)| *c) } else { None };
+    let note = match choice {
+        Some(Choice::Book) => Some(tl!("You kept the book's move.").to_string()),
+        Some(Choice::Pgn) => Some(tl!("You chose the book's PGN's move: its game is the one to follow here.").to_string()),
+        None => linked.as_ref().map(|(_, n)| n.clone()),
+    };
+    if let Some(note) = &note {
+        tip = format!("{tip}\n{note}");
+    }
+    if let Some(fen) = &m.fen {
+        tip = format!("{tip}\n{fen}");
+    }
+    // A move with no position on its page alone may go on from the page before: its game is
+    // looked for there.
+    let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
+    let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
+    if in_pgn.is_some() {
+        tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
+    } else if opens {
+        tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
+    }
+    let kind = linked.as_ref().map(|(k, _)| *k);
+    // The link is said in words too, never by the style alone (R6g).
+    let said = match (kind, choice) {
+        (Some(LinkKind::Recovered), _) => Some(tl!("read from the book's PGN")),
+        (Some(LinkKind::Conflict), None) => Some(tl!("in conflict with the book's PGN")),
+        (Some(LinkKind::Conflict), Some(Choice::Pgn)) => Some(tl!("in conflict, the PGN's move chosen")),
+        (Some(LinkKind::Conflict), Some(Choice::Book)) => Some(tl!("in conflict, the book's move kept")),
+        _ => None,
+    };
+    let number = m.number.map(|n| n.text());
+    let san = if m.san.is_empty() { m.read_san() } else { m.san.as_str() };
+    let name = crate::chess_text_para::move_name(number.as_deref(), san, m.status, said);
+    let marker = match crate::chess_text_para::marker(m.status) {
+        "▸" if !caption => ">",
+        shape => shape,
+    };
+    let look = crate::chess_text_para::Look {
+        colour: crate::chess_text_para::status_colour(m.status, t),
+        marker,
+        underline: matches!((kind, choice), (Some(LinkKind::Recovered), _) | (Some(LinkKind::Conflict), Some(Choice::Pgn))),
+        italics: matches!((kind, choice), (Some(LinkKind::Conflict), None)),
+    };
+    MoveView { at, look, name, tip, opens, in_pgn, conflict, choice }
+}
+
+/// A move's context menu: open its game (the book's PGN's, or the page's) and, in conflict with
+/// the PGN, the user's choice (R6e).
+fn move_menu(ui: &mut egui::Ui, v: &MoveView, m: &MoveInline) -> Option<TextAction> {
+    let mut action = None;
+    if let Some((game, node)) = v.in_pgn
+        && ui.button(tl!("Open the book's PGN game here")).clicked()
+    {
+        action = Some(TextAction::OpenPgnGame { game, node });
+        ui.close();
+    }
+    if v.opens && ui.button(tl!("Open this game on the board")).clicked() {
+        action = Some(TextAction::OpenGame(v.at));
+        ui.close();
+    }
+    if v.conflict {
+        ui.separator();
+        for (c, label) in [(Choice::Pgn, tl!("Use the PGN's move")), (Choice::Book, tl!("Keep the book's move"))] {
+            if v.choice != Some(c) && ui.button(label).clicked() {
+                action = Some(TextAction::Decide { at: v.at, san: m.san.clone(), san_read: m.read_san().to_owned(), choice: c });
+                ui.close();
+            }
+        }
+    }
+    action
 }
 
 fn rect_of(r: Option<UserRect>) -> Option<[f32; 4]> {
@@ -493,40 +572,52 @@ pub fn text_tab(
         });
     }
     let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
-    ui.horizontal_wrapped(|ui| {
-        if let Some(a) = origin_menu(ui, origin) {
-            action = Some(a);
-        }
+    // The top (plan A9-I9, sketch c): the page read and Read with OCR; the book's origin, its
+    // PGN and the export in the menu.
+    let heading = current.as_ref().map_or_else(
+        || egui::RichText::new(tl!("Reading the page…")).color(t.text_muted),
+        |x| egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &x.label)])).font(theme::semibold(12.5)),
+    );
+    ui.horizontal(|ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let name = tl!("More Text tab actions");
+            let menu = egui::containers::menu::MenuButton::from_button(
+                egui::Button::image(crate::icons::image("ellipsis", 16.0, t.icon)).min_size(egui::vec2(28.0, 24.0)),
+            );
+            let (r, picked) = menu.ui(ui, |ui| text_menu(ui, t, origin, pgn));
+            r.on_hover_text(name).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+            if let Some(a) = picked.and_then(|p| p.inner) {
+                action = Some(a);
+            }
+            if ui
+                .button(tl!("Read with OCR"))
+                .on_hover_text(tl!("Read the page image instead of its text layer (needs the chess-glyphs model)."))
+                .clicked()
+            {
+                action = Some(TextAction::Read(true));
+            }
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.add(egui::Label::new(heading).truncate());
+            });
+        });
     });
-    ui.horizontal_wrapped(|ui| {
-        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref(), pgn.indexing) {
-            action = Some(a);
-        }
-    });
-    if let Some(a) = book_link_section(ui, t, pgn) {
+    // What the document keeps of the book's PGN, and the whole book linked to it.
+    if pgn.indexing {
+        ui.label(egui::RichText::new(tl!("Indexing the book's PGN…")).small().color(t.text_muted));
+    }
+    if let Some(s) = book_pgn {
+        book_pgn_line(ui, t, s);
+    }
+    if let Some(a) = book_link_summary(ui, t, pgn) {
         action = Some(a);
     }
-    ui.horizontal_wrapped(|ui| {
-        if ui
-            .button(tl!("Read this page with chess OCR"))
-            .on_hover_text(tl!("Read the page image instead of its text layer (needs the chess-glyphs model)."))
-            .clicked()
-        {
-            action = Some(TextAction::Read(true));
-        }
-        if let Some(a) = crate::chess_export_ui::entry(ui) {
-            action = Some(a);
-        }
-    });
     let Some(x) = current else {
         // Follows the page: read its text layer now (quick); OCR is on request.
         if action.is_none() && busy.is_none() {
             action = Some(TextAction::Read(false));
         }
-        ui.label(egui::RichText::new(tl!("Reading the page…")).color(t.text_muted));
         return action;
     };
-    ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &x.label)])).font(theme::semibold(12.5)));
     if x.ocr {
         ui.label(egui::RichText::new(tl!("Read with chess OCR: check it against the page.")).small().color(t.text_muted));
     }
@@ -595,12 +686,14 @@ pub fn text_tab(
     if page_doc.blocks.is_empty() {
         ui.label(tl!("No text on this page."));
     }
+    // The caption's shape, when the font has it (plan A9-I9).
+    let caption = ui.ctx().fonts_mut(|f| f.has_glyphs(&egui::TextStyle::Body.resolve(ui.style()), "▸"));
     for (bi, block) in page_doc.blocks.iter().enumerate() {
         ui.push_id(bi, |ui| match block {
             Block::Heading { inlines, source_rect, .. } => {
+                // Clickable, but never a stop of the keyboard: only moves and diagrams are (plan A9-I9).
                 let r = ui.add(
-                    egui::Label::new(egui::RichText::new(plain_text_with(inlines, figurines)).font(theme::semibold(14.0)))
-                        .sense(egui::Sense::click()),
+                    egui::Label::new(egui::RichText::new(plain_text_with(inlines, figurines)).font(theme::semibold(14.0))).sense(egui::Sense::CLICK),
                 );
                 if r.clicked()
                     && let Some(rect) = rect_of(*source_rect)
@@ -609,125 +702,101 @@ pub fn text_tab(
                 }
             }
             Block::Paragraph { inlines, source_rect, .. } => {
-                ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    // Each inline goes straight into the wrapped row: a child `Ui` (`push_id`)
-                    // would start at the cursor, and a label wrapped in it would never come back
-                    // to the left edge, so the paragraph would narrow into a staircase.
-                    for (k, inline) in inlines.iter().enumerate() {
-                        match inline {
-                            Inline::Move(m) => {
-                                let shown = plain_text_with(std::slice::from_ref(inline), figurines);
-                                let mut tip = status_label(m.status).to_string();
-                                let at = MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k);
-                                let linked = reference_note(m);
-                                // A conflict the user decided says what they chose (R6e).
-                                let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
-                                let choice = if conflict { chosen.found.iter().find(|(f, _)| *f == at).map(|(_, c)| *c) } else { None };
-                                let note = match choice {
-                                    Some(Choice::Book) => Some(tl!("You kept the book's move.").to_string()),
-                                    Some(Choice::Pgn) => {
-                                        Some(tl!("You chose the book's PGN's move: its game is the one to follow here.").to_string())
-                                    }
-                                    None => linked.as_ref().map(|(_, n)| n.clone()),
-                                };
-                                if let Some(note) = &note {
-                                    tip = format!("{tip}\n{note}");
+                // One galley (plan A9-I9): the prose read, never a stop of the keyboard; each move
+                // a section of its own, with its state's colour and shape, and one stop.
+                let tokens = Tokens::get(ui.ctx());
+                let font = egui::TextStyle::Body.resolve(ui.style());
+                let views: Vec<Option<MoveView>> = inlines
+                    .iter()
+                    .enumerate()
+                    .map(|(k, inline)| match inline {
+                        Inline::Move(m) => Some(move_view(m, MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k), &chosen, &tokens, caption)),
+                        _ => None,
+                    })
+                    .collect();
+                let para = crate::chess_text_para::paragraph(
+                    inlines,
+                    &font,
+                    tokens.text,
+                    ui.available_width(),
+                    |i| plain_text_with(std::slice::from_ref(i), figurines),
+                    |k, _| views.get(k).and_then(|v| v.as_ref()).map(|v| v.look),
+                );
+                let galley = ui.painter().layout_job(para.job);
+                let (rect, prose) = ui.allocate_exact_size(galley.size(), egui::Sense::CLICK);
+                let read = galley.text().to_owned();
+                // The paragraph's text, read as one; its moves are labels of their own.
+                prose.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &read));
+                ui.ctx().accesskit_node_builder(prose.id, |node| node.set_role(egui::accesskit::Role::Paragraph));
+                let mut marks: Vec<(egui::Rect, bool, bool)> = Vec::new();
+                for (k, range) in &para.moves {
+                    let Some(Some(v)) = views.get(*k) else { continue };
+                    let Some(Inline::Move(m)) = inlines.get(*k) else { continue };
+                    for (n, part) in crate::chess_text_para::rects(&galley, range).into_iter().enumerate() {
+                        let part = part.translate(rect.min.to_vec2());
+                        // The move's first row takes the keyboard; a row it wraps onto is clicked.
+                        let sense = if n == 0 { egui::Sense::click() } else { egui::Sense::CLICK };
+                        let r = ui.interact(part, ui.id().with(("chess-move", *k, n)), sense);
+                        marks.push((part, r.hovered(), r.has_focus()));
+                        if n == 0 {
+                            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &v.name));
+                        }
+                        let r = r.on_hover_text(&v.tip);
+                        // A click outlines the move on the page; a double-click (its first click
+                        // outlined it) opens its game on the board.
+                        if r.double_clicked()
+                            && let Some((game, node)) = v.in_pgn
+                        {
+                            action = Some(TextAction::OpenPgnGame { game, node });
+                        } else if r.double_clicked() && v.opens {
+                            action = Some(TextAction::OpenGame(v.at));
+                        } else if r.clicked()
+                            && let Some(rect) = rect_of(m.source_rect)
+                        {
+                            action = Some(TextAction::Show(page, rect));
+                        }
+                        if v.opens || v.in_pgn.is_some() {
+                            r.context_menu(|ui| {
+                                if let Some(a) = move_menu(ui, v, m) {
+                                    action = Some(a);
                                 }
-                                if let Some(fen) = &m.fen {
-                                    tip = format!("{tip}\n{fen}");
-                                }
-                                // A move with no position on its page alone may go on from the
-                                // page before: its game is looked for there.
-                                let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
-                                // A move linked to the book's PGN opens the PGN's game there, every
-                                // line kept (R6c).
-                                let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
-                                if in_pgn.is_some() {
-                                    tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
-                                } else if opens {
-                                    tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
-                                }
-                                // The link is said in words too, never by the style alone (R6g).
-                                let said = match (linked.as_ref().map(|(k, _)| *k), choice) {
-                                    (Some(LinkKind::Recovered), _) => Some(tl!("read from the book's PGN")),
-                                    (Some(LinkKind::Conflict), None) => Some(tl!("in conflict with the book's PGN")),
-                                    (Some(LinkKind::Conflict), Some(Choice::Pgn)) => Some(tl!("in conflict, the PGN's move chosen")),
-                                    (Some(LinkKind::Conflict), Some(Choice::Book)) => Some(tl!("in conflict, the book's move kept")),
-                                    _ => None,
-                                };
-                                let name = said.map(|s| format!("{shown}, {s}"));
-                                let mut text = egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong();
-                                text = match (linked.map(|(k, _)| k), choice) {
-                                    (Some(LinkKind::Recovered), _) | (Some(LinkKind::Conflict), Some(Choice::Pgn)) => text.underline(),
-                                    (Some(LinkKind::Conflict), None) => text.italics(),
-                                    _ => text,
-                                };
-                                let r = ui.add(egui::Label::new(text).sense(egui::Sense::click())).on_hover_text(tip);
-                                if let Some(name) = &name {
-                                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, name));
-                                }
-                                // A click outlines the move on the page; a double-click (its first
-                                // click outlined it) opens its game on the board.
-                                if r.double_clicked()
-                                    && let Some((game, node)) = in_pgn
-                                {
-                                    action = Some(TextAction::OpenPgnGame { game, node });
-                                } else if r.double_clicked() && opens {
-                                    action = Some(TextAction::OpenGame(at));
-                                } else if r.clicked()
-                                    && let Some(rect) = rect_of(m.source_rect)
-                                {
-                                    action = Some(TextAction::Show(page, rect));
-                                }
-                                if opens || in_pgn.is_some() {
-                                    r.context_menu(|ui| {
-                                        if let Some((game, node)) = in_pgn
-                                            && ui.button(tl!("Open the book's PGN game here")).clicked()
-                                        {
-                                            action = Some(TextAction::OpenPgnGame { game, node });
-                                            ui.close();
-                                        }
-                                        if opens && ui.button(tl!("Open this game on the board")).clicked() {
-                                            action = Some(TextAction::OpenGame(at));
-                                            ui.close();
-                                        }
-                                        // A move in conflict: the user's choice (R6e).
-                                        if conflict {
-                                            ui.separator();
-                                            for (c, label) in [(Choice::Pgn, tl!("Use the PGN's move")), (Choice::Book, tl!("Keep the book's move"))]
-                                            {
-                                                if choice != Some(c) && ui.button(label).clicked() {
-                                                    action = Some(TextAction::Decide {
-                                                        at,
-                                                        san: m.san.clone(),
-                                                        san_read: m.read_san().to_owned(),
-                                                        choice: c,
-                                                    });
-                                                    ui.close();
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                            other => {
-                                let r = ui.add(egui::Label::new(other.text()).sense(egui::Sense::click()));
-                                if r.clicked()
-                                    && let Some(rect) = rect_of(other.source_rect().or(*source_rect))
-                                {
-                                    action = Some(TextAction::Show(page, rect));
-                                }
-                            }
+                            });
                         }
                     }
-                });
+                }
+                // Under the text: the move pointed at, and the ring of the one with the keyboard.
+                for (part, hovered, focused) in marks {
+                    if hovered {
+                        ui.painter().rect_filled(part.expand(1.0), egui::CornerRadius::same(3), tokens.hover);
+                    }
+                    if focused {
+                        ui.painter().rect_stroke(
+                            part.expand(2.0),
+                            egui::CornerRadius::same(3),
+                            egui::Stroke::new(2.0, tokens.accent),
+                            egui::StrokeKind::Outside,
+                        );
+                    }
+                }
+                ui.painter().galley(rect.min, galley.clone(), tokens.text);
+                // A click on the prose outlines its words on the page.
+                if prose.clicked()
+                    && let Some(at) = prose.interact_pointer_pos()
+                {
+                    let c = galley.cursor_from_pos(at - rect.min).index.0;
+                    let k = para.inlines.iter().position(|r| r.contains(&c));
+                    let source = k.and_then(|k| inlines.get(k)).and_then(|i| i.source_rect()).or(*source_rect);
+                    if let Some(rect) = rect_of(source) {
+                        action = Some(TextAction::Show(page, rect));
+                    }
+                }
             }
             Block::Diagram(d) => {
                 ui.horizontal(|ui| {
                     let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(d.number + 1).to_string())]);
                     if let Some((_, tex)) = x.boards.iter().find(|(i, _)| *i == bi) {
-                        let r = ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)).sense(egui::Sense::click()));
+                        // One stop per diagram (plan A9-I9): its title; the picture is clicked.
+                        let r = ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)).sense(egui::Sense::CLICK));
                         // The picture opens the diagram as its title does, and is named by it (plan
                         // A9-I11a, WCAG 1.1.1 and 4.1.2).
                         let named = crate::i18n::fmt(tl!("Diagram {n}, open"), &[("n", &(d.number + 1).to_string())]);
