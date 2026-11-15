@@ -76,7 +76,7 @@ fn pieces_expected() -> String {
 
 /// Two decimals: enough for points, and stable in test output.
 /// A piece-letter language by its tag, or what `key` takes.
-fn lang_of(key: &str, tag: &str) -> Result<Lang> {
+pub(crate) fn lang_of(key: &str, tag: &str) -> Result<Lang> {
     Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"))
 }
 
@@ -925,7 +925,7 @@ impl Automation {
     /// pages taken from it (not read), read and kept, read and not kept (the disk nearly full, the
     /// book alone past the budget, an encrypted document without allow_encrypted), and the entries
     /// set aside (their pages read again). `null` without `cache`.
-    fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
+    pub(crate) fn cache_reply(&self, cache: Option<&chess::ReadingCache>, before: chess::DiskUse) -> Value {
         let Some(cache) = cache else { return Value::Null };
         let now = self.session.chess_disk();
         json!({

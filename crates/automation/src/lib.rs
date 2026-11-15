@@ -35,6 +35,7 @@ mod chess_review_pack;
 mod chess_sample;
 mod chess_states;
 mod chess_store_migrate;
+mod chess_worksheet;
 mod comments;
 mod content;
 mod conventions;
@@ -899,6 +900,7 @@ impl Automation {
             "chess_export_rtf" => self.chess_export_rtf(&a)?,
             "chess_export_markdown" => self.chess_export_markdown(&a)?,
             "chess_export_pgn" => self.chess_export_pgn(&a)?,
+            "chess_export_worksheet" => self.chess_export_worksheet(&a)?,
             "chess_export_exercises" => self.chess_export_exercises(&a)?,
             "chess_export_anki" => self.chess_export_anki(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
