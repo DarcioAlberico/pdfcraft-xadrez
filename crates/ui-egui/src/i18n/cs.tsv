@@ -3605,6 +3605,21 @@ the move's comment	Move comment	Komentář k tahu
 	The board is in the column beside.	Šachovnice je ve vedlejším sloupci.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Přidat šachové záložky
+	Make the book's bookmarks…	Vytvořit záložky knihy…
+	Reading the book for its bookmarks…	Čte se kniha kvůli záložkám…
+	Reading the book for its bookmarks: page {done} of {of}	Čte se kniha kvůli záložkám: strana {done} z {of}
+	Reading was stopped: no bookmark was added.	Čtení bylo zastaveno: nebyla přidána žádná záložka.
+	The book's bookmarks	Záložky knihy
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Kapitoly: {chapters} · Partie: {games} · Cvičení: {exercises}
+	Chapters	Kapitoly
+	Games	Partie
+	Exercises	Cvičení
+	Exercise	Cvičení
+	Title of the bookmark	Název záložky
+	No chapter, game or exercise was found in the book.	V knize nebyla nalezena žádná kapitola, partie ani cvičení.
+	Add the bookmarks	Přidat záložky
+	The document changed since it was read: make its bookmarks again.	Dokument se od přečtení změnil: vytvořte jeho záložky znovu.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Záložky přidány pod „{title}“: {n}. Zpět je odebere.
 	More board actions	Další akce šachovnice
 	Back to the moves	Zpět na tahy
 	Back to the moves (Esc)	Zpět na tahy (Esc)

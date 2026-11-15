@@ -3529,6 +3529,21 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	The board is in the column beside.	Тақта көрші бағанда.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Шахмат бетбелгілерін қосу
+	Make the book's bookmarks…	Кітаптың бетбелгілерін жасау…
+	Reading the book for its bookmarks…	Бетбелгілер үшін кітап оқылуда…
+	Reading the book for its bookmarks: page {done} of {of}	Бетбелгілер үшін кітап оқылуда: {of} беттің {done}-і
+	Reading was stopped: no bookmark was added.	Оқу тоқтатылды: ешбір бетбелгі қосылмады.
+	The book's bookmarks	Кітаптың бетбелгілері
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Тараулар: {chapters} · Партиялар: {games} · Жаттығулар: {exercises}
+	Chapters	Тараулар
+	Games	Партиялар
+	Exercises	Жаттығулар
+	Exercise	Жаттығу
+	Title of the bookmark	Бетбелгі атауы
+	No chapter, game or exercise was found in the book.	Кітаптан тарау, партия немесе жаттығу табылмады.
+	Add the bookmarks	Бетбелгілерді қосу
+	The document changed since it was read: make its bookmarks again.	Құжат оқылғаннан кейін өзгерді: бетбелгілерін қайта жасаңыз.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	«{title}» астына бетбелгілер қосылды: {n}. Болдырмау оларды алып тастайды.
 	More board actions	Тақтаның басқа әрекеттері
 	Back to the moves	Жүрістерге оралу
 	Back to the moves (Esc)	Жүрістерге оралу (Esc)

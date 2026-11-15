@@ -395,6 +395,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     // the book's PGN and its games, in one file.
     c("chess.review.export", "Export the book's review…", None, None, Copying, "file-output"),
     c("chess.review.import", "Import a book's review…", None, None, Copying, "folder-open"),
+    // The book's outline from its reading, shown before it is made (plan A9-N6).
+    c("chess.bookmarks", "Make the book's bookmarks…", None, None, Assembly, "bookmark"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),
