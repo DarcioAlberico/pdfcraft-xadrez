@@ -2069,6 +2069,15 @@ fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
 /// [`fake_engine`] announcing the `options` lines beside `MultiPV`, and reporting depths 1 to
 /// `depth`.
 fn fake_engine_with(options: &'static [&'static str], depth: u32) -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
+    fake_engine_playing(options, depth, ("e2e4", "e7e5"))
+}
+
+/// [`fake_engine_with`] whose line is `moves.0` for White to move and `moves.1` for Black.
+fn fake_engine_playing(
+    options: &'static [&'static str],
+    depth: u32,
+    moves: (&'static str, &'static str),
+) -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
     use std::io::{BufRead, Write};
     let (engine_in, our_out) = std::io::pipe().unwrap();
     let (our_in, mut engine_out) = std::io::pipe().unwrap();
@@ -2082,7 +2091,7 @@ fn fake_engine_with(options: &'static [&'static str], depth: u32) -> (pdfcraft_e
             let Ok(line) = line else { break };
             commands.lock().unwrap().push(line.clone());
             let _ = heard.send(());
-            let mv = if position.contains(" b ") { "e7e5" } else { "e2e4" };
+            let mv = if position.contains(" b ") { moves.1 } else { moves.0 };
             let mut say = |text: &str| {
                 let _ = writeln!(engine_out, "{text}");
             };
@@ -2281,6 +2290,26 @@ fn preferences_offer_only_the_engine_settings_it_announced() {
     assert_eq!(saved["chess_engine"]["threads"], serde_json::Value::Null);
     let h = harness_restoring(saved.to_string());
     assert_eq!(h.state().chess.study.settings.hash_mb, Some(32), "kept for the next session");
+}
+
+/// Plan A9-I10 (A6-09): with Letters in your language, every surface writes a move as the list
+/// does, in the interface's letters: in Portuguese the trail says "1…Cf6" and the engine's line
+/// "Cc6", never the English SAN.
+#[test]
+fn the_trail_and_the_engines_lines_write_the_lists_notation() {
+    let mut h = harness();
+    h.state_mut().set_option("language", "pt-br").unwrap();
+    h.state_mut().set_option("move-pieces", "letters").unwrap();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 (1... Nf6 2. Nc3) 2. Nf3 *", &[0, 1, 0]);
+    h.run_steps(2);
+    assert!(h.query_by_label("1…Cf6").is_some(), "the trail, in Portuguese letters");
+    assert!(h.query_by_label("1…Nf6").is_none(), "not in English");
+    let (engine, log) = fake_engine_playing(&[], 3, ("g1f3", "b8c6"));
+    h.state_mut().chess.study.use_engine(engine);
+    assert!(wait_for(&mut h, &log, |h| h.query_by_label("Cc6").is_some()), "the engine's line, in Portuguese letters");
+    assert!(h.query_by_label("Nc6").is_none(), "not in English");
 }
 
 /// Plan A8, P7: the Diagram tab's Analyze puts the position as edited on the board, with the

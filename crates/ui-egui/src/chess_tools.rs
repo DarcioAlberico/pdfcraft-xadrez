@@ -1449,9 +1449,12 @@ fn has_reply(game: &Game, node: NodeId) -> bool {
     game.line_of(node).last().is_some_and(|&last| last != node)
 }
 
-/// A move as books write it in running text: "20.fxg6", "18…Qd8".
+/// A move as books write it in running text: "20.fxg6", "18…Qd8", its piece in the list's
+/// notation (plan A9-I10: "18…Dd8" with the letters in Portuguese), so that the trail, the
+/// comments' fields, the capture's headline, the board's header and every name made of a move
+/// write it as the list does.
 pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
-    let san = game.san(node);
+    let san = crate::chess_figurines::Notation::current().san(game.san(node));
     let half = game.path_of(node).and_then(|p| {
         let mut up = p.indices().to_vec();
         up.pop()?;
@@ -1460,7 +1463,7 @@ pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
     match half {
         Some(half) if half % 2 == 1 => format!("{}…{san}", half / 2 + 1),
         Some(half) => format!("{}.{san}", half / 2 + 1),
-        None => san.to_owned(),
+        None => san,
     }
 }
 
