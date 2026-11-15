@@ -54,6 +54,8 @@ pub struct DocChess {
     pub(crate) pgn_sibling: Option<std::path::PathBuf>,
     /// What Link the whole book found, for the session (R6d).
     pub(crate) book_link: Option<crate::chess_reference_ui::BookLink>,
+    /// What it was linked to before the last Align, for that notice's Undo (plan A9-I17).
+    pub(crate) link_before: Option<Option<crate::chess_reference_ui::BookLink>>,
     /// The user's answer about keeping its chess, when it is encrypted and was asked (plan
     /// A9-I1c, [`crate::chess_keep`]): for the session.
     pub(crate) keep: Option<bool>,
@@ -1171,7 +1173,7 @@ impl PdfCraftApp {
     /// nor announces what was found.
     fn start_chess_scan_pages(&mut self, id: DocId, pages: Vec<usize>, quiet: bool, all: bool) {
         if self.chess.run.is_some() {
-            self.notify(tl!("Diagrams are already being scanned").to_string());
+            self.inform(tl!("Diagrams are already being scanned").to_string());
             return;
         }
         // Reading positions out of a document copies its content. A double-click's scan is
@@ -1324,12 +1326,11 @@ impl PdfCraftApp {
         // is carried to the state now, and they with it.
         match self.chess.results_of_mut(run.doc) {
             Some(results) => results.ask(&run.pages, run.all),
-            None if run.stale => self.notify(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string()),
+            None if run.stale => self.inform(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string()),
             None => {}
         }
         if !run.stale && !run.quiet {
-            let n = run.found;
-            self.notify(crate::i18n::fmt(tl!("Diagrams found: {n}"), &[("n", &n.to_string())]));
+            self.say_scan_done(run.doc);
         }
         self.carry_chess_results();
     }
@@ -1425,7 +1426,7 @@ impl PdfCraftApp {
                     self.select_chess_diagram(at.page, index, false);
                     self.open_chess_board(at.page, index);
                 }
-                None if !at.on_text => self.notify(tl!("No chess diagram was found here.").to_string()),
+                None if !at.on_text => self.inform(tl!("No chess diagram was found here.").to_string()),
                 None => {}
             }
             return;
@@ -1477,7 +1478,7 @@ impl PdfCraftApp {
                 self.show_chess_tab(crate::chess_text_ui::ChessTab::Diagrams);
             } else {
                 let (n, p) = (want.at.index.saturating_add(1).to_string(), self.page_label_in(want.doc, want.at.page));
-                self.notify(crate::i18n::fmt(tl!("Diagram {n} wasn't found on page {p}."), &[("n", &n), ("p", &p)]));
+                self.inform(crate::i18n::fmt(tl!("Diagram {n} wasn't found on page {p}."), &[("n", &n), ("p", &p)]));
             }
             return;
         }
@@ -1713,6 +1714,16 @@ impl PdfCraftApp {
 
     /// Review now: open the first diagram to review, the list's chip back on All, so the tab walks
     /// the diagrams to review (plan A9-I4, finding A5-17).
+    /// The end of a scan, said (plan A9 §2.8.1, step I17): what the list of document `doc` holds
+    /// now ("12 diagrams · 3 to review"), with Review now when some wait.
+    fn say_scan_done(&mut self, doc: DocId) {
+        let Some(results) = self.chess.results_of(doc) else { return };
+        let (diagrams, to_review) = (results.count(), results.review_queue().len());
+        let text = crate::chess_panel_head::summary_text(diagrams, to_review);
+        let action = (to_review > 0).then(|| (tl!("Review now").to_owned(), crate::notice::NoticeAction::ReviewNow { doc }));
+        self.post_notice(text, action);
+    }
+
     pub(crate) fn review_chess_now(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
         self.chess.doc_mut(id).list.filter = None;
@@ -1750,7 +1761,7 @@ impl PdfCraftApp {
                 if let Some(ctx) = &self.ctx {
                     ctx.copy_text(fen);
                 }
-                self.notify(tl!("FEN copied").to_string());
+                self.inform(tl!("FEN copied").to_string());
             }
             // A lichess address PdfCraft built from the position, opened because the user asked.
             PanelAction::OpenLichess(url) => self.open_url(&url),
@@ -1820,7 +1831,7 @@ impl PdfCraftApp {
                 if let Some(DiagramAt { page, index }) = next {
                     self.select_chess_diagram(page, index, true);
                     if wrapped && next != at {
-                        self.notify(if forward { tl!("Back to the first diagram") } else { tl!("Back to the last diagram") }.to_string());
+                        self.inform(if forward { tl!("Back to the first diagram") } else { tl!("Back to the last diagram") }.to_string());
                     }
                 }
             }
@@ -1903,7 +1914,11 @@ impl PdfCraftApp {
             Ok(plan) => match plan.edit {
                 Some(edit) => {
                     if self.apply_edit(edit) {
-                        self.notify(tl!("Lichess link added").to_string());
+                        // With Undo, while the link is the document's last edit (plan A9-I17).
+                        let generation = self.session.get(id).map(pdfcraft_engine::Document::edit_generation);
+                        let undo =
+                            generation.map(|generation| (tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoEdit { doc: id, generation }));
+                        self.post_notice(tl!("Lichess link added").to_string(), undo);
                     }
                 }
                 None => {
@@ -1944,7 +1959,7 @@ impl PdfCraftApp {
             .filter(|e| (e.doc, e.page, e.index) == (id, page, index))
             .is_some_and(|e| e.original.as_deref() != Some(e.fen().as_str()));
         let Some((fen, flipped)) = edited.or_else(read) else {
-            self.notify(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
+            self.inform(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
             return false;
         };
         let text_start = if changed { None } else { self.chess_text_start(id, page, index, &fen) };
@@ -2130,7 +2145,7 @@ impl PdfCraftApp {
         if let Some(ctx) = &self.ctx {
             ctx.copy_text(text);
         }
-        self.notify(done.to_string());
+        self.inform(done.to_string());
     }
 }
 

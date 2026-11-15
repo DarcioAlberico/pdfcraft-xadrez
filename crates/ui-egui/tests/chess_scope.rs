@@ -317,3 +317,30 @@ fn the_move_shown_is_said_at_each_step() {
     h.run_steps(2);
     said(&h, "2. bishop c4 · variation 1 · with comment · Good move");
 }
+
+/// Plan A9-I17 (review of #401, item 3; WCAG 2.1.1, 2.4.3): Esc dismisses the error shown when the
+/// chess scope is on, and when the keyboard is on the error, which gives the keyboard back to
+/// where it was when the error appeared.
+#[test]
+fn esc_dismisses_the_error_and_gives_the_keyboard_back() {
+    let mut h = harness();
+    click_board_label(&mut h);
+    h.state_mut().use_chess_models_folder(std::path::PathBuf::from("relative"));
+    h.run_steps(2);
+    assert!(h.state().alert.is_some());
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    assert!(h.state().alert.is_none(), "Esc in the chess scope dismisses it");
+    // The keyboard on a move, then on the error's ×: Esc gives it back to the move.
+    h.get_all_by_label("e4").next().expect("the move").focus();
+    h.run_steps(2);
+    let focused = h.ctx.memory(|m| m.focused());
+    assert!(focused.is_some());
+    h.state_mut().use_chess_models_folder(std::path::PathBuf::from("relative"));
+    h.run_steps(2);
+    h.get_by_label_contains("Dismiss: relative").focus();
+    h.run_steps(2);
+    assert_ne!(h.ctx.memory(|m| m.focused()), focused, "the keyboard is on ×");
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    assert!(h.state().alert.is_none(), "dismissed");
+    assert_eq!(h.ctx.memory(|m| m.focused()), focused, "the keyboard is back on the move");
+}

@@ -88,7 +88,10 @@ impl PdfCraftApp {
         if let Some(ed) = self.chess.editor.as_mut() {
             ed.forget_history();
         }
-        self.notify(tl!("Diagram redrawn in the PDF").to_string());
+        // With Undo, while the drawing is the document's last edit (plan A9-I17).
+        let generation = self.session.get(id).map(pdfcraft_engine::Document::edit_generation);
+        let undo = generation.map(|generation| (tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoEdit { doc: id, generation }));
+        self.post_notice(tl!("Diagram redrawn in the PDF").to_string(), undo);
         self.carry_chess_results();
         true
     }

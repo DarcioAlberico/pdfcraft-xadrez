@@ -228,7 +228,7 @@ impl PdfCraftApp {
         let Some(job) = self.chess.capture.area.job.take() else { return };
         // The page read is not the page shown any more.
         if self.session.get(job.doc).map(pdfcraft_engine::Document::edit_generation) != Some(job.generation) {
-            self.notify(tl!("The area read was dropped: the document was edited.").to_owned());
+            self.inform(tl!("The area read was dropped: the document was edited.").to_owned());
             return;
         }
         // No thread, or the reading panicked: said with why.
@@ -239,7 +239,7 @@ impl PdfCraftApp {
         match done {
             Err(e) => self.post_error(error_text(&e)),
             Ok(read) if read.text.glyphs.iter().all(|g| g.text.trim().is_empty()) => {
-                self.notify(tl!("Chess OCR read nothing in the area.").to_owned());
+                self.inform(tl!("Chess OCR read nothing in the area.").to_owned());
             }
             Ok(read) => {
                 let read = Arc::new(read);

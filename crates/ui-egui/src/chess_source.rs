@@ -223,13 +223,13 @@ impl PdfCraftApp {
                 }
             }
             Opened::Full => {
-                self.notify(full_note(1));
+                self.inform(full_note(1));
                 return;
             }
             Opened::Added | Opened::Replaced => {}
         }
         if dropped > 0 {
-            self.notify(crate::i18n::fmt(tl!("Moves left off the board (more than it holds): {n}"), &[("n", &dropped.to_string())]));
+            self.inform(crate::i18n::fmt(tl!("Moves left off the board (more than it holds): {n}"), &[("n", &dropped.to_string())]));
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();
@@ -257,7 +257,7 @@ impl PdfCraftApp {
         match c.show_or_add(board, ChessEdit::OpenBookGame) {
             Opened::Shown => c.active_mut().board.game.go_to_node(node),
             Opened::Full => {
-                self.notify(full_note(1));
+                self.inform(full_note(1));
                 return;
             }
             Opened::Added | Opened::Replaced => {}

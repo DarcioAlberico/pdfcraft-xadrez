@@ -56,7 +56,7 @@ impl PdfCraftApp {
     fn add_book_bookmarks(&mut self, preview: &BookmarksPreview) {
         // The document changed meanwhile: its pages are not the ones read.
         if self.session.get(preview.doc).map(pdfcraft_engine::Document::edit_generation) != Some(preview.generation) {
-            return self.notify(tl!("The document changed since it was read: make its bookmarks again.").to_string());
+            return self.inform(tl!("The document changed since it was read: make its bookmarks again.").to_string());
         }
         let entries: Vec<pdfcraft_engine::OutlineEntry> = preview
             .entries
@@ -82,7 +82,7 @@ impl PdfCraftApp {
             }
         };
         if applied {
-            self.notify(crate::i18n::fmt(
+            self.inform(crate::i18n::fmt(
                 tl!("Bookmarks added under “{title}”: {n}. Undo takes them away."),
                 &[("title", &title), ("n", &n.to_string())],
             ));
