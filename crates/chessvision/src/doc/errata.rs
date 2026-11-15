@@ -52,6 +52,9 @@ pub enum Issue {
     MoveNumber,
     /// On a born-digital page, the book's PGN plays the move from another position.
     BookPgn,
+    /// A `!` or `!!` the engine refutes (plan A9-N17a): it loses more than the limit to the
+    /// engine's best move, by the evaluations kept ([`engine_row`]).
+    RefutedSign,
 }
 
 /// How sure a row is (plan A9-N19b).
@@ -62,16 +65,20 @@ pub enum Kind {
     /// Where the reading and the book disagree, which may be the reading's: a number out of
     /// sequence, a conflict with the book's PGN.
     Check,
+    /// Where the engine disagrees with the book's analysis (plan A9-N17a): the book's sign, held
+    /// to an engine's evaluation, not a misprint.
+    Engine,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 2] = [Kind::Misprint, Kind::Check];
+    pub const ALL: [Kind; 3] = [Kind::Misprint, Kind::Check, Kind::Engine];
 
     /// The kind's name in the CSV, in the tools' replies and in `chess_errata`'s `kind` filter.
     pub fn name(self) -> &'static str {
         match self {
             Kind::Misprint => "misprint",
             Kind::Check => "check",
+            Kind::Engine => "engine",
         }
     }
 
@@ -80,6 +87,7 @@ impl Kind {
         match self {
             Kind::Misprint => "misprint",
             Kind::Check => "to check",
+            Kind::Engine => "engine",
         }
     }
 
@@ -90,7 +98,7 @@ impl Kind {
 }
 
 impl Issue {
-    pub const ALL: [Issue; 5] = [Issue::CaptureMark, Issue::CheckMark, Issue::MateMark, Issue::MoveNumber, Issue::BookPgn];
+    pub const ALL: [Issue; 6] = [Issue::CaptureMark, Issue::CheckMark, Issue::MateMark, Issue::MoveNumber, Issue::BookPgn, Issue::RefutedSign];
 
     /// The issue's name in the CSV and in the tools' replies.
     pub fn name(self) -> &'static str {
@@ -100,6 +108,7 @@ impl Issue {
             Issue::MateMark => "mate_mark",
             Issue::MoveNumber => "move_number",
             Issue::BookPgn => "book_pgn",
+            Issue::RefutedSign => "refuted_sign",
         }
     }
 
@@ -111,6 +120,7 @@ impl Issue {
             Issue::MateMark => "mate mark",
             Issue::MoveNumber => "move number",
             Issue::BookPgn => "book's PGN",
+            Issue::RefutedSign => "sign the engine refutes",
         }
     }
 
@@ -120,6 +130,7 @@ impl Issue {
         match self {
             Issue::CaptureMark | Issue::CheckMark | Issue::MateMark => Kind::Misprint,
             Issue::MoveNumber | Issue::BookPgn => Kind::Check,
+            Issue::RefutedSign => Kind::Engine,
         }
     }
 }
@@ -252,6 +263,17 @@ fn move_errata(page: &ChessPage, at: MoveAt, m: &MoveInline, index: Option<&Refe
     }
 }
 
+/// The row of a `!` the engine refutes at `at` (plan A9-N17a: the review's, which holds the book's
+/// signs to the evaluations kept; this crate keeps none): printed as `printed` (with its sign),
+/// `expected` the engine's best move instead and `detail` what it found. `None` when `doc` has no
+/// move there.
+pub fn engine_row(doc: &ChessDoc, at: MoveAt, printed: String, expected: String, detail: String) -> Option<Erratum> {
+    let page = doc.pages.iter().find(|p| p.index == at.page)?;
+    let m = at.find(doc)?;
+    let number = number_in_game(m).map(|n| n.text()).unwrap_or_default();
+    Some(Erratum { at, issue: Issue::RefutedSign, number, printed, expected, detail, ocr: page.ocr, pgn: None })
+}
+
 /// Whether the reader rewrote or could not settle the move's word: then its characters are not
 /// the page's own, and a conflict may be the reading's.
 fn repaired(m: &MoveInline) -> bool {
@@ -321,7 +343,7 @@ fn piece(p: Option<Piece>) -> char {
 /// A field of [`to_csv`]: quoted when it holds a comma, a quote or a line break (RFC 4180), and
 /// begun with `'` when a spreadsheet would take it for a formula (`=`, `+`, `-`, `@`, a tab or a
 /// carriage return first; the text is a PDF's, anyone's).
-pub(super) fn csv_field(text: &str) -> String {
+pub fn csv_field(text: &str) -> String {
     let mut text = text.to_owned();
     if text.starts_with(['=', '+', '-', '@', '\t', '\r']) {
         text.insert(0, '\'');

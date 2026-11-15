@@ -534,6 +534,106 @@ fn move_menu(ui: &mut egui::Ui, v: &MoveView, m: &MoveInline) -> Option<TextActi
     action
 }
 
+/// A paragraph of the Text tab laid out (plan A9-I9b): kept from frame to frame while its
+/// [`paragraph_key`] holds, so a frame neither builds its job, nor finds its moves' rectangles,
+/// nor words its moves again.
+struct Paragraph {
+    key: u64,
+    galley: Arc<egui::Galley>,
+    /// Each inline's characters, for a click on the prose.
+    inlines: Vec<std::ops::Range<usize>>,
+    moves: Vec<PlacedMove>,
+}
+
+/// A move of a laid-out paragraph: its inline, its rectangles (one per row it is on, in the
+/// galley's coordinates) and how it is drawn, said and acted on.
+struct PlacedMove {
+    k: usize,
+    parts: Vec<egui::Rect>,
+    view: MoveView,
+}
+
+/// What a paragraph's layout depends on beyond the paragraph, the same for every paragraph of a
+/// frame: the theme, the interface's language, the figurines and the caption's shape.
+fn frame_key(t: &Tokens, figurines: Figurines, caption: bool) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    (t.dark(), t.text.to_array(), crate::i18n::current().code(), format!("{figurines:?}"), caption).hash(&mut h);
+    h.finish()
+}
+
+/// The key of paragraph `inlines`' layout: its text, its moves' states, links and the choices made
+/// on them (`chosen`, at `at_of`), the width it wraps at and the frame's (`frame`). No string is
+/// made for it.
+fn paragraph_key(
+    inlines: &[Inline],
+    chosen: &pdfcraft_engine::chess::reference_store::OnPage,
+    at_of: impl Fn(usize) -> MoveAt,
+    width: f32,
+    frame: &u64,
+) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    (frame, width.to_bits(), inlines.len()).hash(&mut h);
+    for (k, inline) in inlines.iter().enumerate() {
+        std::mem::discriminant(inline).hash(&mut h);
+        match inline {
+            Inline::Move(m) => {
+                (&m.text, &m.san, std::mem::discriminant(&m.status), m.game.is_some(), m.fen.as_deref()).hash(&mut h);
+                m.reference.as_ref().map(|r| (std::mem::discriminant(&r.kind), r.game, r.node)).hash(&mut h);
+                let at = at_of(k);
+                chosen.found.iter().find(|(f, _)| *f == at).map(|(_, c)| std::mem::discriminant(c)).hash(&mut h);
+            }
+            Inline::Text { text, .. } | Inline::Link { text, .. } => text.hash(&mut h),
+            other => other.text().hash(&mut h),
+        }
+    }
+    h.finish()
+}
+
+/// Lay paragraph `inlines` out (plan A9-I9): one job in the body font, its moves' views and the
+/// rectangles their letters take.
+#[allow(clippy::too_many_arguments)]
+fn lay_out_paragraph(
+    ui: &egui::Ui,
+    inlines: &[Inline],
+    figurines: Figurines,
+    chosen: &pdfcraft_engine::chess::reference_store::OnPage,
+    at_of: impl Fn(usize) -> MoveAt,
+    tokens: &Tokens,
+    caption: bool,
+    width: f32,
+    key: u64,
+) -> Paragraph {
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let mut views: Vec<Option<MoveView>> = inlines
+        .iter()
+        .enumerate()
+        .map(|(k, inline)| match inline {
+            Inline::Move(m) => Some(move_view(m, at_of(k), chosen, tokens, caption)),
+            _ => None,
+        })
+        .collect();
+    let laid = crate::chess_text_para::paragraph(
+        inlines,
+        &font,
+        tokens.text,
+        width,
+        |i| plain_text_with(std::slice::from_ref(i), figurines),
+        |k, _| views.get(k).and_then(|v| v.as_ref()).map(|v| v.look),
+    );
+    let galley = ui.painter().layout_job(laid.job);
+    let moves = laid
+        .moves
+        .iter()
+        .filter_map(|(k, range)| {
+            let view = views.get_mut(*k)?.take()?;
+            Some(PlacedMove { k: *k, parts: crate::chess_text_para::rects(&galley, range), view })
+        })
+        .collect();
+    Paragraph { key, galley, inlines: laid.inlines, moves }
+}
+
 fn rect_of(r: Option<UserRect>) -> Option<[f32; 4]> {
     let r = r?.page_rect();
     [r.x0, r.y0, r.x1, r.y1].iter().all(|v| v.is_finite()).then_some([r.x0, r.y0, r.x1, r.y1])
@@ -688,6 +788,7 @@ pub fn text_tab(
     }
     // The caption's shape, when the font has it (plan A9-I9).
     let caption = ui.ctx().fonts_mut(|f| f.has_glyphs(&egui::TextStyle::Body.resolve(ui.style()), "▸"));
+    let frame = frame_key(&Tokens::get(ui.ctx()), figurines, caption);
     for (bi, block) in page_doc.blocks.iter().enumerate() {
         ui.push_id(bi, |ui| match block {
             Block::Heading { inlines, source_rect, .. } => {
@@ -703,45 +804,38 @@ pub fn text_tab(
             }
             Block::Paragraph { inlines, source_rect, .. } => {
                 // One galley (plan A9-I9): the prose read, never a stop of the keyboard; each move
-                // a section of its own, with its state's colour and shape, and one stop.
+                // a section of its own, with its state's colour and shape, and one stop. Laid out
+                // once per reading, width, theme and choices (plan A9-I9b): a frame only looks it
+                // up, and asks the moves' words of assistive technology and of a hover.
                 let tokens = Tokens::get(ui.ctx());
-                let font = egui::TextStyle::Body.resolve(ui.style());
-                let views: Vec<Option<MoveView>> = inlines
-                    .iter()
-                    .enumerate()
-                    .map(|(k, inline)| match inline {
-                        Inline::Move(m) => Some(move_view(m, MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k), &chosen, &tokens, caption)),
-                        _ => None,
-                    })
-                    .collect();
-                let para = crate::chess_text_para::paragraph(
-                    inlines,
-                    &font,
-                    tokens.text,
-                    ui.available_width(),
-                    |i| plain_text_with(std::slice::from_ref(i), figurines),
-                    |k, _| views.get(k).and_then(|v| v.as_ref()).map(|v| v.look),
-                );
-                let galley = ui.painter().layout_job(para.job);
-                let (rect, prose) = ui.allocate_exact_size(galley.size(), egui::Sense::CLICK);
-                let read = galley.text().to_owned();
+                let width = ui.available_width();
+                let at_of = |k: usize| MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k);
+                let key = paragraph_key(inlines, &chosen, at_of, width, &frame);
+                let id = ui.id().with("chess-paragraph");
+                let cached = ui.ctx().data(|d| d.get_temp::<Arc<Paragraph>>(id)).filter(|p| p.key == key);
+                let para = cached.unwrap_or_else(|| {
+                    let made = Arc::new(lay_out_paragraph(ui, inlines, figurines, &chosen, at_of, &tokens, caption, width, key));
+                    ui.ctx().data_mut(|d| d.insert_temp(id, Arc::clone(&made)));
+                    made
+                });
+                let (rect, prose) = ui.allocate_exact_size(para.galley.size(), egui::Sense::CLICK);
                 // The paragraph's text, read as one; its moves are labels of their own.
-                prose.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &read));
+                prose.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, para.galley.text()));
                 ui.ctx().accesskit_node_builder(prose.id, |node| node.set_role(egui::accesskit::Role::Paragraph));
                 let mut marks: Vec<(egui::Rect, bool, bool)> = Vec::new();
-                for (k, range) in &para.moves {
-                    let Some(Some(v)) = views.get(*k) else { continue };
-                    let Some(Inline::Move(m)) = inlines.get(*k) else { continue };
-                    for (n, part) in crate::chess_text_para::rects(&galley, range).into_iter().enumerate() {
+                for placed in &para.moves {
+                    let Some(Inline::Move(m)) = inlines.get(placed.k) else { continue };
+                    let v = &placed.view;
+                    let mut responses = Vec::with_capacity(placed.parts.len());
+                    for (n, part) in placed.parts.iter().enumerate() {
                         let part = part.translate(rect.min.to_vec2());
                         // The move's first row takes the keyboard; a row it wraps onto is clicked.
                         let sense = if n == 0 { egui::Sense::click() } else { egui::Sense::CLICK };
-                        let r = ui.interact(part, ui.id().with(("chess-move", *k, n)), sense);
-                        marks.push((part, r.hovered(), r.has_focus()));
+                        let r = ui.interact(part, ui.id().with(("chess-move", placed.k, n)), sense);
                         if n == 0 {
                             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &v.name));
                         }
-                        let r = r.on_hover_text(&v.tip);
+                        let r = if r.hovered() || r.has_focus() { r.on_hover_text(&v.tip) } else { r };
                         // A click outlines the move on the page; a double-click (its first click
                         // outlined it) opens its game on the board.
                         if r.double_clicked()
@@ -762,7 +856,10 @@ pub fn text_tab(
                                 }
                             });
                         }
+                        responses.push((part, r.hovered(), r.has_focus()));
                     }
+                    // Every row of a move shows it pointed at and with the keyboard (plan A9-I9b).
+                    marks.extend(crate::chess_text_para::marks(&responses));
                 }
                 // Under the text: the move pointed at, and the ring of the one with the keyboard.
                 for (part, hovered, focused) in marks {
@@ -778,12 +875,12 @@ pub fn text_tab(
                         );
                     }
                 }
-                ui.painter().galley(rect.min, galley.clone(), tokens.text);
+                ui.painter().galley(rect.min, Arc::clone(&para.galley), tokens.text);
                 // A click on the prose outlines its words on the page.
                 if prose.clicked()
                     && let Some(at) = prose.interact_pointer_pos()
                 {
-                    let c = galley.cursor_from_pos(at - rect.min).index.0;
+                    let c = para.galley.cursor_from_pos(at - rect.min).index.0;
                     let k = para.inlines.iter().position(|r| r.contains(&c));
                     let source = k.and_then(|k| inlines.get(k)).and_then(|i| i.source_rect()).or(*source_rect);
                     if let Some(rect) = rect_of(source) {

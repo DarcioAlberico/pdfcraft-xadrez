@@ -562,6 +562,17 @@ impl ReferenceIndex {
 
     /// The position after move `at`, played again from its game's start.
     pub fn fen(&self, at: RefNode) -> Option<Fen> {
+        self.fen_played(at, false)
+    }
+
+    /// The position before move `at` (plan A9-N17a: a move the book's PGN plays is judged where
+    /// the PGN plays it), played again from its game's start.
+    pub fn fen_before(&self, at: RefNode) -> Option<Fen> {
+        self.fen_played(at, true)
+    }
+
+    /// The position after move `at`, or before it (`before`).
+    fn fen_played(&self, at: RefNode, before: bool) -> Option<Fen> {
         let game = self.texts.get(at.game)?;
         let mut node = self.nodes.get(self.node_id(at)?)?;
         let mut steps = Vec::new();
@@ -573,8 +584,17 @@ impl ReferenceIndex {
             steps.push(node.step);
             node = self.nodes.get(parent)?;
         }
+        // The first step back is the move itself; a game's start has none to be before.
+        let from = if before {
+            if steps.is_empty() {
+                return None;
+            }
+            1
+        } else {
+            0
+        };
         let mut board = game.start.clone();
-        for &s in steps.iter().rev() {
+        for &s in steps.get(from..).unwrap_or_default().iter().rev() {
             play(&mut board, s)?;
         }
         Some(Fen::from_board(&board))
