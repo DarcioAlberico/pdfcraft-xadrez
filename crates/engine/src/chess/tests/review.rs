@@ -183,18 +183,12 @@ fn an_exercise_with_a_second_winning_line_has_another_solution() {
     assert_eq!(batch.positions().find(|a| a.fen == fen).map(|a| a.lines), Some(2));
 }
 
-/// The batch asks each position once, main lines first, then the positions around a signed move,
-/// then the diagrams; what the store holds deep enough is left out.
+/// The batch asks each position once; what the store holds deep enough is left out (the order:
+/// [`the_batch_asks_signed_moves_and_diagrams_before_the_main_lines`]).
 #[test]
-fn the_batch_asks_main_lines_then_signed_moves_then_diagrams() {
+fn the_batch_asks_each_position_once_and_leaves_out_what_is_kept() {
     let doc = read_book();
     let batch = Batch::new(&doc, &[], &file(), 18);
-    let parts: Vec<Part> = batch.positions().map(|a| a.part).collect();
-    let mut sorted = parts.clone();
-    sorted.sort();
-    assert_eq!(parts, sorted, "in order");
-    // The start and the four moves' positions; 2.Nf3's two are the main line's; the two diagrams.
-    assert_eq!(parts, [Part::MainLine; 5].into_iter().chain([Part::Diagram; 2]).collect::<Vec<_>>());
     let keys: std::collections::HashSet<&str> = batch.positions().map(|a| a.key.as_str()).collect();
     assert_eq!(keys.len(), batch.len(), "once each");
     // Kept at depth 18 or deeper: left out; shallower: asked again.
@@ -285,6 +279,9 @@ fn a_batch_asks_each_position_once_and_stopped_goes_on_where_it_stopped() {
     assert_eq!(chunks.first(), Some(&2), "{chunks:?}");
     let first: Vec<String> = log.lock().unwrap().drain(..).collect();
     assert_eq!(first.len(), 2, "{first:?}");
+    // The signed move's positions first, the second with the move that led to it (2.Nf3).
+    assert_eq!(first[0], format!("position fen {}", order[0]));
+    assert_eq!(first[1], format!("position fen {} moves g1f3", order[0]));
     let e = kept.get(&order[0]).unwrap();
     assert_eq!((e.depth, e.cp, e.engine.as_deref()), (20, Some(25), Some("Fake Engine")));
     // Going on asks the five others, each once.
@@ -294,13 +291,11 @@ fn a_batch_asks_each_position_once_and_stopped_goes_on_where_it_stopped() {
             kept.keep(fen, e.clone());
         }
     });
-    assert_eq!((ran, batch.len()), (Ran::Done, 0));
+    assert_eq!((ran, batch.len()), (Ran::Done { skipped: 0 }, 0));
     let rest: Vec<String> = log.lock().unwrap().clone();
     assert_eq!(rest.len(), 5, "{rest:?}");
-    // Each with the moves since the last pawn move: none after 1...e5, then 2.Nf3, then 2...Nc6.
-    assert_eq!(rest[0], format!("position fen {}", order[2]));
-    assert_eq!(rest[1], format!("position fen {} moves g1f3", order[2]));
-    assert_eq!(rest[2], format!("position fen {} moves g1f3 b8c6", order[2]));
+    // The main line's last position with the moves since the last pawn move: 2.Nf3 and 2...Nc6.
+    assert_eq!(rest[4], format!("position fen {} moves g1f3 b8c6", order[0]));
     assert!(order.iter().all(|f| kept.get(f).is_some()), "all kept");
     // A batch from what is kept is empty.
     assert_eq!(Batch::new(&doc, &[], &kept, 20).len(), 0);
@@ -320,7 +315,199 @@ fn a_real_engine_evaluates_a_batch() {
         review::run(&analyser, &mut batch, &Budget { depth: 10, per_position: Duration::from_secs(10), chunk: 64 }, &AtomicBool::new(false), |p| {
             kept.extend(p.evals)
         });
-    assert_eq!(ran, Ran::Done);
+    assert_eq!(ran, Ran::Done { skipped: 0 });
     assert_eq!(kept.len(), total);
     assert!(kept.iter().all(|(_, e)| e.depth >= 10), "{kept:?}");
+}
+
+// ─── Plan A9-N17a2: what #389's review found ─────────────────────────────────────────────────
+
+/// A search stopped mid-way leaves a bound (the score is at least, or at most, this much): never
+/// the last word. A `!` whose position after it has only a bound is not judged, and the batch asks
+/// that position again.
+#[test]
+fn a_bound_is_never_the_last_word() {
+    let doc = read_book();
+    let mut evals = file();
+    evals.keep(&after(&["e4", "e5"]), eval(22, 50, "d2d4"));
+    let bound = Eval::new(22, Score::Centipawns(-150), Bound::Lower, &["b8c6".to_owned()], Some("Stockfish 17"), 1).unwrap();
+    evals.keep(&after(&["e4", "e5", "Nf3"]), bound);
+    let r = review::divergences(&doc, &[], &evals, &Limits::default());
+    assert!(!r.divergences.iter().any(|d| d.found.name() == "refuted"), "a bound judged as exact: {r:#?}");
+    assert_eq!(r.no_eval, 2, "the ! and the goal: {r:#?}");
+    let batch = Batch::new(&doc, &[], &evals, 18);
+    assert!(batch.positions().any(|a| a.fen == after(&["e4", "e5", "Nf3"])), "the bound's position is asked again");
+    assert!(!batch.positions().any(|a| a.fen == after(&["e4", "e5"])), "the exact one is not");
+}
+
+/// The store keeps an exact score over a bound, however deep the bound.
+#[test]
+fn an_exact_score_outranks_a_deeper_bound_in_the_store() {
+    let fen = after(&["e4"]);
+    let mut evals = file();
+    let bound = Eval::new(30, Score::Centipawns(10), Bound::Upper, &["e7e5".to_owned()], None, 1).unwrap();
+    assert!(evals.keep(&fen, bound));
+    assert!(evals.keep(&fen, eval(18, 25, "e7e5")), "the exact one replaces the bound");
+    assert_eq!(evals.get(&fen).map(|e| (e.depth, e.bound.clone())), Some((18, None)));
+    let deeper = Eval::new(40, Score::Centipawns(99), Bound::Lower, &["e7e5".to_owned()], None, 2).unwrap();
+    assert!(!evals.keep(&fen, deeper), "and a bound never replaces it");
+}
+
+/// The positions the report judges come first: a big book's main lines never take the store's
+/// room (MAX_EVALS) before a signed move or a diagram is asked.
+#[test]
+fn the_batch_asks_signed_moves_and_diagrams_before_the_main_lines() {
+    let doc = read_book();
+    let parts: Vec<Part> = Batch::new(&doc, &[], &file(), 18).positions().map(|a| a.part).collect();
+    assert_eq!(parts, [Part::Signed, Part::Signed, Part::Diagram, Part::Diagram, Part::MainLine, Part::MainLine, Part::MainLine]);
+}
+
+/// A Black move judged: its `!` loses two pawns for Black (the store's scores are White's).
+#[test]
+fn a_black_move_is_judged_for_black() {
+    let (mut s, id) = open(book("1.e4 e5 2.Nf3 Nc6!", (ROOK_WINS, "White to play and win"), (NO_MATE, "White to play. Mate in 2")));
+    let doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+    let mut evals = file();
+    // Before 2...Nc6 White stands at +0.50 (Black −0.50, best 2...d6); after it, +2.50.
+    evals.keep(&after(&["e4", "e5", "Nf3"]), eval(22, 50, "d7d6"));
+    evals.keep(&after(&["e4", "e5", "Nf3", "Nc6"]), eval(22, 250, "f1b5"));
+    let r = review::divergences(&doc, &[], &evals, &Limits::default());
+    let d = r.divergences.iter().find(|d| d.found.name() == "refuted").unwrap_or_else(|| panic!("{r:#?}"));
+    assert_eq!(d.found, Found::Refuted { loss: Some(200) });
+    let Computed::Engine(e) = &d.computed else { panic!("{d:?}") };
+    assert_eq!((e.value, e.best.clone()), (Value::Cp(250), Some(("2...d6".to_owned(), Value::Cp(50)))));
+    assert_eq!(d.computed_words(), "it loses 2.00 pawns: +2.50; best 2...d6 +0.50 (depth 22, Stockfish 17)");
+}
+
+/// The engine's comment is found again after the comment's rewriting (a `}` in the engine's name
+/// becomes `)`): a second run adds none.
+#[test]
+fn the_engines_comment_is_added_once_whatever_its_characters() {
+    let mut doc = read_book();
+    let mut evals = file();
+    evals.keep(&after(&["e4", "e5"]), Eval::new(22, Score::Centipawns(50), Bound::Exact, &["d2d4".to_owned()], Some("Stock}fish  17"), 1).unwrap());
+    evals.keep(&after(&["e4", "e5", "Nf3"]), eval(22, -150, "b8c6"));
+    let r = review::divergences(&doc, &[], &evals, &Limits::default());
+    assert_eq!(review::annotate(&mut doc, &r, "en"), 1);
+    assert_eq!(review::annotate(&mut doc, &r, "en"), 0, "{:?}", doc.games[0].score.nodes.iter().map(|n| &n.comment).collect::<Vec<_>>());
+}
+
+/// How [`fake`] behaves once given a position.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fake {
+    /// Answers as [`fake_engine`] does.
+    Answers,
+    /// Says nothing, and ignores `stop`: an engine that hung.
+    Hangs,
+    /// Closes its output at its first `go`: an engine that crashed.
+    Dies,
+}
+
+/// A pretend engine that answers the handshake after `handshake`, then behaves as `how` says.
+fn fake(commands: PipeReader, mut out: PipeWriter, log: Arc<Mutex<Vec<String>>>, handshake: Duration, how: Fake) {
+    let mut game = None;
+    for line in BufReader::new(commands).lines() {
+        let Ok(line) = line else { break };
+        let mut words = line.split_whitespace();
+        match words.next() {
+            Some("uci") => {
+                std::thread::sleep(handshake);
+                let _ = writeln!(out, "id name Fake Engine\noption name MultiPV type spin default 1 min 1 max 5\nuciok");
+            }
+            Some("position") => {
+                log.lock().unwrap().push(line.clone());
+                let rest: Vec<&str> = words.skip(1).collect();
+                let (fen, moves) = match rest.iter().position(|w| *w == "moves") {
+                    Some(at) => (rest[..at].join(" "), rest[at + 1..].to_vec()),
+                    None => (rest.join(" "), Vec::new()),
+                };
+                let mut g = Played::from_fen(&fen).unwrap();
+                for m in moves {
+                    g.play_uci(m).unwrap();
+                }
+                game = Some(g);
+            }
+            Some("go") => match how {
+                Fake::Hangs => {}
+                Fake::Dies => return,
+                Fake::Answers => {
+                    let Some(g) = game.as_ref() else { continue };
+                    let mut played = g.clone();
+                    played.play_san(&g.legal_moves()[0]).unwrap();
+                    let uci = played.uci(played.current()).unwrap();
+                    let _ = writeln!(out, "info depth 20 multipv 1 score cp 25 pv {uci}\nbestmove {uci}");
+                }
+            },
+            Some("quit") => break,
+            _ => {}
+        }
+    }
+}
+
+fn connect_to(handshake: Duration, how: Fake) -> (Analyser, Arc<Mutex<Vec<String>>>) {
+    let (engine_in, our_out) = std::io::pipe().unwrap();
+    let (our_in, engine_out) = std::io::pipe().unwrap();
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let l = Arc::clone(&log);
+    std::thread::spawn(move || fake(engine_in, engine_out, l, handshake, how));
+    (Analyser::with_streams(our_in, our_out, AnalysisOptions::default(), Arc::new(|| {})), log)
+}
+
+/// Plan A9-N17a2: a position the engine says nothing of within the budget is asked once more at
+/// the end, then given up on and said, never counted as asked.
+#[test]
+fn a_position_the_engine_says_nothing_of_is_asked_again_then_skipped() {
+    let doc = read_book();
+    let (analyser, log) = connect_to(Duration::ZERO, Fake::Hangs);
+    let mut batch = Batch::within(&doc, &[], &file(), 20, 1);
+    let mut last = None;
+    let ran =
+        review::run(&analyser, &mut batch, &Budget { depth: 20, per_position: Duration::from_millis(50), chunk: 1 }, &AtomicBool::new(false), |p| {
+            last = Some((p.done, p.skipped, p.evals.len()))
+        });
+    assert_eq!(ran, Ran::Done { skipped: 1 });
+    assert_eq!((batch.len(), batch.skipped().len()), (0, 1));
+    assert_eq!(last, Some((1, 1, 0)));
+    assert_eq!(log.lock().unwrap().len(), 2, "asked twice: {:?}", log.lock().unwrap());
+}
+
+/// Plan A9-N17a2: an engine slow to finish its handshake is waited for, so no position is asked
+/// before it can take one (stopping would drop it), and each is asked once.
+#[test]
+fn an_engine_slow_to_answer_its_handshake_is_waited_for() {
+    let doc = read_book();
+    let (analyser, log) = connect_to(Duration::from_millis(300), Fake::Answers);
+    let mut batch = Batch::new(&doc, &[], &file(), 20);
+    let mut evals = 0usize;
+    let ran = review::run(
+        &analyser,
+        &mut batch,
+        &Budget { depth: 20, per_position: Duration::from_millis(100), chunk: 64 },
+        &AtomicBool::new(false),
+        |p| evals += p.evals.len(),
+    );
+    assert_eq!((ran, evals), (Ran::Done { skipped: 0 }, 7));
+    assert_eq!(log.lock().unwrap().len(), 7, "each asked once: {:?}", log.lock().unwrap());
+}
+
+/// An engine that dies fails the run, and the position it was on stays in the batch.
+#[test]
+fn an_engine_that_dies_fails_the_run_and_keeps_the_batch() {
+    let doc = read_book();
+    let (analyser, _) = connect_to(Duration::ZERO, Fake::Dies);
+    let mut batch = Batch::new(&doc, &[], &file(), 20);
+    let ran =
+        review::run(&analyser, &mut batch, &Budget { depth: 20, per_position: Duration::from_secs(5), chunk: 1 }, &AtomicBool::new(false), |_| {});
+    assert_eq!(ran, Ran::Failed(crate::chess::analysis::AnalysisError::Stopped));
+    assert_eq!((batch.len(), batch.skipped().len()), (7, 0), "nothing taken off");
+}
+
+/// Past the store's cap the batch keeps what the report judges: the signed moves and the
+/// diagrams, not the main lines, and says it was capped.
+#[test]
+fn a_capped_batch_keeps_what_is_judged() {
+    let doc = read_book();
+    let batch = Batch::within(&doc, &[], &file(), 18, 3);
+    assert_eq!(batch.positions().map(|a| a.part).collect::<Vec<_>>(), [Part::Signed, Part::Signed, Part::Diagram]);
+    assert!(batch.capped);
 }

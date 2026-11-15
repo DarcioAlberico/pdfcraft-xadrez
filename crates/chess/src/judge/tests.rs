@@ -102,6 +102,19 @@ fn a_mate_is_beyond_every_limit() {
     );
 }
 
+/// Plan A9-N17a2: mates are ordered by distance. A `??` that is mated sooner than the best move
+/// allows is not the engine's best move; one as quick is.
+#[test]
+fn a_poor_move_that_hastens_a_mate_is_not_the_best() {
+    let mated = |n| Eval::new(Value::Mated(n), 30);
+    assert_eq!(judged(&[4], Color::White, "a2a3", "h2h3", mated(5), mated(4)), Outcome::Judged(vec![]));
+    assert_eq!(judged(&[4], Color::White, "a2a3", "h2h3", mated(5), mated(5)), Outcome::Judged(vec![Verdict::Questioned { nag: 4, loss: 0 }]));
+    // A `?` that mates later than the best move: not the best either; a `!` that does still mates.
+    let mates = |n| Eval::new(Value::Mates(n), 30);
+    assert_eq!(judged(&[POOR], Color::White, "a2a3", "h2h3", mates(2), mates(6)), Outcome::Judged(vec![]));
+    assert_eq!(judged(&[GOOD], Color::White, "a2a3", "h2h3", mates(2), mates(6)), Outcome::Judged(vec![]));
+}
+
 #[test]
 fn signs_are_for_white_whoever_moved() {
     // Black moved and stands at +2 for itself: −2 for White, which `−+` says and `+−` does not.

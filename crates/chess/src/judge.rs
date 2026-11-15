@@ -293,17 +293,27 @@ pub enum Outcome {
     Judged(Vec<Verdict>),
 }
 
-/// What `played` loses for the mover against the best move: `None` when a mate changes hands (a
-/// mate let go, or one walked into), beyond every limit.
-fn loss(best: Value, after: Value) -> Option<i32> {
+/// What a move loses for the mover against the best move.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Loss {
+    /// Centipawns (0: as good as the best, or better).
+    Cp(i32),
+    /// Both mate, or both are mated, and the move is this many moves worse: a slower mate, or a
+    /// quicker one against (0: as quick).
+    MateMoves(u32),
+    /// A mate let go, or one walked into: beyond every limit.
+    MateLost,
+}
+
+/// What a move leaving `after` loses against the best move, which keeps `best`.
+fn loss(best: Value, after: Value) -> Loss {
     match (best, after) {
-        (Value::Mates(_), Value::Cp(_) | Value::Mated(_)) | (Value::Cp(_), Value::Mated(_)) => None,
-        // The same kind of score both ways, or the move did better than the best: what it lost.
-        _ => {
-            let lost = best.rank().saturating_sub(after.rank()).max(0);
-            // Between two mates the rank counts moves: a slower mate loses nothing in pawns.
-            if best.is_mate() && after.is_mate() { Some(0) } else { Some(i32::try_from(lost).unwrap_or(i32::MAX)) }
-        }
+        (Value::Mates(_), Value::Cp(_) | Value::Mated(_)) | (Value::Cp(_), Value::Mated(_)) => Loss::MateLost,
+        // Mates ordered by distance: mating later, or being mated sooner, is worse.
+        (Value::Mates(b), Value::Mates(a)) => Loss::MateMoves(a.saturating_sub(b)),
+        (Value::Mated(b), Value::Mated(a)) => Loss::MateMoves(b.saturating_sub(a)),
+        // Centipawns both ways, or the move did better than the best (the searches differ).
+        _ => Loss::Cp(i32::try_from(best.rank().saturating_sub(after.rank()).max(0)).unwrap_or(i32::MAX)),
     }
 }
 
@@ -339,16 +349,16 @@ pub fn judge(m: &Judged<'_>, limits: &Limits) -> Outcome {
     }
     let mut verdicts = Vec::new();
     if let Some((before, _)) = m.before {
-        let lost = if best_played { Some(0) } else { m.after.and_then(|a| loss(before.value, a.value)) };
+        // With no position after a move that is not the best, nothing (the evaluation is needed).
+        let lost = if best_played { Some(Loss::Cp(0)) } else { m.after.map(|a| loss(before.value, a.value)) };
         for (nag, claim) in &moves {
-            match claim {
-                Claim::Good if lost.is_none_or(|l| l > limits.refuted) => verdicts.push(Verdict::Refuted { nag: *nag, loss: lost }),
-                Claim::Bad => {
-                    if let Some(l) = lost.filter(|l| *l < limits.questioned) {
-                        verdicts.push(Verdict::Questioned { nag: *nag, loss: l });
-                    }
-                }
-                Claim::Good => {}
+            match (claim, lost) {
+                (Claim::Good, Some(Loss::MateLost)) => verdicts.push(Verdict::Refuted { nag: *nag, loss: None }),
+                (Claim::Good, Some(Loss::Cp(l))) if l > limits.refuted => verdicts.push(Verdict::Refuted { nag: *nag, loss: Some(l) }),
+                // A slower mate still mates: no refutation, whatever the distance.
+                (Claim::Bad, Some(Loss::Cp(l))) if l < limits.questioned => verdicts.push(Verdict::Questioned { nag: *nag, loss: l }),
+                (Claim::Bad, Some(Loss::MateMoves(0))) => verdicts.push(Verdict::Questioned { nag: *nag, loss: 0 }),
+                _ => {}
             }
         }
     }

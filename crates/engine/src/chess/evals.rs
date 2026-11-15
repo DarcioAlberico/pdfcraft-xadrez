@@ -17,8 +17,8 @@
 //! oldest kept goes (an evaluation is found again by searching; it is never the user's work).
 //! Fields a later build of this version writes are kept as they are.
 //!
-//! **Merge** ([`StoreKind::merge`]): per position, the deeper evaluation wins; the same depth keeps
-//! the newer; a tie keeps this side's.
+//! **Merge** ([`StoreKind::merge`]): per position, an exact score wins over a bound (plan
+//! A9-N17a2), then the deeper evaluation; the same depth keeps the newer; a tie keeps this side's.
 
 use std::collections::BTreeMap;
 
@@ -142,9 +142,11 @@ impl Eval {
         })
     }
 
-    /// Whether this evaluation is the one to keep over `other`: deeper, or as deep and newer.
+    /// Whether this evaluation is the one to keep over `other`: an exact score over a bound (plan
+    /// A9-N17a2: a search stopped mid-way is never the last word), then deeper, then as deep and
+    /// newer.
     fn outranks(&self, other: &Eval) -> bool {
-        (self.depth, self.at) > (other.depth, other.at)
+        (self.bound.is_none(), self.depth, self.at) > (other.bound.is_none(), other.depth, other.at)
     }
 
     /// Whether it says something this build can show: a score, and a line of moves.
