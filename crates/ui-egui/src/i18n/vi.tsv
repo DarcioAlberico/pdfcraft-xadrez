@@ -3784,6 +3784,21 @@ the move's comment	Move comment	Bình luận của nước đi
 	The board is in the column beside.	Bàn cờ ở cột bên cạnh.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Thêm dấu trang cờ vua
+	Make the book's bookmarks…	Tạo dấu trang cho sách…
+	Reading the book for its bookmarks…	Đang đọc sách để tạo dấu trang…
+	Reading the book for its bookmarks: page {done} of {of}	Đang đọc sách để tạo dấu trang: trang {done} / {of}
+	Reading was stopped: no bookmark was added.	Đã dừng đọc: chưa thêm dấu trang nào.
+	The book's bookmarks	Dấu trang của sách
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Chương: {chapters} · Ván cờ: {games} · Bài tập: {exercises}
+	Chapters	Chương
+	Games	Ván cờ
+	Exercises	Bài tập
+	Exercise	Bài tập
+	Title of the bookmark	Tiêu đề dấu trang
+	No chapter, game or exercise was found in the book.	Không tìm thấy chương, ván cờ hay bài tập nào trong sách.
+	Add the bookmarks	Thêm dấu trang
+	The document changed since it was read: make its bookmarks again.	Tài liệu đã thay đổi kể từ khi được đọc: hãy tạo lại dấu trang.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Đã thêm dấu trang dưới “{title}”: {n}. Hoàn tác sẽ gỡ chúng.
 	More board actions	Thao tác khác với bàn cờ
 	Back to the moves	Về các nước đi
 	Back to the moves (Esc)	Về các nước đi (Esc)

@@ -1,6 +1,6 @@
 # Coerência mecânica do plano A9 (escrito na R10; desde a v11 a ficha §3.4 é a fonte das dependências).
 # Extrai §3.0 (núcleo), §3.1 (grafo), §3.2 (ondas), §3.3 (passos) e §3.4 (ficha) e confere
-# uns contra os outros. Uso: py -3.12 -I coerencia.py <plano.md>
+# uns contra os outros. Uso: py -3.12 -I coerencia.py <plano.md> <saída.md>
 import re
 import sys
 from collections import defaultdict, OrderedDict
@@ -131,7 +131,7 @@ for i in range(s32, e32):
             # "L7 (+ G7b)", "G3c + V4b", "I15 (com I7a)", "G11 (motor)"
             for m2 in ID_RE.finditer(part):
                 sid = norm(m2.group(1))
-                if sid in ("N11", "N12", "N15", "N18"):
+                if sid in ("N11", "N18"):
                     continue
                 key = sid
                 if key in waves and key == "G11":

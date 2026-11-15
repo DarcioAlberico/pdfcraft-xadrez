@@ -3782,6 +3782,21 @@ the move's comment	Move comment	Ėjimo komentaras
 	The board is in the column beside.	Lenta yra gretimame stulpelyje.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Pridėti šachmatų žymeles
+	Make the book's bookmarks…	Sukurti knygos žymeles…
+	Reading the book for its bookmarks…	Knyga skaitoma žymelėms…
+	Reading the book for its bookmarks: page {done} of {of}	Knyga skaitoma žymelėms: {done} psl. iš {of}
+	Reading was stopped: no bookmark was added.	Skaitymas sustabdytas: žymelių nepridėta.
+	The book's bookmarks	Knygos žymelės
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Skyriai: {chapters} · Partijos: {games} · Pratimai: {exercises}
+	Chapters	Skyriai
+	Games	Partijos
+	Exercises	Pratimai
+	Exercise	Pratimas
+	Title of the bookmark	Žymelės pavadinimas
+	No chapter, game or exercise was found in the book.	Knygoje nerasta skyrių, partijų ar pratimų.
+	Add the bookmarks	Pridėti žymeles
+	The document changed since it was read: make its bookmarks again.	Dokumentas pasikeitė po perskaitymo: sukurkite jo žymeles iš naujo.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Žymelės pridėtos po „{title}“: {n}. Anuliuoti jas pašalina.
 	More board actions	Daugiau lentos veiksmų
 	Back to the moves	Atgal į ėjimus
 	Back to the moves (Esc)	Atgal į ėjimus (Esc)

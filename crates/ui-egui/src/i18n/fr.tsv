@@ -3531,6 +3531,21 @@ the move's comment	Move comment	Commentaire du coup
 	The board is in the column beside.	L’échiquier est dans la colonne voisine.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Ajouter des signets d'échecs
+	Make the book's bookmarks…	Créer les signets du livre…
+	Reading the book for its bookmarks…	Lecture du livre pour ses signets…
+	Reading the book for its bookmarks: page {done} of {of}	Lecture du livre pour ses signets : page {done} sur {of}
+	Reading was stopped: no bookmark was added.	La lecture a été arrêtée : aucun signet n'a été ajouté.
+	The book's bookmarks	Signets du livre
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Chapitres : {chapters} · Parties : {games} · Exercices : {exercises}
+	Chapters	Chapitres
+	Games	Parties
+	Exercises	Exercices
+	Exercise	Exercice
+	Title of the bookmark	Titre du signet
+	No chapter, game or exercise was found in the book.	Aucun chapitre, aucune partie ni aucun exercice n'a été trouvé dans le livre.
+	Add the bookmarks	Ajouter les signets
+	The document changed since it was read: make its bookmarks again.	Le document a changé depuis sa lecture : créez de nouveau ses signets.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Signets ajoutés sous « {title} » : {n}. Annuler les retire.
 	More board actions	Plus d’actions de l’échiquier
 	Back to the moves	Revenir aux coups
 	Back to the moves (Esc)	Revenir aux coups (Échap)

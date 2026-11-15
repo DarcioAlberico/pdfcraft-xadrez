@@ -66,6 +66,81 @@ proptest! {
     }
 }
 
+/// Plan A9-N3: the same position reached by two move orders, in two games, is found twice, the
+/// second a transposition; the position after a move only one game plays, once. A move in a
+/// variation is not on the main line.
+#[test]
+fn a_position_is_found_wherever_the_pgn_reaches_it_and_a_transposition_is_said() {
+    let pgn = "[Event \"Open\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 (3.Bc4 Bc5) 3...a6 *\n\n\
+               [Event \"Reti\"]\n\n1.Nf3 Nc6 2.e4 e5 3.Bc4 *\n";
+    let index = ReferenceIndex::from_pgn(pgn).unwrap();
+    let key = |moves: &[&str]| {
+        let mut g = PgnGame::standard();
+        for m in moves {
+            g.play_san(m).unwrap();
+        }
+        Fen::parse(&g.fen()).unwrap().book_key()
+    };
+    let both = index.occurrences(key(&["e4", "e5", "Nf3", "Nc6"]), false, 10);
+    assert_eq!((both.total, both.lines), (2, 2), "{both:?}");
+    let [open, reti] = both.found.as_slice() else { panic!("{both:?}") };
+    assert_eq!((open.at, open.number, open.black, open.main_line, open.transposed), (RefNode { game: 0, node: 4 }, 2, true, true, false));
+    assert_eq!((reti.at.game, reti.number, reti.black, reti.main_line, reti.transposed), (1, 2, true, true, true));
+    assert_eq!(index.san(reti.at), Some("e5"));
+    // After 3.Bc4: in the first game's variation and the second game's main line, two orders.
+    let bc4 = index.occurrences(key(&["e4", "e5", "Nf3", "Nc6", "Bc4"]), false, 10);
+    assert_eq!(bc4.found.iter().map(|o| (o.at.game, o.main_line, o.transposed)).collect::<Vec<_>>(), [(0, false, false), (1, true, true)]);
+    // Once: no transposition.
+    let a6 = index.occurrences(key(&["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]), false, 10);
+    assert_eq!((a6.total, a6.lines, a6.found.len()), (1, 1, 1));
+    assert!(!a6.found[0].transposed && a6.found[0].main_line);
+    // The start of both games: the same position, no move, the same (empty) way there.
+    let start = index.occurrences(key(&[]), false, 10);
+    assert_eq!((start.total, start.lines), (2, 1));
+    assert!(start.found.iter().all(|o| o.at.node == 0 && !o.transposed && o.main_line && index.san(o.at).is_none()));
+    // At most `max` listed, all counted.
+    let one = index.occurrences(key(&["e4", "e5", "Nf3", "Nc6"]), false, 1);
+    assert_eq!((one.found.len(), one.total, one.lines), (1, 2, 2));
+    // Not there, and the other side to move: none, unless the side is any.
+    let black = BookKey { side: Color::Black, ..key(&["e4", "e5", "Nf3", "Nc6"]) };
+    assert_eq!(index.occurrences(black, false, 10).total, 0);
+    assert_eq!(index.occurrences(black, true, 10).total, 2, "any side: the pieces alone");
+    assert_eq!(index.occurrences(key(&["d4"]), false, 10), Occurrences::default());
+}
+
+/// What an occurrence is kept as stays small: a book's list is a few of them (plan A9-N3, at most
+/// 64 bytes a position).
+#[test]
+fn an_occurrence_is_small() {
+    assert!(size_of::<PgnOccurrence>() <= 64, "{}", size_of::<PgnOccurrence>());
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 16, ..ProptestConfig::default() })]
+
+    /// Random book PGNs: every move's position lists that move, and it is on the main line
+    /// exactly when its game's main line holds it.
+    #[test]
+    fn every_move_is_found_at_its_position_on_its_line(games in 1usize..4, seed in any::<u64>()) {
+        let text = synthetic::book_pgn(games, seed);
+        let index = ReferenceIndex::from_pgn(&text).unwrap();
+        for (k, game) in games_of(&text).iter().enumerate() {
+            let Some(game) = game else { continue };
+            let main = game.main_line();
+            let mut node = 0;
+            while let Some(fen) = game.fen_at(node) {
+                let at = RefNode { game: k, node };
+                let found = index.occurrences(fen.book_key(), false, usize::MAX);
+                let mine = found.found.iter().find(|o| o.at == at);
+                prop_assert!(mine.is_some(), "game {k}, node {node}");
+                prop_assert_eq!(mine.map(|o| o.main_line), Some(main.contains(&node)), "game {}, node {}", k, node);
+                prop_assert_eq!(found.found.len(), found.total);
+                node += 1;
+            }
+        }
+    }
+}
+
 /// A PGN past the bytes its index may take (plan A9-I3b): the moves stop there, said by
 /// [`ReferenceIndex::cut`] and by the link's warnings; every game is still listed, by its tags'
 /// name, and read again whole for the annotated PGN; what went in is answered as before.

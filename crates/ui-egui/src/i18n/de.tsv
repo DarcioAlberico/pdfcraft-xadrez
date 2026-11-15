@@ -3532,6 +3532,21 @@ the move's comment	Move comment	Kommentar des Zugs
 	The board is in the column beside.	Das Brett ist in der Spalte daneben.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Schach-Lesezeichen hinzufügen
+	Make the book's bookmarks…	Lesezeichen des Buchs anlegen…
+	Reading the book for its bookmarks…	Das Buch wird für seine Lesezeichen gelesen…
+	Reading the book for its bookmarks: page {done} of {of}	Das Buch wird für seine Lesezeichen gelesen: Seite {done} von {of}
+	Reading was stopped: no bookmark was added.	Das Lesen wurde angehalten: Es wurde kein Lesezeichen hinzugefügt.
+	The book's bookmarks	Lesezeichen des Buchs
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Kapitel: {chapters} · Partien: {games} · Aufgaben: {exercises}
+	Chapters	Kapitel
+	Games	Partien
+	Exercises	Aufgaben
+	Exercise	Aufgabe
+	Title of the bookmark	Titel des Lesezeichens
+	No chapter, game or exercise was found in the book.	Im Buch wurde kein Kapitel, keine Partie und keine Aufgabe gefunden.
+	Add the bookmarks	Lesezeichen hinzufügen
+	The document changed since it was read: make its bookmarks again.	Das Dokument hat sich seit dem Lesen geändert: Legen Sie seine Lesezeichen erneut an.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Lesezeichen unter „{title}“ hinzugefügt: {n}. Rückgängig entfernt sie.
 	More board actions	Weitere Brett-Aktionen
 	Back to the moves	Zurück zu den Zügen
 	Back to the moves (Esc)	Zurück zu den Zügen (Esc)
