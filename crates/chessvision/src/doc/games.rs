@@ -349,7 +349,7 @@ fn play_read(score: &mut GameScore, at: Option<usize>, san: &San, misreads: bool
 /// Append `text` to a comment: whitespace collapsed to single spaces, `}` (which would end a PGN
 /// comment) written `)`, at most [`MAX_COMMENT_BYTES`] bytes, cut between words. Returns
 /// whether anything was cut. Idempotent, so the builder and the PGN reader agree.
-pub(crate) fn append_comment(target: &mut String, text: &str) -> bool {
+pub fn append_comment(target: &mut String, text: &str) -> bool {
     let mut count = target.len();
     for word in text.split_whitespace() {
         // `}` and `)` are one byte each, so the word keeps its length.
