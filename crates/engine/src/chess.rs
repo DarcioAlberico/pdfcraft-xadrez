@@ -1625,6 +1625,50 @@ impl Session {
         kept
     }
 
+    /// The pages of `pages` (0-based, in the book's order; empty = all) of document `id` that a
+    /// reading scan with `settings` ([`Self::chess_scan`] with `read`) finds already read: in this
+    /// session's cache, or kept on disk (plan A9-N5b) for these settings and the piece model they
+    /// name. Those taken from the disk go into the cache, so the scan that follows reads nothing.
+    /// **Nothing is scanned** (plan A9-N12b: the export dialog counts the exercises of what is
+    /// read, never reading an unread book). Empty for a document that is not open or does not
+    /// allow copying.
+    pub fn chess_held(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings) -> Vec<usize> {
+        let Some(doc) = self.get(id) else { return Vec::new() };
+        if doc.check_copying().is_err() {
+            return Vec::new();
+        }
+        let count = doc.info.pages.len();
+        let Ok(set) = pdfcraft_chessvision::doc::PageSet::new(pages, count) else { return Vec::new() };
+        let pages = set.pages().to_vec();
+        let settings = settings.sanitized();
+        let model = ModelKey::of(&models(settings.models_dir.as_deref()));
+        let (found, keys) = self.chess_lookup(id, &pages, &settings, Some(model.clone()));
+        let mut held: Vec<usize> = pages.iter().zip(&found).filter(|(_, f)| f.is_some()).map(|(p, _)| *p).collect();
+        let missing: Vec<(usize, Option<page_key::PageKey>)> =
+            pages.iter().zip(&found).zip(&keys).filter(|((_, f), _)| f.is_none()).map(|((p, _), k)| (*p, *k)).collect();
+        let Some(disk) = self.chess_job_disk(id, &settings).filter(|_| !missing.is_empty()) else { return held };
+        let Some(doc) = self.get(id) else { return held };
+        let wanted =
+            ScanParams { generation: doc.generation, bytes: doc.bytes.len(), pages: count, settings: settings.clone(), model: Some(model.clone()) };
+        let contents = self.chess_disk_keys(id, &missing.iter().map(|(p, _)| *p).collect::<Vec<_>>());
+        for ((page, key), content) in missing.into_iter().zip(contents) {
+            let Some(entry) = content.and_then(|c| reading::scan_key_of(&c, &settings, Some(&model))) else { continue };
+            if let reading::Found::Hit(kept) = disk.store.get::<ChessPage>(&disk.doc, &entry) {
+                self.chess.put(id, page, key, wanted.clone(), Arc::new(ChessPage { page, ..kept }));
+                held.push(page);
+            }
+        }
+        held.sort_unstable();
+        held
+    }
+
+    /// The pages of `pages` of document `id` a scan with `settings` has looked at in this session,
+    /// its diagrams found or read: those a detection scan answers from the cache.
+    fn chess_looked_at(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings) -> Vec<usize> {
+        let (found, _) = self.chess_lookup(id, pages, &settings.sanitized(), None);
+        pages.iter().zip(found).filter(|(_, f)| f.is_some()).map(|(p, _)| *p).collect()
+    }
+
     /// How many pages this session has scanned (not answered from its cache) since it began: what
     /// a job read anew, for tests and measurements.
     pub fn chess_scanned(&self) -> usize {

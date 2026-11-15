@@ -3677,3 +3677,23 @@ progress bar	Progress	Progresso
 	Illegal move: {move} can't be played here.	Lance ilegal: {move} não pode ser jogado aqui.
 	{move} is not a move.	{move} não é um lance.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Seta a partir de {from}: Alt+clique na casa de destino, ou de novo nesta para um círculo.
+	exercises	exercícios
+	Exercise sheet (PDF)	Folha de exercícios (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Os diagramas numerados do livro num PDF novo para imprimir, 4, 6 ou 9 por página, com as soluções no fim.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Nenhum exercício para pôr na folha: os diagramas numerados das páginas escolhidas não têm posição de onde partir ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Nenhum exercício para pôr na folha: as páginas escolhidas não têm diagrama numerado.
+	Exercises: counting…	Exercícios: contando…
+	Exercises: counted when exported	Exercícios: contados ao exportar
+	Pages not read yet: {n} (counted when exported)	Páginas ainda não lidas: {n} (contadas ao exportar)
+	Exercises: {n}	Exercícios: {n}
+	solution not read: {n}	solução não lida: {n}
+	no position to start from	sem posição de onde partir
+	no solution read	nenhuma solução lida
+	Left out: {n} ({why})	Deixados de fora: {n} ({why})
+	past the sheet's {max}	além dos {max} da folha
+	Per page	Por página
+	Diagrams a page: {n} ({grid})	Diagramas por página: {n} ({grid})
+	With the solutions	Com as soluções
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	As soluções no fim, na ordem dos números. Um diagrama cuja solução não foi lida diz isso.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	A folha de exercícios não pode ser gravada sobre um PDF aberto: escolha outro nome.
+	No exercise sheet was written	Nenhuma folha de exercícios foi gravada

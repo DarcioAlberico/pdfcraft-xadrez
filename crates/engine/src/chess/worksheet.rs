@@ -22,8 +22,8 @@ use pdfcraft_chessvision::doc::worksheet::{self, Item, Layout, Worksheet};
 use pdfcraft_cos::{Document, Object, PdfString};
 use pdfcraft_edit::{AddedText, Align, Content as AddedContent};
 
-use super::document::OcrOptions;
-use super::export::ChessExportOptions;
+use super::document::{OcrMode, OcrOptions};
+use super::export::{ChessExport, ChessExportOptions};
 use super::{ChessDocument, replace};
 use crate::{DocId, Session};
 
@@ -137,14 +137,71 @@ fn wrap(text: &str, size: f64, width: f64) -> Vec<String> {
     lines
 }
 
+impl MadeSheet {
+    /// The sheet as the other exports' result (plan A9-N12b: the app writes it and says what it
+    /// noted as it does theirs): its bytes, its reading and notes, and its exercises as
+    /// [`ChessExport::exercises`] — each with the moves of its solution's main line (a word each of
+    /// its key line), 0 for one whose solution was not read (decision D30) — and the numbered
+    /// diagrams left out.
+    pub fn into_export(self) -> ChessExport {
+        use pdfcraft_chessvision::doc::exercises::{Exercise, ExercisesPgn};
+        let exercises = self
+            .sheet
+            .items()
+            .map(|i| Exercise { at: i.at, number: i.number, moves: i.solution.as_deref().map_or(0, |s| s.split_whitespace().count()) })
+            .collect();
+        let drawn = self.sheet.items().count();
+        let listed = ExercisesPgn { pgn: String::new(), exercises, left_out: self.sheet.left_out.clone(), warnings: Vec::new() };
+        ChessExport {
+            bytes: Arc::try_unwrap(self.bytes).unwrap_or_else(|shared| (*shared).clone()),
+            images: Vec::new(),
+            read: self.read,
+            drawn,
+            position_games: None,
+            positions_skipped: Vec::new(),
+            pgn_warnings: Vec::new(),
+            annotated: None,
+            exercises: Some(Box::new(listed)),
+            notes: self.notes,
+            linked: Vec::new(),
+            engine_comments: None,
+        }
+    }
+}
+
+/// What a sheet of a book's exercises would hold, counted from what is already read
+/// ([`Session::chess_worksheet_count`], plan A9-N12b).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SheetCount {
+    /// The exercises that go on it, of the pages counted.
+    pub exercises: usize,
+    /// Of those, the ones whose solution was not read: on it all the same, the key says so (D30).
+    pub unsolved: usize,
+    /// Numbered diagrams left out: no position to start from.
+    pub no_position: usize,
+    /// Exercises past [`worksheet::MAX_EXERCISES`].
+    pub over: usize,
+    /// The pages counted: read already, their text layer believed.
+    pub pages_counted: usize,
+    /// The pages chosen not counted: not read yet, or whose text the export reads with chess OCR.
+    /// The export counts them.
+    pub pages_not_read: usize,
+}
+
 impl Session {
-    /// The sheet of document `id`'s exercises (plan A9-N12a): the pages `o` names read as every
-    /// export reads them (linked to its references), laid out as `sheet` says, drawn with `o`'s
-    /// pieces and board style, titled `o.title`, in the book's language. The document itself is
-    /// not changed.
-    pub fn chess_worksheet(&mut self, id: DocId, o: &ChessExportOptions, sheet: &SheetOptions) -> Result<MadeSheet, String> {
-        let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
-        let mut read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+    /// `pages` of document `id` read as every export reads them, with chess OCR as `ocr` says
+    /// (and the pages before looked at as `look_before` says, [`Session::chess_document_of`]), the
+    /// book's language as the user says it and linked to `o`'s references; and the book they
+    /// make, as the sheet names it.
+    fn sheet_reading(
+        &mut self,
+        id: DocId,
+        pages: &[usize],
+        o: &ChessExportOptions,
+        ocr: &OcrOptions<'_>,
+        look_before: bool,
+    ) -> Result<(ChessDocument, PgnBook), String> {
+        let mut read = self.chess_document_of(id, pages, &o.scan, o.lang, ocr, look_before)?;
         // The book's language as the user says it (`text_lang`): the captions' and the key's,
         // page by page, and the sheet's `/Lang` (plan A9-N12a2; it was ignored).
         super::export::say_text_lang(&mut read, o);
@@ -153,12 +210,57 @@ impl Session {
             reference::link_all(&mut read.doc, &refs);
         }
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
-        let book = PgnBook { title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()), labels };
+        Ok((read, PgnBook { title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()), labels }))
+    }
+
+    /// The sheet of document `id`'s exercises (plan A9-N12a): the pages `o` names read as every
+    /// export reads them (linked to its references), laid out as `sheet` says, drawn with `o`'s
+    /// pieces and board style, titled `o.title`, in the book's language. The document itself is
+    /// not changed.
+    pub fn chess_worksheet(&mut self, id: DocId, o: &ChessExportOptions, sheet: &SheetOptions) -> Result<MadeSheet, String> {
+        let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
+        let (read, book) = self.sheet_reading(id, &o.pages, o, &ocr, true)?;
         let made = worksheet::worksheet(&read.doc, &book, &sheet.layout);
         let book_lang = if read.text_lang.is_empty() { read.lang.lang.code().to_owned() } else { read.text_lang.as_str().to_owned() };
         let (doc, key_pages, in_english, notes) = sheet_document(&made, sheet, o, &book_lang)?;
         let bytes = self.write_new(&doc).map_err(|e| e.to_string())?;
         Ok(MadeSheet { bytes, diagram_pages: made.pages.len(), key_pages, in_english, notes, sheet: made, read })
+    }
+
+    /// What the sheet of document `id`'s exercises would hold (plan A9-N12b, for the export
+    /// dialog), from what is **already read** of the pages `o` names: those a reading scan finds
+    /// in this session or on disk ([`Session::chess_held`]), their text layers read, never chess
+    /// OCR. Nothing is scanned, so an unread book is never read for a count (plan A9-N3's rule); a
+    /// page not read, or whose layer the export would read with chess OCR (`o.ocr`), is counted
+    /// in [`SheetCount::pages_not_read`] and left to the export.
+    pub fn chess_worksheet_count(&mut self, id: DocId, o: &ChessExportOptions, layout: &Layout) -> Result<SheetCount, String> {
+        let doc = self.get(id).ok_or("no such document")?;
+        doc.check_copying().map_err(|e| e.to_string())?;
+        let chosen = pdfcraft_chessvision::doc::PageSet::new(&o.pages, doc.info.pages.len())?.pages().len();
+        let not_read =
+            |counted: usize| SheetCount { pages_counted: counted, pages_not_read: chosen.saturating_sub(counted), ..SheetCount::default() };
+        // Every page read with chess OCR: none is read until the export.
+        if o.ocr == OcrMode::All {
+            return Ok(not_read(0));
+        }
+        let held = self.chess_held(id, &o.pages, &o.scan);
+        if held.is_empty() {
+            return Ok(not_read(0));
+        }
+        let ocr = OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: o.book.as_ref() };
+        let (read, book) = self.sheet_reading(id, &held, o, &ocr, false)?;
+        // A layer the export reads with chess OCR is not believed here.
+        let poor: Vec<usize> = if o.ocr == OcrMode::Auto { read.needs_ocr.iter().map(|(p, _)| *p).collect() } else { Vec::new() };
+        let made = worksheet::worksheet(&read.doc, &book, layout);
+        let counted = |page: usize| !poor.contains(&page);
+        let items: Vec<&Item> = made.items().filter(|i| counted(i.at.page)).collect();
+        Ok(SheetCount {
+            exercises: items.len(),
+            unsolved: items.iter().filter(|i| i.solution.is_none()).count(),
+            no_position: made.left_out.iter().filter(|l| counted(l.at.page)).count(),
+            over: made.over,
+            ..not_read(held.iter().filter(|p| counted(**p)).count())
+        })
     }
 }
 
@@ -644,6 +746,88 @@ mod tests {
         let key = texts(&doc).pop().unwrap_or_default();
         assert!(key.contains("the entry in English"), "{key:?}");
         assert!(!key.contains("1.e4 e5"), "none of its own lines beside it: {key:?}");
+    }
+
+    /// A PDF of a page per `(caption, solution)`: the caption in Helvetica, the start position in
+    /// the Chess Merida font under it, and the solution under the board.
+    fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
+        const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
+        let widths = vec!["1000"; 95].join(" ");
+        let n = pages.len();
+        let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
+        let mut objs: Vec<String> = vec![
+            "<< /Type /Catalog /Pages 2 0 R >>".into(),
+            format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")),
+            format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into(),
+        ];
+        for (i, (caption, solution)) in pages.iter().enumerate() {
+            let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\nBT /F1 20 Tf 60 724 Td ");
+            for (k, line) in MERIDA_START.iter().enumerate() {
+                c.push_str(if k > 0 { "0 -20 Td " } else { "" });
+                c.push_str(&format!("({line}) Tj "));
+            }
+            c.push_str("ET\n");
+            if let Some(moves) = solution {
+                c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+            }
+            objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i));
+            objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()));
+        }
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objs.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+        out
+    }
+
+    /// Plan A9-N12b (the coordinator's rule, 2026-11-16: choosing the format never reads an unread
+    /// book): the count is of the pages already read, and it scans nothing — not even the page
+    /// before a page read, whose foot a caption may be on. The rest is said as not read, and once
+    /// every page is read the count is the sheet's: three solved, and the one whose solution was
+    /// not read (D30). With every page read by chess OCR, nothing is counted.
+    #[test]
+    fn the_count_is_of_the_pages_read_and_scans_nothing() {
+        let pages =
+            [("Exercise 1", Some("1.e4 e5 2.Nf3 Nc6")), ("Exercise 2", Some("1.d4 d5 2.c4")), ("Exercise 3", Some("1.c4 c5")), ("Exercise 4", None)];
+        let mut s = Session::new();
+        let id = s.open("exercises.pdf", None, Arc::new(exercise_book(&pages)), None).unwrap();
+        let mut o = ChessExportOptions::new("Exercises", None);
+        o.scan = crate::chess::tests::no_model();
+        o.lang = Some(pdfcraft_chess::san::Lang::En);
+        let layout = Layout::default();
+        let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
+        assert_eq!((count, s.chess_scanned()), (SheetCount { pages_not_read: 4, ..SheetCount::default() }, 0), "nothing read, nothing scanned");
+        // Pages 2 and 3 read: page 1, before them, is not looked at for the count.
+        s.chess_scan(id, &[1, 2], &o.scan, true).unwrap();
+        let scanned = s.chess_scanned();
+        let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
+        assert_eq!(s.chess_scanned(), scanned, "the count scanned nothing");
+        assert_eq!(count, SheetCount { exercises: 2, pages_counted: 2, pages_not_read: 2, ..SheetCount::default() });
+        s.chess_scan(id, &[], &o.scan, true).unwrap();
+        let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
+        assert_eq!(count, SheetCount { exercises: 4, unsolved: 1, pages_counted: 4, ..SheetCount::default() });
+        let made = s.chess_worksheet(id, &o, &SheetOptions::default()).unwrap();
+        assert_eq!(made.sheet.items().count(), count.exercises, "the export puts on the sheet what the count said");
+        let export = made.into_export();
+        let listed = export.exercises.as_deref().map(|e| e.exercises.iter().map(|x| (x.number, x.moves)).collect::<Vec<_>>());
+        assert_eq!(listed, Some(vec![(1, 4), (2, 3), (3, 2), (4, 0)]), "the sheet as an export: each exercise's moves, 0 unsolved");
+        // Chosen pages only; every page read by chess OCR is left to the export.
+        o.pages = vec![0, 3];
+        assert_eq!(
+            s.chess_worksheet_count(id, &o, &layout).unwrap(),
+            SheetCount { exercises: 2, unsolved: 1, pages_counted: 2, ..SheetCount::default() }
+        );
+        o.ocr = OcrMode::All;
+        assert_eq!(s.chess_worksheet_count(id, &o, &layout).unwrap(), SheetCount { pages_not_read: 2, ..SheetCount::default() });
     }
 
     #[test]

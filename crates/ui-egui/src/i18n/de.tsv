@@ -3661,3 +3661,23 @@ progress bar	Progress	Fortschritt
 	Illegal move: {move} can't be played here.	Regelwidriger Zug: {move} kann hier nicht gespielt werden.
 	{move} is not a move.	{move} ist kein Zug.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Pfeil von {from}: Alt+Klick auf das Zielfeld, oder noch einmal auf dieses für einen Kreis.
+	exercises	Aufgaben
+	Exercise sheet (PDF)	Aufgabenblatt (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Die nummerierten Diagramme des Buchs als neues PDF zum Drucken, 4, 6 oder 9 pro Seite, mit ihren Lösungen am Ende.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Keine Aufgabe für das Blatt: Die nummerierten Diagramme der gewählten Seiten haben keine Ausgangsstellung ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Keine Aufgabe für das Blatt: Die gewählten Seiten haben kein nummeriertes Diagramm.
+	Exercises: counting…	Aufgaben: werden gezählt…
+	Exercises: counted when exported	Aufgaben: werden beim Exportieren gezählt
+	Pages not read yet: {n} (counted when exported)	Noch nicht gelesene Seiten: {n} (werden beim Exportieren gezählt)
+	Exercises: {n}	Aufgaben: {n}
+	solution not read: {n}	Lösung nicht gelesen: {n}
+	no position to start from	keine Ausgangsstellung
+	no solution read	keine Lösung gelesen
+	Left out: {n} ({why})	Ausgelassen: {n} ({why})
+	past the sheet's {max}	über die {max} des Blatts hinaus
+	Per page	Pro Seite
+	Diagrams a page: {n} ({grid})	Diagramme pro Seite: {n} ({grid})
+	With the solutions	Mit den Lösungen
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Die Lösungen am Ende, in der Reihenfolge der Nummern. Ein Diagramm, dessen Lösung nicht gelesen wurde, sagt das.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Das Aufgabenblatt kann nicht über ein geöffnetes PDF geschrieben werden: Wählen Sie einen anderen Namen.
+	No exercise sheet was written	Es wurde kein Aufgabenblatt geschrieben

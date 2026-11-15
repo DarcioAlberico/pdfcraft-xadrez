@@ -3656,3 +3656,23 @@ progress bar	Progress	İlerleme
 	Illegal move: {move} can't be played here.	Kurala aykırı hamle: {move} burada oynanamaz.
 	{move} is not a move.	{move} bir hamle değil.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} karesinden ok: gideceği kareye Alt+tıklayın ya da daire için bu kareye yeniden tıklayın.
+	exercises	alıştırmalar
+	Exercise sheet (PDF)	Alıştırma sayfası (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Kitabın numaralı diyagramları, yazdırmak için yeni bir PDF'de, sayfa başına 4, 6 veya 9, sonda çözümleriyle.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Sayfaya konacak alıştırma yok: seçilen sayfaların numaralı diyagramlarının başlangıç konumu yok ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Sayfaya konacak alıştırma yok: seçilen sayfalarda numaralı diyagram yok.
+	Exercises: counting…	Alıştırmalar: sayılıyor…
+	Exercises: counted when exported	Alıştırmalar: dışa aktarılırken sayılır
+	Pages not read yet: {n} (counted when exported)	Henüz okunmamış sayfalar: {n} (dışa aktarılırken sayılır)
+	Exercises: {n}	Alıştırmalar: {n}
+	solution not read: {n}	çözüm okunmadı: {n}
+	no position to start from	başlangıç konumu yok
+	no solution read	okunmuş çözüm yok
+	Left out: {n} ({why})	Dışarıda bırakılan: {n} ({why})
+	past the sheet's {max}	sayfanın {max} sınırının ötesinde
+	Per page	Sayfa başına
+	Diagrams a page: {n} ({grid})	Sayfa başına diyagram: {n} ({grid})
+	With the solutions	Çözümlerle
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Çözümler sonda, numara sırasıyla. Çözümü okunmamış bir diyagram bunu belirtir.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Alıştırma sayfası açık bir PDF'nin üzerine yazılamaz: başka bir ad seçin.
+	No exercise sheet was written	Alıştırma sayfası yazılmadı

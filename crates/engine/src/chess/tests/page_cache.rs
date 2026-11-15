@@ -85,6 +85,7 @@ fn a_detection_look_leaves_a_page_read() {
     let read = s.chess_scan(id, &[4], &quick(), true).unwrap();
     assert_eq!(s.chess.scanned - before, 0, "nothing scanned again");
     assert_eq!(boards(&read).len(), 1);
+    assert_eq!(s.chess_held(id, &[], &quick()), [4], "and it is held as read");
 }
 
 #[test]
