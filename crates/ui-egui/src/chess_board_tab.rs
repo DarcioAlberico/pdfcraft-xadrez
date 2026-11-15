@@ -716,9 +716,10 @@ fn bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<BoardAct
         chess.board_view = MovesView::Moves;
         chess.board_mut().toggle_comment_editor();
     }
-    // FEN/PGN ▾.
+    // FEN/PGN ▾; its lichess link from the side the board's diagram is printed from (plan A9-G9).
+    let printed = chess.board().source.and_then(|s| chess.results_of(s.doc).map(|r| r.printed_from(s.page, s.index)));
     let (_, picked) = egui::containers::menu::MenuButton::from_button(open_menu("FEN/PGN")).ui(ui, |ui| {
-        let asked = chess_board_ui::fen_pgn_items(ui, chess.board_mut());
+        let asked = chess_board_ui::fen_pgn_items(ui, chess.board_mut(), printed);
         ui.separator();
         let edit = crate::widgets::menu_entry(ui, true, egui::Button::new(tl!("Edit the FEN and the PGN"))).clicked();
         (asked, edit)
