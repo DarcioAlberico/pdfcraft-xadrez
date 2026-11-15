@@ -48,6 +48,7 @@ pub mod html;
 pub mod markdown;
 pub mod pgn;
 pub mod reference;
+pub mod worksheet;
 
 #[cfg(test)]
 mod tests;

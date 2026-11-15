@@ -50,3 +50,33 @@ fn perf_book_pattern_at_the_cap() {
     assert!((200_000..300_000).contains(&index.moves()), "{}", index.moves());
     assert!(crate::timing::within(ms, 2000.0), "best of three {ms:.0} ms ({runs:.0?})");
 }
+
+/// Plan A9-N16a2: a run open when the walk's budget runs out is still counted, and the result says
+/// it was capped.
+#[test]
+fn a_run_cut_by_the_budget_is_kept_and_said() {
+    use pdfcraft_chess::pattern::{Material, Query};
+    let index = ReferenceIndex::from_pgn(ENDINGS_PGN).unwrap();
+    let game = index.game(0).unwrap();
+    let query = Query { material: Material::parse("KRP-KR").ok(), either_side: true, ..Query::default() };
+    let mut out = Stretches::default();
+    game_stretches(&game, 0, &query, 100, &mut out, 3);
+    assert_eq!(
+        out.found.iter().map(|s| (s.first.to_string(), s.last.to_string(), s.positions)).collect::<Vec<_>>(),
+        [("1.d6".to_owned(), "2.d7".to_owned(), 3)]
+    );
+    assert!(out.capped);
+    assert!(!index.stretches(&query, 100).capped, "a whole game is no cap");
+}
+
+/// Plan A9-N16a2: the position a game is set up from is no stretch of its own: a stretch starts at
+/// a move. A game set up in a rook ending whose first move takes the rook has none.
+#[test]
+fn a_games_start_position_is_not_a_stretch() {
+    use pdfcraft_chess::pattern::{Material, Query};
+    let pgn = "[Event \"Taken\"]\n[SetUp \"1\"]\n[FEN \"6k1/8/8/3P4/8/8/r7/R3K3 w - - 0 1\"]\n\n1.Rxa2 Kf7 *\n";
+    let index = ReferenceIndex::from_pgn(pgn).unwrap();
+    let query = Query { material: Material::parse("KRP-KR").ok(), ..Query::default() };
+    let found = index.stretches(&query, 100);
+    assert_eq!((found.total, found.played), (0, 1), "{found:?}");
+}
