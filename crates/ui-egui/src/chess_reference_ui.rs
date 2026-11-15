@@ -900,7 +900,7 @@ const MAX_FOLDER_ENTRIES: usize = 4096;
 /// The PGN beside the PDF at `keys`' path that goes with it ([`sibling_pgn`]: `book.pdf` →
 /// `book.pgn`, and `📚Book.pdf` → `Book.pgn`), when there is one. Never on the web, which has no
 /// paths.
-fn find_sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
+pub(crate) fn find_sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let pdf = std::path::Path::new(keys.path.as_deref()?);

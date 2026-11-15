@@ -3863,3 +3863,30 @@ progress bar	Progress	Tiến độ
 	Language: {lang}	Ngôn ngữ: {lang}
 	from the book's text	theo văn bản của sách
 	Games: read from the text, linked to the book's PGN	Ván cờ: đọc từ văn bản, liên kết với PGN của sách
+	More Text tab actions	Thêm thao tác của thẻ Văn bản
+	Read with OCR	Đọc bằng OCR
+	illegal	không hợp lệ
+	ambiguous	mơ hồ
+	out of sequence	sai thứ tự
+	not reached	chưa tới
+	not checked	chưa kiểm tra
+	caption	chú thích
+	Analyze the position	Phân tích thế cờ
+	Export chess book…	Xuất sách cờ vua…
+	Chess shortcuts	Phím tắt cờ vua
+	Board, move list and Chess panel	Bàn cờ, danh sách nước đi và bảng cờ vua
+	Diagram tab	Thẻ Sơ đồ
+	Move back	Lùi một nước
+	Move forward	Tiến một nước
+	The variation above	Biến phía trên
+	The variation below	Biến phía dưới
+	Start of the game	Đầu ván cờ
+	End of the line	Cuối dòng
+	End of the main line	Cuối dòng chính
+	Previous variation	Biến trước
+	Next variation	Biến tiếp theo
+	Leave the chess panel	Rời bảng cờ vua
+	Next tool of {group}	Công cụ tiếp theo của {group}
+	Previous diagram	Sơ đồ trước
+	Next diagram	Sơ đồ tiếp theo
+	The original or the position read	Bản gốc hoặc thế cờ đã đọc

@@ -4,12 +4,13 @@
 //! The game and its PGN never change; only the list shows the moves so. Every move is named for
 //! assistive technology in words ("knight f3"), whatever is shown.
 
+use std::cell::Cell;
 use std::sync::Arc;
 
 use egui::{Color32, TextureHandle};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet;
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
-use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
+use pdfcraft_engine::chess::pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
 
 /// How the list writes the pieces.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -222,8 +223,16 @@ pub(crate) fn current(ctx: &egui::Context) -> MovePieces {
     ctx.data(|d| d.get_temp::<MovePieces>(mode_key())).unwrap_or_default()
 }
 
+thread_local! {
+    /// The notation of this frame's text ([`Notation::current`]): the mode, and whether the text
+    /// font has the figurines' glyphs. Per thread, as the interface's language is.
+    static NOTATION: Cell<(MovePieces, bool)> = const { Cell::new((MovePieces::English, false)) };
+}
+
 /// The mode and the board's pieces for this frame.
 pub(crate) fn set(ctx: &egui::Context, mode: MovePieces, pieces: Option<Arc<PieceSet>>) {
+    let glyphs = mode == MovePieces::Figurines && ctx.fonts_mut(|f| f.has_glyphs(&egui::FontId::proportional(13.0), "♔♕♖♗♘"));
+    NOTATION.with(|n| n.set((mode, glyphs)));
     ctx.data_mut(|d| {
         d.insert_temp(mode_key(), mode);
         match pieces {
@@ -282,40 +291,49 @@ pub(crate) fn split(san: &str) -> (Option<PieceKind>, &str) {
     (Some(kind), san.get(1..).unwrap_or_default())
 }
 
-fn letter(kind: PieceKind, lang: Lang) -> &'static str {
-    let l = lang.letters();
-    match kind {
-        PieceKind::King => l.king,
-        PieceKind::Queen => l.queen,
-        PieceKind::Rook => l.rook,
-        PieceKind::Bishop => l.bishop,
-        PieceKind::Knight => l.knight,
-        PieceKind::Pawn => l.pawn,
-    }
+/// How the moves are written in text (plan A9-I10, findings A6-09): the list's preference for
+/// every surface that writes a move — the list, the trail, the comment fields, the capture's
+/// headline, the engine's lines and the board's header. Figurines are written as the font's
+/// glyphs in text (the list draws the board's own pieces), English letters when the font has
+/// none; letters in the interface's language; or English letters, as SAN stores them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Notation {
+    pieces: MovePieces,
+    lang: Lang,
+    /// The text font has the figurines' glyphs.
+    glyphs: bool,
 }
 
-/// `san` with `lang`'s piece letters: the moving piece and a promotion's (`e8=Q` → `e8=D`), and
-/// castling with zeros where the language writes them so.
-pub(crate) fn in_letters(san: &str, lang: Lang) -> String {
-    if san.starts_with("O-O") {
-        return if lang.letters().zero_castling { san.replace('O', "0") } else { san.to_owned() };
+impl Notation {
+    /// SAN as it is stored: English letters.
+    #[cfg(test)]
+    pub(crate) const ENGLISH: Notation = Notation { pieces: MovePieces::English, lang: Lang::En, glyphs: false };
+
+    /// The notation the list's preference says, in the interface's language, as this frame set
+    /// it ([`set`]); English letters before any frame (and in unit tests).
+    pub(crate) fn current() -> Notation {
+        let (pieces, glyphs) = NOTATION.with(Cell::get);
+        Notation { pieces, lang: interface_lang(), glyphs }
     }
-    let (kind, rest) = split(san);
-    let mut out = kind.map(|k| letter(k, lang).to_owned()).unwrap_or_default();
-    match rest.split_once('=') {
-        Some((before, after)) => {
-            let (promoted, tail) = split(after);
-            out.push_str(before);
-            out.push('=');
-            match promoted {
-                Some(k) => out.push_str(letter(k, lang)),
-                None => out.push_str(after.get(..1).unwrap_or_default()),
-            }
-            out.push_str(if promoted.is_some() { tail } else { after.get(1..).unwrap_or_default() });
-        }
-        None => out.push_str(rest),
+
+    /// `pieces` in `lang`, the figurines' glyphs taken as there (tests).
+    #[cfg(test)]
+    pub(crate) fn new(pieces: MovePieces, lang: Lang) -> Notation {
+        Notation { pieces, lang, glyphs: true }
     }
-    out
+
+    /// A move's SAN (English letters, as stored) written in this notation: its check, mate and
+    /// promotion kept. A text that is not a move is left as it is.
+    pub(crate) fn san(&self, san: &str) -> String {
+        let style = match self.pieces {
+            MovePieces::English => return san.to_owned(),
+            MovePieces::Letters => Style::Letters,
+            MovePieces::Figurines if self.glyphs => Style::Figurine(FigurineSet::Solid),
+            MovePieces::Figurines => return san.to_owned(),
+        };
+        // Its marks (check, mate) are the parsed move's, written after it.
+        San::read(san, Lang::En).map_or_else(|_| san.to_owned(), |parsed| parsed.write(self.lang, style))
+    }
 }
 
 /// The interface's piece-letter language: English when it has none of its own.
@@ -406,7 +424,7 @@ pub(crate) fn move_button(
             let image = egui::Image::new(&tex).uv(crate::chess_board_ui::sprite_uv(piece)).fit_to_exact_size(egui::vec2(side, side));
             ui.add(egui::Button::selectable(selected, (image, style(format!("{rest}{glyphs}")))))
         }
-        (MovePieces::Letters, _) => ui.selectable_label(selected, style(format!("{}{glyphs}", in_letters(san, interface_lang())))),
+        (MovePieces::Letters, _) => ui.selectable_label(selected, style(format!("{}{glyphs}", Notation::current().san(san)))),
         _ => ui.selectable_label(selected, style(format!("{san}{glyphs}"))),
     };
     let name = spoken(san, spoken_glyphs);
@@ -466,17 +484,21 @@ mod tests {
 
     #[test]
     fn moves_are_written_in_a_languages_letters() {
-        assert_eq!(in_letters("Nf3", Lang::Pt), "Cf3");
-        assert_eq!(in_letters("Qxd5+", Lang::De), "Dxd5+");
-        assert_eq!(in_letters("e8=Q#", Lang::Pt), "e8=D#");
-        assert_eq!(in_letters("exd8=N", Lang::Fr), "exd8=C");
-        assert_eq!(in_letters("O-O-O", Lang::De), "0-0-0");
-        assert_eq!(in_letters("O-O", Lang::Pt), "O-O");
-        assert_eq!(in_letters("Kc2", Lang::Ru), "Крc2");
-        assert_eq!(in_letters("e4", Lang::Pt), "e4");
-        // Nothing a SAN token could hold is cut where it should not be.
+        let letters = |lang| Notation::new(MovePieces::Letters, lang);
+        assert_eq!(letters(Lang::Pt).san("Nf3"), "Cf3");
+        assert_eq!(letters(Lang::De).san("Qxd5+"), "Dxd5+");
+        assert_eq!(letters(Lang::Pt).san("e8=Q#"), "e8=D#");
+        assert_eq!(letters(Lang::Fr).san("exd8=N"), "exd8=C");
+        assert_eq!(letters(Lang::De).san("O-O-O"), "0-0-0");
+        assert_eq!(letters(Lang::Pt).san("O-O"), "O-O");
+        assert_eq!(letters(Lang::Ru).san("Kc2"), "Крc2");
+        assert_eq!(letters(Lang::Pt).san("e4"), "e4");
+        // Plan A9-I10: the figurines as glyphs in text, and English as stored.
+        assert_eq!(Notation::new(MovePieces::Figurines, Lang::Pt).san("Nf3+"), "♞f3+");
+        assert_eq!(Notation::ENGLISH.san("Nf3"), "Nf3");
+        // Nothing a SAN token could hold is cut where it should not be: what is not a move stays.
         for odd in ["", "N", "=", "e8=", "e8=é", "Né"] {
-            let _ = in_letters(odd, Lang::Pt);
+            assert_eq!(letters(Lang::Pt).san(odd), odd);
             let _ = spoken(odd, "");
         }
     }
