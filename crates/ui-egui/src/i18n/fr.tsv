@@ -3582,3 +3582,10 @@ progress bar	Progress	Progression
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Le PGN du livre est plus grand que ce que PdfCraft indexe : seuls ses {moves} premiers coups sont liés au livre.
 	Engine: {name}, in {folder}	Moteur : {name}, dans {folder}
 	Importing…	Importation…
+	Chess engine	Moteur d'échecs
+	Search threads	Fils de recherche
+	Hash table	Table de hachage
+	Engine's default	Valeur par défaut du moteur
+	Endgame tables (Syzygy)	Tables de finales (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Chacune n'est transmise au moteur que s'il l'accepte. Lancez l'analyse pour voir celles que ce moteur accepte.
+	This engine does not take: {names}	Ce moteur n'accepte pas : {names}

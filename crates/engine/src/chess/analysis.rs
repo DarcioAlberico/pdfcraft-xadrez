@@ -250,6 +250,20 @@ pub struct Snapshot {
     pub error: Option<AnalysisError>,
     /// The settings not sent since the handshake, and why (plan A9-N8).
     pub refused: Vec<Refused>,
+    /// The settings this engine takes, as it announced them: a settings form shows only those.
+    pub settable: Settable,
+}
+
+/// Which of the [`EngineSettings`] the engine announced, and how (plan A9-N8): each `None` (or
+/// `false`) was not announced as the kind it is sent as, and would be refused.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Settable {
+    /// `Threads`, a number from the first to the second.
+    pub threads: Option<(i64, i64)>,
+    /// `Hash`, in MB, from the first to the second.
+    pub hash_mb: Option<(i64, i64)>,
+    /// `SyzygyPath`, a text.
+    pub syzygy_path: bool,
 }
 
 /// How the engine is set up beyond what the analysis asks (plan A9-N8, A8-11): each `None` leaves
@@ -612,8 +626,18 @@ impl Analyser {
             nps: s.nps,
             error,
             refused: s.refused.clone(),
+            settable: settable(&s),
         }
     }
+}
+
+/// What the engine announced of the [`EngineSettings`] ([`Snapshot::settable`]).
+fn settable(s: &Shared) -> Settable {
+    let spin = |name| match announced(s, name).map(|o| &o.kind) {
+        Some(OptionKind::Spin { min, max }) => Some((*min, *max)),
+        _ => None,
+    };
+    Settable { threads: spin("Threads"), hash_mb: spin("Hash"), syzygy_path: announced(s, "SyzygyPath").is_some_and(|o| o.kind == OptionKind::Text) }
 }
 
 impl Drop for Analyser {
@@ -1012,6 +1036,7 @@ mod tests {
         assert_eq!(setoptions(&log), ["setoption name MultiPV value 2"]);
         let refused: Vec<(&str, Refusal)> = s.refused.iter().map(|r| (r.option, r.why)).collect();
         assert_eq!(refused, [("Threads", Refusal::NotAnnounced), ("Hash", Refusal::NotAnnounced), ("SyzygyPath", Refusal::NotAnnounced)]);
+        assert_eq!(s.settable, Settable::default(), "none of them to offer");
         // An engine announcing them: its spelling, its bounds.
         const ALL: &[&str] = &[
             "option name threads type spin default 1 min 1 max 8",
@@ -1026,6 +1051,7 @@ mod tests {
             ["setoption name threads value 8", "setoption name Hash value 1", "setoption name SyzygyPath value C:/tables/syzygy"]
         );
         assert_eq!(s.refused, [Refused { option: "MultiPV", why: Refusal::NotAnnounced }], "MultiPV was not announced");
+        assert_eq!(s.settable, Settable { threads: Some((1, 8)), hash_mb: Some((1, 1024)), syzygy_path: true }, "what a form offers");
         // Changed settings start the position again, after telling the engine.
         a.set_settings(EngineSettings { threads: Some(2), ..settings() });
         let s = wait(&a, |s| !s.searching && !s.lines.is_empty() && searches(&log) == 2);
@@ -1056,6 +1082,7 @@ mod tests {
         assert!(!log.lock().unwrap().iter().any(|c| c.starts_with("setoption name SyzygyPath") || c.starts_with("setoption name Threads")));
         assert!(s.refused.contains(&Refused { option: "SyzygyPath", why: Refusal::OtherKind }), "{:?}", s.refused);
         assert!(s.refused.contains(&Refused { option: "Threads", why: Refusal::OtherKind }), "{:?}", s.refused);
+        assert_eq!(s.settable, Settable::default(), "announced as the other kind: not offered");
     }
 
     /// Plan A9-N8 (R6-09): a game's position goes with the moves since its last capture or pawn

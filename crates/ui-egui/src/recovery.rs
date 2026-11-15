@@ -332,6 +332,9 @@ impl PdfCraftApp {
         self.chess.book_pgns.use_folder(reference);
         // The books' ciphers beside them (plan A9-G3c).
         self.chess.ciphers.use_folder(dir.join("cipher"));
+        // The engine's evaluations beside them (plan A9-N8), where `chess_evals` reads them.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.chess.evals.use_folder(dir.join("evals"));
         self.chess.games.use_games_folder(dir.join("games"), earlier.as_deref());
         // The books' readings beside them (plan A9-N5b), which stop below a free gigabyte.
         pdfcraft_engine::chess::reading::set_free_space(std::sync::Arc::new(pdfcraft_platform::app_dirs::free_space));

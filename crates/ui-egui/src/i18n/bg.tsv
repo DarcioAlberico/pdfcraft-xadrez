@@ -3545,3 +3545,10 @@ progress bar	Progress	Напредък
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN на книгата е по-голям, отколкото PdfCraft индексира: с книгата са свързани само първите {moves} хода.
 	Engine: {name}, in {folder}	Енджин: {name}, в {folder}
 	Importing…	Импортиране…
+	Chess engine	Шахматен двигател
+	Search threads	Нишки за търсене
+	Hash table	Хеш таблица
+	Engine's default	По подразбиране за двигателя
+	Endgame tables (Syzygy)	Таблици за ендшпил (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Всяка настройка се подава на двигателя само ако той я приема. Започнете анализа, за да видите кои приема този двигател.
+	This engine does not take: {names}	Този двигател не приема: {names}
