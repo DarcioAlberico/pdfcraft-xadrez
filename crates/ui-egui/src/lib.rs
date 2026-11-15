@@ -665,6 +665,9 @@ pub struct PdfCraftApp {
     /// What the user just did, with a button that takes it back when it can be (plan A9 §2.8.1,
     /// step G10): at the foot of the page area ([`notice`]).
     pub notice: Option<notice::Notice>,
+    /// What failed, shown until dismissed (plan A9-I17): at the foot of the page area, under the
+    /// notice ([`notice`]).
+    pub alert: Option<notice::Notice>,
     /// Whether the macOS title bar is drawn by us (traffic lights over our tab strip).
     pub integrated_titlebar: bool,
     /// Set when the desktop leaves the window frame to the app (GNOME on Wayland): the tab strip
@@ -1038,6 +1041,7 @@ impl PdfCraftApp {
             pinned: Default::default(),
             toast: None,
             notice: None,
+            alert: None,
             integrated_titlebar: false,
             window_controls: None,
             system_title_bar: false,

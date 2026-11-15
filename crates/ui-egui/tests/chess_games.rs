@@ -121,7 +121,7 @@ fn export(h: &mut Harness<'static, PdfCraftApp>, path: &std::path::Path) -> Stri
     h.get_by_label("Save all games as PGN…").click();
     h.run_steps(4);
     h.state_mut().pick_override = None;
-    std::fs::read_to_string(path).unwrap_or_else(|e| panic!("exported to {}: {e}; toast {:?}", path.display(), h.state().toast))
+    std::fs::read_to_string(path).unwrap_or_else(|e| panic!("exported to {}: {e}; said {:?}", path.display(), h.state().said()))
 }
 
 /// The `[Event "…"]` values of a PGN text, in order.
@@ -132,7 +132,7 @@ fn events(pgn: &str) -> Vec<&str> {
 /// Open the menu of the row named `name` (a notice shown at the bottom of the window, over the
 /// list's last rows, is put away first).
 fn row_menu(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.run_steps(1);
     h.get_by_label(name).click_secondary();
     h.run_steps(2);
@@ -309,7 +309,7 @@ fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     h.get_by_label("Save them as they are").click();
     h.run_steps(4);
     h.state_mut().pick_override = None;
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{e}; toast {:?}", h.state().toast));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{e}; said {:?}", h.state().said()));
     // The rest of the line is written as a comment where its reading stopped (plan A9-F3): text,
     // no longer moves.
     assert!(text.contains("3. Bb5 a6 {Bxh7 Nf6") && !text.contains("4. Bxh7"), "{text}");
@@ -557,7 +557,7 @@ fn the_order_and_the_names_come_back_in_the_next_session() {
 /// Drag the row named `from` and drop it on the top (`above`) or bottom half of the row named `to`,
 /// as a mouse does: press, move past the drag threshold, move over the target, release there.
 fn drag_row(h: &mut Harness<'static, PdfCraftApp>, from: &str, to: &str, above: bool) {
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.run_steps(1);
     let start = h.get_by_label(from).rect().center();
     let target = h.get_by_label(to).rect();
@@ -593,7 +593,7 @@ fn undo_takes_back_a_delete_and_a_move_and_rows_can_be_dragged() {
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
     assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0), "B is back where it was");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Delete game"));
+    assert_eq!(h.state().said(), Some("Undid Delete game"));
     assert!(h.state_mut().execute("edit.redo"));
     h.run_steps(2);
     assert_eq!(listed(h.state()).0, ["A", "C"]);
@@ -610,7 +610,7 @@ fn undo_takes_back_a_delete_and_a_move_and_rows_can_be_dragged() {
     assert_eq!(listed(h.state()).0, ["C", "B", "A"]);
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Move game"));
+    assert_eq!(h.state().said(), Some("Undid Move game"));
     assert_eq!(listed(h.state()), (vec!["C".to_owned(), "A".to_owned(), "B".to_owned()], 1));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
@@ -624,7 +624,7 @@ fn undo_takes_back_a_delete_and_a_move_and_rows_can_be_dragged() {
 fn undo_takes_back_games_added_and_keeps_a_changed_one() {
     let mut h = harness();
     three_games(&mut h);
-    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().said().unwrap_or_default().to_owned();
     // Open PGN… is one step.
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
@@ -648,7 +648,7 @@ fn undo_takes_back_games_added_and_keeps_a_changed_one() {
     assert_eq!(listed(h.state()).1, 2);
     h.state_mut().chess.board_mut().play_uci_line(&["d7d5".into()]);
     h.run_steps(2);
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.run_steps(1);
     h.get_by_label("A").click();
     h.run_steps(2);
@@ -666,7 +666,7 @@ fn undo_takes_back_games_added_and_keeps_a_changed_one() {
     // Taken out again, then opened from Deleted moves: Undo puts it back there.
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.get_by_label("Deleted moves (1)…").click();
     h.run_steps(2);
     h.get_by_label("Open as a new game").click();
@@ -687,7 +687,7 @@ fn undo_takes_back_games_added_and_keeps_a_changed_one() {
 fn undo_takes_back_a_diagram_opened_on_the_board() {
     let mut h = harness();
     three_games(&mut h);
-    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().said().unwrap_or_default().to_owned();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     h.state_mut().open_chess_board(0, 0);
@@ -711,7 +711,7 @@ fn undo_takes_back_a_diagram_opened_on_the_board() {
     // Changed, then A shown: Undo takes it out into Deleted moves, and says so.
     h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
     h.run_steps(2);
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.run_steps(1);
     h.get_by_label("A").click();
     h.run_steps(2);
@@ -743,10 +743,10 @@ fn the_pgn_field_puts_its_first_game_on_the_board_and_adds_the_others() {
     h.run_steps(3);
     assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0), "the first on the board, shown");
     assert_eq!(movetexts(h.state()), ["1. e4", "1. d4", "1. c4"]);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("2 more games were added to the list of games."));
+    assert_eq!(h.state().said(), Some("2 more games were added to the list of games."));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Load the PGN"));
+    assert_eq!(h.state().said(), Some("Undid Load the PGN"));
     assert_eq!(listed(h.state()), (vec!["A".to_owned()], 0));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
@@ -764,7 +764,7 @@ fn four_games(h: &mut Harness<'static, PdfCraftApp>) {
 /// Click the row named `name` with `modifiers` held (Ctrl is [`Modifiers::COMMAND`]), as a mouse
 /// does: the modifiers are down during the frame of the click.
 fn click_with(h: &mut Harness<'static, PdfCraftApp>, name: &str, modifiers: Modifiers) {
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.run_steps(1);
     let at = h.get_by_label(name).rect().center();
     h.hover_at(at);
@@ -808,7 +808,7 @@ fn games_selected_with_ctrl_and_shift_are_deleted_moved_and_saved_together() {
     assert_eq!(listed(h.state()), (vec!["B".to_owned(), "D".to_owned()], 0), "both gone; the game after A is shown");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Delete game"), "one step");
+    assert_eq!(h.state().said(), Some("Undid Delete game"), "one step");
     assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned(), "D".to_owned()], 0), "each back at its place");
     assert_eq!(selected(&h), ["A"], "a delete leaves nothing selected");
     // A plain click shows B alone; Shift+click on D selects B to D, B still shown.
@@ -823,7 +823,7 @@ fn games_selected_with_ctrl_and_shift_are_deleted_moved_and_saved_together() {
     assert_eq!(selected(&h), ["B", "C", "D"], "the selection moved with them");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Move game"));
+    assert_eq!(h.state().said(), Some("Undid Move game"));
     assert_eq!(listed(h.state()).0, ["A", "B", "C", "D"]);
     // Save PGN… in a selected row's menu writes the games selected, in list order.
     let dir = temp_dir("selection");
@@ -834,7 +834,7 @@ fn games_selected_with_ctrl_and_shift_are_deleted_moved_and_saved_together() {
     h.get_all_by_label("Save PGN…").find(|n| n.rect() != bar).expect("the menu's Save PGN…").click();
     h.run_steps(4);
     h.state_mut().pick_override = None;
-    let pgn = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("saved to {}: {e}; toast {:?}", path.display(), h.state().toast));
+    let pgn = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("saved to {}: {e}; said {:?}", path.display(), h.state().said()));
     assert_eq!(events(&pgn), ["B", "C", "D"]);
     // Dragged by one of them, the selection goes together to where it is dropped.
     drag_row(&mut h, "D", "A", true);
@@ -966,13 +966,13 @@ fn pgn_files_with_a_bom_or_in_latin_1_open_whole() {
     assert_eq!(h.state_mut().import_chess_pgn("bom.pgn", &bom), 2);
     h.run_steps(3);
     assert_eq!(listed(h.state()).0, ["Réti–João", "B"]);
-    let toast = format!("{:?}", h.state().toast);
+    let toast = format!("{:?}", h.state().said());
     assert!(!toast.contains("Windows-1252"), "{toast}");
     let latin1: Vec<u8> = two.chars().map(|c| u8::try_from(u32::from(c)).unwrap()).collect();
     assert_eq!(h.state_mut().import_chess_pgn("latin1.pgn", &latin1), 2);
     h.run_steps(3);
     assert_eq!(listed(h.state()).0, ["Réti–João", "B", "Réti–João", "B"]);
-    let toast = format!("{:?}", h.state().toast);
+    let toast = format!("{:?}", h.state().said());
     assert!(toast.contains("Read as Windows-1252 (Latin-1), not UTF-8."), "{toast}");
     // Saved without the mark by default, with it when asked; the choice outlives a restart.
     let dir = temp_dir("bom");
@@ -1005,7 +1005,7 @@ fn the_games_list_exports_its_games_as_a_book() {
         h.run_steps(2);
         h.get_by_label(format).click();
         h.run_steps(4);
-        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{format} written to {}: {e}; toast {:?}", path.display(), h.state().toast));
+        let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{format} written to {}: {e}; said {:?}", path.display(), h.state().said()));
         if format == "EPUB" {
             assert!(bytes.starts_with(b"PK"), "an EPUB is a zip");
         } else {
@@ -1014,7 +1014,7 @@ fn the_games_list_exports_its_games_as_a_book() {
                 assert!(html.contains(&format!(">{event}<")) && html.contains(mv), "game {event}: {html}");
             }
         }
-        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Exported to")), "{:?}", h.state().toast);
+        assert!(h.state().said().is_some_and(|t| t.starts_with("Exported to")), "{:?}", h.state().said());
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

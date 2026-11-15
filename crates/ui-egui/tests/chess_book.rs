@@ -189,7 +189,7 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
     // back at the move clicked.
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Open this game on the board"));
+    assert_eq!(h.state().said(), Some("Undid Open this game on the board"));
     assert_eq!((games(&h), movetext(&h).as_str()), (1, ""));
     assert!(h.state_mut().execute("edit.redo"));
     h.run_steps(2);
@@ -269,7 +269,7 @@ fn a_move_with_no_game_around_it_says_so() {
     double_click_at(&mut h, at);
     assert_eq!(games(&h), 1);
     assert!(h.state().chess.board().game.is_empty(), "nothing was opened");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("No game was found for this move, on its page or the pages around it."));
+    assert_eq!(h.state().said(), Some("No game was found for this move, on its page or the pages around it."));
 }
 
 /// With Follow on, walking the book's game walks the book: each move shown scrolls the page to
@@ -330,7 +330,7 @@ fn follow_scrolls_the_page_to_each_move_shown() {
     h.run_steps(2);
     let before = last_shown(&h);
     assert!(!h.state_mut().execute("chess.source.show"), "nothing to show");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("This move has no place on the page."));
+    assert_eq!(h.state().said(), Some("This move has no place on the page."));
     assert!(h.state_mut().execute("chess.source.follow"));
     h.run_steps(3);
     assert!(h.state().chess.source.follow());

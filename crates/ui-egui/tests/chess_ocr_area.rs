@@ -150,7 +150,7 @@ fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
 }
 
 fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default()
+    h.state().said().unwrap_or_default().to_owned()
 }
 
 fn close(a: [f32; 4], b: [f32; 4]) -> bool {

@@ -341,7 +341,7 @@ impl PdfCraftApp {
                 // Reading never renames (plan A9-G3a): a file that can't be read is said, and
                 // the next change sets it aside.
                 if let Some((_, why)) = &loaded.unreadable {
-                    self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
+                    self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
                 }
                 if let Some(pgn) = loaded.pgn() {
                     kept = Some((pgn.text.clone(), pgn.name.clone(), Decisions::of(&loaded.file)));
@@ -349,7 +349,7 @@ impl PdfCraftApp {
             }
             // No keys: nothing is kept for it.
             Err(ReferenceStoreError::NoKeys) => {}
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
         }
         // The folder is looked through only when there is something to offer.
         let sibling = if kept.is_none() { find_sibling_pgn(&keys) } else { None };
@@ -454,14 +454,14 @@ impl PdfCraftApp {
                 }
                 (Ok(Indexed::Chosen { index, pgn, encoding }), Some(name)) => self.keep_book_pgn(id, &name, index, pgn, encoding),
                 (Ok(Indexed::NoGame), Some(name)) => {
-                    self.notify(refused(&name, &tl!("no game in it")));
+                    self.post_error(refused(&name, &tl!("no game in it")));
                     self.index_kept_book_pgn_again(id);
                 }
                 (Err(e), Some(name)) => {
-                    self.notify(refused(&name, &e));
+                    self.post_error(refused(&name, &e));
                     self.index_kept_book_pgn_again(id);
                 }
-                (Err(e), None) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e)])),
+                (Err(e), None) => self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e)])),
                 // A chosen PGN's job always says its name.
                 (Ok(Indexed::Chosen { .. } | Indexed::NoGame), None) => {}
             }
@@ -494,7 +494,7 @@ impl PdfCraftApp {
                     Ok(true)
                 }
                 Err(e) => {
-                    self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
+                    self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
                     Ok(false)
                 }
             },
@@ -566,7 +566,7 @@ impl PdfCraftApp {
                 let name = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
                 match read_pgn(&path) {
                     Ok(bytes) => app.set_book_pgn(id, &name, &bytes),
-                    Err(e) => app.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+                    Err(e) => app.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
                 }
             });
         }
@@ -596,7 +596,7 @@ impl PdfCraftApp {
         for (id, name, bytes) in files {
             match bytes {
                 Ok(bytes) => self.set_book_pgn(id, &name, &bytes),
-                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+                Err(e) => self.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
             }
         }
     }
@@ -611,7 +611,7 @@ impl PdfCraftApp {
             return;
         }
         if bytes.len() > MAX_REFERENCE_BYTES {
-            return self.notify(refused(name, &tl!("the file is too large")));
+            return self.post_error(refused(name, &tl!("the file is too large")));
         }
         let (bytes, at) = (bytes.to_vec(), now());
         let file = name.to_owned();
@@ -641,7 +641,7 @@ impl PdfCraftApp {
                 self.say_book_pgn_set_aside(&loaded);
                 (Decisions::of(&loaded.file), kept.unmatched)
             }
-            Err(e) => return self.notify(refused(name, &e)),
+            Err(e) => return self.post_error(refused(name, &e)),
         };
         let held = self.chess.book_pgns.doc(id).is_some_and(|d| d.held);
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
@@ -701,7 +701,7 @@ impl PdfCraftApp {
         #[cfg(not(target_arch = "wasm32"))]
         match read_pgn(&path) {
             Ok(bytes) => self.set_book_pgn(id, &name, &bytes),
-            Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+            Err(e) => self.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
         }
         #[cfg(target_arch = "wasm32")]
         let _ = name;
@@ -732,7 +732,7 @@ impl PdfCraftApp {
                     self.session.set_chess_book_pgn(id, Some(pgn));
                 }
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e)])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e)])),
         }
     }
 
@@ -768,7 +768,7 @@ impl PdfCraftApp {
                 self.session.set_chess_book_pgn(id, Some(pgn));
             }
             Ok(None) => {}
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e)])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e)])),
         }
     }
 
@@ -795,7 +795,7 @@ impl PdfCraftApp {
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.notify(said.to_string());
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e)])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e)])),
         }
     }
 
@@ -803,7 +803,7 @@ impl PdfCraftApp {
     /// read, or whose unreadable decisions it dropped; plan A9-G3a).
     fn say_book_pgn_set_aside(&mut self, loaded: &Loaded) {
         if let Some((name, why)) = &loaded.set_aside {
-            self.notify(crate::i18n::fmt(
+            self.post_error(crate::i18n::fmt(
                 tl!("The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}."),
                 &[("why", why), ("name", name)],
             ));
@@ -823,7 +823,7 @@ impl PdfCraftApp {
                     d.keys = keys;
                 }
             }
-            Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN was not kept for the saved file: {e}"), &[("e", &e)])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("The book's PGN was not kept for the saved file: {e}"), &[("e", &e)])),
         }
     }
 }

@@ -390,16 +390,6 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     ed.track();
     let editor_board = crate::chess_diagram_keys::board_id(true);
 
-    // What the tab says to screen readers, polite: the diagram opened.
-    let said = &app.chess.diagram_keys.announce;
-    if !said.is_empty() {
-        let said = said.clone();
-        ui.ctx().accesskit_node_builder(egui::Id::new("chess-diagram-announce"), |node| {
-            node.set_role(egui::accesskit::Role::Status);
-            node.set_live(egui::accesskit::Live::Polite);
-            node.set_label(said);
-        });
-    }
     // For the next frame's keys: where the tab is, and whether the keyboard is in it.
     let focused = ui.ctx().memory(|m| m.focused());
     let focus_in = focused.and_then(|f| ui.ctx().read_response(f)).is_some_and(|r| whole.contains(r.rect.center()));

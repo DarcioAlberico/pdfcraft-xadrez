@@ -284,3 +284,36 @@ fn a_newer_builds_preferences_survive_persist() {
     let saved: serde_json::Value = serde_json::from_str(&odd.persist()).unwrap();
     assert!(saved.get("0").is_none() && saved["chess_typed_wait"] == "0.6");
 }
+
+/// Plan A9-I17 (finding R5-02, WCAG 4.1.3): the move shown is said to screen readers each time it
+/// changes, by a key or in the list: a polite status in words, with the move's number, its
+/// variation, its comment and its signs, a node of its own each time (the same move twice is said
+/// twice). Before, → said nothing: no live node.
+#[test]
+fn the_move_shown_is_said_at_each_step() {
+    use egui::accesskit::Live;
+    let mut h = harness();
+    click_board_label(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    assert_eq!(shown(&h), "Nf3");
+    let said = |h: &Harness<'static, PdfCraftApp>, words: &str| {
+        let node = h.get_by_role_and_label(Role::Status, words);
+        assert_eq!(node.accesskit_node().live(), Live::Polite, "{words}");
+        node.accesskit_node().id()
+    };
+    let first = said(&h, "2. knight f3");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowLeft);
+    said(&h, "1… e5");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    assert_ne!(said(&h, "2. knight f3"), first, "a node of its own: said again");
+    host_key(&mut h, Modifiers::NONE, Key::Home);
+    said(&h, "Start of the game");
+    // A move of a variation, with a comment and a sign, shown from the list.
+    let (mut game, _) = Game::from_pgn("1. e4 e5 2. Nf3 (2. Bc4 $1 {The bishop first.}) *").unwrap();
+    game.go_to_node(game.node_at(&NodePath::new(vec![0, 0])).unwrap());
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(2);
+    h.get_by_label("bishop c4!").click();
+    h.run_steps(2);
+    said(&h, "2. bishop c4 · variation 1 · with comment · Good move");
+}

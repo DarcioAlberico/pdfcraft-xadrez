@@ -373,7 +373,7 @@ impl PdfCraftApp {
     pub fn toggle_chess_window(&mut self) {
         let detach = !self.chess_window.request.unwrap_or(self.chess_window.detached);
         if detach && !self.chess_window_available() {
-            self.notify_fmt("The chess board couldn't open in its own window, so it stays in its panel.", &[]);
+            self.post_error_fmt("The chess board couldn't open in its own window, so it stays in its panel.", &[]);
             return;
         }
         self.chess_window.request = Some(detach);
@@ -493,7 +493,7 @@ impl PdfCraftApp {
         self.chess_window.request = None;
         if !self.chess_window.failed {
             self.chess_window.failed = true;
-            self.notify_fmt("The chess board couldn't open in its own window, so it is back in its panel.", &[]);
+            self.post_error_fmt("The chess board couldn't open in its own window, so it is back in its panel.", &[]);
         }
     }
 
@@ -605,7 +605,7 @@ fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
     }
     if let Some(m) = pass.panic {
         log::error!("the chess board window's contents failed: {m}");
-        app.notify_fmt("That didn't work: an internal error stopped it ({m}). Your documents are unchanged.", &[("m", m.as_str())]);
+        app.post_error_fmt("That didn't work: an internal error stopped it ({m}). Your documents are unchanged.", &[("m", m.as_str())]);
         app.dock_chess_board();
         return;
     }
@@ -1115,7 +1115,7 @@ mod tests {
         assert_eq!(asked.get(), 1, "asked right after the window's pass");
         assert!(!app.chess_window_detached(), "docked back");
         assert_eq!((app.right, app.chess.tab), (Some(RightPanel::Chess), ChessTab::Board), "the column's Board tab, as it was");
-        let notice = app.toast.take().map(|t| t.0).unwrap_or_default();
+        let notice = app.take_said().unwrap_or_default();
         assert!(notice.contains("couldn't open in its own window"), "{notice}");
         // No second try in this session: the command is refused and says why.
         assert!(!app.chess_window_available());
@@ -1123,7 +1123,7 @@ mod tests {
         pass(&ctx, &mut app);
         assert_eq!(asked.get(), 1, "no window was opened");
         assert!(!app.chess_window_detached());
-        assert!(app.toast.take().is_some_and(|t| t.0.contains("stays in its panel")));
+        assert!(app.take_said().is_some_and(|t| t.contains("stays in its panel")));
     }
 
     /// A window whose surface works stays open, and only a failure of its own counts.
@@ -1141,7 +1141,7 @@ mod tests {
         pass(&ctx, &mut app);
         pass(&ctx, &mut app);
         assert!(app.chess_window_detached());
-        assert!(app.toast.is_none(), "{:?}", app.toast);
+        assert!(app.said().is_none(), "{:?}", app.said());
     }
 
     /// Wave 10 U5: the native window and the embedded one keep the same size, what their contents

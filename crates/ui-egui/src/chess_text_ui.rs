@@ -1174,9 +1174,9 @@ impl PdfCraftApp {
                         let said = crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]);
                         self.chess_export_done(&made, None, said);
                     }
-                    Err(e) => self.notify_error(e),
+                    Err(e) => self.post_error(e.to_string()),
                 },
-                Err(e) => self.notify(e),
+                Err(e) => self.post_error(e),
             },
             (JobKind::LinkBook { stamp }, JobDone::Linked(linked)) => {
                 // The document changed meanwhile: the pages linked are of a state that is gone.
@@ -1200,7 +1200,7 @@ impl PdfCraftApp {
                         }
                         self.chess.doc_mut(job.doc).book_link = Some(link);
                     }
-                    Err(e) => self.notify(e),
+                    Err(e) => self.post_error(e),
                 }
             }
             (JobKind::Bookmarks { stamp }, JobDone::Outline(read)) => {
@@ -1215,10 +1215,10 @@ impl PdfCraftApp {
                         self.keep_chess_cipher(job.doc, read.cipher);
                         self.preview_book_bookmarks(job.doc, read.doc);
                     }
-                    Err(e) => self.notify(e),
+                    Err(e) => self.post_error(e),
                 }
             }
-            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
+            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.post_error(e),
             _ => {}
         }
     }
@@ -1377,18 +1377,18 @@ impl PdfCraftApp {
     fn write_chess_export(&mut self, made: Result<pdfcraft_engine::chess::export::ChessExport, String>, path: &std::path::Path, image_dir: &str) {
         let made = match made {
             Ok(m) => m,
-            Err(e) => return self.notify(e),
+            Err(e) => return self.post_error(e),
         };
         if !made.images.is_empty() {
             let dir = path.with_file_name(image_dir);
             if let Err(e) = std::fs::create_dir_all(&dir) {
-                return self.notify_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+                return self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
             }
             for (rel, png) in &made.images {
                 let Some(name) = std::path::Path::new(rel).file_name() else { continue };
                 let target = dir.join(name);
                 if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
-                    return self.notify_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                    return self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
                 }
             }
         }
@@ -1397,7 +1397,7 @@ impl PdfCraftApp {
                 let said = crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &path.display().to_string())]);
                 self.chess_export_done(&made, Some(path.to_path_buf()), said);
             }
-            Err(e) => self.notify_fmt("Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())]),
+            Err(e) => self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())]),
         }
     }
 }
