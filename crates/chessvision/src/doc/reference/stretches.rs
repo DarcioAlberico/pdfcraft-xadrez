@@ -57,6 +57,9 @@ pub struct Stretches {
     pub played: usize,
     /// Indexed games whose text could not be played again.
     pub unreadable: usize,
+    /// A game's walk stopped at its node count before its end (plan A9-N16a2; a game is a tree,
+    /// so it does not happen): what was found up to there is counted.
+    pub capped: bool,
 }
 
 /// The move that reached `node`, numbered from the position after it.
@@ -93,7 +96,7 @@ impl ReferenceIndex {
             };
             out.played = out.played.saturating_add(1);
             let before = out.total;
-            game_stretches(&game, k, query, max, &mut out);
+            game_stretches(&game, k, query, max, &mut out, game.move_count().saturating_add(1));
             let found = out.total.saturating_sub(before);
             if found > 0 {
                 out.per_game.push((k, found));
@@ -104,21 +107,24 @@ impl ReferenceIndex {
 }
 
 /// The stretches of `game` (game `k`), pushed to `out`: its main line first, then its variations
-/// in the order they branch off.
-fn game_stretches(game: &PgnGame, k: usize, query: &Query, max: usize, out: &mut Stretches) {
+/// in the order they branch off; at most `budget` positions are looked at (a game is a tree, so
+/// its node count is enough), and past it the open run is kept and the result says it was capped.
+/// The position a game starts from is not one: a stretch starts at a move.
+pub(super) fn game_stretches(game: &PgnGame, k: usize, query: &Query, max: usize, out: &mut Stretches, budget: usize) {
     let mut lines: VecDeque<(NodeId, bool)> = VecDeque::new();
     let roots = game.replies(0);
     if let Some(first) = roots.first() {
         lines.push_back((*first, true));
     }
     lines.extend(roots.iter().skip(1).map(|n| (*n, false)));
-    // A game is a tree: no node is reached twice. The count bounds it anyway.
-    let mut budget = game.move_count().saturating_add(1);
+    let mut budget = budget;
     while let Some((start, main_line)) = lines.pop_front() {
         let mut run: Option<Run> = None;
         let mut node = start;
         loop {
             if budget == 0 {
+                flush(&mut run, k, main_line, max, out);
+                out.capped = true;
                 return;
             }
             budget -= 1;
