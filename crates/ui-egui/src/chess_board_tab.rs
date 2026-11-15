@@ -423,6 +423,11 @@ fn board_menu(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, source_labe
                 }
             }
         });
+        // Which program, and where (plan A9-I13): of two in the engine folder, the one taken.
+        if let Some(program) = chess.study.program() {
+            let named = crate::chess_study_ui::engine_program(program, pdfcraft_platform::app_dirs::AppDirs::current().install());
+            ui.add(egui::Label::new(egui::RichText::new(named).small().color(t.text_muted)).wrap()).on_hover_text(program.display().to_string());
+        }
         let pick = egui::Button::new(tl!("Choose engine…"));
         if crate::widgets::menu_entry(ui, true, pick).on_hover_text(tl!("Pick a UCI chess engine program, such as Stockfish.")).clicked() {
             action = Some(BoardAction::ChooseEngine);

@@ -318,6 +318,13 @@ fn encode(cache: &mut RecordCache, c: Collected<'_>) -> Result<GamesFile, Blocke
     Ok(file)
 }
 
+/// The file a write of `c` would make, encoded anew, with nothing of the autosave's own state
+/// changed (plan A9-G5b: a review pack takes the list as it is); `c`'s `stored` and `known` are
+/// the caller's copies.
+pub(crate) fn snapshot(c: Collected<'_>) -> Result<GamesFile, Blocked> {
+    encode(&mut RecordCache::default(), c)
+}
+
 /// The board a stored game puts back, its diagram in document `doc`. `None` when it can't be
 /// read.
 pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardState> {

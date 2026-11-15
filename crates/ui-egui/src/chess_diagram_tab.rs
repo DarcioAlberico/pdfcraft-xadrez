@@ -305,14 +305,10 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             let side = board_side(room, body_rect.height());
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
             // Read or Original, in one row of its own (plan A9-I0, sketch (b)).
-            // Its own id: the segments' ids come from their parent's, and the To move switch
-            // under the board sits in a row whose id is the same as this one's. Changes not
-            // confirmed yet (kept as a draft when another diagram opens) are said at the row's
-            // end, its room kept, so the board never moves (plan A9-I8, finding A6-05).
+            // Changes not confirmed yet (kept as a draft when another diagram opens) are said at
+            // the row's end, its room kept, so the board never moves (plan A9-I8, finding A6-05).
             ui.allocate_ui_with_layout(egui::vec2(room, SWITCH_ROW), Layout::left_to_right(Align::Center), |ui| {
-                ui.push_id("chess-diagram-shown", |ui| {
-                    widgets::segmented(ui, tl!("Diagram shown"), &mut original, &[(false, tl_ctx!("diagram state", "Read")), (true, tl!("Original"))])
-                });
+                widgets::segmented(ui, tl!("Diagram shown"), &mut original, &[(false, tl_ctx!("diagram state", "Read")), (true, tl!("Original"))]);
                 if dirty {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         ui.add(egui::Label::new(RichText::new(tl!("Unconfirmed changes")).small().color(t.warning_text)).truncate());

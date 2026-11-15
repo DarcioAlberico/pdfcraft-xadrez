@@ -330,3 +330,69 @@ fn the_books_pgn_is_indexed_on_a_worker_and_kept_once_indexed() {
     assert_eq!(h.state_mut().book_pgn_summary(id).map(|s| (s.games, s.moves)), Some((600, 6000)), "held once indexed: {said}");
     let _ = std::fs::remove_dir_all(dir);
 }
+/// `bytes` open in the app with no piece model, its scan on `workers` threads (its jobs inline:
+/// the scan's workers are threads still), every page scanned: the pages found, and how long the
+/// scan took.
+fn scanned_with(bytes: Vec<u8>, workers: usize) -> (Vec<pdfcraft_engine::chess::ChessPage>, std::time::Duration) {
+    let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+    pdfcraft_engine::chess::install_models(Some(none));
+    let mut h = Harness::builder().with_size(egui::vec2(1366.0, 768.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("book.pdf", None, bytes).unwrap();
+        app.run_inline = true;
+        app.chess.scan_workers = Some(workers);
+        app
+    });
+    h.run_steps(4);
+    let t = std::time::Instant::now();
+    h.state_mut().start_chess_scan(true);
+    let mut frames = 0;
+    while h.state().chess.run.is_some() && frames < 10_000 {
+        h.step();
+        frames += 1;
+    }
+    let took = t.elapsed();
+    let pages = h.state().chess.results().map(|r| r.pages.iter().map(|p| (**p).clone()).collect()).unwrap_or_default();
+    (pages, took)
+}
+
+/// Plan A9-V10b (R8-02): the app's scan on four workers finds what it finds on one, page by page
+/// and field by field, in the book's order.
+#[test]
+fn the_apps_scan_on_four_workers_finds_what_one_finds() {
+    let bytes = long_book(32);
+    let (one, _) = scanned_with(bytes.clone(), 1);
+    let (four, _) = scanned_with(bytes, 4);
+    assert_eq!(one.len(), 32, "every page");
+    assert_eq!(one.iter().map(|p| p.diagrams.len()).sum::<usize>(), 16, "a diagram on every other page");
+    assert_eq!(four, one, "the same pages, field by field");
+}
+
+/// Plan A9-V10b (R8-02: the app took about 7 min for Harikrishna's book on one core): on a book
+/// given by `PDFCRAFT_CHESS_PERF_BOOK` (its first 100 pages), the app's scan on the default workers
+/// takes at most 0.4 of the time on one, and finds the same.
+/// `PDFCRAFT_CHESS_PERF_BOOK=book.pdf cargo test --release -p pdfcraft-ui-egui --test chess_jobs perf_app_scan_on_the_cores -- --ignored --nocapture`.
+#[test]
+#[ignore = "a timing, in release, on a book of the user's"]
+fn perf_app_scan_on_the_cores() {
+    let Some(path) = std::env::var_os("PDFCRAFT_CHESS_PERF_BOOK") else {
+        println!("PERF app_scan_on_the_cores skipped: PDFCRAFT_CHESS_PERF_BOOK is not set");
+        return;
+    };
+    let mut s = pdfcraft_engine::Session::new();
+    let id = s.open("book.pdf", None, std::sync::Arc::new(std::fs::read(path).unwrap()), None).unwrap();
+    let count = s.get(id).unwrap().info.pages.len();
+    if count > 100 {
+        s.apply(id, pdfcraft_engine::Edit::DeletePages { pages: (100..count).collect() }).unwrap();
+    }
+    let bytes = s.save_bytes(id).unwrap().to_vec();
+    let workers = pdfcraft_engine::chess::ChessScanJob::default_workers();
+    let (one, sequential) = scanned_with(bytes.clone(), 1);
+    let (many, parallel) = scanned_with(bytes, workers);
+    let (sequential, parallel) = (sequential.as_secs_f64(), parallel.as_secs_f64());
+    println!("PERF app_scan_on_the_cores {:.0}", parallel * 1000.0);
+    println!("the app's scan of {} pages: {:.1} s on {workers} workers, {:.1} s on one", one.len(), parallel, sequential);
+    assert_eq!(many, one, "the same pages");
+    assert!(parallel <= 0.4 * sequential, "{parallel:.2} s against {sequential:.2} s");
+}

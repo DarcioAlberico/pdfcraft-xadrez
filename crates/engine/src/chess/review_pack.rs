@@ -136,6 +136,16 @@ impl Pack {
     }
 }
 
+/// Whether `pack` (a pack's document) is `doc`: the same identifier when both have one, else the
+/// same size and page count. An import into another book is refused unless asked for (the tools'
+/// `force`, the app's question).
+pub fn same_book(pack: &DocRecord, doc: &DocRecord) -> bool {
+    match (&pack.id0, &doc.id0) {
+        (Some(a), Some(b)) => a == b,
+        _ => pack.size == doc.size && pack.pages == doc.pages,
+    }
+}
+
 /// A part as its kind writes its file, as JSON; `null` for none.
 fn part<K: StoreKind>(file: Option<&K::File>) -> Result<Value, String>
 where
