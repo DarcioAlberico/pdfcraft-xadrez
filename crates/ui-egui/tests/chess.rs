@@ -201,7 +201,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
     assert_eq!(h.state().right, Some(RightPanel::Chess), "scanning shows the panel");
     assert_eq!(diagrams(&h), 2);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"));
+    assert_eq!(h.state().said(), Some("Diagrams found: 2"));
     // The font diagram is first in reading order (the left column, top to bottom), read exactly.
     h.get_by_label("Diagram 1 · Position read");
     // Its FEN is in the row's tooltip (and its menu), not on the row (plan A8, P2a1).
@@ -319,14 +319,14 @@ fn a_document_that_forbids_copying_is_not_scanned() {
     let h = scanned(0b0100);
     let app = h.state();
     assert!(app.chess.run.is_none() && app.chess.results().is_none(), "nothing was scanned");
-    let said = app.toast.as_ref().map(|t| t.0.as_str());
+    let said = app.said();
     assert_eq!(said, Some("The document's security settings don't allow copying text and images"));
     // Print and copy: the same document is scanned.
     let h = scanned(0b1_0100);
     let app = h.state();
     let id = app.views[0].id;
     assert!(app.chess.results_of(id).is_some_and(|r| r.diagram(0, 0).is_some()), "scanned when copying is allowed");
-    assert!(app.toast.as_ref().is_none_or(|t| !t.0.contains("security settings")), "{:?}", app.toast);
+    assert!(app.said().is_none_or(|t| !t.contains("security settings")), "{:?}", app.said());
 }
 
 /// The position the user set in the editor (blueprint S17), for the drawn board no model read.
@@ -574,7 +574,7 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
     h.get_by_label("Redraw").click();
     h.run_steps(4);
     assert!(generation(&h) > before, "drawn");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagram redrawn in the PDF"));
+    assert_eq!(h.state().said(), Some("Diagram redrawn in the PDF"));
     assert!(h.state().chess.redraw_asked);
     assert!(list_is_current(&h), "the list is carried to the state now");
     assert_eq!(diagrams(&h), 4, "the new board is found where the old one was");
@@ -622,7 +622,7 @@ fn the_list_follows_its_pages_across_an_edit() {
     assert_eq!(results.selected, Some(pdfcraft_engine::chess::DiagramAt::new(1, 1)), "the diagram picked follows");
     let ed = h.state().chess.editor.as_ref().unwrap();
     assert_eq!(((ed.page, ed.index), ed.fen()), ((1, 1), EDITED.to_string()), "the editor follows, its changes kept");
-    assert!(h.state().toast.as_ref().is_none_or(|t| !t.0.contains("changed")), "{:?}", h.state().toast);
+    assert!(h.state().said().is_none_or(|t| !t.contains("changed")), "{:?}", h.state().said());
 
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(3);
@@ -655,7 +655,7 @@ fn the_editor_links_the_corrected_position() {
     h.run_steps(2);
     h.get_by_label("Add lichess link").click();
     h.run_steps(3);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Lichess link added"));
+    assert_eq!(h.state().said(), Some("Lichess link added"));
     let id = h.state().active_ids().unwrap().1;
     let links = h.state().session.get(id).unwrap().links().to_vec();
     assert_eq!(links.len(), 1);
@@ -797,12 +797,12 @@ fn marking_the_page_as_checked_verifies_only_what_was_read_with_confidence() {
     assert_eq!(kind(&h, 0).as_deref(), Some("Verified"), "the font diagram");
     if to_review == 1 {
         assert_eq!(kind(&h, 1), None, "the drawn board is left to review");
-        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Page 1: 1 diagram checked · 1 to review"));
+        assert_eq!(h.state().said(), Some("Page 1: 1 diagram checked · 1 to review"));
     }
     // Again, from the command: nothing is left that was read with confidence.
     assert!(h.state_mut().execute("chess.verify_page"));
     h.run_steps(2);
-    assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Nothing on page 1")), "{:?}", h.state().toast);
+    assert!(h.state().said().is_some_and(|t| t.starts_with("Nothing on page 1")), "{:?}", h.state().said());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -825,7 +825,7 @@ fn marking_the_page_as_checked_leaves_a_doubted_reading() {
     assert!(h.state_mut().execute("chess.verify_page"));
     h.run_steps(2);
     assert_eq!(kind(&h, 0), None, "left to review");
-    assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Nothing on page 1")), "{:?}", h.state().toast);
+    assert!(h.state().said().is_some_and(|t| t.starts_with("Nothing on page 1")), "{:?}", h.state().said());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -1413,13 +1413,13 @@ fn another_books_pgn_keeps_the_choices_and_says_which_no_longer_match() {
 ",
     );
     h.run_steps(4);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("Choices on moves in conflict naming a move this PGN doesn't have: 1."), "{said}");
     assert_eq!(kept(&store)["decisions"].as_array().map(Vec::len), Some(1), "kept");
     // The first PGN again: nothing said, and the choice holds.
     h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
     h.run_steps(4);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(!said.contains("Choices on moves"), "{said}");
     h.get_by_label_contains("1 in conflict (0 to review).");
     let _ = std::fs::remove_dir_all(dir);
@@ -1441,7 +1441,7 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "big.pgn", pgn.as_bytes());
         h.run_steps(2);
-        let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+        let said = h.state().said().unwrap_or_default().to_owned();
         assert!(said.starts_with("Book's PGN big.pgn: 4096 games, 4096 moves."), "{said}");
         assert!(said.contains(cut), "{said}");
         h.get_by_label("Book's PGN: big.pgn (4096 games)");
@@ -1456,7 +1456,7 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
         app
     });
     h.run_steps(2);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert_eq!(said, cut, "said again when the kept PGN is indexed");
     let id = h.state().views[0].id;
     assert_eq!(h.state_mut().book_pgn_summary(id).map(|s| (s.games, s.moves)), Some((4096, 4096)));
@@ -1863,7 +1863,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     assert!(h.state().chess.board_at.is_none(), "the double-click was dealt with");
-    assert_ne!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "a quiet scan");
+    assert_ne!(h.state().said(), Some("Diagrams found: 2"), "a quiet scan");
 
     // Beside the diagrams (white space on the right): the page is scanned, nothing opens.
     let mut h = harness_stepping(0.05);
@@ -1872,7 +1872,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(diagrams(&h), 2, "the page was scanned");
     assert!(!h.state().chess_board_shown(), "no diagram there");
     assert!(h.state().chess.board_at.is_none());
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("No chess diagram was found here."));
+    assert_eq!(h.state().said(), Some("No chess diagram was found here."));
 
     // On a word of the text: the word is selected, the page scanned, and nothing is said.
     let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.05);
@@ -1882,7 +1882,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(h.state().views[0].selected_text().as_deref(), Some("12...e5"), "the double-click selected a word");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
     assert!(!h.state().chess_board_shown());
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), None);
+    assert_eq!(h.state().said(), None);
 }
 
 /// A diagram opened on the board after its page was read in the Text tab starts at the move the
@@ -1933,7 +1933,7 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
         // start its page's moves gave it.
         assert!(h.state_mut().execute("edit.undo"));
         h.run_steps(2);
-        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Load the diagram"));
+        assert_eq!(h.state().said(), Some("Undid Load the diagram"));
         assert_eq!((h.state().chess.games.collection().len(), h.state().chess.board().source), (1, None), "a blank game is left");
         assert!(h.state_mut().execute("edit.redo"));
         h.run_steps(2);
@@ -3056,7 +3056,7 @@ fn the_games_come_back_exactly_in_the_next_session() {
     let mut h = session(&s, "book.pdf", Some(&path), boards());
     assert_eq!(game_state(h.state()), expected);
     assert_eq!(games(h.state()).1, 1, "the game shown too");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess games restored: 2"));
+    assert_eq!(h.state().said(), Some("Chess games restored: 2"));
     // The diagram the first game came from is in this document.
     h.state_mut().show_chess_board();
     h.run_steps(3);
@@ -3092,7 +3092,7 @@ fn saving_a_pdf_without_an_id_rekeys_its_games() {
     std::fs::copy(&path, &copy).unwrap();
     let h = session(&s, "copy of the book.pdf", Some(&copy.to_string_lossy()), std::fs::read(&copy).unwrap());
     assert_eq!(games(h.state()).0, ["1. e4"], "found by the /ID the save created");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess game restored: Game 1, moves: 1"));
+    assert_eq!(h.state().said(), Some("Chess game restored: Game 1, moves: 1"));
 }
 
 /// Plan A9-G3b: the games' files of the builds before (`<id>.games`, in the recovery folder's
@@ -3144,7 +3144,7 @@ fn unreadable_game_files_are_set_aside_and_said() {
     let bad = format!("{}.bad", written[0]);
     assert_eq!(chess_files(&s), [written[0].clone(), bad.clone()]);
     assert_eq!(std::fs::read(dir.join("games").join(&bad)).unwrap(), noise, "kept as it was");
-    let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let toast = h.state().said().unwrap_or_default().to_owned();
     assert!(toast.contains(&format!("couldn't be read. It was kept as {bad}")), "{toast}");
 }
 
@@ -3163,7 +3163,7 @@ fn a_newer_games_file_of_this_document_is_only_read() {
     std::fs::write(dir.join("0123456789abcdef0123456789abcdef.games.json"), &newer).unwrap();
     let mut h = session(&s, "boards.pdf", None, boards());
     assert_eq!(games(h.state()).0, ["1. d4 d5"], "the games are read");
-    let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let toast = h.state().said().unwrap_or_default().to_owned();
     assert!(toast.contains("saved by a newer PdfCraft (format 3)"), "{toast}");
     h.state_mut().chess.board_mut().play_uci_line(&["c2c4".into()]);
     h.state_mut().flush_chess_games();
@@ -3198,7 +3198,7 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     second.state_mut().flush_chess_games();
     second.state_mut().settle_chess_games();
     assert_eq!(std::fs::read(&file).unwrap(), written, "the first window's file is untouched");
-    let toast = second.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let toast = second.state().said().unwrap_or_default().to_owned();
     assert!(toast.contains("autosaved by another PdfCraft window"), "{toast}");
     // The first window quits: its lock goes with the last handle on its folder.
     drop(first);
@@ -3277,7 +3277,7 @@ fn a_pgn_file_with_several_games_is_imported() {
     assert_eq!(h.state_mut().import_chess_pgn("db.pgn", pgn.as_bytes()), 2);
     h.run_steps(2);
     assert_eq!(games(h.state()), (vec!["1. e4 e5 {open} 2. Nf3".to_owned(), "1. d4 d5 (1... Nf6 2. c4) 2. c4".to_owned()], 0));
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Games read from db.pgn: 2 · Not read: 1"));
+    assert_eq!(h.state().said(), Some("Games read from db.pgn: 2 · Not read: 1"));
     games_view(&mut h);
     h.get_by_label("Werle–Jianu");
     // Named by its event (T14), without players.
@@ -4682,7 +4682,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         h.run_steps(3);
         assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
         // It was the only one to review: the review is done (plan A8, P4).
-        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Review done: 1 of 1 checked"));
+        assert_eq!(h.state().said(), Some("Review done: 1 of 1 checked"));
         assert!(h.state().chess.results().unwrap().review_queue().is_empty(), "off the review queue");
         to_list(&mut h);
         h.get_by_label("Diagram 2 · Corrected");
@@ -4843,7 +4843,7 @@ fn unreadable_stored_corrections_are_kept_aside_never_written_over() {
     assert!(!h.state_mut().confirm_chess_diagram(false), "not kept while the value is not kept aside");
     h.run_steps(2);
     assert_eq!(kind(&h, 1), None);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("couldn't be saved"), "{said}");
     let saved = h.state_mut().chess.corrections.storage_values(Some("{trunc"), |_| false);
     assert_eq!(saved.first(), Some(&(format!("{KEY}.bad"), "{trunc".to_owned())), "kept aside first: {saved:?}");
@@ -5081,7 +5081,7 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     h.run_steps(3);
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 0)));
     h.get_by_label("1 of 1 · Read");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Back to the first diagram"), "past the end, round to the start, said");
+    assert_eq!(h.state().said(), Some("Back to the first diagram"), "past the end, round to the start, said");
     h.get_by_label("Page 1 · diagram 1 of 2, 1 of 1 · Read");
 }
 
@@ -5880,11 +5880,11 @@ fn detecting_again_asks_about_drafts() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(2);
     h.get_by_label("Keep the correction of diagram 2 (page 1)?");
-    h.state_mut().toast = None;
+    h.state_mut().take_said();
     h.get_by_label("Discard changes").click();
     h.run_steps(4);
     assert!(h.state().chess.drafts.is_empty());
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "then the scan ran");
+    assert_eq!(h.state().said(), Some("Diagrams found: 2"), "then the scan ran");
 }
 
 // ─── Corrections undone and redone (plan A9-G10) ──────────────────────────────────────────────
@@ -6029,14 +6029,15 @@ fn a_correction_the_store_refuses_keeps_the_question_open_and_says_why() {
     h.run_steps(2);
     for attempt in 0..2 {
         h.get_by_label("Keep the correction of diagram 2 (page 1)?");
-        h.state_mut().toast = None;
+        h.state_mut().take_said();
         h.get_by_label("Confirm correction").click();
         h.run_steps(3);
         let failed = h.state().chess.draft_prompt.as_ref().and_then(|p| p.failed.clone());
         assert!(failed.as_deref().is_some_and(|w| w.contains("newer PdfCraft")), "attempt {attempt}: the question stays, saying why: {failed:?}");
-        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.contains("couldn't be saved")), "attempt {attempt}: said each time");
+        assert!(h.state().said().is_some_and(|t| t.contains("couldn't be saved")), "attempt {attempt}: said each time");
         let said = "The diagram corrections couldn't be saved: the corrections file was written by a newer PdfCraft";
-        assert_eq!(h.query_all_by_label_contains(said).count(), 2, "attempt {attempt}: in the question and in the notice");
+        // In the question, and in the error notice: its text and its Dismiss's name (plan A9-I17).
+        assert_eq!(h.query_all_by_label_contains(said).count(), 3, "attempt {attempt}: in the question and in the notice");
     }
     assert_eq!(kind(&h, 1), None);
     let _ = std::fs::remove_dir_all(&dir);
@@ -6055,7 +6056,7 @@ fn redraw_keeps_the_correction_first_and_draws_nothing_when_it_cannot() {
     assert!(!h.state_mut().redraw_chess_now(), "not drawn");
     h.run_steps(2);
     assert_eq!(generation(&h), before, "the PDF is as it was");
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.starts_with("Nothing was drawn in the PDF: the correction couldn't be kept"), "{said}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -6437,6 +6438,67 @@ fn a_chess_notice_is_a_polite_status() {
     assert_eq!(toast.accesskit_node().live(), Live::Polite);
 }
 
+/// Plan A9-I17 (findings R4-09, R5-02; WCAG 2.2.1, 3.3.1, 4.1.3): what failed is an error notice
+/// at the foot of the page area, an assertive alert to screen readers that stays until it is
+/// dismissed, never gone in a few seconds; the same error twice is a node of its own each time,
+/// so both are said. Before, a failed write was the toast: a polite status, gone in 3.5 s.
+#[test]
+fn a_failed_write_is_an_alert_that_stays_until_dismissed() {
+    use egui::accesskit::{Live, Role};
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    let missing = std::env::temp_dir().join(format!("pdfcraft-i17-missing-{}", std::process::id())).join("no-folder").join("book.pgn");
+    h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &missing);
+    h.run_steps(4);
+    let alert = |h: &Harness<'static, PdfCraftApp>| {
+        let node =
+            h.get_all_by_role(Role::Alert).find(|n| n.query_all_by_label_contains("Couldn't write").next().is_some()).expect("the error is an alert");
+        assert_eq!(node.accesskit_node().live(), Live::Assertive);
+        node.accesskit_node().id()
+    };
+    let first = alert(&h);
+    assert!(h.state().said().is_some_and(|s| s.starts_with("Couldn't write")), "{:?}", h.state().said());
+    // 15 s later it is still there.
+    h.run_steps(60);
+    assert_eq!(alert(&h), first, "it stays");
+    // The same error again: said again, a node of its own.
+    h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &missing);
+    h.run_steps(4);
+    assert_ne!(alert(&h), first, "a new node");
+    // It stands in the page area, and Dismiss takes it away.
+    let page = h.state().views[0].viewport_rect();
+    let dismiss = h.get_by_label_contains("Dismiss: Couldn't write");
+    assert!(page.contains_rect(dismiss.rect()), "{:?} in {page:?}", dismiss.rect());
+    dismiss.click();
+    h.run_steps(2);
+    assert!(h.query_all_by_role(Role::Alert).all(|n| n.query_all_by_label_contains("Couldn't write").next().is_none()), "dismissed");
+    assert_eq!(h.state().alert, None);
+}
+
+/// Plan A9-I17 (findings A6-26, R5-02): the notice of a confirmed correction is a polite status
+/// whose text says what was done, its Undo beside it, at the foot of the page area: it never
+/// covers the Diagram tab's footer (the toast did, in the window's middle).
+#[test]
+fn the_correction_notice_is_a_status_that_covers_no_footer() {
+    use egui::accesskit::{Live, Role};
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), None);
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Confirm and next").click();
+    h.run_steps(3);
+    let status = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("Diagram 2, page 1: Corrected").is_some()).expect("a status");
+    assert_eq!(status.accesskit_node().live(), Live::Polite);
+    // Where it is drawn: its words and its Undo (the status itself is a group, with no bounds).
+    let words = status.get_by_label("Diagram 2, page 1: Corrected").rect();
+    let notice = words.union(h.get_by_label("Undo: Diagram 2, page 1: Corrected").rect());
+    let footer: Vec<egui::Rect> =
+        ["More actions", "Confirm", "Confirm and next"].iter().flat_map(|l| h.query_all_by_label(l).map(|n| n.rect()).collect::<Vec<_>>()).collect();
+    assert!(!footer.is_empty(), "the Diagram tab's footer is shown");
+    for button in footer {
+        assert!(!notice.intersects(button), "{button:?} under {notice:?}");
+    }
+    assert!(h.state().views[0].viewport_rect().contains_rect(notice), "in the page area");
+}
+
 /// Plan A9-I15 (task 7, finding A6-11): the Chess panel's Diagrams and Text are tabs to
 /// assistive technology, not buttons.
 #[test]
@@ -6543,14 +6605,14 @@ fn the_app_keeps_its_chess_stores_in_one_place_and_brings_in_the_earlier_ones() 
     assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 1, "brought in");
     let after: Vec<Vec<u8>> = source.iter().map(|n| std::fs::read(earlier.join("corrections").join(n)).unwrap()).collect();
     assert_eq!(after, source_bytes, "the earlier folder left as it was");
-    assert!(app.toast.as_ref().is_none_or(|t| !t.0.contains("brought in")), "nothing to say the first time");
+    assert!(app.said().is_none_or(|t| !t.contains("brought in")), "nothing to say the first time");
     // The earlier build goes on writing there: the next start brings it in, and says so.
     correct(&before, 1);
     let mut next = PdfCraftApp::new();
     next.set_option("language", "en").unwrap();
     next.use_chess_data(data.clone(), Some(earlier.clone()));
     assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 2);
-    assert_eq!(next.toast.as_ref().map(|t| t.0.as_str()), Some("Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in."));
+    assert_eq!(next.said(), Some("Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in."));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -7333,7 +7395,7 @@ fn every_export_format_is_linked_to_the_books_pgn_and_the_documents_games() {
         let path = dir.join(name);
         h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Html, &path);
         h.run_steps(6);
-        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}; toast {:?}", h.state().toast))
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{name}: {e}; said {:?}", h.state().said()))
     };
     let plain = export(&mut h, "plain.html");
     assert!(!plain.contains("data-reference=\"recovered\""), "nothing to link it to yet");

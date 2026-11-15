@@ -46,9 +46,6 @@ pub struct DiagramKeys {
     pub(crate) tab_keys: Vec<(Key, Modifiers)>,
     /// The selected row of the Diagrams list takes the keyboard when it is next drawn (Esc).
     pub(crate) focus_list: bool,
-    /// What the tab last said to screen readers: the diagram opened ("Page 18 · diagram 1 of 2,
-    /// 4 of 40 to review, 2 doubtful squares").
-    pub(crate) announce: String,
 }
 
 /// The board's id: the Diagram tab's (`tab`) or the classic editor's.

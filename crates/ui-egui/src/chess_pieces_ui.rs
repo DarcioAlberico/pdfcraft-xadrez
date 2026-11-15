@@ -272,7 +272,7 @@ impl PdfCraftApp {
     pub fn import_fonts(&mut self, from: Vec<PathBuf>) {
         match pdfcraft_engine::chess::pdfcraft_chessvision::text_font::fonts_folder(pdfcraft_platform::app_dirs::AppDirs::current().install()) {
             Some(into) => self.import_fonts_into(from, into, false),
-            None => self.notify(tl!("There is no fonts folder beside the program to import into.")),
+            None => self.post_error(tl!("There is no fonts folder beside the program to import into.")),
         }
     }
 
@@ -361,7 +361,7 @@ impl PdfCraftApp {
     pub fn import_pieces(&mut self, from: PathBuf) {
         match pieces::pieces_folder(pdfcraft_platform::app_dirs::AppDirs::current().install()) {
             Some(into) => self.import_pieces_into(from, into, false),
-            None => self.notify(tl!("There is no pieces folder beside the program to import into.")),
+            None => self.post_error(tl!("There is no pieces folder beside the program to import into.")),
         }
     }
 

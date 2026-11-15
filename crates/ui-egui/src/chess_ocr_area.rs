@@ -194,7 +194,7 @@ impl PdfCraftApp {
         let area = match self.session.chess_ocr_area_job(id, page, user) {
             Ok(area) => area,
             Err(e) => {
-                self.notify(error_text(&e));
+                self.post_error(error_text(&e));
                 return;
             }
         };
@@ -234,10 +234,10 @@ impl PdfCraftApp {
         // No thread, or the reading panicked: said with why.
         let done = match done {
             Ok(done) => done,
-            Err(why) => return self.notify(why),
+            Err(why) => return self.post_error(why),
         };
         match done {
-            Err(e) => self.notify(error_text(&e)),
+            Err(e) => self.post_error(error_text(&e)),
             Ok(read) if read.text.glyphs.iter().all(|g| g.text.trim().is_empty()) => {
                 self.notify(tl!("Chess OCR read nothing in the area.").to_owned());
             }

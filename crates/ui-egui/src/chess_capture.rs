@@ -121,7 +121,7 @@ pub struct CaptureState {
     /// that uses Enter can see it).
     enter: bool,
     /// Notices for the user, shown at the next tick.
-    notes: Vec<String>,
+    notes: Vec<(crate::notice::Level, String)>,
     /// The notice's Undo was clicked: done at the next tick.
     undo: bool,
     /// The OCR area (T9): drawing an area of a scan to read with chess OCR.
@@ -136,9 +136,9 @@ impl CaptureState {
         self.paste_asked.take()
     }
 
-    /// Tell the user `text` at the next tick.
-    pub(crate) fn note(&mut self, text: String) {
-        self.notes.push(text);
+    /// Tell the user `text` at the next tick, at `level`.
+    pub(crate) fn note(&mut self, level: crate::notice::Level, text: String) {
+        self.notes.push((level, text));
     }
 }
 
@@ -716,7 +716,7 @@ impl PdfCraftApp {
         });
         if stale {
             if replanned {
-                self.notify(tl!("The game kept changing: the capture was not applied.").to_owned());
+                self.post_error(tl!("The game kept changing: the capture was not applied.").to_owned());
                 return;
             }
             let again = plan_for(&self.chess.board().game, &request);
@@ -769,8 +769,11 @@ impl PdfCraftApp {
         if std::mem::take(&mut self.chess.capture.undo) {
             self.undo_capture();
         }
-        for note in std::mem::take(&mut self.chess.capture.notes) {
-            self.notify(note);
+        for (level, note) in std::mem::take(&mut self.chess.capture.notes) {
+            match level {
+                crate::notice::Level::Info => self.notify(note),
+                crate::notice::Level::Error => self.post_error(note),
+            }
         }
         for text in std::mem::take(&mut self.chess.capture.pasted) {
             let mode = self.chess.capture.paste_mode.take();
@@ -793,7 +796,7 @@ impl PdfCraftApp {
             // No thread, or the planning panicked.
             Some(Err(_)) => {
                 self.chess.capture.job = None;
-                self.notify(tl!("The capture couldn't be planned.").to_owned());
+                self.post_error(tl!("The capture couldn't be planned.").to_owned());
             }
         }
     }
@@ -883,7 +886,7 @@ pub(crate) fn page_overlay(
     // A preview of a selection on a page that has changed since shows a state that is gone.
     if chess.capture.pending.as_ref().is_some_and(|p| p.request.doc == Some(view.id) && p.request.generation.is_some_and(|g| g != generation)) {
         chess.capture.pending = None;
-        chess.capture.notes.push(tl!("The capture was closed: the document was edited.").to_owned());
+        chess.capture.note(crate::notice::Level::Info, tl!("The capture was closed: the document was edited.").to_owned());
     }
     if chess.capture.toast.as_ref().is_some_and(|t| !t.is_current(chess)) {
         chess.capture.toast = None;

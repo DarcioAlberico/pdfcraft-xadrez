@@ -1510,6 +1510,32 @@ pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
     }
 }
 
+/// The move `node` in words, as a screen reader says the move shown (plan A9 §2.8.1, step I17,
+/// finding R5-02): its number and the move in the words of the interface (I10), and after them
+/// the variation it is in, whether it has a comment and its signs: "6. bishop b5, check ·
+/// variation 1 · with comment · Good move". The start of the game is "Start of the game".
+pub(crate) fn move_spoken(game: &Game, node: NodeId) -> String {
+    let path = game.path_of(node);
+    let half = path.as_ref().and_then(|p| {
+        let mut up = p.indices().to_vec();
+        up.pop()?;
+        game.abs_ply(game.node_at(&NodePath::new(up))?)
+    });
+    let Some(half) = half else { return tl!("Start of the game").to_owned() };
+    let words = crate::chess_figurines::spoken(game.san(node), "");
+    let number = half / 2 + 1;
+    let mut parts = vec![if half % 2 == 1 { format!("{number}… {words}") } else { format!("{number}. {words}") }];
+    // The variation: the reply the move's line took at its last fork off the main line.
+    if let Some(k) = path.as_ref().and_then(|p| p.indices().iter().rev().find(|&&i| i != 0).copied()) {
+        parts.push(crate::i18n::fmt(tl!("variation {n}"), &[("n", &k.to_string())]));
+    }
+    if !game.comment(node).trim().is_empty() {
+        parts.push(tl!("with comment").to_owned());
+    }
+    parts.extend(game.nags(node).iter().filter_map(|&c| crate::chess_annotate::nag_name(c)).map(str::to_owned));
+    parts.join(" · ")
+}
+
 /// The structure tools (§4.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Op {

@@ -76,7 +76,7 @@ impl PdfCraftApp {
             match self.session.apply(preview.doc, edit) {
                 Ok(()) => true,
                 Err(e) => {
-                    self.notify_error(e);
+                    self.post_error(e.to_string());
                     false
                 }
             }

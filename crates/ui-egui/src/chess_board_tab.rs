@@ -292,6 +292,7 @@ fn draw(
     // field is one).
     let state = chess.board_mut();
     state.refresh_fields(false);
+    state.announce_move(ui.ctx());
     state.typing.track(ui);
     // The set-up view (the rail's Set up tool) in the place of the board, and in one column of
     // everything under the header: it is taller than the board, so it scrolls.
