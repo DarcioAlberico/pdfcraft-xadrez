@@ -217,6 +217,11 @@ impl Game {
         // The comments after each move, gathered by move: each move's are added as one at the end
         // (plan A9-F3), so grafting the same items again finds them there whole.
         let mut after: Vec<(NodeId, Pending)> = Vec::new();
+        // And those before each move, alike: a move met twice (a variation that opens with the
+        // move it is an alternative to) has its comments-before added as one, so grafting the same
+        // items again finds them there whole, never one piece at a time (the proptest's seed
+        // bb8aa107: `{(braces) a (braces) a}` the second time).
+        let mut before: Vec<(NodeId, Pending)> = Vec::new();
         let mut line_last: Option<NodeId> = None;
         let mut any_last: Option<NodeId> = None;
         let mut new_ids: Vec<NodeId> = Vec::new();
@@ -338,11 +343,7 @@ impl Game {
                     self.set_suffix_nags(node, &san.suffix, white);
                     let waiting = std::mem::take(&mut pending);
                     if !waiting.text.is_empty() {
-                        match self.add_comment(node, &waiting.text, true) {
-                            Added::Yes => {}
-                            Added::Already => report.already_there.extend(waiting.items),
-                            Added::NoRoom => report.unplaced.extend(waiting.items),
-                        }
+                        gather(&mut before, node, waiting, report);
                     }
                     if let (Some(page), Some(rect_user)) = (page, rect)
                         && self.source(node).is_none()
@@ -358,8 +359,11 @@ impl Game {
                 }
             }
         }
+        for (node, group) in before {
+            self.add_gathered(node, group, true, report);
+        }
         for (node, group) in after {
-            self.add_after(node, group, report);
+            self.add_gathered(node, group, false, report);
         }
         report.unplaced.extend(pending.items);
         report.unplaced.sort_unstable();
@@ -503,14 +507,15 @@ impl Game {
         out
     }
 
-    /// Add the comments gathered after move `node` (`group`) as one: comments after one move are one
-    /// comment, as PGN reads them, so grafting the same items again finds it there whole and adds
-    /// nothing ([`already_says`]). What was there already, or did not fit, is in the report.
-    fn add_after(&mut self, node: NodeId, group: Pending, report: &mut GraftReport) {
+    /// Add the comments gathered after move `node` (`group`), or with `before` those before it, as
+    /// one: comments after one move are one comment, as PGN reads them, and so are those before
+    /// it, so grafting the same items again finds it there whole and adds nothing
+    /// ([`already_says`]). What was there already, or did not fit, is in the report.
+    fn add_gathered(&mut self, node: NodeId, group: Pending, before: bool, report: &mut GraftReport) {
         if group.text.is_empty() {
             return;
         }
-        match self.add_comment(node, &group.text, false) {
+        match self.add_comment(node, &group.text, before) {
             Added::Yes => {}
             Added::Already => report.already_there.extend(group.items),
             Added::NoRoom => report.unplaced.extend(group.items),
@@ -532,6 +537,20 @@ impl Game {
         let set = if before { self.set_comment_before(node, &joined) } else { self.set_comment(node, &joined) };
         // `joined` fits, so nothing was cut; were it cut, the text would be left over.
         if set.is_ok() { Added::Yes } else { Added::NoRoom }
+    }
+}
+
+/// Add the comment-before `waiting` to the one gathered for move `node` (plan A9-F3): said there
+/// already, once is enough, and said.
+fn gather(groups: &mut Vec<(NodeId, Pending)>, node: NodeId, waiting: Pending, report: &mut GraftReport) {
+    match groups.iter_mut().find(|(n, _)| *n == node) {
+        Some((_, g)) if already_says(&g.text, &waiting.text) => report.already_there.extend(waiting.items),
+        Some((_, g)) => {
+            g.text.push(' ');
+            g.text.push_str(&waiting.text);
+            g.items.extend(waiting.items);
+        }
+        None => groups.push((node, waiting)),
     }
 }
 
