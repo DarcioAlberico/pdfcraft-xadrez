@@ -74,7 +74,7 @@ impl PdfCraftApp {
             Keeping::Yes => true,
             Keeping::Ask => false,
             Keeping::No => {
-                self.notify(
+                self.inform(
                     tl!("The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.")
                         .to_string(),
                 );
@@ -134,7 +134,7 @@ impl PdfCraftApp {
     fn chess_review_bytes(&mut self, id: DocId) -> Option<(Pack, Vec<u8>)> {
         let pack = self.chess_review_pack(id)?;
         if pack.corrections.is_none() && pack.reference.is_none() && pack.games.is_none() {
-            self.notify(tl!("There is nothing to export yet: this document keeps no correction, choice or game.").to_string());
+            self.inform(tl!("There is nothing to export yet: this document keeps no correction, choice or game.").to_string());
             return None;
         }
         match pack.to_bytes() {
@@ -170,7 +170,7 @@ impl PdfCraftApp {
     /// Say what an export wrote to `shown`.
     fn say_chess_review_exported(&mut self, pack: &Pack, shown: &str) {
         let (corrections, decisions, games, _) = pack.counts();
-        self.notify(crate::i18n::fmt(
+        self.inform(crate::i18n::fmt(
             tl!(
                 "Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use."
             ),
@@ -297,7 +297,7 @@ impl PdfCraftApp {
             said.push(' ');
             said.push_str(&f);
         }
-        if any_failed { self.post_error(said) } else { self.notify(said) }
+        if any_failed { self.post_error(said) } else { self.inform(said) }
     }
 
     /// Merge `theirs` into document `id`'s corrections: how many of them are for pages the

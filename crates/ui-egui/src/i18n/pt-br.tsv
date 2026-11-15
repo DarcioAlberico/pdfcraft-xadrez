@@ -3657,6 +3657,8 @@ progress bar	Progress	Progresso
 	The original or the position read	O original ou a posição lida
 	variation {n}	variante {n}
 	with comment	com comentário
+	The book's alignment was undone.	O alinhamento do livro foi desfeito.
+	(and {n} more)	(e mais {n})
 	Move	Lance
 	Type a move	Digitar um lance
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Digite um lance (Cf3, e4, e2e4) e Enter, ou: p as peças, u o último lance, s quem joga, f e uma coluna, r 4 uma fileira, seta e2e4 vermelho, círculo d5. M traz você para cá.

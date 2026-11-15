@@ -3642,6 +3642,8 @@ progress bar	Progress	進行状況
 	The original or the position read	原本または読み取った局面
 	variation {n}	変化 {n}
 	with comment	コメントあり
+	The book's alignment was undone.	本の照合を元に戻しました。
+	(and {n} more)	(ほか {n} 件)
 	Move	指し手
 	Type a move	指し手を入力
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	指し手 (Nf3、e4、e2e4) を入力して Enter、または: p 駒、u 最後の手、s 手番、f e 筋、r 4 段、矢印 e2e4 赤、円 d5。M でここに戻ります。

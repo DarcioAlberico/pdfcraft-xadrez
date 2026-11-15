@@ -3645,6 +3645,8 @@ progress bar	Progress	Napredek
 	The original or the position read	Izvirnik ali prebrana pozicija
 	variation {n}	varianta {n}
 	with comment	s komentarjem
+	The book's alignment was undone.	Poravnava knjige je bila razveljavljena.
+	(and {n} more)	(in še {n})
 	Move	Poteza
 	Type a move	Vpiši potezo
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Vpišite potezo (Sf3, e4, e2e4) in Enter ali: p figure, u zadnja poteza, s kdo je na potezi, f e linija, r 4 vrsta, puščica e2e4 rdeča, krog d5. M vas pripelje sem.

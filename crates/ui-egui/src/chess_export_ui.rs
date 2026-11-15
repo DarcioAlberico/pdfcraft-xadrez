@@ -378,6 +378,8 @@ impl PdfCraftApp {
 
     /// The export of `made` was written (to `path`; none on the web): say where, with its notes.
     pub(crate) fn chess_export_done(&mut self, made: &pdfcraft_engine::chess::export::ChessExport, path: Option<std::path::PathBuf>, said: String) {
+        // An earlier export's error is stale now (plan A9-I17).
+        self.settle_error("export");
         let mut notes = Vec::new();
         let (diagrams, read) = made.diagram_counts();
         let unread = diagrams.saturating_sub(read);

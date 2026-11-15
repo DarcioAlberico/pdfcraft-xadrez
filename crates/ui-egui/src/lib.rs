@@ -3283,6 +3283,8 @@ impl eframe::App for PdfCraftApp {
         // The chess key scope (§4.2): the chess panel's keys leave the input before egui and any
         // shortcut of the app (Delete on pages or a selected annotation, the arrows) can see them.
         let blocked = self.modal_open() || self.palette_open;
+        // Esc dismisses the error shown first (plan A9-I17).
+        notice::take_escape(self, ctx, raw, blocked);
         chess_tools::take_scope_keys(&mut self.chess, ctx, raw, blocked);
         if raw.hovered_files.is_empty() && raw.dropped_files.is_empty() {
             return;

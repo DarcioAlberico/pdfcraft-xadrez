@@ -3892,6 +3892,8 @@ progress bar	Progress	Tiến độ
 	The original or the position read	Bản gốc hoặc thế cờ đã đọc
 	variation {n}	biến {n}
 	with comment	có bình luận
+	The book's alignment was undone.	Đã hoàn tác việc căn chỉnh sách.
+	(and {n} more)	(và {n} mục khác)
 	Type a move	Gõ nước đi
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Gõ một nước đi (Mf3, e4, e2e4) rồi Enter, hoặc: p các quân, u nước vừa đi, s bên nào đi, f e một cột, r 4 một hàng, mũi tên e2e4 đỏ, vòng tròn d5. M đưa bạn về đây.
 	The board shows a position that is not legal: correct it in the diagram editor first.	Bàn cờ đang có một thế cờ không hợp lệ: hãy sửa nó trong trình sửa sơ đồ trước.

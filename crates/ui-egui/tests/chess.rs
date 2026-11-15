@@ -201,7 +201,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
     assert_eq!(h.state().right, Some(RightPanel::Chess), "scanning shows the panel");
     assert_eq!(diagrams(&h), 2);
-    assert_eq!(h.state().said(), Some("Diagrams found: 2"));
+    assert_eq!(h.state().said(), Some("2 diagrams · 1 to review"));
     // The font diagram is first in reading order (the left column, top to bottom), read exactly.
     h.get_by_label("Diagram 1 · Position read");
     // Its FEN is in the row's tooltip (and its menu), not on the row (plan A8, P2a1).
@@ -326,7 +326,7 @@ fn a_document_that_forbids_copying_is_not_scanned() {
     let app = h.state();
     let id = app.views[0].id;
     assert!(app.chess.results_of(id).is_some_and(|r| r.diagram(0, 0).is_some()), "scanned when copying is allowed");
-    assert!(app.said().is_none_or(|t| !t.contains("security settings")), "{:?}", app.said());
+    assert!(app.all_said().all(|t| !t.contains("security settings")), "{:?}", app.said());
 }
 
 /// The position the user set in the editor (blueprint S17), for the drawn board no model read.
@@ -622,7 +622,7 @@ fn the_list_follows_its_pages_across_an_edit() {
     assert_eq!(results.selected, Some(pdfcraft_engine::chess::DiagramAt::new(1, 1)), "the diagram picked follows");
     let ed = h.state().chess.editor.as_ref().unwrap();
     assert_eq!(((ed.page, ed.index), ed.fen()), ((1, 1), EDITED.to_string()), "the editor follows, its changes kept");
-    assert!(h.state().said().is_none_or(|t| !t.contains("changed")), "{:?}", h.state().said());
+    assert!(h.state().all_said().all(|t| !t.contains("changed")), "{:?}", h.state().said());
 
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(3);
@@ -660,6 +660,10 @@ fn the_editor_links_the_corrected_position() {
     let links = h.state().session.get(id).unwrap().links().to_vec();
     assert_eq!(links.len(), 1);
     assert_eq!(links[0].action, pdfcraft_engine::LinkAction::Uri("https://lichess.org/analysis/4k3/8/8/8/8/8/8/R3K3%20w%20Q%20-%200%201".into()));
+    // Its notice's Undo takes the link away (plan A9-I17).
+    h.get_by_label("Undo: Lichess link added").click();
+    h.run_steps(3);
+    assert!(h.state().session.get(id).unwrap().links().is_empty(), "undone");
 }
 
 /// Plan A9-G9 (R3-02): a diagram printed from Black's side opens on lichess from Black's side
@@ -699,7 +703,7 @@ fn a_diagram_printed_from_blacks_side_opens_on_lichess_from_blacks_side_everywhe
     h.run_steps(2);
     h.get_by_label("Add lichess link").click();
     h.run_steps(3);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Lichess link added"));
+    assert_eq!(h.state().said(), Some("Lichess link added"));
     let id = h.state().active_ids().unwrap().1;
     let links = h.state().session.get(id).unwrap().links().to_vec();
     assert_eq!(links.iter().map(|l| l.action.clone()).collect::<Vec<_>>(), [pdfcraft_engine::LinkAction::Uri(url.into())], "the PDF's");
@@ -734,7 +738,8 @@ fn the_panel_header_detects_and_sums_up() {
     assert!(!h.state().chess.results().unwrap().all, "this page, not the whole book");
     let queue = h.state().chess.results().unwrap().review_queue();
     assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
-    h.get_by_label("2 diagrams · 1 to review");
+    // The panel's line, and the end of the scan's notice (plan A9-I17).
+    assert_eq!(h.get_all_by_label("2 diagrams · 1 to review").count(), 2);
     h.get_by_label("Review now").click();
     h.run_steps(3);
     let ed = h.state().chess.editor.as_ref().expect("the first to review opens");
@@ -1863,7 +1868,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     assert!(h.state().chess.board_at.is_none(), "the double-click was dealt with");
-    assert_ne!(h.state().said(), Some("Diagrams found: 2"), "a quiet scan");
+    assert!(h.state().all_said().all(|t| !t.contains("2 diagrams")), "a quiet scan");
 
     // Beside the diagrams (white space on the right): the page is scanned, nothing opens.
     let mut h = harness_stepping(0.05);
@@ -4689,7 +4694,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         h.run_steps(3);
         assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
         // It was the only one to review: the review is done (plan A8, P4).
-        assert_eq!(h.state().said(), Some("Review done: 1 of 1 checked"));
+        assert_eq!(h.state().said(), Some("Review done: 1 of 1 checked · Diagram 2, page 1: Corrected"));
         assert!(h.state().chess.results().unwrap().review_queue().is_empty(), "off the review queue");
         to_list(&mut h);
         h.get_by_label("Diagram 2 · Corrected");
@@ -5048,7 +5053,7 @@ fn the_panel_board_is_named_once_and_says_who_moves() {
 fn the_tools_panel_collapses_once_for_the_chess_column() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
     assert!(h.state().left_open);
-    assert!(h.state_mut().execute("chess.scan"));
+    assert!(h.state_mut().execute("chess.panel"));
     h.run_steps(3);
     assert!(!h.state().left_open, "the tools panel is collapsed");
     assert!(h.query_by_label("More room for the page: collapse the tools panel?").is_none(), "no offer");
@@ -5228,7 +5233,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
         vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)],
         "with no piece model the drawn board goes to review"
     );
-    h.get_by_label("2 diagrams · 1 to review");
+    assert_eq!(h.get_all_by_label("2 diagrams · 1 to review").count(), 2, "the panel's line and the notice");
     g.click(&mut h, "Review now");
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
     journey("a) Detect and see what to review", g.take(), 2);
@@ -5891,7 +5896,7 @@ fn detecting_again_asks_about_drafts() {
     h.get_by_label("Discard changes").click();
     h.run_steps(4);
     assert!(h.state().chess.drafts.is_empty());
-    assert_eq!(h.state().said(), Some("Diagrams found: 2"), "then the scan ran");
+    assert_eq!(h.state().said(), Some("2 diagrams · 1 to review"), "then the scan ran");
 }
 
 // ─── Corrections undone and redone (plan A9-G10) ──────────────────────────────────────────────
@@ -5935,7 +5940,7 @@ fn confirming_and_forgetting_are_steps_that_undo_takes_back() {
         assert!(h.state_mut().execute("edit.undo"), "Undo is on, for the correction");
         h.run_steps(2);
         assert_eq!(kind(&h, 1), None, "back to what was read");
-        assert!(h.state().notice.is_none(), "the notice went with its step");
+        assert!(h.state().notice.as_ref().is_none_or(|n| n.action.is_none()), "the notice's Undo went with its step");
         let ed = h.state().chess.editor.as_ref().unwrap();
         assert_eq!((ed.fen().as_str(), ed.dirty()), (EDITED, true), "the position stays, not confirmed");
         assert!(h.state_mut().execute("edit.redo"));
@@ -6441,7 +6446,7 @@ fn a_chess_notice_is_a_polite_status() {
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let toast = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("Diagrams found: 2").is_some()).expect("the notice is a status");
+    let toast = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("2 diagrams · 1 to review").is_some()).expect("the notice is a status");
     assert_eq!(toast.accesskit_node().live(), Live::Polite);
 }
 
@@ -6492,10 +6497,12 @@ fn the_correction_notice_is_a_status_that_covers_no_footer() {
     scan_and_edit_second(&mut h);
     h.get_by_label("Confirm and next").click();
     h.run_steps(3);
-    let status = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("Diagram 2, page 1: Corrected").is_some()).expect("a status");
+    // The review is done too: said in the same notice, first (plan A9-I17).
+    let said = "Review done: 1 of 1 checked · Diagram 2, page 1: Corrected";
+    let status = h.get_all_by_role(Role::Status).find(|n| n.query_by_label(said).is_some()).expect("a status");
     assert_eq!(status.accesskit_node().live(), Live::Polite);
-    // Where it is drawn: its words and its Undo (the status itself is a group, with no bounds).
-    let words = status.get_by_label("Diagram 2, page 1: Corrected").rect();
+    // Where it is drawn: its words and its Undo.
+    let words = status.get_by_label(said).rect();
     let notice = words.union(h.get_by_label("Undo: Diagram 2, page 1: Corrected").rect());
     let footer: Vec<egui::Rect> =
         ["More actions", "Confirm", "Confirm and next"].iter().flat_map(|l| h.query_all_by_label(l).map(|n| n.rect()).collect::<Vec<_>>()).collect();
@@ -6504,6 +6511,92 @@ fn the_correction_notice_is_a_status_that_covers_no_footer() {
         assert!(!notice.intersects(button), "{button:?} under {notice:?}");
     }
     assert!(h.state().views[0].viewport_rect().contains_rect(notice), "in the page area");
+}
+
+/// Plan A9-I17 (finding R4-10, §2.8.1): the end of a scan is a notice of what the list holds,
+/// "2 diagrams · 1 to review", with Review now, which opens the first diagram to review; it is a
+/// polite status, a node of its own each time (a second scan saying the same is said again).
+/// Before, it was "Diagrams found: 2" on the toast, with nothing to press.
+#[test]
+fn the_end_of_a_scan_says_what_to_review_with_review_now() {
+    use egui::accesskit::{Live, Role};
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let status = |h: &Harness<'static, PdfCraftApp>| {
+        let node = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("2 diagrams · 1 to review").is_some()).expect("a status");
+        assert_eq!(node.accesskit_node().live(), Live::Polite);
+        node.accesskit_node().id()
+    };
+    let first = status(&h);
+    assert!(h.state().chess.editor.is_none());
+    h.get_by_label("Review now: 2 diagrams · 1 to review").click();
+    h.run_steps(3);
+    let ed = h.state().chess.editor.as_ref().expect("Review now opens the editor");
+    assert_eq!((ed.page, ed.index), (0, 1), "on the diagram to review");
+    assert!(h.state().notice.is_none(), "the notice went with its button");
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_ne!(status(&h), first, "said again: a node of its own");
+}
+
+/// Plan A9-I17 (review of #401, item 1): dismissing an error is no answer to the notice beside it:
+/// the notice's Undo stays. Before, the press on × was a press outside the notice, which took it
+/// away.
+#[test]
+fn dismissing_an_error_keeps_the_notices_undo() {
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), None);
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Confirm and next").click();
+    h.run_steps(3);
+    h.get_by_label("Undo: Diagram 2, page 1: Corrected");
+    h.state_mut().use_chess_models_folder(std::path::PathBuf::from("relative"));
+    h.run_steps(2);
+    h.get_by_label_contains("Dismiss: relative").click();
+    h.run_steps(2);
+    assert!(h.state().alert.is_none(), "dismissed");
+    h.get_by_label("Undo: Diagram 2, page 1: Corrected");
+}
+
+/// Plan A9-I17 (review of #401, item 4): an error of an export is taken away when the next export
+/// works, so it never stands beside the success; an error of another action stays.
+#[test]
+fn an_export_that_works_takes_its_earlier_error_away() {
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    let dir = std::env::temp_dir().join(format!("pdfcraft-i17-export-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let pgn = pdfcraft_engine::chess::export::ChessFormat::Pgn;
+    h.state_mut().export_chess_to(id, pgn, &dir.join("no-folder").join("book.pgn"));
+    h.run_steps(4);
+    assert_eq!(h.state().alert.as_ref().and_then(|a| a.key), Some("export"), "{:?}", h.state().said());
+    h.state_mut().export_chess_to(id, pgn, &dir.join("book.pgn"));
+    h.run_steps(4);
+    assert!(dir.join("book.pgn").exists(), "written");
+    assert!(h.state().alert.is_none(), "the stale error went: {:?}", h.state().said());
+    // Another action's error is not the export's to take away.
+    h.state_mut().use_chess_models_folder(std::path::PathBuf::from("relative"));
+    h.state_mut().export_chess_to(id, pgn, &dir.join("again.pgn"));
+    h.run_steps(4);
+    assert!(h.state().alert.as_ref().is_some_and(|a| a.text.contains("can't be used as the chess models folder")));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I17: Undo on the notice of a book's PGN kept for a document that kept none takes the
+/// PGN away again.
+#[test]
+fn the_notice_of_a_kept_books_pgn_undoes_it() {
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    assert!(h.state().session.chess_book_pgn(id).is_some(), "kept");
+    let said = h.state().said().unwrap_or_default().to_owned();
+    assert!(said.starts_with("Book's PGN book.pgn: "), "{said}");
+    h.get_by_label(&format!("Undo: {said}")).click();
+    h.run_steps(3);
+    assert!(h.state().session.chess_book_pgn(id).is_none(), "taken away");
 }
 
 /// Plan A9-I15 (task 7, finding A6-11): the Chess panel's Diagrams and Text are tabs to
@@ -6612,7 +6705,7 @@ fn the_app_keeps_its_chess_stores_in_one_place_and_brings_in_the_earlier_ones() 
     assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 1, "brought in");
     let after: Vec<Vec<u8>> = source.iter().map(|n| std::fs::read(earlier.join("corrections").join(n)).unwrap()).collect();
     assert_eq!(after, source_bytes, "the earlier folder left as it was");
-    assert!(app.said().is_none_or(|t| !t.contains("brought in")), "nothing to say the first time");
+    assert!(app.all_said().all(|t| !t.contains("brought in")), "nothing to say the first time");
     // The earlier build goes on writing there: the next start brings it in, and says so.
     correct(&before, 1);
     let mut next = PdfCraftApp::new();

@@ -3603,6 +3603,9 @@ progress bar	Progress	Напредък
 	The original or the position read	Оригиналът или прочетената позиция
 	variation {n}	вариант {n}
 	with comment	с коментар
+	The book's alignment was undone.	Подравняването на книгата е отменено.
+	Another file dialog is still open. Finish with it first.	Друг прозорец за избор на файл все още е отворен. Първо приключете с него.
+	(and {n} more)	(и още {n})
 	Move	Ход
 	Type a move	Въведете ход
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Въведете ход (Nf3, e4, e2e4) и Enter, или: p фигурите, u последния ход, s кой е на ход, f e линия, r 4 хоризонтал, стрелка e2e4 червено, кръг d5. M ви връща тук.

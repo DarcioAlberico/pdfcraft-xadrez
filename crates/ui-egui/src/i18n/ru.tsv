@@ -3553,6 +3553,9 @@ progress bar	Progress	Ход выполнения
 	The original or the position read	Оригинал или прочитанная позиция
 	variation {n}	вариант {n}
 	with comment	с комментарием
+	The book's alignment was undone.	Выравнивание книги отменено.
+	Another file dialog is still open. Finish with it first.	Ещё открыто другое окно выбора файла. Сначала завершите работу с ним.
+	(and {n} more)	(и ещё {n})
 	Move	Ход
 	Type a move	Ввести ход
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Введите ход (Кf3, e4, e2e4) и Enter, или: p фигуры, u последний ход, s чей ход, f e вертикаль, r 4 горизонталь, стрелка e2e4 красный, круг d5. M вернёт вас сюда.

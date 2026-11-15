@@ -3852,6 +3852,8 @@ progress bar	Progress	Avanzamento
 	The original or the position read	L'originale o la posizione letta
 	variation {n}	variante {n}
 	with comment	con commento
+	The book's alignment was undone.	L'allineamento del libro è stato annullato.
+	(and {n} more)	(e altri {n})
 	Move	Mossa
 	Type a move	Scrivi una mossa
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Scrivi una mossa (Cf3, e4, e2e4) e Invio, oppure: p i pezzi, u l'ultima mossa, s chi muove, f e una colonna, r 4 una traversa, freccia e2e4 rosso, cerchio d5. M ti riporta qui.

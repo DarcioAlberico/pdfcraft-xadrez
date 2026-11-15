@@ -3636,6 +3636,8 @@ progress bar	Progress	İlerleme
 	The original or the position read	Özgün ya da okunan konum
 	variation {n}	varyant {n}
 	with comment	yorumlu
+	The book's alignment was undone.	Kitabın hizalaması geri alındı.
+	(and {n} more)	(ve {n} tane daha)
 	Move	Hamle
 	Type a move	Hamle yaz
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Bir hamle yazın (Af3, e4, e2e4) ve Enter, ya da: p taşlar, u son hamle, s sıra kimde, f e bir sütun, r 4 bir yatay sıra, ok e2e4 kırmızı, daire d5. M sizi buraya getirir.

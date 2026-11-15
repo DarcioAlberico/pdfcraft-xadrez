@@ -3890,6 +3890,8 @@ progress bar	Progress	Eiga
 	The original or the position read	Originalas arba perskaityta pozicija
 	variation {n}	variantas {n}
 	with comment	su komentaru
+	The book's alignment was undone.	Knygos sulyginimas atšauktas.
+	(and {n} more)	(ir dar {n})
 	Type a move	Įvesti ėjimą
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Įveskite ėjimą (Žf3, e4, e2e4) ir Enter, arba: p figūros, u paskutinis ėjimas, s kieno ėjimas, f e vertikalė, r 4 horizontalė, rodyklė e2e4 raudona, apskritimas d5. M grąžina čia.
 	The board shows a position that is not legal: correct it in the diagram editor first.	Lentoje neleistina pozicija: pirmiau ją pataisykite diagramų rengyklėje.

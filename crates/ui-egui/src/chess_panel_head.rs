@@ -132,18 +132,24 @@ pub(crate) fn long_job(ui: &mut egui::Ui, t: &Tokens, row: &crate::chess_text_ui
 pub(crate) fn summary(ui: &mut egui::Ui, t: &Tokens, diagrams: usize, to_review: usize) -> Option<PanelAction> {
     let mut action = None;
     ui.horizontal_wrapped(|ui| {
-        let n = u64::try_from(diagrams).unwrap_or(u64::MAX);
-        let mut text = crate::i18n::trn(crate::i18n::current(), n, "{n} diagram", "{n} diagrams");
-        if to_review > 0 {
-            text.push_str(" · ");
-            text.push_str(&crate::i18n::fmt(tl!("{n} to review"), &[("n", &to_review.to_string())]));
-        }
-        ui.label(RichText::new(text).color(t.text));
+        ui.label(RichText::new(summary_text(diagrams, to_review)).color(t.text));
         if to_review > 0 && widgets::pill_button(ui, tl!("Review now"), false).on_hover_text(tl!("Open the first diagram to review.")).clicked() {
             action = Some(PanelAction::ReviewNow);
         }
     });
     action
+}
+
+/// What the list holds: "12 diagrams · 3 to review" (the panel's line and the end of a scan's
+/// notice).
+pub(crate) fn summary_text(diagrams: usize, to_review: usize) -> String {
+    let n = u64::try_from(diagrams).unwrap_or(u64::MAX);
+    let mut text = crate::i18n::trn(crate::i18n::current(), n, "{n} diagram", "{n} diagrams");
+    if to_review > 0 {
+        text.push_str(" · ");
+        text.push_str(&crate::i18n::fmt(tl!("{n} to review"), &[("n", &to_review.to_string())]));
+    }
+    text
 }
 
 /// A scan of another document runs (`done` of `total` pages): why Detect waits, said in the

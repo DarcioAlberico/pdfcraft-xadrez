@@ -304,7 +304,7 @@ impl PdfCraftApp {
 
     /// Say what a check of the models found: an error when one couldn't be loaded.
     fn say_models(&mut self, text: String, failed: bool) {
-        if failed { self.post_error(text) } else { self.notify(text) }
+        if failed { self.post_error(text) } else { self.inform(text) }
     }
 
     /// Load the models again from where they are now, and keep what was found. On the web the
@@ -337,7 +337,7 @@ impl PdfCraftApp {
     fn pick_chess_model_files(&mut self) {
         use std::sync::atomic::Ordering;
         if self.chess.models.busy.swap(true, Ordering::SeqCst) {
-            self.notify_tr("Another file dialog is still open. Finish with it first.");
+            self.inform(tl!("Another file dialog is still open. Finish with it first."));
             return;
         }
         let inbox = self.chess.models.inbox.clone();

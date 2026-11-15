@@ -203,3 +203,22 @@ fn without_a_folder_or_files_there_is_no_model() {
     assert!(matches!(models.pieces, pdfcraft_engine::chess::ModelState::Missing), "{:?}", models.pieces);
     assert!(matches!(models.glyphs, pdfcraft_engine::chess::ModelState::Missing), "{:?}", models.glyphs);
 }
+
+/// Plan A9-I17 (review of #401, item 2): errors said in the same frame are all kept, in one error
+/// notice: the first three, then how many more, the whole list on hover. Before, each took the
+/// place of the one before, and only the last was seen.
+#[test]
+fn errors_said_in_one_frame_are_all_kept() {
+    let mut h = harness("", &[]);
+    for name in ["one", "two", "three", "four"] {
+        h.state_mut().use_chess_models_folder(std::path::PathBuf::from(name));
+    }
+    h.run_steps(2);
+    let text = h.state().alert.as_ref().map(|a| a.text.clone()).unwrap_or_default();
+    let each = |n: &str| format!("{n} can't be used as the chess models folder.");
+    assert_eq!(text, format!("{} · {} · {} (and 1 more)", each("one"), each("two"), each("three")));
+    // An error in a later frame takes the place of the one shown.
+    h.state_mut().use_chess_models_folder(std::path::PathBuf::from("five"));
+    h.run_steps(2);
+    assert_eq!(h.state().alert.as_ref().map(|a| a.text.clone()), Some(each("five")));
+}

@@ -169,7 +169,13 @@ fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
 
 /// The capture's own notice (what went in, with Undo).
 fn capture_toast(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.capture.toast.as_ref().map(|t| t.text.clone()).unwrap_or_default()
+    capture_notice(h).unwrap_or_default()
+}
+
+/// The capture's notice, while it shows: the app's notice with the capture's Undo (plan A9-I17).
+fn capture_notice(h: &Harness<'static, PdfCraftApp>) -> Option<String> {
+    use pdfcraft_ui_egui::notice::NoticeAction;
+    h.state().notice.as_ref().filter(|n| matches!(n.action, Some((_, NoticeAction::UndoCapture { .. })))).map(|n| n.text.clone())
 }
 
 /// The scenario's whole paragraph, selected with Capture armed: one gesture puts it in, without
@@ -482,16 +488,16 @@ fn the_notice_undoes_the_capture_and_the_new_moves_are_marked() {
     assert_eq!(capture_toast(&h), "Line from the start · moves: 3");
     let board = h.state().chess.board();
     assert_eq!(board.fresh.nodes(&board.game).len(), 3);
-    h.get_by_label("Undo this capture").click();
+    h.get_by_label("Undo: Line from the start · moves: 3").click();
     h.run_steps(3);
     assert_eq!(movetext(&h), "");
-    assert!(h.state().chess.capture.toast.is_none());
+    assert!(capture_notice(&h).is_none());
     // Captured again, then the game changes: the notice and the marks go.
     h.state_mut().capture_pasted("18.Nd5 Qxe1", None);
     h.run_steps(2);
-    assert!(h.state().chess.capture.toast.is_some());
+    assert!(capture_notice(&h).is_some());
     play(&mut h, &["Nxe7+"]);
-    assert!(h.state().chess.capture.toast.is_none(), "until the next change");
+    assert!(capture_notice(&h).is_none(), "until the next change");
     let board = h.state().chess.board();
     assert!(board.fresh.nodes(&board.game).is_empty());
 }

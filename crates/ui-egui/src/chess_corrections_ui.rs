@@ -438,7 +438,7 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return 0 };
         let label = self.chess_page_label(page);
         let Some(p) = self.chess.results_of(id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
-            self.notify(tl!("Detect the diagrams on this page first.").to_string());
+            self.inform(tl!("Detect the diagrams on this page first.").to_string());
             return 0;
         };
         let (mut done, mut left) = (0usize, 0usize);
@@ -478,7 +478,7 @@ impl PdfCraftApp {
             said.push_str(" · ");
             said.push_str(&crate::i18n::fmt(tl!("{n} to review"), &[("n", &left.to_string())]));
         }
-        self.notify(said);
+        self.inform(said);
         done
     }
 
@@ -505,9 +505,9 @@ impl PdfCraftApp {
                 Some(done) => {
                     let (d, n) = (done.checked.to_string(), done.of.to_string());
                     let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &d), ("n", &n)]);
-                    self.announce(crate::notice::Level::Info, said.clone());
                     self.chess.review_done = Some(done);
-                    self.notify(said);
+                    // The notice is said when it appears: nothing to announce besides (plan A9-I17).
+                    self.inform(said);
                 }
                 None => self.chess_editor_action(crate::chess_editor::EditorAction::Next),
             }

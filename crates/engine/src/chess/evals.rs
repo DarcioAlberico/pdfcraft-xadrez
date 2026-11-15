@@ -144,8 +144,9 @@ impl Eval {
 
     /// Whether this evaluation is the one to keep over `other`: an exact score over a bound (plan
     /// A9-N17a2: a search stopped mid-way is never the last word), then deeper, then as deep and
-    /// newer.
-    fn outranks(&self, other: &Eval) -> bool {
+    /// newer. The store's one rule ([`EvalFile::keep`], [`EvalFile::merge`]); the board's engine
+    /// takes it too (plan A9-N17a3, for N17b).
+    pub fn outranks(&self, other: &Eval) -> bool {
         (self.bound.is_none(), self.depth, self.at) > (other.bound.is_none(), other.depth, other.at)
     }
 
@@ -187,8 +188,9 @@ impl EvalFile {
         EvalFile { version: VERSION, doc, evals: BTreeMap::new(), other: Map::new() }
     }
 
-    /// Keep `eval` for the position of `fen`, unless it keeps a deeper one (or as deep and
-    /// newer). Whether it was kept. Past [`MAX_EVALS`] positions the oldest goes.
+    /// Keep `eval` for the position of `fen`, unless the one it keeps outranks it
+    /// ([`Eval::outranks`]: an exact score over a bound, then deeper, then as deep and newer).
+    /// Whether it was kept. Past [`MAX_EVALS`] positions the oldest goes.
     pub fn keep(&mut self, fen: &str, eval: Eval) -> bool {
         let Some(key) = position_key(fen) else { return false };
         if self.evals.get(&key).is_some_and(|old| !eval.outranks(old)) {
@@ -217,8 +219,9 @@ impl EvalFile {
         }
     }
 
-    /// `theirs` merged into `self`: per position, the deeper evaluation (as deep: the newer; a
-    /// tie keeps this one's).
+    /// `theirs` merged into `self`: per position, the one that outranks the other
+    /// ([`Eval::outranks`]: an exact score over a bound, then deeper, then as deep and newer); a
+    /// tie keeps this one's.
     pub fn merge(&mut self, theirs: &EvalFile) {
         for (key, eval) in &theirs.evals {
             match self.evals.get(key) {

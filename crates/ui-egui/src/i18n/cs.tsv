@@ -3714,6 +3714,8 @@ progress bar	Progress	Průběh
 	The original or the position read	Originál nebo přečtená pozice
 	variation {n}	varianta {n}
 	with comment	s komentářem
+	The book's alignment was undone.	Zarovnání knihy bylo vráceno zpět.
+	(and {n} more)	(a {n} další)
 	Move	Tah
 	Type a move	Napsat tah
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Napište tah (Jf3, e4, e2e4) a Enter, nebo: p kameny, u poslední tah, s kdo je na tahu, f e sloupec, r 4 řada, šipka e2e4 červená, kruh d5. M vás sem přivede.

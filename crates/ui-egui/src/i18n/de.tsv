@@ -3641,6 +3641,8 @@ progress bar	Progress	Fortschritt
 	The original or the position read	Das Original oder die gelesene Stellung
 	variation {n}	Variante {n}
 	with comment	mit Kommentar
+	The book's alignment was undone.	Die Ausrichtung des Buchs wurde rückgängig gemacht.
+	(and {n} more)	(und {n} weitere)
 	Move	Zug
 	Type a move	Zug eingeben
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Zug eingeben (Sf3, e4, e2e4) und Enter, oder: p die Figuren, u der letzte Zug, s wer am Zug ist, f e eine Linie, r 4 eine Reihe, Pfeil e2e4 rot, Kreis d5. M bringt Sie hierher.

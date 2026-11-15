@@ -1023,10 +1023,10 @@ impl PdfCraftApp {
         const BLOCK: usize = 16;
         let Some((_, id)) = self.active_ids() else { return };
         let Some(index) = self.book_pgn_index(id) else {
-            return self.notify(tl!("This document keeps no book's PGN.").to_string());
+            return self.inform(tl!("This document keeps no book's PGN.").to_string());
         };
         if self.chess.long.is_some() {
-            return self.notify(tl!("A chess document is already being read or exported").to_string());
+            return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         if !self.may_copy(id) {
             return;
@@ -1066,7 +1066,7 @@ impl PdfCraftApp {
         const BLOCK: usize = 16;
         let Some((_, id)) = self.active_ids() else { return };
         if self.chess.long.is_some() {
-            return self.notify(tl!("A chess document is already being read or exported").to_string());
+            return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         if !self.may_copy(id) {
             return;
@@ -1114,14 +1114,14 @@ impl PdfCraftApp {
     ) {
         let long = kind.is_long();
         if long && self.chess.long.is_some() {
-            return self.notify(tl!("A chess document is already being read or exported").to_string());
+            return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         // On the web the whole book is read inside one frame, the tab frozen until the end: only
         // a short one, until it is read a page at a time as the scan is (plan A9-I2, R8-03).
         let pages = self.session.get(id).map_or(0, |d| d.info.pages.len());
         if long && self.chess_frame_budget().is_some() && pages > WEB_WHOLE_BOOK_PAGES {
             let n = WEB_WHOLE_BOOK_PAGES.to_string();
-            return self.notify(crate::i18n::fmt(
+            return self.inform(crate::i18n::fmt(
                 tl!("In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background."),
                 &[("n", &n)],
             ));
@@ -1161,7 +1161,7 @@ impl PdfCraftApp {
         };
         // Dropping it asks its work to stop; its thread ends at its next block of pages.
         drop(job);
-        self.notify(said.to_owned());
+        self.inform(said.to_owned());
     }
 
     /// Pick up a finished job: show the page read, or write the export.
@@ -1254,7 +1254,7 @@ impl PdfCraftApp {
                 self.keep_chess_cipher(job.doc, read.cipher);
                 match read.span.at {
                     Some(node) => self.put_book_game(job.doc, &read.span.doc, node),
-                    None => self.notify(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
+                    None => self.inform(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -1271,9 +1271,9 @@ impl PdfCraftApp {
                         let said = crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]);
                         self.chess_export_done(&made, None, said);
                     }
-                    Err(e) => self.post_error(e.to_string()),
+                    Err(e) => self.post_error_for("export", e.to_string()),
                 },
-                Err(e) => self.post_error(e),
+                Err(e) => self.post_error_for("export", e),
             },
             (JobKind::LinkBook { stamp }, JobDone::Linked(linked)) => {
                 // The document changed meanwhile: the pages linked are of a state that is gone.
@@ -1282,7 +1282,7 @@ impl PdfCraftApp {
                 }
                 match linked {
                     Ok(link) => {
-                        self.notify(crate::i18n::fmt(
+                        let said = crate::i18n::fmt(
                             tl!("The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict."),
                             &[
                                 ("linked", &link.linked().to_string()),
@@ -1290,12 +1290,15 @@ impl PdfCraftApp {
                                 ("recovered", &link.counts.recovered.to_string()),
                                 ("conflict", &link.counts.conflict.to_string()),
                             ],
-                        ));
+                        );
                         let mut link = link;
                         for g in &mut link.games {
                             g.first_label = g.first_page.map(|p| self.page_label_in(job.doc, p));
                         }
-                        self.chess.doc_mut(job.doc).book_link = Some(link);
+                        // With Undo, which puts back what the book was linked to (plan A9-I17).
+                        let view = self.chess.doc_mut(job.doc);
+                        view.link_before = Some(view.book_link.replace(link));
+                        self.post_notice(said, Some((tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoAlign { doc: job.doc })));
                     }
                     Err(e) => self.post_error(e),
                 }
@@ -1315,7 +1318,8 @@ impl PdfCraftApp {
                     Err(e) => self.post_error(e),
                 }
             }
-            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.post_error(e),
+            (_, JobDone::Export(Err(e))) => self.post_error_for("export", e),
+            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e))) => self.post_error(e),
             _ => {}
         }
     }
@@ -1451,7 +1455,7 @@ impl PdfCraftApp {
         let export = export.into();
         let format = export.engine();
         if self.chess.long.is_some() {
-            return self.notify(tl!("A chess document is already being read or exported").to_string());
+            return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
@@ -1465,7 +1469,7 @@ impl PdfCraftApp {
         self.chess_export_options(id, export, &mut options);
         let games = self.export_games(id);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
-        self.notify(tl!("Exporting the chess document…").to_string());
+        self.inform(tl!("Exporting the chess document…").to_string());
         self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl)));
     }
 
@@ -1474,18 +1478,26 @@ impl PdfCraftApp {
     fn write_chess_export(&mut self, made: Result<pdfcraft_engine::chess::export::ChessExport, String>, path: &std::path::Path, image_dir: &str) {
         let made = match made {
             Ok(m) => m,
-            Err(e) => return self.post_error(e),
+            Err(e) => return self.post_error_for("export", e),
         };
         if !made.images.is_empty() {
             let dir = path.with_file_name(image_dir);
             if let Err(e) = std::fs::create_dir_all(&dir) {
-                return self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+                return self.post_error_fmt_for(
+                    "export",
+                    "Couldn't write {name}: {e}",
+                    &[("name", &dir.display().to_string()), ("e", &e.to_string())],
+                );
             }
             for (rel, png) in &made.images {
                 let Some(name) = std::path::Path::new(rel).file_name() else { continue };
                 let target = dir.join(name);
                 if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
-                    return self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                    return self.post_error_fmt_for(
+                        "export",
+                        "Couldn't write {name}: {e}",
+                        &[("name", &target.display().to_string()), ("e", &e.to_string())],
+                    );
                 }
             }
         }
@@ -1494,7 +1506,9 @@ impl PdfCraftApp {
                 let said = crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &path.display().to_string())]);
                 self.chess_export_done(&made, Some(path.to_path_buf()), said);
             }
-            Err(e) => self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())]),
+            Err(e) => {
+                self.post_error_fmt_for("export", "Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())])
+            }
         }
     }
 }

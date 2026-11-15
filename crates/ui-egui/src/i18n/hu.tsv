@@ -3639,6 +3639,8 @@ progress bar	Progress	Előrehaladás
 	The original or the position read	Az eredeti vagy a beolvasott állás
 	variation {n}	{n}. változat
 	with comment	megjegyzéssel
+	The book's alignment was undone.	A könyv igazítása visszavonva.
+	(and {n} more)	(és még {n})
 	Move	Lépés
 	Type a move	Lépés beírása
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Írjon be egy lépést (Hf3, e4, e2e4), majd Enter, vagy: p a bábuk, u az utolsó lépés, s ki lép, f e egy vonal, r 4 egy sor, nyíl e2e4 piros, kör d5. Az M ide hozza.

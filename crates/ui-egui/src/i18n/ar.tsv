@@ -3914,6 +3914,8 @@ progress bar	Progress	التقدم
 	The original or the position read	الأصل أو الوضعية المقروءة
 	variation {n}	التفرع {n}
 	with comment	مع تعليق
+	The book's alignment was undone.	تم التراجع عن محاذاة الكتاب.
+	(and {n} more)	(و{n} أخرى)
 	Type a move	اكتب نقلة
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	اكتب نقلة (Nf3، e4، e2e4) ثم Enter، أو: p القطع، u آخر نقلة، s من يلعب، f e عمود، r 4 صف، سهم e2e4 أحمر، دائرة d5. يعيدك M إلى هنا.
 	The board shows a position that is not legal: correct it in the diagram editor first.	تعرض الرقعة وضعًا غير قانوني: صحّحه أولًا في محرر المخططات.

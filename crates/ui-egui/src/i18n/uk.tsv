@@ -3662,6 +3662,8 @@ progress bar	Progress	Хід виконання
 	The original or the position read	Оригінал або прочитана позиція
 	variation {n}	варіант {n}
 	with comment	з коментарем
+	The book's alignment was undone.	Вирівнювання книги скасовано.
+	(and {n} more)	(і ще {n})
 	Move	Хід
 	Type a move	Ввести хід
 	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Введіть хід (Кf3, e4, e2e4) і Enter, або: p фігури, u останній хід, s чий хід, f e вертикаль, r 4 горизонталь, стрілка e2e4 червоний, коло d5. M поверне вас сюди.
