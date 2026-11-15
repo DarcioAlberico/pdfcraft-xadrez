@@ -1181,6 +1181,9 @@ pub struct ChessGames {
     said: HashSet<String>,
     /// Notices for the user, shown at the next frame.
     pub(crate) notes: Vec<String>,
+    /// What failed (games, corrections or books' PGNs not read or not kept), shown at the next
+    /// frame as an error until dismissed (plan A9-I17).
+    pub(crate) errors: Vec<String>,
     /// The list's question or name editor open, and its keyboard focus.
     list: ListState,
     /// Collections the user left as they were, by id, with their fingerprint then: Quit or
@@ -1499,7 +1502,7 @@ impl ChessGames {
     pub(crate) fn autosave_to_storage(&mut self, text: Option<&str>, v1: Option<&str>) {
         let (store, bad) = chess_autosave::MemoryStore::load(text, v1);
         if bad {
-            self.notes.push(tl!("Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.").to_string());
+            self.errors.push(tl!("Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.").to_string());
         }
         self.store = Store::Memory(store);
         self.take_back_no_document();
@@ -1517,7 +1520,7 @@ impl ChessGames {
             self.read_only(&mut c, found.newer);
             self.none = c;
             if lost > 0 {
-                self.notes.push(crate::i18n::fmt(tl!("Saved chess games that couldn't be read: {n}"), &[("n", &lost.to_string())]));
+                self.errors.push(crate::i18n::fmt(tl!("Saved chess games that couldn't be read: {n}"), &[("n", &lost.to_string())]));
             }
         }
     }
@@ -1533,7 +1536,7 @@ impl ChessGames {
         let Some(version) = newer else { return };
         c.autosave.blocked = Some(Blocked::Newer(version));
         if self.said.insert(format!("newer {}", c.cid)) {
-            self.notes.push(newer_note(version));
+            self.errors.push(newer_note(version));
         }
     }
 
@@ -1684,7 +1687,7 @@ impl ChessGames {
     fn detach(&mut self, id: DocId) {
         let Some(mut c) = self.docs.remove(&id) else { return };
         c.trash_removed();
-        let mut w = Writer { store: &mut self.store, said: &mut self.said, notes: &mut self.notes };
+        let mut w = Writer { store: &mut self.store, said: &mut self.said, notes: &mut self.notes, errors: &mut self.errors };
         w.tick(&mut c, None);
         if c.has_content() && !c.in_store() {
             self.closed.push(c);
@@ -1695,8 +1698,8 @@ impl ChessGames {
     /// `None`), after taking in what became of the writes queued before ([`Self::written`]).
     fn autosave(&mut self, now: Option<f64>) {
         self.written();
-        let ChessGames { docs, none, closed, store, said, notes, .. } = self;
-        let mut w = Writer { store, said, notes };
+        let ChessGames { docs, none, closed, store, said, notes, errors, .. } = self;
+        let mut w = Writer { store, said, notes, errors };
         for c in docs.values_mut().chain(std::iter::once(none)) {
             c.trash_removed();
             w.tick(c, now);
@@ -1716,8 +1719,8 @@ impl ChessGames {
         if done.is_empty() {
             return;
         }
-        let ChessGames { docs, none, closed, store, said, notes, .. } = self;
-        let mut w = Writer { store, said, notes };
+        let ChessGames { docs, none, closed, store, said, notes, errors, .. } = self;
+        let mut w = Writer { store, said, notes, errors };
         for d in done {
             let c = docs.values_mut().chain(std::iter::once(&mut *none)).chain(closed.iter_mut()).find(|c| c.cid == d.file);
             if let Some(c) = c
@@ -1740,17 +1743,19 @@ impl ChessGames {
     }
 }
 
-/// Writes collections to the store, telling the user once why one wasn't.
+/// Writes collections to the store, telling the user once why one wasn't (an error: the changes
+/// are not kept) and what it brought back.
 struct Writer<'a> {
     store: &'a mut Store,
     said: &'a mut HashSet<String>,
     notes: &'a mut Vec<String>,
+    errors: &'a mut Vec<String>,
 }
 
 impl Writer<'_> {
     fn say(&mut self, key: String, note: impl FnOnce() -> String) {
         if self.said.insert(key) {
-            self.notes.push(note());
+            self.errors.push(note());
         }
     }
 
@@ -1847,7 +1852,8 @@ impl Writer<'_> {
         match result {
             Ok(synced) => {
                 if let Some(name) = &synced.set_aside {
-                    self.notes.push(crate::i18n::fmt(tl!("A file of saved chess games couldn't be read. It was kept as {name}."), &[("name", name)]));
+                    self.errors
+                        .push(crate::i18n::fmt(tl!("A file of saved chess games couldn't be read. It was kept as {name}."), &[("name", name)]));
                 }
                 let added = c.take_in(synced.added);
                 if added > 0 {
@@ -2802,10 +2808,10 @@ impl PdfCraftApp {
             log::warn!("the engine's evaluations could not be kept: {e}");
         }
         for e in corrections {
-            self.chess.games.notes.push(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", &e)]));
+            self.chess.games.errors.push(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", &e)]));
         }
         for e in books {
-            self.chess.games.notes.push(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
+            self.chess.games.errors.push(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
         }
     }
 
@@ -2855,7 +2861,7 @@ impl PdfCraftApp {
                 ),
                 &[("why", why)],
             );
-            self.chess.games.notes.push(said);
+            self.chess.games.errors.push(said);
         }
         let book_pgns = storage.and_then(|s| s.get_string(crate::chess_reference_ui::STORAGE_KEY));
         self.chess.book_pgns.use_storage(book_pgns.as_deref());
@@ -2864,11 +2870,15 @@ impl PdfCraftApp {
                 tl!("Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on."),
                 &[("why", why)],
             );
-            self.chess.games.notes.push(said);
+            self.chess.games.errors.push(said);
         }
     }
 
     fn show_chess_notes(&mut self) {
+        let errors = std::mem::take(&mut self.chess.games.errors);
+        if !errors.is_empty() {
+            self.post_error(errors.join(" · "));
+        }
         let notes = std::mem::take(&mut self.chess.games.notes);
         if !notes.is_empty() {
             self.notify(notes.join(" · "));
@@ -2940,8 +2950,8 @@ impl PdfCraftApp {
         }
         c.keys = keys;
         c.autosave.keeping = keeping;
-        let ChessGames { docs, store, said, notes, .. } = games;
-        let mut w = Writer { store, said, notes };
+        let ChessGames { docs, store, said, notes, errors, .. } = games;
+        let mut w = Writer { store, said, notes, errors };
         if let Some(c) = docs.get_mut(&id) {
             w.write(c);
         }
@@ -2961,7 +2971,7 @@ impl PdfCraftApp {
         if board.history.undo_edit().is_none() {
             // The board says why (the FEN couldn't be read).
             if let Some(why) = board.message.take() {
-                self.notify(why);
+                self.post_error(why);
             }
             return false;
         }
@@ -3092,14 +3102,14 @@ impl PdfCraftApp {
                     self.chess.study.setup = None;
                     self.chess.enter_scope();
                 }
-                Err(why) => self.notify(why),
+                Err(why) => self.post_error(why),
             },
             GamesAction::Restore(index) => match self.chess.games.collection_mut().restore_trashed(index) {
                 Ok(()) => {
                     self.chess.study.setup = None;
                     self.chess.enter_scope();
                 }
-                Err(why) => self.notify(why),
+                Err(why) => self.post_error(why),
             },
             GamesAction::Open => self.open_chess_pgn(),
             GamesAction::Save => self.save_chess_games_pgn(PgnGames::Shown),
@@ -3142,7 +3152,7 @@ impl PdfCraftApp {
         let meta = GamesBookMeta { now_secs, identity, ..GamesBookMeta::default() };
         let book = match games_book(&games, format, &options, &meta) {
             Ok(book) => book,
-            Err(e) => return self.notify(e),
+            Err(e) => return self.post_error(e),
         };
         let left_out =
             (skipped > 0).then(|| crate::i18n::fmt(tl!("Games left out (an illegal position has no game): {n}"), &[("n", &skipped.to_string())]));
@@ -3156,19 +3166,20 @@ impl PdfCraftApp {
                 if !book.images.is_empty() {
                     let dir = dest.with_file_name(&image_dir);
                     if let Err(e) = std::fs::create_dir_all(&dir) {
-                        return app.notify_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+                        return app.post_error_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
                     }
                     for (rel, png) in &book.images {
                         let Some(file) = std::path::Path::new(rel).file_name() else { continue };
                         let target = dir.join(file);
                         if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
-                            return app.notify_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                            return app
+                                .post_error_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
                         }
                     }
                 }
                 match crate::editing::write_atomically(&dest.to_string_lossy(), &book.bytes) {
                     Ok(()) => app.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &dest.display().to_string())]), left_out)),
-                    Err(e) => app.notify_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+                    Err(e) => app.post_error_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
@@ -3176,7 +3187,7 @@ impl PdfCraftApp {
         #[cfg(target_arch = "wasm32")]
         match crate::editing::download(&name, &book.bytes) {
             Ok(()) => self.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]), left_out)),
-            Err(e) => self.notify_fmt("Couldn't save {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
+            Err(e) => self.post_error_fmt("Couldn't save {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
         }
     }
 
@@ -3313,7 +3324,7 @@ impl PdfCraftApp {
                         }
                         app.notify(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out));
                     }
-                    Err(e) => app.notify_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+                    Err(e) => app.post_error_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
@@ -3325,7 +3336,7 @@ impl PdfCraftApp {
                 }
                 self.notify(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out));
             }
-            Err(e) => self.notify_fmt("Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
+            Err(e) => self.post_error_fmt("Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
         }
     }
 
@@ -3341,7 +3352,7 @@ impl PdfCraftApp {
                         Ok(bytes) => {
                             app.import_chess_pgn(&name, &bytes);
                         }
-                        Err(e) => app.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+                        Err(e) => app.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
                     }
                 }
             });
@@ -3377,7 +3388,7 @@ impl PdfCraftApp {
                 Ok(bytes) => {
                     self.import_chess_pgn(&name, &bytes);
                 }
-                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+                Err(e) => self.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
             }
         }
     }
@@ -3393,7 +3404,7 @@ impl PdfCraftApp {
         let (boards, failed) = pgn_boards(chunks.iter().take(chess_autosave::MAX_GAMES).copied());
         let read = boards.len();
         if read == 0 {
-            self.notify_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", tl!("no game could be read"))]);
+            self.post_error_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", tl!("no game could be read"))]);
             return 0;
         }
         let added = self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, true);
@@ -4062,20 +4073,20 @@ mod tests {
         fill(&mut app, chess_autosave::MAX_GAMES);
         assert_eq!(app.import_chess_pgn("more.pgn", b"1. d4 d5 *"), 0);
         assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
-        let toast = app.toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+        let toast = app.said().unwrap_or_default().to_owned();
         assert!(toast.contains("Not added"), "{toast}");
         // New game, Duplicate and New game from this position are refused too.
-        app.toast = None;
+        app.take_said();
         app.chess_games_action(GamesAction::New);
         app.chess_games_action(GamesAction::Duplicate(0));
         app.chess_games_action(GamesAction::NewFrom(None));
         assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
-        assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("Not added: 1.")));
+        assert!(app.said().is_some_and(|t| t.contains("Not added: 1.")));
         // Under the cap, only what fits is added.
         assert_eq!(app.chess.games.collection_mut().delete_many(&[0, 1]), 2);
         assert_eq!(app.import_chess_pgn("more.pgn", b"[Event \"a\"]\n\n1. d4 *\n\n[Event \"b\"]\n\n1. c4 *\n\n[Event \"c\"]\n\n1. Nf3 *\n"), 2);
         assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
-        assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("Not added: 1.")));
+        assert!(app.said().is_some_and(|t| t.contains("Not added: 1.")));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

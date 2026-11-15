@@ -181,7 +181,7 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     h.get_by_label("Stop").click();
     h.run_steps(2);
     assert!(h.state().chess.long.is_none(), "stopped at once");
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Aligning was stopped: the book's link is as it was."));
+    assert_eq!(h.state().said(), Some("Aligning was stopped: the book's link is as it was."));
     // Nothing linked: Align again would say the book was.
     h.get_by_label("More Text tab actions").click();
     h.run_steps(2);
@@ -259,7 +259,7 @@ fn the_web_refuses_a_whole_book_export_above_twenty_pages() {
     let id = h.state().views[0].id;
     h.state_mut().export_chess_to(id, ChessFormat::Pgn, &dir.join("long.pgn"));
     h.run_steps(2);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.starts_with("In the browser, a book of more than 20 pages can't be exported"), "{said}");
     assert!(h.state().chess.long.is_none() && !dir.join("long.pgn").exists(), "nothing exported");
     let mut h = web_harness(16, 50.0);
@@ -313,7 +313,7 @@ fn the_books_pgn_is_indexed_on_a_worker_and_kept_once_indexed() {
     assert!(!h.state().book_pgn_indexing(id));
     let summary = h.state_mut().book_pgn_summary(id).expect("kept once indexed");
     assert_eq!((summary.games, summary.moves), (600, 6000));
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.starts_with("Book's PGN book.pgn: 600 games, 6000 moves."), "{said}");
     // The page is read again, linked to it, on its own worker: waited for too.
     assert!(h.state().chess.reading.as_ref().is_none_or(|job| job.wait(std::time::Duration::from_secs(60))), "the page is read");
@@ -330,7 +330,7 @@ fn the_books_pgn_is_indexed_on_a_worker_and_kept_once_indexed() {
     }
     assert!(h.state().wait_book_pgn_indexing(std::time::Duration::from_secs(120)), "the index came");
     h.run_steps(2);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert_eq!(h.state_mut().book_pgn_summary(id).map(|s| (s.games, s.moves)), Some((600, 6000)), "held once indexed: {said}");
     let _ = std::fs::remove_dir_all(dir);
 }

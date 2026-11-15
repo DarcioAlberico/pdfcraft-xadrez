@@ -146,7 +146,7 @@ fn the_books_bookmarks_are_shown_then_made_in_one_undoable_step() {
             (2, "3. Carlsen–Anand, Chennai 2013".to_owned()),
         ]
     );
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("Bookmarks added under “Chess”: 5."), "{said}");
     assert_eq!(h.state().session.get(id).unwrap().can_undo(), Some("Add chess bookmarks"));
     assert!(h.state_mut().execute("edit.undo"));

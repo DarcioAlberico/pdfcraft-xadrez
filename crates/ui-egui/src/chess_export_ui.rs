@@ -398,7 +398,7 @@ impl PdfCraftApp {
             && !self.run_inline
             && let Err(e) = crate::tab_context::reveal(&path)
         {
-            self.notify_error(e);
+            self.post_error(e.to_string());
         }
     }
 

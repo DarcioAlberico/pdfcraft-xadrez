@@ -81,6 +81,11 @@ impl ModelsReport {
         }
     }
 
+    /// Whether a model was found but couldn't be loaded: the report is said as an error.
+    fn failed(&self) -> bool {
+        matches!(self.pieces, ModelStatus::Invalid(_)) || matches!(self.glyphs, ModelStatus::Invalid(_))
+    }
+
     /// One line for a notice: both models' state.
     fn summary(&self) -> String {
         crate::i18n::fmt(
@@ -197,8 +202,16 @@ pub(crate) fn section(ui: &mut egui::Ui, t: &Tokens, pref: &ModelsPref) -> Optio
         }
     }
     if let Some(report) = &pref.report {
-        muted(ui, crate::i18n::fmt(tl!("Piece model: {state}"), &[("state", &report.pieces.text())]));
-        muted(ui, crate::i18n::fmt(tl!("Glyph model: {state}"), &[("state", &report.glyphs.text())]));
+        // A model that couldn't be loaded is a danger callout (plan A9-I17, finding R4-09).
+        for (text, status) in [(tl!("Piece model: {state}"), &report.pieces), (tl!("Glyph model: {state}"), &report.glyphs)] {
+            let line = crate::i18n::fmt(text, &[("state", &status.text())]);
+            match status {
+                ModelStatus::Invalid(_) => {
+                    crate::notice::callout(ui, crate::notice::Tone::Danger, &line);
+                }
+                _ => muted(ui, line),
+            }
+        }
         if let Some(folder) = &report.folder
             && report.fell_back
         {
@@ -238,8 +251,8 @@ impl PdfCraftApp {
             ModelsAction::Check => {
                 self.check_chess_models();
                 if let Some(report) = &self.chess.models.report {
-                    let text = report.summary();
-                    self.notify(text);
+                    let (text, failed) = (report.summary(), report.failed());
+                    self.say_models(text, failed);
                 }
             }
             ModelsAction::Forget => {
@@ -268,7 +281,10 @@ impl PdfCraftApp {
     /// holds.
     pub fn use_chess_models_folder(&mut self, folder: PathBuf) {
         let Some(folder) = folder.to_str().and_then(valid_folder) else {
-            self.notify(crate::i18n::fmt(tl!("{folder} can't be used as the chess models folder."), &[("folder", &folder.display().to_string())]));
+            self.post_error(crate::i18n::fmt(
+                tl!("{folder} can't be used as the chess models folder."),
+                &[("folder", &folder.display().to_string())],
+            ));
             return;
         };
         self.chess.models.folder = Some(folder);
@@ -281,8 +297,14 @@ impl PdfCraftApp {
                     tl!("This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.")
                 );
             }
-            self.notify(text);
+            let failed = report.failed();
+            self.say_models(text, failed);
         }
+    }
+
+    /// Say what a check of the models found: an error when one couldn't be loaded.
+    fn say_models(&mut self, text: String, failed: bool) {
+        if failed { self.post_error(text) } else { self.notify(text) }
     }
 
     /// Load the models again from where they are now, and keep what was found. On the web the
@@ -304,9 +326,9 @@ impl PdfCraftApp {
         let (models, ignored) = ChessModels::from_files(files);
         let report = ModelsReport::of(&models, None, ignored);
         pdfcraft_engine::chess::install_models(Some(models));
-        let text = report.summary();
+        let (text, failed) = (report.summary(), report.failed());
         self.chess.models.report = Some(report);
-        self.notify(text);
+        self.say_models(text, failed);
     }
 
     /// The web: pick the model files and read them (each at most [`MAX_PICKED_FILE_BYTES`]; a

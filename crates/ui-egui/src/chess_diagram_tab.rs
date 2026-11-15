@@ -377,7 +377,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             });
             let right = egui::Rect::from_min_max(egui::pos2(split, inner.min.y), inner.max);
             ui.scope_builder(UiBuilder::new().max_rect(right).layout(Layout::left_to_right(Align::Center)), |ui| {
-                if let Some(a) = more_menu(ui, ed, illegal.is_none(), kept) {
+                if let Some(a) = more_menu(ui, ed, kept) {
                     action = Some(a);
                 }
                 if let Some(a) = confirm_button(ui, confirm) {
@@ -390,16 +390,6 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     ed.track();
     let editor_board = crate::chess_diagram_keys::board_id(true);
 
-    // What the tab says to screen readers, polite: the diagram opened.
-    let said = &app.chess.diagram_keys.announce;
-    if !said.is_empty() {
-        let said = said.clone();
-        ui.ctx().accesskit_node_builder(egui::Id::new("chess-diagram-announce"), |node| {
-            node.set_role(egui::accesskit::Role::Status);
-            node.set_live(egui::accesskit::Live::Polite);
-            node.set_label(said);
-        });
-    }
     // For the next frame's keys: where the tab is, and whether the keyboard is in it.
     let focused = ui.ctx().memory(|m| m.focused());
     let focus_in = focused.and_then(|f| ui.ctx().read_response(f)).is_some_and(|r| whole.contains(r.rect.center()));
@@ -657,7 +647,7 @@ pub(crate) fn confirm_button(ui: &mut egui::Ui, confirm: Confirm) -> Option<Edit
 }
 
 /// The other actions, behind ⋯.
-fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> Option<EditorAction> {
+fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, kept: bool) -> Option<EditorAction> {
     let mut action = None;
     let button = crate::icons::button(ui, "ellipsis", MENU_BUTTON, false, tl!("More actions"));
     egui::Popup::menu(&button).show(|ui| {
@@ -670,18 +660,19 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
         {
             action = Some(EditorAction::Redraw);
         }
-        if item(ui, legal, tl!("Add lichess link")).clicked() {
+        // The one rule decides both lichess actions, and the address: from the side the diagram
+        // is printed from, whatever the view (plan A9-G9).
+        let link = ed.lichess_link();
+        if item(ui, link.is_ok(), tl!("Add lichess link")).clicked() {
             action = Some(EditorAction::Link);
         }
         if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
-        if legal {
-            let url =
-                pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&ed.position, if ed.flipped { Color::Black } else { Color::White });
-            if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
-                action = Some(EditorAction::OpenLichess(url));
-            }
+        if let Ok(url) = &link
+            && item(ui, true, tl!("Open in lichess")).on_hover_text(url).clicked()
+        {
+            action = Some(EditorAction::OpenLichess(url.clone()));
         }
         if kept {
             // Last, apart, in the danger colour: it drops what the user kept (plan A9 §2.8.1).

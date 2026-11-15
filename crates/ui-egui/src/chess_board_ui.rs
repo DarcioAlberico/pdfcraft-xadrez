@@ -228,6 +228,8 @@ pub struct BoardState {
     pub(crate) history: GameHistory,
     /// The move shown (and the game's revision) when the notation last scrolled to it.
     revealed: Option<(NodeId, u64)>,
+    /// The move shown when it was last said to screen readers (plan A9-I17).
+    announced: Option<NodeId>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
     /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
@@ -356,6 +358,7 @@ impl Default for BoardState {
             drawing: None,
             history: GameHistory::default(),
             revealed: None,
+            announced: None,
             comment_open: false,
             open_details: false,
             hovered_drawings: None,
@@ -627,6 +630,16 @@ impl BoardState {
         // A field being typed in shows the game's text again, and its next key starts a new step.
         self.draft = None;
         true
+    }
+
+    /// Say the move shown to screen readers when it is another than when this board was last
+    /// drawn (plan A9-I17, finding R5-02): stepped by a key, clicked in the list, played on the
+    /// board or undone. A board drawn for the first time says nothing: it is not a move.
+    pub(crate) fn announce_move(&mut self, ctx: &egui::Context) {
+        let current = self.game.current();
+        if self.illegal.is_none() && self.announced.replace(current).is_some_and(|before| before != current) {
+            crate::notice::announce(ctx, crate::notice::Level::Info, crate::chess_tools::move_spoken(&self.game, current));
+        }
     }
 
     /// Fill the FEN and PGN fields from the board, when it changed (`force`: always): the FEN
@@ -1126,7 +1139,8 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     let px = sizing.picture_px(side, ui.ctx().pixels_per_point());
     let Some(tex) = state.texture(ui.ctx(), pieces, px) else {
         if let Some(e) = &state.draw_error {
-            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
+            // What failed, as an alert (plan A9-I17, finding R4-09).
+            crate::notice::callout(ui, crate::notice::Tone::Danger, &crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)]));
         }
         return;
     };
@@ -2480,8 +2494,10 @@ pub(crate) fn pgn_field(ui: &mut egui::Ui, state: &mut BoardState, rows: usize) 
 
 /// The Board tab's FEN/PGN ▾ menu (plan A9-I0b): Copy FEN, Copy PGN and its shorter copies for
 /// programs that want less (plan A8 V4), the position on lichess, the standard start (with moves
-/// on the board, a new game: plan A8, W4).
-pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState) -> Option<BoardAction> {
+/// on the board, a new game: plan A8, W4). `printed`: the side the board's diagram is printed
+/// from, when it came from one ([`crate::chess_ui::ChessResults::printed_from`]); its lichess
+/// link is seen from there, else from the side the board is shown from.
+pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState, printed: Option<Color>) -> Option<BoardAction> {
     let mut action = None;
     let item = |ui: &mut egui::Ui, on: bool, label: &str| crate::widgets::menu_entry(ui, on, egui::Button::new(label));
     if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
@@ -2503,13 +2519,15 @@ pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState) -> Option
     }
     ui.separator();
     // The move shown's position, from the game's board, not read again from its FEN text (plan
-    // A9-T1b).
-    if legal && let Some(p) = state.game.fen_at(state.game.current()) {
-        let url =
-            pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(p.position(), if state.flipped { Color::Black } else { Color::White });
-        if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
-            action = Some(BoardAction::OpenLichess(url));
-        }
+    // A9-T1b), through the one rule of every lichess link, from the side its diagram is printed
+    // from (plan A9-G9).
+    let side = printed.unwrap_or(if state.flipped { Color::Black } else { Color::White });
+    if legal
+        && let Some(p) = state.game.fen_at(state.game.current())
+        && let Ok(url) = pdfcraft_engine::chess::pdfcraft_chess::lichess::link(&p.to_string(), side, false)
+        && item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked()
+    {
+        action = Some(BoardAction::OpenLichess(url));
     }
     let tip = if state.game.is_empty() {
         tl!("Start again from the standard position.")
