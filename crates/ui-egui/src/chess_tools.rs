@@ -909,6 +909,7 @@ pub(crate) fn action_name(action: &str, chess: &ChessState) -> Option<String> {
     match action {
         "leave" => Some(tl!("Leave the chess panel").to_owned()),
         "shortcuts" => Some(tl!("Chess shortcuts").to_owned()),
+        "move-field" => Some(tl!("Type a move").to_owned()),
         _ => None,
     }
 }
@@ -1357,6 +1358,13 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
         && sheet.matches(key, m)
     {
         chess.shortcuts_open = true;
+        return;
+    }
+    // M: the Move field (plan A9-N7a), shown with the Board tab.
+    if let crate::chess_keymap::Trigger::Key(field) = crate::chess_keymap::MOVE_FIELD.trigger
+        && field.matches(key, m)
+    {
+        chess.move_field.focus = true;
         return;
     }
     if let Some(nav) = NAV_KEYS.iter().find(|(k, _)| k.matches(key, m)).map(|(_, nav)| *nav) {

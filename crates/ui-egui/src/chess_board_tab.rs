@@ -458,6 +458,16 @@ fn nav_row(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, pieces: &Piece
         return;
     }
     chess_board_ui::nav_buttons(ui, t, chess.board_mut());
+    // The Move field (plan A9-N7a; its place, the navigation row, chosen by the coordinator
+    // 2026-11-16): after the arrows, which never give up room; the row's end gives up its room
+    // first, then the field shrinks to its narrowest, and only then is it left out.
+    let room = ui.available_rect_before_wrap().width();
+    if let Some(width) = crate::chess_move_field::width_in(room, END_ROOM) {
+        ui.add_space(crate::chess_move_field::GAP);
+        let (board, field) = (chess.games.board_mut(), &mut chess.move_field);
+        crate::chess_move_field::field(ui, board, field, width);
+        ui.add_space(crate::chess_move_field::GAP);
+    }
     let rest = ui.available_rect_before_wrap();
     if rest.width() < 16.0 {
         return;
@@ -475,6 +485,10 @@ fn nav_row(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, pieces: &Piece
     }
     crate::chess_study_ui::material_strip(&mut end, t, chess.board_mut(), pieces, rest.width());
 }
+
+/// The room the navigation row keeps at its end for the engine's state or the material before
+/// the Move field takes it (plan A9-N7a).
+const END_ROOM: f32 = 80.0;
 
 /// The engine's rows while it analyses (or why it can't).
 fn engine_rows(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rect) {

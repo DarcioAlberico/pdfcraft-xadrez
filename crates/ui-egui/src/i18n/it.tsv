@@ -3852,3 +3852,21 @@ progress bar	Progress	Avanzamento
 	The original or the position read	L'originale o la posizione letta
 	variation {n}	variante {n}
 	with comment	con commento
+	Move	Mossa
+	Type a move	Scrivi una mossa
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Scrivi una mossa (Cf3, e4, e2e4) e Invio, oppure: p i pezzi, u l'ultima mossa, s chi muove, f e una colonna, r 4 una traversa, freccia e2e4 rosso, cerchio d5. M ti riporta qui.
+	The board shows a position that is not legal: correct it in the diagram editor first.	La scacchiera mostra una posizione illegale: correggila prima nell'editor dei diagrammi.
+	The board is empty.	La scacchiera è vuota.
+	{file} file: {pieces}	Colonna {file}: {pieces}
+	{file} file: empty	Colonna {file}: vuota
+	Rank {rank}: {pieces}	Traversa {rank}: {pieces}
+	Rank {rank}: empty	Traversa {rank}: vuota
+	No move yet: the start of the game.	Ancora nessuna mossa: l'inizio della partita.
+	Arrow {from} to {to}, {color}	Freccia da {from} a {to}, {color}
+	Arrow {from} to {to} taken off	Freccia da {from} a {to} tolta
+	Circle on {from}, {color}	Cerchio su {from}, {color}
+	Circle on {from} taken off	Cerchio su {from} tolto
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Non capito. Scrivi una mossa (Cf3, e2e4) oppure p, u, s, f e, r 4, freccia e2e4 rosso, cerchio d5.
+	Illegal move: {move} can't be played here.	Mossa illegale: {move} non si può giocare qui.
+	{move} is not a move.	{move} non è una mossa.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Freccia da {from}: Alt+clic sulla casa di arrivo, o di nuovo su questa per cerchiarla.

@@ -142,6 +142,8 @@ pub struct ChessState {
     /// The sheet of the chess keys is shown (plan A9-I16: `chess.shortcuts`, F1 in the chess
     /// panels).
     pub shortcuts_open: bool,
+    /// The Board tab's Move field (plan A9-N7a).
+    pub move_field: crate::chess_move_field::MoveField,
     /// Another book's review, waiting for the question before it is imported (plan A9-G5b).
     pub(crate) review_import: Option<crate::chess_review_ui::PendingImport>,
     /// Review packs the browser read, imported at the next frame (plan A9-G5b).

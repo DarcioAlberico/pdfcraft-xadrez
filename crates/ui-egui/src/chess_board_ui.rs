@@ -230,6 +230,8 @@ pub struct BoardState {
     revealed: Option<(NodeId, u64)>,
     /// The move shown when it was last said to screen readers (plan A9-I17).
     announced: Option<NodeId>,
+    /// The square an Alt+click started an arrow from (plan A9-N7a).
+    pub(crate) arrow_from: Option<Square>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
     /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
@@ -359,6 +361,7 @@ impl Default for BoardState {
             history: GameHistory::default(),
             revealed: None,
             announced: None,
+            arrow_from: None,
             comment_open: false,
             open_details: false,
             hovered_drawings: None,
@@ -768,6 +771,28 @@ impl BoardState {
         }
     }
 
+    /// An Alt+click on `square` (plan A9-N7a, WCAG 2.5.7: drawing with no drag): the first
+    /// square starts an arrow, the second ends it (the same square again circles it), in green.
+    /// What to say.
+    pub(crate) fn alt_click(&mut self, square: Square) -> String {
+        match self.arrow_from.take() {
+            None => {
+                self.arrow_from = Some(square);
+                crate::i18n::fmt(
+                    tl!("Arrow from {from}: Alt+click the square it goes to, or this one again to circle it."),
+                    &[("from", &square.to_string())],
+                )
+            }
+            Some(from) => crate::chess_move_field::draw(self, Mark { from, to: square, color: MarkColor::Green }),
+        }
+    }
+
+    /// Play the move from `from` to `to` (a pawn becoming `promotion`) typed in the Move field
+    /// (plan A9-N7a), as a click plays it: one undo step, a variation when another move follows.
+    pub(crate) fn play_typed(&mut self, from: Square, to: Square, promotion: Option<PieceKind>) {
+        self.play(from, to, promotion);
+    }
+
     /// Play `moves` (UCI) from the move shown, as far as they can be played: a line the engine
     /// suggested. Moves already in the game are followed; the others continue the line or start
     /// a variation. One undo step, when a move was added.
@@ -1155,7 +1180,10 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&state.placement(), crate::chess_figurines::interface_lang());
     ui.ctx().accesskit_node_builder(response.id, |node| node.set_description(in_words));
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
-    if response.drag_started_by(PointerButton::Primary)
+    // Alt with the left button draws, a click at a time (plan A9-N7a): no piece is picked up.
+    let alt = ui.input(|i| i.modifiers.alt);
+    if !alt
+        && response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
         // Dragging picks the piece up; dropping it on its own square leaves it picked.
@@ -1163,7 +1191,8 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
             state.click(sq);
         }
     }
-    if response.drag_stopped_by(PointerButton::Primary)
+    if !alt
+        && response.drag_stopped_by(PointerButton::Primary)
         && let (Some(from), Some(to)) = (state.selected, response.interact_pointer_pos().and_then(|p| at(state, p)))
         && from != to
     {
@@ -1171,7 +1200,13 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     } else if response.clicked()
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
-        state.click(sq);
+        if alt {
+            let said = state.alt_click(sq);
+            crate::notice::announce(ui.ctx(), crate::notice::Level::Info, said);
+        } else {
+            state.arrow_from = None;
+            state.click(sq);
+        }
     }
     // The right button draws: a click circles a square, a drag draws an arrow.
     let modifiers = ui.input(|i| i.modifiers);
@@ -1197,7 +1232,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         if let Some((from, to)) = last_move {
             crate::chess_theme::paint_last_move(&painter, palette, look, from, to);
         }
-        if let Some(from) = state.selected {
+        if let Some(from) = state.selected.or(state.arrow_from) {
             painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
         }
         let marked: Vec<Square> = state.game.last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();

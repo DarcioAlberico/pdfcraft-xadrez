@@ -3645,3 +3645,21 @@ progress bar	Progress	Napredek
 	The original or the position read	Izvirnik ali prebrana pozicija
 	variation {n}	varianta {n}
 	with comment	s komentarjem
+	Move	Poteza
+	Type a move	Vpiši potezo
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Vpišite potezo (Sf3, e4, e2e4) in Enter ali: p figure, u zadnja poteza, s kdo je na potezi, f e linija, r 4 vrsta, puščica e2e4 rdeča, krog d5. M vas pripelje sem.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Šahovnica kaže neveljavno pozicijo: najprej jo popravite v urejevalniku diagramov.
+	The board is empty.	Šahovnica je prazna.
+	{file} file: {pieces}	Linija {file}: {pieces}
+	{file} file: empty	Linija {file}: prazna
+	Rank {rank}: {pieces}	Vrsta {rank}: {pieces}
+	Rank {rank}: empty	Vrsta {rank}: prazna
+	No move yet: the start of the game.	Še ni potez: začetek partije.
+	Arrow {from} to {to}, {color}	Puščica od {from} do {to}, {color}
+	Arrow {from} to {to} taken off	Puščica od {from} do {to} odstranjena
+	Circle on {from}, {color}	Krog na {from}, {color}
+	Circle on {from} taken off	Krog na {from} odstranjen
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Ni razumljeno. Vpišite potezo (Sf3, e2e4) ali p, u, s, f e, r 4, puščica e2e4 rdeča, krog d5.
+	Illegal move: {move} can't be played here.	Neveljavna poteza: {move} tu ni mogoče odigrati.
+	{move} is not a move.	{move} ni poteza.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Puščica od {from}: Alt+klik na ciljno polje ali znova na to za krog.

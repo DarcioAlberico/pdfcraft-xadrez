@@ -3604,3 +3604,21 @@ progress bar	Progress	进度
 	The original or the position read	原图或读出的局面
 	variation {n}	变着 {n}
 	with comment	有评论
+	Move	着法
+	Type a move	输入着法
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	输入着法（Nf3、e4、e2e4）后按 Enter，或：p 棋子，u 上一步，s 轮到谁走，f e 一列，r 4 一行，箭头 e2e4 红色，圆圈 d5。按 M 回到这里。
+	The board shows a position that is not legal: correct it in the diagram editor first.	棋盘上的局面不合规则：请先在图示编辑器中改正。
+	The board is empty.	棋盘是空的。
+	{file} file: {pieces}	{file} 列：{pieces}
+	{file} file: empty	{file} 列：空
+	Rank {rank}: {pieces}	第 {rank} 行：{pieces}
+	Rank {rank}: empty	第 {rank} 行：空
+	No move yet: the start of the game.	还没有着法：对局开始。
+	Arrow {from} to {to}, {color}	箭头 {from} 到 {to}，{color}
+	Arrow {from} to {to} taken off	已去掉箭头 {from} 到 {to}
+	Circle on {from}, {color}	{from} 上的圆圈，{color}
+	Circle on {from} taken off	已去掉 {from} 上的圆圈
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	无法理解。请输入着法（Nf3、e2e4），或 p、u、s、f e、r 4、箭头 e2e4 红色、圆圈 d5。
+	Illegal move: {move} can't be played here.	不合规则的着法：这里不能走 {move}。
+	{move} is not a move.	{move} 不是着法。
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	从 {from} 出发的箭头：按住 Alt 点击目标格，或再次点击此格画圆圈。

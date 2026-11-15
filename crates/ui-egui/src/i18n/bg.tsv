@@ -3603,3 +3603,21 @@ progress bar	Progress	Напредък
 	The original or the position read	Оригиналът или прочетената позиция
 	variation {n}	вариант {n}
 	with comment	с коментар
+	Move	Ход
+	Type a move	Въведете ход
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Въведете ход (Nf3, e4, e2e4) и Enter, или: p фигурите, u последния ход, s кой е на ход, f e линия, r 4 хоризонтал, стрелка e2e4 червено, кръг d5. M ви връща тук.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Дъската показва непозволена позиция: първо я поправете в редактора на диаграми.
+	The board is empty.	Дъската е празна.
+	{file} file: {pieces}	Линия {file}: {pieces}
+	{file} file: empty	Линия {file}: празна
+	Rank {rank}: {pieces}	Хоризонтал {rank}: {pieces}
+	Rank {rank}: empty	Хоризонтал {rank}: празен
+	No move yet: the start of the game.	Още няма ход: началото на партията.
+	Arrow {from} to {to}, {color}	Стрелка от {from} към {to}, {color}
+	Arrow {from} to {to} taken off	Стрелката от {from} към {to} е махната
+	Circle on {from}, {color}	Кръг на {from}, {color}
+	Circle on {from} taken off	Кръгът на {from} е махнат
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Не е разбрано. Въведете ход (Nf3, e2e4) или p, u, s, f e, r 4, стрелка e2e4 червено, кръг d5.
+	Illegal move: {move} can't be played here.	Непозволен ход: {move} не може да се изиграе тук.
+	{move} is not a move.	{move} не е ход.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрелка от {from}: Alt+щракнете полето, към което сочи, или пак това, за да го оградите.

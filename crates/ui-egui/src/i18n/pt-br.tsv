@@ -3657,3 +3657,21 @@ progress bar	Progress	Progresso
 	The original or the position read	O original ou a posição lida
 	variation {n}	variante {n}
 	with comment	com comentário
+	Move	Lance
+	Type a move	Digitar um lance
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Digite um lance (Cf3, e4, e2e4) e Enter, ou: p as peças, u o último lance, s quem joga, f e uma coluna, r 4 uma fileira, seta e2e4 vermelho, círculo d5. M traz você para cá.
+	The board shows a position that is not legal: correct it in the diagram editor first.	O tabuleiro mostra uma posição ilegal: corrija-a antes no editor de diagramas.
+	The board is empty.	O tabuleiro está vazio.
+	{file} file: {pieces}	Coluna {file}: {pieces}
+	{file} file: empty	Coluna {file}: vazia
+	Rank {rank}: {pieces}	Fileira {rank}: {pieces}
+	Rank {rank}: empty	Fileira {rank}: vazia
+	No move yet: the start of the game.	Nenhum lance ainda: o início da partida.
+	Arrow {from} to {to}, {color}	Seta de {from} para {to}, {color}
+	Arrow {from} to {to} taken off	Seta de {from} para {to} retirada
+	Circle on {from}, {color}	Círculo em {from}, {color}
+	Circle on {from} taken off	Círculo em {from} retirado
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Não entendido. Digite um lance (Cf3, e2e4) ou p, u, s, f e, r 4, seta e2e4 vermelho, círculo d5.
+	Illegal move: {move} can't be played here.	Lance ilegal: {move} não pode ser jogado aqui.
+	{move} is not a move.	{move} não é um lance.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Seta a partir de {from}: Alt+clique na casa de destino, ou de novo nesta para um círculo.

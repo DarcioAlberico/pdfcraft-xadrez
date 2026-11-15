@@ -3892,3 +3892,20 @@ progress bar	Progress	Tiến độ
 	The original or the position read	Bản gốc hoặc thế cờ đã đọc
 	variation {n}	biến {n}
 	with comment	có bình luận
+	Type a move	Gõ nước đi
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Gõ một nước đi (Mf3, e4, e2e4) rồi Enter, hoặc: p các quân, u nước vừa đi, s bên nào đi, f e một cột, r 4 một hàng, mũi tên e2e4 đỏ, vòng tròn d5. M đưa bạn về đây.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Bàn cờ đang có một thế cờ không hợp lệ: hãy sửa nó trong trình sửa sơ đồ trước.
+	The board is empty.	Bàn cờ trống.
+	{file} file: {pieces}	Cột {file}: {pieces}
+	{file} file: empty	Cột {file}: trống
+	Rank {rank}: {pieces}	Hàng {rank}: {pieces}
+	Rank {rank}: empty	Hàng {rank}: trống
+	No move yet: the start of the game.	Chưa có nước đi: đầu ván cờ.
+	Arrow {from} to {to}, {color}	Mũi tên từ {from} đến {to}, {color}
+	Arrow {from} to {to} taken off	Đã gỡ mũi tên từ {from} đến {to}
+	Circle on {from}, {color}	Vòng tròn ở {from}, {color}
+	Circle on {from} taken off	Đã gỡ vòng tròn ở {from}
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Không hiểu. Gõ một nước đi (Mf3, e2e4), hoặc p, u, s, f e, r 4, mũi tên e2e4 đỏ, vòng tròn d5.
+	Illegal move: {move} can't be played here.	Nước đi không hợp lệ: không thể đi {move} ở đây.
+	{move} is not a move.	{move} không phải là nước đi.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Mũi tên từ {from}: Alt+nhấp ô đích, hoặc nhấp lại ô này để khoanh tròn.

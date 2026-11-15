@@ -3638,3 +3638,21 @@ progress bar	Progress	Орындалу барысы
 	The original or the position read	Түпнұсқа немесе оқылған позиция
 	variation {n}	{n}-нұсқа
 	with comment	түсініктемесі бар
+	Move	Жүріс
+	Type a move	Жүрісті теру
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Жүрісті теріп (Nf3, e4, e2e4) Enter басыңыз, немесе: p тастар, u соңғы жүріс, s кімнің жүрісі, f e тік қатар, r 4 көлденең қатар, бағыттауыш e2e4 қызыл, шеңбер d5. M сізді осында әкеледі.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Тақтада ережеге сай емес позиция тұр: алдымен оны диаграмма өңдегішінде түзетіңіз.
+	The board is empty.	Тақта бос.
+	{file} file: {pieces}	{file} тік қатары: {pieces}
+	{file} file: empty	{file} тік қатары: бос
+	Rank {rank}: {pieces}	{rank} көлденең қатары: {pieces}
+	Rank {rank}: empty	{rank} көлденең қатары: бос
+	No move yet: the start of the game.	Әлі жүріс жоқ: партияның басы.
+	Arrow {from} to {to}, {color}	{from} мен {to} арасындағы бағыттауыш, {color}
+	Arrow {from} to {to} taken off	{from} мен {to} арасындағы бағыттауыш алынды
+	Circle on {from}, {color}	{from} шаршысында шеңбер, {color}
+	Circle on {from} taken off	{from} шаршысындағы шеңбер алынды
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Түсінікті емес. Жүрісті теріңіз (Nf3, e2e4) немесе p, u, s, f e, r 4, бағыттауыш e2e4 қызыл, шеңбер d5.
+	Illegal move: {move} can't be played here.	Ережеге сай емес жүріс: {move} мұнда жүруге болмайды.
+	{move} is not a move.	{move} жүріс емес.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} шаршысынан бағыттауыш: баратын шаршыны Alt+шертіңіз немесе шеңбер үшін осыны қайта шертіңіз.

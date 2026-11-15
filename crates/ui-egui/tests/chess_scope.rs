@@ -317,3 +317,144 @@ fn the_move_shown_is_said_at_each_step() {
     h.run_steps(2);
     said(&h, "2. bishop c4 · variation 1 · with comment · Good move");
 }
+
+/// Type `line` in the Board tab's Move field and press Enter.
+fn type_move(h: &mut Harness<'static, PdfCraftApp>, line: &str) {
+    type_in(h, "Move", line);
+}
+
+/// Type `line` in the Board tab's Move field, named `name` in the interface's language, and press
+/// Enter.
+fn type_in(h: &mut Harness<'static, PdfCraftApp>, name: &str, line: &str) {
+    h.state_mut().chess.move_field.text.clear();
+    h.get_by_role_and_label(Role::TextInput, name).focus();
+    h.run_steps(1);
+    h.get_by_role_and_label(Role::TextInput, name).type_text(line);
+    h.run_steps(1);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+}
+
+/// What was last said to screen readers, and how (status or alert).
+fn said(h: &Harness<'static, PdfCraftApp>, words: &str) -> Role {
+    h.get_all_by_label_contains(words)
+        .map(|n| n.accesskit_node().role())
+        .find(|r| matches!(r, Role::Status | Role::Alert))
+        .unwrap_or_else(|| panic!("nothing said with {words:?}"))
+}
+
+/// Plan A9-N7a (finding R5-03; WCAG 2.1.1): a move typed in the Move field is played as a click
+/// plays it, in English or the interface's letters, or in UCI, and said; a move that can't be
+/// played is an alert with why; p, u, s, f e and r 4 answer; arrow and circle draw. M brings the
+/// keyboard there from the chess scope. Before, a move could be played only with the pointer.
+#[test]
+fn a_move_typed_is_played_and_questions_are_answered() {
+    let mut h = harness();
+    // M from the chess scope.
+    click_board_label(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::M);
+    assert!(h.get_by_role_and_label(Role::TextInput, "Move").is_focused(), "M brings the keyboard to the field");
+    // The game is at 1… e5: Nf3 follows the move there, then Nc6 is new.
+    type_move(&mut h, "Nf3");
+    assert_eq!(shown(&h), "Nf3");
+    assert_eq!(said(&h, "2. knight f3"), Role::Status);
+    assert!(h.get_by_role_and_label(Role::TextInput, "Move").is_focused(), "the keyboard stays for the next move");
+    type_move(&mut h, "b8c6");
+    assert_eq!(shown(&h), "Nc6", "UCI");
+    // A move that can't be played: an alert, with why.
+    type_move(&mut h, "Nf4");
+    assert_eq!(said(&h, "Illegal move: Nf4 can't be played here."), Role::Alert);
+    assert_eq!(shown(&h), "Nc6", "nothing played");
+    assert_eq!(h.state().chess.move_field.text, "Nf4", "kept, to be corrected");
+    // The questions.
+    type_move(&mut h, "p");
+    assert_eq!(said(&h, "White: king e1"), Role::Status);
+    type_move(&mut h, "u");
+    said(&h, "2… knight c6");
+    type_move(&mut h, "s");
+    said(&h, "White to move");
+    type_move(&mut h, "f e");
+    said(&h, "e file: White: king e1; pawns e4. Black: king e8; pawns e5.");
+    type_move(&mut h, "r 3");
+    said(&h, "Rank 3: White: knight f3.");
+    // Drawing, typed and with Alt+click.
+    type_move(&mut h, "arrow e2e4 red");
+    said(&h, "Arrow e2 to e4, red");
+    type_move(&mut h, "circle d5");
+    said(&h, "Circle on d5, green");
+    let pgn = h.state().chess.board().game.pgn();
+    assert!(pgn.contains("%cal Re2e4") && pgn.contains("%csl Gd5"), "{pgn}");
+}
+
+/// Plan A9-N7a (WCAG 2.5.7): Alt+click on two squares draws an arrow between them, with no drag;
+/// on one square twice, a circle.
+#[test]
+fn alt_click_draws_an_arrow_without_a_drag() {
+    let mut h = harness();
+    let board = h.state().chess.board().game.clone();
+    let rect = h.get_all_by_label_contains("Board, ").next().expect("the board").rect();
+    let square = |name: &str| {
+        let b = name.as_bytes();
+        let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
+        let side = rect.width() / 8.0;
+        rect.min + egui::vec2((file + 0.5) * side, (7.0 - rank + 0.5) * side)
+    };
+    let alt_click = |h: &mut Harness<'static, PdfCraftApp>, at: Pos2| {
+        h.hover_at(at);
+        h.run_steps(1);
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::ALT });
+        }
+        h.run_steps(2);
+    };
+    h.event(egui::Event::ModifiersChanged(Modifiers::ALT));
+    alt_click(&mut h, square("d2"));
+    said(&h, "Arrow from d2");
+    alt_click(&mut h, square("d4"));
+    said(&h, "Arrow d2 to d4, green");
+    alt_click(&mut h, square("g8"));
+    alt_click(&mut h, square("g8"));
+    said(&h, "Circle on g8, green");
+    h.event(egui::Event::ModifiersChanged(Modifiers::NONE));
+    h.run_steps(1);
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.current(), board.current(), "no move was played");
+    let pgn = game.pgn();
+    assert!(pgn.contains("%cal Gd2d4") && pgn.contains("%csl Gg8"), "{pgn}");
+}
+
+/// Plan A9-N7a: at 1366 × 768 the navigation row holds « ‹ › » ⇅ and the Move field side by side,
+/// none clipped: the field takes the room after the arrows, the row's end gives up its own first.
+#[test]
+fn the_move_field_fits_beside_the_arrows() {
+    let mut h = Harness::builder().with_size(egui::vec2(1366.0, 768.0)).build_eframe(|_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("pages.pdf", None, three_pages()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let field = h.get_by_role_and_label(Role::TextInput, "Move").rect();
+    assert!(field.width() >= 72.0, "{field:?}");
+    for arrow in ["Start (Home)", "Previous move (Left arrow)", "Next move (Right arrow)", "End (End); with Shift, the end of the main line"] {
+        let r = h.get_by_label(arrow).rect();
+        assert!(r.width() >= 24.0 && r.right() <= field.left(), "{arrow}: {r:?} beside the field {field:?}");
+    }
+}
+
+/// Plan A9-N7a (the card's check): in Portuguese, "Cf3" plays Nf3 and is said "2. cavalo f3"; "Cf4"
+/// is an alert "Lance ilegal: …".
+#[test]
+fn a_move_typed_in_the_interfaces_letters_is_played() {
+    let mut h = harness();
+    h.state_mut().set_option("language", "pt-br").unwrap();
+    h.run_steps(2);
+    type_in(&mut h, "Lance", "Cf3");
+    assert_eq!(shown(&h), "Nf3");
+    assert_eq!(said(&h, "2. cavalo f3"), Role::Status);
+    type_in(&mut h, "Lance", "Cf4");
+    assert_eq!(said(&h, "Lance ilegal: Cf4"), Role::Alert);
+}

@@ -3642,3 +3642,21 @@ progress bar	Progress	進行状況
 	The original or the position read	原本または読み取った局面
 	variation {n}	変化 {n}
 	with comment	コメントあり
+	Move	指し手
+	Type a move	指し手を入力
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	指し手 (Nf3、e4、e2e4) を入力して Enter、または: p 駒、u 最後の手、s 手番、f e 筋、r 4 段、矢印 e2e4 赤、円 d5。M でここに戻ります。
+	The board shows a position that is not legal: correct it in the diagram editor first.	盤面は不正な局面です。先に図の編集で直してください。
+	The board is empty.	盤面は空です。
+	{file} file: {pieces}	{file} 筋: {pieces}
+	{file} file: empty	{file} 筋: 空
+	Rank {rank}: {pieces}	{rank} 段: {pieces}
+	Rank {rank}: empty	{rank} 段: 空
+	No move yet: the start of the game.	まだ指し手はありません: 対局の最初です。
+	Arrow {from} to {to}, {color}	矢印 {from} から {to}、{color}
+	Arrow {from} to {to} taken off	矢印 {from} から {to} を消しました
+	Circle on {from}, {color}	{from} に円、{color}
+	Circle on {from} taken off	{from} の円を消しました
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	理解できません。指し手 (Nf3、e2e4) か p、u、s、f e、r 4、矢印 e2e4 赤、円 d5 を入力してください。
+	Illegal move: {move} can't be played here.	不正な手: {move} はここでは指せません。
+	{move} is not a move.	{move} は指し手ではありません。
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} からの矢印: 行き先のマスを Alt+クリック、円にするにはもう一度このマスを。

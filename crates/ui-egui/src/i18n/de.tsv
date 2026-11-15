@@ -3641,3 +3641,21 @@ progress bar	Progress	Fortschritt
 	The original or the position read	Das Original oder die gelesene Stellung
 	variation {n}	Variante {n}
 	with comment	mit Kommentar
+	Move	Zug
+	Type a move	Zug eingeben
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Zug eingeben (Sf3, e4, e2e4) und Enter, oder: p die Figuren, u der letzte Zug, s wer am Zug ist, f e eine Linie, r 4 eine Reihe, Pfeil e2e4 rot, Kreis d5. M bringt Sie hierher.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Das Brett zeigt eine regelwidrige Stellung: Korrigieren Sie sie zuerst im Diagrammeditor.
+	The board is empty.	Das Brett ist leer.
+	{file} file: {pieces}	{file}-Linie: {pieces}
+	{file} file: empty	{file}-Linie: leer
+	Rank {rank}: {pieces}	Reihe {rank}: {pieces}
+	Rank {rank}: empty	Reihe {rank}: leer
+	No move yet: the start of the game.	Noch kein Zug: der Partieanfang.
+	Arrow {from} to {to}, {color}	Pfeil von {from} nach {to}, {color}
+	Arrow {from} to {to} taken off	Pfeil von {from} nach {to} entfernt
+	Circle on {from}, {color}	Kreis auf {from}, {color}
+	Circle on {from} taken off	Kreis auf {from} entfernt
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Nicht verstanden. Geben Sie einen Zug ein (Sf3, e2e4) oder p, u, s, f e, r 4, Pfeil e2e4 rot, Kreis d5.
+	Illegal move: {move} can't be played here.	Regelwidriger Zug: {move} kann hier nicht gespielt werden.
+	{move} is not a move.	{move} ist kein Zug.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Pfeil von {from}: Alt+Klick auf das Zielfeld, oder noch einmal auf dieses für einen Kreis.

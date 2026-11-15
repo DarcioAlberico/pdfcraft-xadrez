@@ -74,6 +74,10 @@ pub(crate) const SHORTCUT_SHEET: Binding = Binding::key(Place::Scope, ChessKey::
 #[cfg(test)]
 pub(crate) const ORIGINAL_SWITCH: Binding = Binding::key(Place::Diagram, ChessKey::alt(Key::O), "original");
 
+/// The Board tab's Move field takes the keyboard (plan A9-N7a): M, a one-key shortcut of the chess
+/// scope (off with the others, WCAG 2.1.4).
+pub(crate) const MOVE_FIELD: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::M), "move-field");
+
 /// F6 leaves the chess surface the keyboard is in (`chess_tools::take_f6`).
 const LEAVE: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::F6), "leave");
 
@@ -101,6 +105,7 @@ fn build() -> Vec<Binding> {
     }
     map.push(LEAVE);
     map.push(SHORTCUT_SHEET);
+    map.push(MOVE_FIELD);
     for (key, action) in crate::chess_diagram_keys::TAB_KEYS {
         map.push(Binding::key(Place::Diagram, key, action.action()));
     }
