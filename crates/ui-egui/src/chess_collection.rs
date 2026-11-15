@@ -2763,6 +2763,9 @@ impl PdfCraftApp {
     pub fn flush_chess_games(&mut self) {
         self.sync_chess_docs();
         self.chess.games.autosave(None);
+        // The engine's evaluations found since the last write (plan A9-N8).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.keep_chess_evals(true);
         self.ask_chess_games_keep();
         self.show_chess_notes();
     }
@@ -2787,6 +2790,16 @@ impl PdfCraftApp {
         // The books' ciphers are learned again by reading: a write that failed is logged.
         for e in ciphers {
             log::warn!("the book's cipher could not be kept: {e}");
+        }
+        // So are the engine's evaluations, by searching (plan A9-N8).
+        #[cfg(not(target_arch = "wasm32"))]
+        let evals = match wait {
+            Some(t) => self.chess.evals.store.settle(t),
+            None => self.chess.evals.store.poll_held(),
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        for e in evals {
+            log::warn!("the engine's evaluations could not be kept: {e}");
         }
         for e in corrections {
             self.chess.games.notes.push(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", &e)]));

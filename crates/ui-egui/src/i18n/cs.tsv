@@ -3656,6 +3656,13 @@ progress bar	Progress	Průběh
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knihy je větší, než kolik PdfCraft indexuje: s knihou je propojeno jen prvních {moves} tahů.
 	Engine: {name}, in {folder}	Engine: {name}, ve složce {folder}
 	Importing…	Importuje se…
+	Chess engine	Šachový engine
+	Search threads	Vlákna hledání
+	Hash table	Hašovací tabulka
+	Engine's default	Výchozí hodnota enginu
+	Endgame tables (Syzygy)	Tabulky koncovek (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Každé nastavení dostane engine jen tehdy, pokud ho přijímá. Spusťte analýzu a uvidíte, která tento engine přijímá.
+	This engine does not take: {names}	Tento engine nepřijímá: {names}
 	PGN — exercises	PGN — cvičení
 	Anki — cards	Anki — kartičky
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Číslované diagramy knihy s jejich řešeními jako standardní PGN úloh.

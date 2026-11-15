@@ -3578,6 +3578,13 @@ progress bar	Progress	İlerleme
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Kitabın PGN'i PdfCraft'ın dizinlediğinden büyük: kitaba yalnızca ilk {moves} hamlesi bağlandı.
 	Engine: {name}, in {folder}	Motor: {name}, konum: {folder}
 	Importing…	İçe aktarılıyor…
+	Chess engine	Satranç motoru
+	Search threads	Arama iş parçacıkları
+	Hash table	Karma tablosu
+	Engine's default	Motorun varsayılanı
+	Endgame tables (Syzygy)	Oyun sonu tabloları (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Her biri motora yalnızca motor onu kabul ediyorsa gönderilir. Bu motorun hangilerini kabul ettiğini görmek için analizi başlatın.
+	This engine does not take: {names}	Bu motor kabul etmiyor: {names}
 	PGN — exercises	PGN — alıştırmalar
 	Anki — cards	Anki — kartlar
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Kitabın numaralı diyagramları çözümleriyle, standart bir problem PGN'i olarak.

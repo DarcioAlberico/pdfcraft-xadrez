@@ -3723,6 +3723,13 @@ progress bar	Progress	Progreso
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	El PGN del libro es más grande de lo que PdfCraft indexa: solo sus primeras {moves} jugadas están enlazadas con el libro.
 	Engine: {name}, in {folder}	Motor: {name}, en {folder}
 	Importing…	Importando…
+	Chess engine	Motor de ajedrez
+	Search threads	Hilos de búsqueda
+	Hash table	Tabla hash
+	Engine's default	Predeterminado del motor
+	Endgame tables (Syzygy)	Tablas de finales (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Cada una va al motor solo si la admite. Inicie el análisis para ver cuáles admite este motor.
+	This engine does not take: {names}	Este motor no admite: {names}
 	PGN — exercises	PGN — ejercicios
 	Anki — cards	Anki — tarjetas
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Los diagramas numerados del libro con sus soluciones, como un PGN de problemas estándar.

@@ -3584,6 +3584,13 @@ progress bar	Progress	進行状況
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本の PGN は PdfCraft が索引付けできる大きさを超えています: 本に関連付けられるのは最初の {moves} 手だけです。
 	Engine: {name}, in {folder}	エンジン: {name}（{folder}）
 	Importing…	インポートしています…
+	Chess engine	チェスエンジン
+	Search threads	探索スレッド数
+	Hash table	ハッシュテーブル
+	Engine's default	エンジンの既定値
+	Endgame tables (Syzygy)	終盤テーブル（Syzygy）
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	各設定はエンジンが受け付ける場合にだけ送られます。解析を開始すると、このエンジンが受け付けるものが分かります。
+	This engine does not take: {names}	このエンジンが受け付けないもの: {names}
 	PGN — exercises	PGN — 練習問題
 	Anki — cards	Anki — カード
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	本の番号付き局面図とその解答を、標準的な問題の PGN として。

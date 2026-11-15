@@ -48,6 +48,10 @@ mod chess_diagram_keys;
 mod chess_diagram_tab;
 mod chess_drafts;
 mod chess_editor;
+#[cfg(not(target_arch = "wasm32"))]
+mod chess_engine_prefs;
+#[cfg(not(target_arch = "wasm32"))]
+mod chess_evals_ui;
 mod chess_export_ui;
 mod chess_figurines;
 mod chess_fixes;

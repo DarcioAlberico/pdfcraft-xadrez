@@ -103,6 +103,9 @@ pub struct ChessState {
     pub reading_dir: Option<std::path::PathBuf>,
     /// The books' ciphers, and where they are kept (plan A9-G3c).
     pub ciphers: crate::chess_cipher_ui::Ciphers,
+    /// The engine's evaluations, and where they are kept (plan A9-N8).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub evals: crate::chess_evals_ui::Evals,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,
