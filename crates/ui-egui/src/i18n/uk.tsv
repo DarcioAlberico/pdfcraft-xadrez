@@ -3664,3 +3664,21 @@ progress bar	Progress	Хід виконання
 	with comment	з коментарем
 	The book's alignment was undone.	Вирівнювання книги скасовано.
 	(and {n} more)	(і ще {n})
+	Move	Хід
+	Type a move	Ввести хід
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Введіть хід (Кf3, e4, e2e4) і Enter, або: p фігури, u останній хід, s чий хід, f e вертикаль, r 4 горизонталь, стрілка e2e4 червоний, коло d5. M поверне вас сюди.
+	The board shows a position that is not legal: correct it in the diagram editor first.	На дошці неприпустима позиція: спершу виправте її в редакторі діаграм.
+	The board is empty.	Дошка порожня.
+	{file} file: {pieces}	Вертикаль {file}: {pieces}
+	{file} file: empty	Вертикаль {file}: порожньо
+	Rank {rank}: {pieces}	Горизонталь {rank}: {pieces}
+	Rank {rank}: empty	Горизонталь {rank}: порожньо
+	No move yet: the start of the game.	Ходів ще немає: початок партії.
+	Arrow {from} to {to}, {color}	Стрілка з {from} на {to}, {color}
+	Arrow {from} to {to} taken off	Стрілку з {from} на {to} прибрано
+	Circle on {from}, {color}	Коло на {from}, {color}
+	Circle on {from} taken off	Коло на {from} прибрано
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Не зрозуміло. Введіть хід (Кf3, e2e4) або p, u, s, f e, r 4, стрілка e2e4 червоний, коло d5.
+	Illegal move: {move} can't be played here.	Неприпустимий хід: {move} тут зіграти не можна.
+	{move} is not a move.	{move} — не хід.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрілка з {from}: Alt+клацніть поле, куди вона веде, або знову це, щоб обвести його.

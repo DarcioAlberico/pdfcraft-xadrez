@@ -3641,3 +3641,21 @@ progress bar	Progress	Előrehaladás
 	with comment	megjegyzéssel
 	The book's alignment was undone.	A könyv igazítása visszavonva.
 	(and {n} more)	(és még {n})
+	Move	Lépés
+	Type a move	Lépés beírása
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Írjon be egy lépést (Hf3, e4, e2e4), majd Enter, vagy: p a bábuk, u az utolsó lépés, s ki lép, f e egy vonal, r 4 egy sor, nyíl e2e4 piros, kör d5. Az M ide hozza.
+	The board shows a position that is not legal: correct it in the diagram editor first.	A tábla szabálytalan állást mutat: előbb javítsa ki a diagramszerkesztőben.
+	The board is empty.	A tábla üres.
+	{file} file: {pieces}	{file}-vonal: {pieces}
+	{file} file: empty	{file}-vonal: üres
+	Rank {rank}: {pieces}	{rank}. sor: {pieces}
+	Rank {rank}: empty	{rank}. sor: üres
+	No move yet: the start of the game.	Még nincs lépés: a játszma eleje.
+	Arrow {from} to {to}, {color}	Nyíl {from} mezőről {to} mezőre, {color}
+	Arrow {from} to {to} taken off	A nyíl {from} mezőről {to} mezőre levéve
+	Circle on {from}, {color}	Kör a(z) {from} mezőn, {color}
+	Circle on {from} taken off	A kör a(z) {from} mezőn levéve
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Nem érthető. Írjon be egy lépést (Hf3, e2e4), vagy p, u, s, f e, r 4, nyíl e2e4 piros, kör d5.
+	Illegal move: {move} can't be played here.	Szabálytalan lépés: {move} itt nem játszható.
+	{move} is not a move.	{move} nem lépés.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Nyíl innen: {from}. Alt+kattintson a célmezőre, vagy ismét erre egy körhöz.

@@ -3892,3 +3892,20 @@ progress bar	Progress	Eiga
 	with comment	su komentaru
 	The book's alignment was undone.	Knygos sulyginimas atšauktas.
 	(and {n} more)	(ir dar {n})
+	Type a move	Įvesti ėjimą
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Įveskite ėjimą (Žf3, e4, e2e4) ir Enter, arba: p figūros, u paskutinis ėjimas, s kieno ėjimas, f e vertikalė, r 4 horizontalė, rodyklė e2e4 raudona, apskritimas d5. M grąžina čia.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Lentoje neleistina pozicija: pirmiau ją pataisykite diagramų rengyklėje.
+	The board is empty.	Lenta tuščia.
+	{file} file: {pieces}	Vertikalė {file}: {pieces}
+	{file} file: empty	Vertikalė {file}: tuščia
+	Rank {rank}: {pieces}	Horizontalė {rank}: {pieces}
+	Rank {rank}: empty	Horizontalė {rank}: tuščia
+	No move yet: the start of the game.	Dar nėra ėjimų: partijos pradžia.
+	Arrow {from} to {to}, {color}	Rodyklė iš {from} į {to}, {color}
+	Arrow {from} to {to} taken off	Rodyklė iš {from} į {to} pašalinta
+	Circle on {from}, {color}	Apskritimas ant {from}, {color}
+	Circle on {from} taken off	Apskritimas ant {from} pašalintas
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Nesuprasta. Įveskite ėjimą (Žf3, e2e4) arba p, u, s, f e, r 4, rodyklė e2e4 raudona, apskritimas d5.
+	Illegal move: {move} can't be played here.	Neleistinas ėjimas: {move} čia negalima atlikti.
+	{move} is not a move.	{move} nėra ėjimas.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Rodyklė iš {from}: Alt+spustelėkite tikslo langelį arba šį dar kartą apskritimui.

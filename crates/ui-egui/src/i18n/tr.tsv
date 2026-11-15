@@ -3638,3 +3638,21 @@ progress bar	Progress	İlerleme
 	with comment	yorumlu
 	The book's alignment was undone.	Kitabın hizalaması geri alındı.
 	(and {n} more)	(ve {n} tane daha)
+	Move	Hamle
+	Type a move	Hamle yaz
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Bir hamle yazın (Af3, e4, e2e4) ve Enter, ya da: p taşlar, u son hamle, s sıra kimde, f e bir sütun, r 4 bir yatay sıra, ok e2e4 kırmızı, daire d5. M sizi buraya getirir.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Tahta kurallara aykırı bir pozisyon gösteriyor: önce diyagram düzenleyicide düzeltin.
+	The board is empty.	Tahta boş.
+	{file} file: {pieces}	{file} sütunu: {pieces}
+	{file} file: empty	{file} sütunu: boş
+	Rank {rank}: {pieces}	{rank}. yatay sıra: {pieces}
+	Rank {rank}: empty	{rank}. yatay sıra: boş
+	No move yet: the start of the game.	Henüz hamle yok: oyunun başı.
+	Arrow {from} to {to}, {color}	{from} karesinden {to} karesine ok, {color}
+	Arrow {from} to {to} taken off	{from} karesinden {to} karesine ok kaldırıldı
+	Circle on {from}, {color}	{from} karesinde daire, {color}
+	Circle on {from} taken off	{from} karesindeki daire kaldırıldı
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Anlaşılmadı. Bir hamle yazın (Af3, e2e4) ya da p, u, s, f e, r 4, ok e2e4 kırmızı, daire d5.
+	Illegal move: {move} can't be played here.	Kurala aykırı hamle: {move} burada oynanamaz.
+	{move} is not a move.	{move} bir hamle değil.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} karesinden ok: gideceği kareye Alt+tıklayın ya da daire için bu kareye yeniden tıklayın.

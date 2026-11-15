@@ -3783,3 +3783,21 @@ progress bar	Progress	Progreso
 	with comment	con comentario
 	The book's alignment was undone.	Se deshizo la alineación del libro.
 	(and {n} more)	(y {n} más)
+	Move	Jugada
+	Type a move	Escribir una jugada
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Escriba una jugada (Cf3, e4, e2e4) y Enter, o: p las piezas, u la última jugada, s quién juega, f e una columna, r 4 una fila, flecha e2e4 rojo, círculo d5. M le trae aquí.
+	The board shows a position that is not legal: correct it in the diagram editor first.	El tablero muestra una posición ilegal: corríjala primero en el editor de diagramas.
+	The board is empty.	El tablero está vacío.
+	{file} file: {pieces}	Columna {file}: {pieces}
+	{file} file: empty	Columna {file}: vacía
+	Rank {rank}: {pieces}	Fila {rank}: {pieces}
+	Rank {rank}: empty	Fila {rank}: vacía
+	No move yet: the start of the game.	Aún no hay jugadas: el inicio de la partida.
+	Arrow {from} to {to}, {color}	Flecha de {from} a {to}, {color}
+	Arrow {from} to {to} taken off	Flecha de {from} a {to} quitada
+	Circle on {from}, {color}	Círculo en {from}, {color}
+	Circle on {from} taken off	Círculo en {from} quitado
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	No entendido. Escriba una jugada (Cf3, e2e4) o p, u, s, f e, r 4, flecha e2e4 rojo, círculo d5.
+	Illegal move: {move} can't be played here.	Jugada ilegal: {move} no se puede jugar aquí.
+	{move} is not a move.	{move} no es una jugada.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flecha desde {from}: Alt+clic en la casilla de destino, o de nuevo en esta para un círculo.

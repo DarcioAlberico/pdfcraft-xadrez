@@ -3642,3 +3642,21 @@ progress bar	Progress	Progression
 	with comment	avec commentaire
 	The book's alignment was undone.	L'alignement du livre a été annulé.
 	(and {n} more)	(et {n} de plus)
+	Move	Coup
+	Type a move	Taper un coup
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Tapez un coup (Cf3, e4, e2e4) puis Entrée, ou : p les pièces, u le dernier coup, s le trait, f e une colonne, r 4 une rangée, flèche e2e4 rouge, cercle d5. M vous ramène ici.
+	The board shows a position that is not legal: correct it in the diagram editor first.	L'échiquier montre une position illégale : corrigez-la d'abord dans l'éditeur de diagrammes.
+	The board is empty.	L'échiquier est vide.
+	{file} file: {pieces}	Colonne {file} : {pieces}
+	{file} file: empty	Colonne {file} : vide
+	Rank {rank}: {pieces}	Rangée {rank} : {pieces}
+	Rank {rank}: empty	Rangée {rank} : vide
+	No move yet: the start of the game.	Pas encore de coup : le début de la partie.
+	Arrow {from} to {to}, {color}	Flèche de {from} à {to}, {color}
+	Arrow {from} to {to} taken off	Flèche de {from} à {to} retirée
+	Circle on {from}, {color}	Cercle sur {from}, {color}
+	Circle on {from} taken off	Cercle sur {from} retiré
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Pas compris. Tapez un coup (Cf3, e2e4) ou p, u, s, f e, r 4, flèche e2e4 rouge, cercle d5.
+	Illegal move: {move} can't be played here.	Coup illégal : {move} ne peut pas être joué ici.
+	{move} is not a move.	{move} n'est pas un coup.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flèche depuis {from} : Alt+clic sur la case d'arrivée, ou de nouveau sur celle-ci pour l'entourer.

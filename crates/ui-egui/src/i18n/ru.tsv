@@ -3556,3 +3556,21 @@ progress bar	Progress	Ход выполнения
 	The book's alignment was undone.	Выравнивание книги отменено.
 	Another file dialog is still open. Finish with it first.	Ещё открыто другое окно выбора файла. Сначала завершите работу с ним.
 	(and {n} more)	(и ещё {n})
+	Move	Ход
+	Type a move	Ввести ход
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Введите ход (Кf3, e4, e2e4) и Enter, или: p фигуры, u последний ход, s чей ход, f e вертикаль, r 4 горизонталь, стрелка e2e4 красный, круг d5. M вернёт вас сюда.
+	The board shows a position that is not legal: correct it in the diagram editor first.	На доске недопустимая позиция: сначала исправьте её в редакторе диаграмм.
+	The board is empty.	Доска пуста.
+	{file} file: {pieces}	Вертикаль {file}: {pieces}
+	{file} file: empty	Вертикаль {file}: пусто
+	Rank {rank}: {pieces}	Горизонталь {rank}: {pieces}
+	Rank {rank}: empty	Горизонталь {rank}: пусто
+	No move yet: the start of the game.	Ходов ещё нет: начало партии.
+	Arrow {from} to {to}, {color}	Стрелка с {from} на {to}, {color}
+	Arrow {from} to {to} taken off	Стрелка с {from} на {to} убрана
+	Circle on {from}, {color}	Круг на {from}, {color}
+	Circle on {from} taken off	Круг на {from} убран
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Не понято. Введите ход (Кf3, e2e4) или p, u, s, f e, r 4, стрелка e2e4 красный, круг d5.
+	Illegal move: {move} can't be played here.	Недопустимый ход: {move} здесь сыграть нельзя.
+	{move} is not a move.	{move} — не ход.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрелка с {from}: Alt+щелчок по полю, куда она ведёт, или снова по этому, чтобы обвести его.

@@ -61,6 +61,7 @@ mod chess_keep;
 mod chess_keymap;
 mod chess_list;
 mod chess_models;
+mod chess_move_field;
 mod chess_moves_tree;
 mod chess_ocr_area;
 mod chess_panel_head;

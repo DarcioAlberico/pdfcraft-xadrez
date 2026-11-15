@@ -3916,3 +3916,20 @@ progress bar	Progress	التقدم
 	with comment	مع تعليق
 	The book's alignment was undone.	تم التراجع عن محاذاة الكتاب.
 	(and {n} more)	(و{n} أخرى)
+	Type a move	اكتب نقلة
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	اكتب نقلة (Nf3، e4، e2e4) ثم Enter، أو: p القطع، u آخر نقلة، s من يلعب، f e عمود، r 4 صف، سهم e2e4 أحمر، دائرة d5. يعيدك M إلى هنا.
+	The board shows a position that is not legal: correct it in the diagram editor first.	تعرض الرقعة وضعًا غير قانوني: صحّحه أولًا في محرر المخططات.
+	The board is empty.	الرقعة فارغة.
+	{file} file: {pieces}	العمود {file}: {pieces}
+	{file} file: empty	العمود {file}: فارغ
+	Rank {rank}: {pieces}	الصف {rank}: {pieces}
+	Rank {rank}: empty	الصف {rank}: فارغ
+	No move yet: the start of the game.	لا نقلة بعد: بداية المباراة.
+	Arrow {from} to {to}, {color}	سهم من {from} إلى {to}، {color}
+	Arrow {from} to {to} taken off	أُزيل السهم من {from} إلى {to}
+	Circle on {from}, {color}	دائرة على {from}، {color}
+	Circle on {from} taken off	أُزيلت الدائرة عن {from}
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	لم يُفهم. اكتب نقلة (Nf3، e2e4)، أو p، u، s، f e، r 4، سهم e2e4 أحمر، دائرة d5.
+	Illegal move: {move} can't be played here.	نقلة غير قانونية: لا يمكن لعب {move} هنا.
+	{move} is not a move.	{move} ليست نقلة.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	سهم من {from}: انقر مع Alt على المربع الذي يذهب إليه، أو على هذا مرة أخرى لرسم دائرة.
