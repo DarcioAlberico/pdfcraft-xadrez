@@ -145,6 +145,7 @@ impl Page {
             }),
             lichess_url: link,
             puzzle: None,
+            goal: None,
             review: Vec::new(),
             reference: None,
             settled: None,

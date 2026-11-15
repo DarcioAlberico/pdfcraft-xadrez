@@ -1364,6 +1364,9 @@ fn sides_from_move_numbers(
                 notes.push(ScanNote::BothSidesMate { diagram: reading.index.saturating_add(1), n });
             }
         }
+        // The goal is kept with the reading (plan A9-N17a): the engine's review holds the diagram
+        // to it ("White to play and win" with the engine at −3 points at a misread square).
+        position.goal = stipulations.get(reading.index).copied().flatten().and_then(|s| s.goal);
     }
 }
 
@@ -2022,10 +2025,12 @@ pub mod links;
 pub mod notes;
 pub mod office;
 mod page_key;
+pub mod pattern_find;
 pub mod position_find;
 pub mod reading;
 pub mod reference_store;
 pub mod replace;
+pub mod review;
 pub mod review_pack;
 pub mod samples;
 pub mod span;

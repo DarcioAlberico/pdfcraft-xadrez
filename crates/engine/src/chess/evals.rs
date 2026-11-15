@@ -17,8 +17,8 @@
 //! oldest kept goes (an evaluation is found again by searching; it is never the user's work).
 //! Fields a later build of this version writes are kept as they are.
 //!
-//! **Merge** ([`StoreKind::merge`]): per position, the deeper evaluation wins; the same depth keeps
-//! the newer; a tie keeps this side's.
+//! **Merge** ([`StoreKind::merge`]): per position, an exact score wins over a bound (plan
+//! A9-N17a2), then the deeper evaluation; the same depth keeps the newer; a tie keeps this side's.
 
 use std::collections::BTreeMap;
 
@@ -69,9 +69,51 @@ pub struct Eval {
     /// When it was kept, in seconds since 1970.
     #[serde(default)]
     pub at: u64,
+    /// The engine's second line, when it was asked for two (an exercise's position, plan
+    /// A9-N17a: "another solution"). New in a file of version 1, by addition: a build before it
+    /// keeps it among [`Eval::other`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second: Option<SecondLine>,
     /// Fields a later build of this version writes, kept as they are.
     #[serde(flatten)]
     pub other: Map<String, Value>,
+}
+
+/// An evaluation's second line ([`Eval::second`]): its score for White and its first moves.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecondLine {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cp: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mate: Option<i32>,
+    /// Its first moves, in UCI (at most [`MAX_MOVES`]).
+    #[serde(default)]
+    pub pv: Vec<String>,
+}
+
+impl SecondLine {
+    /// A second line of `score` (for White) and `pv` (UCI); `None` when a move is not one in UCI.
+    pub fn new(score: Score, pv: &[String]) -> Option<SecondLine> {
+        if pv.iter().any(|m| !uci::is_move(m)) {
+            return None;
+        }
+        let (cp, mate) = split_score(score);
+        Some(SecondLine { cp, mate, pv: pv.iter().take(MAX_MOVES).cloned().collect() })
+    }
+
+    fn readable(&self) -> bool {
+        (self.cp.is_some() || self.mate.is_some()) && self.pv.len() <= MAX_MOVES && self.pv.iter().all(|m| uci::is_move(m))
+    }
+}
+
+/// A score for White as the file keeps it: centipawns, or mate in moves.
+fn split_score(score: Score) -> (Option<i32>, Option<i32>) {
+    match score {
+        Score::Centipawns(cp) => (Some(cp), None),
+        Score::Mate(n) => (None, Some(n)),
+        // Mated already: as an engine says it, mate 0 for the side that lost.
+        Score::Mated(_) => (None, Some(0)),
+    }
 }
 
 impl Eval {
@@ -81,12 +123,7 @@ impl Eval {
         if pv.iter().any(|m| !uci::is_move(m)) {
             return None;
         }
-        let (cp, mate) = match score {
-            Score::Centipawns(cp) => (Some(cp), None),
-            Score::Mate(n) => (None, Some(n)),
-            // Mated already: as an engine says it, mate 0 for the side that lost.
-            Score::Mated(_) => (None, Some(0)),
-        };
+        let (cp, mate) = split_score(score);
         let bound = match bound {
             Bound::Exact => None,
             Bound::Lower => Some("lower".to_owned()),
@@ -100,18 +137,29 @@ impl Eval {
             pv: pv.iter().take(MAX_MOVES).cloned().collect(),
             engine: engine.map(|e| e.chars().filter(|c| !c.is_control()).take(MAX_ENGINE_CHARS).collect()),
             at,
+            second: None,
             other: Map::new(),
         })
     }
 
-    /// Whether this evaluation is the one to keep over `other`: deeper, or as deep and newer.
+    /// Whether this evaluation is the one to keep over `other`: an exact score over a bound (plan
+    /// A9-N17a2: a search stopped mid-way is never the last word), then deeper, then as deep and
+    /// newer.
     fn outranks(&self, other: &Eval) -> bool {
-        (self.depth, self.at) > (other.depth, other.at)
+        (self.bound.is_none(), self.depth, self.at) > (other.bound.is_none(), other.depth, other.at)
     }
 
     /// Whether it says something this build can show: a score, and a line of moves.
     fn readable(&self) -> bool {
-        (self.cp.is_some() || self.mate.is_some()) && self.pv.len() <= MAX_MOVES && self.pv.iter().all(|m| uci::is_move(m))
+        (self.cp.is_some() || self.mate.is_some())
+            && self.pv.len() <= MAX_MOVES
+            && self.pv.iter().all(|m| uci::is_move(m))
+            && self.second.as_ref().is_none_or(SecondLine::readable)
+    }
+
+    /// The same evaluation with its second line ([`Eval::second`]).
+    pub fn with_second(self, second: Option<SecondLine>) -> Eval {
+        Eval { second, ..self }
     }
 }
 

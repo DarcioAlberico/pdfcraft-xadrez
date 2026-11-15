@@ -990,6 +990,61 @@ fn the_text_tabs_top_and_menu_fit_the_reference_screens() {
     }
 }
 
+/// Plan A9-I9b (A6-06, WCAG 1.4.1): an illegal move is marked by its shape in the drawn tab, not
+/// by colour alone: "×" before it in the paragraph's text, and "illegal" in its name.
+#[test]
+fn an_illegal_move_is_marked_by_its_shape_in_the_tab() {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Inline, MoveStatus};
+    let mut h = harness_on(chapter_with("1.e4 e5 2.Ke3 Nc6"), 0.25);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    let illegal: Vec<String> = h.state().chess.text().expect("the page was read").chess.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { (m.status == MoveStatus::Illegal).then(|| m.read_san().to_owned()) } else { None })
+        .collect();
+    assert_eq!(illegal, ["Ke3"], "the king's move is the illegal one");
+    let paragraph = h
+        .get_all_by_role(egui::accesskit::Role::Paragraph)
+        .find_map(|n| n.accesskit_node().label().or_else(|| n.accesskit_node().value()).filter(|t| t.contains("Ke3") || t.contains("e3")))
+        .unwrap_or_default();
+    assert!(paragraph.contains("×\u{2009}2."), "the shape before the move, in the text drawn: {paragraph:?}");
+    assert!(h.query_by_label_contains("e3, illegal").is_some(), "and in its name");
+}
+
+/// Plan A9-I9b: the Text tab's frame on a paragraph of 300 moves, before and after the layout is
+/// kept from frame to frame (run by hand: `cargo test --test chess measure_the_text_tab -- --ignored
+/// --nocapture`).
+#[test]
+#[ignore]
+fn measure_the_text_tab_on_a_300_move_page() {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline;
+    let moves: Vec<String> = (1..=150).map(|n| if n % 2 == 1 { format!("{n}.Nf3 Nf6") } else { format!("{n}.Ng1 Ng8") }).collect();
+    let mut h = harness_on(chapter_with(&moves.join(" ")), 0.25);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(6);
+    let count = h
+        .state()
+        .chess
+        .text()
+        .map_or(0, |t| t.chess.pages[0].blocks.iter().flat_map(|b| b.inlines()).filter(|i| matches!(i, Inline::Move(_))).count());
+    assert!(count >= 300, "{count} moves");
+    let mut best = std::time::Duration::MAX;
+    for _ in 0..3 {
+        let start = std::time::Instant::now();
+        for _ in 0..30 {
+            h.run_steps(1);
+        }
+        best = best.min(start.elapsed() / 30);
+    }
+    println!("TEXT TAB FRAME, {count} moves: {best:?}");
+}
+
 /// The book's PGN of [`chapter`]'s line, the Ruy Lopez to 3...a6.
 const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
 

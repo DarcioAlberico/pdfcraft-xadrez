@@ -122,6 +122,7 @@ fn reading(index: usize, top: f32, fen: &str, accepted: bool, assumed: bool) -> 
             repairs: Vec::new(),
             accepted,
             mate: None,
+            goal: None,
         }),
     }
 }

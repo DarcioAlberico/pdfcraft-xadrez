@@ -50,9 +50,11 @@ use super::games::DiagramAt;
 use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline, MoveAt, MoveInline, MoveStatus, ReviewFlag, SquareChange};
 
 mod index;
+mod stretches;
 
 use index::PositionKey;
 pub use index::{Cut, IndexMemo, MEMO_INDEXES, Occurrences, PgnOccurrence, ReferenceGame, ReferenceIndex};
+pub use stretches::{NumberedMove, Stretch, Stretches};
 
 /// Largest PGN text [`ReferenceIndex::from_pgn`] reads: the one cap of every PGN read (plan
 /// A9-F4).
