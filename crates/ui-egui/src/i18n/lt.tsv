@@ -3861,3 +3861,30 @@ progress bar	Progress	Eiga
 	Language: {lang}	Kalba: {lang}
 	from the book's text	pagal knygos tekstą
 	Games: read from the text, linked to the book's PGN	Partijos: perskaitytos iš teksto, susietos su knygos PGN
+	More Text tab actions	Daugiau kortelės „Tekstas“ veiksmų
+	Read with OCR	Skaityti su OCR
+	illegal	neleistinas
+	ambiguous	dviprasmis
+	out of sequence	ne iš eilės
+	not reached	nepasiektas
+	not checked	nepatikrintas
+	caption	paaiškinimas
+	Analyze the position	Analizuoti poziciją
+	Export chess book…	Eksportuoti šachmatų knygą…
+	Chess shortcuts	Šachmatų spartieji klavišai
+	Board, move list and Chess panel	Lenta, ėjimų sąrašas ir šachmatų skydelis
+	Diagram tab	Kortelė „Diagrama“
+	Move back	Ėjimu atgal
+	Move forward	Ėjimu pirmyn
+	The variation above	Variantas aukščiau
+	The variation below	Variantas žemiau
+	Start of the game	Partijos pradžia
+	End of the line	Linijos pabaiga
+	End of the main line	Pagrindinės linijos pabaiga
+	Previous variation	Ankstesnis variantas
+	Next variation	Kitas variantas
+	Leave the chess panel	Palikti šachmatų skydelį
+	Next tool of {group}	Kitas grupės „{group}“ įrankis
+	Previous diagram	Ankstesnė diagrama
+	Next diagram	Kita diagrama
+	The original or the position read	Originalas arba perskaityta pozicija

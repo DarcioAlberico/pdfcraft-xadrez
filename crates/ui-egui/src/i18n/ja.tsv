@@ -3613,3 +3613,30 @@ progress bar	Progress	進行状況
 	Language: {lang}	言語: {lang}
 	from the book's text	本の本文から
 	Games: read from the text, linked to the book's PGN	対局: 本文から読み取り、本の PGN に関連付け
+	More Text tab actions	テキストタブのその他の操作
+	Read with OCR	OCR で読み取る
+	illegal	不正
+	ambiguous	あいまい
+	out of sequence	順序外
+	not reached	未到達
+	not checked	未確認
+	caption	キャプション
+	Analyze the position	局面を解析
+	Export chess book…	チェスの本を書き出し…
+	Chess shortcuts	チェスのショートカット
+	Board, move list and Chess panel	盤、指し手リスト、チェス パネル
+	Diagram tab	局面図タブ
+	Move back	1 手戻る
+	Move forward	1 手進む
+	The variation above	上の変化
+	The variation below	下の変化
+	Start of the game	対局の最初
+	End of the line	手順の最後
+	End of the main line	本譜の最後
+	Previous variation	前の変化
+	Next variation	次の変化
+	Leave the chess panel	チェス パネルを離れる
+	Next tool of {group}	{group} の次のツール
+	Previous diagram	前の局面図
+	Next diagram	次の局面図
+	The original or the position read	原本または読み取った局面

@@ -3823,3 +3823,30 @@ progress bar	Progress	Avanzamento
 	Language: {lang}	Lingua: {lang}
 	from the book's text	dal testo del libro
 	Games: read from the text, linked to the book's PGN	Partite: lette dal testo, collegate al PGN del libro
+	More Text tab actions	Altre azioni della scheda Testo
+	Read with OCR	Leggi con OCR
+	illegal	illegale
+	ambiguous	ambigua
+	out of sequence	fuori sequenza
+	not reached	non raggiunta
+	not checked	non verificata
+	caption	didascalia
+	Analyze the position	Analizza la posizione
+	Export chess book…	Esporta libro di scacchi…
+	Chess shortcuts	Scorciatoie degli scacchi
+	Board, move list and Chess panel	Scacchiera, elenco delle mosse e pannello Scacchi
+	Diagram tab	Scheda Diagramma
+	Move back	Indietro di una mossa
+	Move forward	Avanti di una mossa
+	The variation above	La variante sopra
+	The variation below	La variante sotto
+	Start of the game	Inizio della partita
+	End of the line	Fine della linea
+	End of the main line	Fine della linea principale
+	Previous variation	Variante precedente
+	Next variation	Variante successiva
+	Leave the chess panel	Esci dal pannello Scacchi
+	Next tool of {group}	Strumento successivo di {group}
+	Previous diagram	Diagramma precedente
+	Next diagram	Diagramma successivo
+	The original or the position read	L'originale o la posizione letta
