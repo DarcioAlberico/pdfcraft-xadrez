@@ -754,7 +754,9 @@ pub fn text_tab(
                 let galley = ui.painter().layout_job(para.job);
                 let (rect, prose) = ui.allocate_exact_size(galley.size(), egui::Sense::CLICK);
                 let read = galley.text().to_owned();
+                // The paragraph's text, read as one; its moves are labels of their own.
                 prose.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &read));
+                ui.ctx().accesskit_node_builder(prose.id, |node| node.set_role(egui::accesskit::Role::Paragraph));
                 let mut marks: Vec<(egui::Rect, bool, bool)> = Vec::new();
                 for (k, range) in &para.moves {
                     let Some(Some(v)) = views.get(*k) else { continue };
@@ -766,7 +768,7 @@ pub fn text_tab(
                         let r = ui.interact(part, ui.id().with(("chess-move", *k, n)), sense);
                         marks.push((part, r.hovered(), r.has_focus()));
                         if n == 0 {
-                            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &v.name));
+                            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &v.name));
                         }
                         let r = r.on_hover_text(&v.tip);
                         // A click outlines the move on the page; a double-click (its first click

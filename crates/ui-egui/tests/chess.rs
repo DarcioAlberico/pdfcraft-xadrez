@@ -933,7 +933,7 @@ fn the_text_tab_stops_only_at_moves_and_diagrams() {
     let stops: Vec<String> = h
         .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
         .filter(|n| n.rect().min.y > top && column.contains(n.rect().center()))
-        .map(|n| n.accesskit_node().label().unwrap_or_default())
+        .map(|n| n.accesskit_node().label().or_else(|| n.accesskit_node().value()).unwrap_or_default())
         .collect();
     assert!(stops.len() <= moves + diagrams, "{} stops for {moves} moves and {diagrams} diagrams: {stops:?}", stops.len());
     assert!(stops.len() >= moves, "every move takes the keyboard: {stops:?}");
@@ -1153,7 +1153,8 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
 /// A secondary click on the one widget whose label holds `part` (a move shown with its figurine).
 fn right_click_contains(h: &mut Harness<'static, PdfCraftApp>, part: &str) {
     // The move's own node, not its paragraph's text (plan A9-I9).
-    let at = h.get_by(|n| n.role() == egui::accesskit::Role::Button && n.label().is_some_and(|l| l.contains(part))).rect().center();
+    let at =
+        h.get_by(|n| n.role() == egui::accesskit::Role::Label && n.label().or_else(|| n.value()).is_some_and(|l| l.contains(part))).rect().center();
     h.hover_at(at);
     h.run_steps(1);
     for pressed in [true, false] {
@@ -1594,14 +1595,20 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
     h.get_by_label("Text").click();
     h.run_steps(4);
     assert_eq!(h.state().chess.text().map(|t| t.origin), Some(BookOrigin::Auto));
-    // The combo box shows the origin chosen; each choice reads the page again.
+    // The tab's menu ▸ Book origin (plan A9-I9) checks the origin chosen; each choice reads the
+    // page again.
     for (shown, label, origin) in [
         ("Auto (page by page)", "Born digital (text layer only)", BookOrigin::Digital),
         ("Born digital (text layer only)", "Scanned (chess OCR on every page)", BookOrigin::Scanned),
     ] {
-        // A combo box shows its choice as its value.
-        h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.value().is_some_and(|v| v == shown)).click();
+        text_menu(&mut h);
+        h.get_by_label_contains("Book origin").hover();
         h.run_steps(2);
+        h.get_by(|n| {
+            n.role() == egui::accesskit::Role::MenuItemRadio
+                && n.label().as_deref() == Some(shown)
+                && n.data().toggled() == Some(egui::accesskit::Toggled::True)
+        });
         h.get_all_by_label(label).last().expect("the choice is listed").click();
         h.run_steps(4);
         let app = h.state();
