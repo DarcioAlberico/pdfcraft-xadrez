@@ -235,3 +235,279 @@ fn running_again_replaces_the_diagrams_own_stale_link_and_never_stacks_a_second(
     assert!(plan.skipped.iter().any(|k| k.index == 0 && k.reason.contains("already links to another position")), "{plan:#?}");
     assert_eq!(s.get(id).unwrap().links().len(), 1);
 }
+
+// ─── Plan A9-G9b: our pairs by their mark, never by where they are ──────────────────────────────
+
+/// A legal position other than the start (White's king and queen swapped), and its address.
+const OTHER: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w kq - 0 1";
+
+fn other_url() -> String {
+    pdfcraft_chess::lichess::link(OTHER, pdfcraft_chess::placement::Color::White, false).unwrap()
+}
+
+/// Link diagram `index` of page 1 to the position `fen` a person confirmed.
+fn confirm(s: &mut Session, id: DocId, index: usize, fen: &str) -> crate::chess::links::LinkPlan {
+    use crate::chess::links::LinkTarget;
+    let only = LinkSettings { only: Some(LinkTarget { page: 0, index, fen: fen.into() }), ..LinkSettings::default() };
+    let plan = s.chess_link_plan(id, &[], &no_model(), &only).unwrap();
+    if let Some(edit) = plan.edit.clone() {
+        s.apply(id, edit).unwrap();
+    }
+    plan
+}
+
+/// Run over the readings and apply what it plans.
+fn run(s: &mut Session, id: DocId) -> crate::chess::links::LinkPlan {
+    let plan = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    if let Some(edit) = plan.edit.clone() {
+        s.apply(id, edit).unwrap();
+    }
+    plan
+}
+
+/// The page's links' addresses, in order.
+fn urls(s: &Session, id: DocId) -> Vec<String> {
+    s.get(id)
+        .unwrap()
+        .links()
+        .iter()
+        .map(|l| match &l.action {
+            LinkAction::Uri(u) => u.clone(),
+            other => format!("{other:?}"),
+        })
+        .collect()
+}
+
+/// The page's added texts, in order.
+fn texts(s: &Session, id: DocId) -> Vec<String> {
+    s.get(id)
+        .unwrap()
+        .added()
+        .iter()
+        .filter_map(|a| match &a.content {
+            pdfcraft_edit::Content::Text(t) => Some(t.text.clone()),
+            pdfcraft_edit::Content::Image(_) => None,
+        })
+        .collect()
+}
+
+/// A box given from the page's top-left (view space, y down) in user space, on the 800 pt high
+/// unturned test page.
+fn user([x0, y0, x1, y1]: [f64; 4]) -> [f64; 4] {
+    [x0, 800.0 - y1, x1, 800.0 - y0]
+}
+
+/// The label and link an older build wrote: an added text saying the label, and a lichess link
+/// exactly over it, neither keyed.
+fn legacy_pair(view: [f64; 4], url: &str) -> Edit {
+    let text = pdfcraft_edit::AddedText { rect: user(view), text: DEFAULT_TEXT.into(), size: 8.0, ..pdfcraft_edit::AddedText::default() };
+    let style = pdfcraft_annot::links::LinkStyle::default();
+    Edit::Batch {
+        label: "older".into(),
+        edits: vec![Edit::AddText { page: 0, text }, Edit::AddLinks { links: vec![(0, vec![user(view)], url.into())], style }],
+    }
+}
+
+/// The index among the page's annotations of its link to `url`.
+fn link_to(s: &Session, id: DocId, url: &str) -> usize {
+    s.get(id).unwrap().links().iter().find(|l| l.action == LinkAction::Uri(url.into())).map(|l| l.index).unwrap()
+}
+
+use crate::chess::links::DEFAULT_TEXT;
+
+/// Added item `index` of page 1, a text.
+fn added_text(s: &Session, id: DocId, index: usize) -> pdfcraft_edit::AddedText {
+    let Some(pdfcraft_edit::Content::Text(t)) = s.get(id).unwrap().added().get(index).map(|a| a.content.clone()) else {
+        panic!("added item {index} is no text")
+    };
+    t
+}
+
+/// A label someone retyped stays, with its link, and its diagram is skipped, saying why.
+#[test]
+fn a_label_whose_text_someone_changed_is_kept() {
+    let (mut s, id) = open(page(60.0, ""));
+    confirm(&mut s, id, 0, OTHER);
+    let mut label = added_text(&s, id, 0);
+    label.text = "My own note".into();
+    s.apply(id, Edit::UpdateContent { page: 0, index: 0, content: pdfcraft_edit::Content::Text(label) }).unwrap();
+    let plan = run(&mut s, id);
+    assert!(plan.edit.is_none(), "{plan:#?}");
+    assert!(plan.skipped.iter().any(|k| k.index == 0 && k.reason.contains("changed since it was added")), "{plan:#?}");
+    assert_eq!((urls(&s, id), texts(&s, id)), (vec![other_url()], vec!["My own note".to_owned()]));
+}
+
+/// A lichess link someone drew over our label is theirs: it stays, and so does our pair under it.
+#[test]
+fn a_link_drawn_over_our_label_is_kept() {
+    let (mut s, id) = open(page(60.0, ""));
+    let first = confirm(&mut s, id, 0, OTHER);
+    let r = first.links[0].link_user;
+    let hand = "https://lichess.org/analysis/4k3/8/8/8/8/8/8/R3K3_w_Q_-_0_1";
+    let style = pdfcraft_annot::links::LinkStyle::default();
+    s.apply(id, Edit::AddLink { page: 0, rect: [r[0] + 2.0, r[1] - 2.0, r[2] + 2.0, r[3] - 2.0], action: LinkAction::Uri(hand.into()), style })
+        .unwrap();
+    let plan = run(&mut s, id);
+    assert!(plan.edit.is_none(), "{plan:#?}");
+    assert!(plan.skipped.iter().any(|k| k.index == 0 && k.reason.contains("a link this did not add")), "{plan:#?}");
+    assert_eq!(urls(&s, id), [other_url(), hand.to_owned()]);
+    assert_eq!(texts(&s, id), [DEFAULT_TEXT]);
+}
+
+/// Two diagrams one above the other: the upper one's pair, moved (label and link) to just above
+/// the lower one, is still the upper one's. Correcting the lower one replaces its own pair only.
+#[test]
+fn a_neighbours_pair_is_never_taken() {
+    let content = format!("{}{}", font_board(60.0, 60.0, MERIDA_START), font_board(60.0, 300.0, MERIDA_START));
+    let (mut s, id) = open(pdf(&content, "ChessMerida", None, ""));
+    let both = run(&mut s, id);
+    assert_eq!(both.links.len(), 2, "{both:#?}");
+    // Move the upper diagram's label and link to just above the lower diagram.
+    let moved = [60.0, 285.0, 128.0, 295.0];
+    let upper = s.get(id).unwrap().added().iter().position(|a| (a.content.rect()[3] - (800.0 - 223.0)).abs() < 2.0).unwrap();
+    let mut label = added_text(&s, id, upper);
+    label.rect = user(moved);
+    s.apply(id, Edit::UpdateContent { page: 0, index: upper, content: pdfcraft_edit::Content::Text(label) }).unwrap();
+    let link = s.get(id).unwrap().links().iter().find(|l| (l.rect[3] - (800.0 - 223.0)).abs() < 2.0).map(|l| l.index).unwrap();
+    s.apply(id, Edit::SetLink { page: 0, index: link, rect: Some(user(moved)), action: None, style: None }).unwrap();
+    // Correct the lower diagram.
+    let plan = confirm(&mut s, id, 1, OTHER);
+    assert_eq!(plan.links.len(), 1, "{plan:#?}");
+    assert_eq!(plan.links[0].replaces.as_deref(), Some(START_URL));
+    let mut got = urls(&s, id);
+    got.sort();
+    let mut want = vec![START_URL.to_owned(), other_url()];
+    want.sort();
+    assert_eq!(got, want, "the upper diagram's link is still there");
+    assert_eq!(texts(&s, id).len(), 2, "one label each");
+}
+
+/// Added items that are no label of ours (an image, a text of the user's) stay where they are.
+#[test]
+fn added_items_of_another_kind_are_kept() {
+    let (mut s, id) = open(page(60.0, ""));
+    let first = confirm(&mut s, id, 0, OTHER);
+    let r = first.links[0].link_user;
+    let note = pdfcraft_edit::AddedText {
+        rect: [r[0] + 10.0, r[1] - 4.0, r[2] + 40.0, r[3] - 4.0],
+        text: "See also".into(),
+        ..pdfcraft_edit::AddedText::default()
+    };
+    s.apply(id, Edit::AddText { page: 0, text: note }).unwrap();
+    let plan = run(&mut s, id);
+    assert_eq!(plan.links.len(), 1, "{plan:#?}");
+    assert_eq!(urls(&s, id), [START_URL]);
+    let mut got = texts(&s, id);
+    got.sort();
+    assert_eq!(got, [DEFAULT_TEXT, "See also"]);
+}
+
+/// A pair an older build wrote, keyed by nothing: taken for ours, and replaced, only in the shape
+/// it wrote, by one diagram alone; between two diagrams whose label areas touch it stays.
+#[test]
+fn an_older_builds_pair_is_ours_only_in_its_shape_by_one_diagram() {
+    // By one diagram: replaced.
+    let (mut s, id) = open(page(60.0, ""));
+    s.apply(id, legacy_pair([60.0, 223.0, 128.0, 233.0], &other_url())).unwrap();
+    let plan = run(&mut s, id);
+    assert_eq!((plan.links.len(), plan.links[0].replaces.clone()), (1, Some(other_url())), "{plan:#?}");
+    assert_eq!((urls(&s, id), texts(&s, id)), (vec![START_URL.to_owned()], vec![DEFAULT_TEXT.to_owned()]));
+    // Not in its shape (the link a little off the label): left, the diagram skipped.
+    let (mut s, id) = open(page(60.0, ""));
+    s.apply(id, legacy_pair([60.0, 223.0, 128.0, 233.0], &other_url())).unwrap();
+    let off = link_to(&s, id, &other_url());
+    s.apply(id, Edit::SetLink { page: 0, index: off, rect: Some(user([62.0, 226.0, 132.0, 236.0])), action: None, style: None }).unwrap();
+    let plan = run(&mut s, id);
+    assert!(plan.edit.is_none(), "{plan:#?}");
+    assert_eq!(urls(&s, id), [other_url()]);
+    // Between two diagrams whose label areas touch: left, both diagrams skipped.
+    let content = format!("{}{}", font_board(60.0, 60.0, MERIDA_START), font_board(60.0, 240.0, MERIDA_START));
+    let (mut s, id) = open(pdf(&content, "ChessMerida", None, ""));
+    s.apply(id, legacy_pair([60.0, 223.0, 128.0, 233.0], &other_url())).unwrap();
+    let plan = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    assert!(plan.links.iter().all(|l| l.replaces.is_none()), "{plan:#?}");
+    let edit = plan.edit.clone();
+    if let Some(edit) = edit {
+        s.apply(id, edit).unwrap();
+    }
+    assert!(urls(&s, id).contains(&other_url()), "{plan:#?}");
+    assert!(texts(&s, id).iter().filter(|t| *t == DEFAULT_TEXT).count() >= 1);
+}
+
+/// Our label moved away from its link is still ours: a correction replaces the pair, one label
+/// and one link, never a second pair beside it.
+#[test]
+fn a_moved_label_is_still_ours_and_replaced_not_stacked() {
+    let (mut s, id) = open(page(60.0, ""));
+    confirm(&mut s, id, 0, OTHER);
+    let mut label = added_text(&s, id, 0);
+    label.rect = user([240.0, 200.0, 308.0, 210.0]);
+    s.apply(id, Edit::UpdateContent { page: 0, index: 0, content: pdfcraft_edit::Content::Text(label) }).unwrap();
+    let plan = run(&mut s, id);
+    assert_eq!((plan.links.len(), plan.links[0].replaces.clone()), (1, Some(other_url())), "{plan:#?}");
+    assert_eq!((urls(&s, id), texts(&s, id)), (vec![START_URL.to_owned()], vec![DEFAULT_TEXT.to_owned()]));
+}
+
+/// A stale pair of the diagram's beside its pair to its position goes; the current one stays.
+#[test]
+fn a_stale_pair_beside_the_current_one_goes() {
+    use crate::chess::links::KEY_PREFIX;
+    let (mut s, id) = open(page(60.0, ""));
+    run(&mut s, id);
+    let key = format!("{KEY_PREFIX}1 {}", other_url());
+    let view = [230.0, 200.0, 298.0, 210.0];
+    let text = pdfcraft_edit::AddedText { rect: user(view), text: DEFAULT_TEXT.into(), size: 8.0, ..pdfcraft_edit::AddedText::default() };
+    let style = pdfcraft_annot::links::LinkStyle::default();
+    s.apply(
+        id,
+        Edit::Batch {
+            label: "stale".into(),
+            edits: vec![
+                Edit::AddKeyedText { page: 0, text, key: key.clone() },
+                Edit::AddMarkedLinks { links: vec![(0, user(view), other_url(), key)], style },
+            ],
+        },
+    )
+    .unwrap();
+    assert_eq!(urls(&s, id).len(), 2);
+    let plan = run(&mut s, id);
+    assert!(plan.links.is_empty(), "{plan:#?}");
+    assert_eq!(plan.removed.iter().map(|r| (r.index, r.url.clone())).collect::<Vec<_>>(), [(0, other_url())]);
+    assert_eq!((urls(&s, id), texts(&s, id)), (vec![START_URL.to_owned()], vec![DEFAULT_TEXT.to_owned()]));
+}
+
+/// Links with no address, or one that is not text, are no one's to take: nothing panics, and our
+/// pair is replaced past them.
+#[test]
+fn links_with_an_odd_or_missing_address_are_left() {
+    let annots = concat!(
+        "/Annots [<< /Type /Annot /Subtype /Link /Rect [60 560 130 575] /A << /S /URI >> >> ",
+        "<< /Type /Annot /Subtype /Link /Rect [60 560 130 575] /A << /S /URI /URI 42 >> >>]"
+    );
+    let (mut s, id) = open(page(60.0, annots));
+    confirm(&mut s, id, 0, OTHER);
+    let plan = run(&mut s, id);
+    assert_eq!((plan.links.len(), plan.links[0].replaces.clone()), (1, Some(other_url())), "{plan:#?}");
+    let all = urls(&s, id);
+    assert_eq!(all.len(), 3, "{all:?}");
+    assert_eq!(all.iter().filter(|u| u.is_empty()).count(), 2, "the two odd links stay: {all:?}");
+    assert!(all.contains(&START_URL.to_owned()));
+}
+
+/// A confirmed position of a diagram that was not read (the vector board, with no model) is
+/// linked from White's side, and the plan says the side was assumed; a read one's side is known.
+#[test]
+fn an_unread_diagram_confirmed_says_its_side_was_assumed() {
+    use crate::chess::links::SIDE_ASSUMED;
+    let (mut s, id) = open(page(60.0, ""));
+    let plan = confirm(&mut s, id, 1, OTHER);
+    assert_eq!(plan.links.len(), 1, "{plan:#?}");
+    assert_eq!((plan.links[0].url.clone(), plan.links[0].note.as_deref()), (other_url(), Some(SIDE_ASSUMED)));
+    // A diagram printed from Black's side, read: its side is known, nothing assumed.
+    let black = merida_from_black();
+    let lines: [&str; 8] = std::array::from_fn(|i| black[i].as_str());
+    let (mut s, id) = open(pdf(&font_board(60.0, 60.0, lines), "ChessMerida", None, ""));
+    let plan = confirm(&mut s, id, 0, OTHER);
+    assert_eq!(plan.links[0].note, None, "{plan:#?}");
+    assert!(plan.links[0].url.ends_with("?color=black"));
+}

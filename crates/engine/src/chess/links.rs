@@ -3,9 +3,10 @@
 //!
 //! [`Session::chess_link_plan`] scans the pages (with readings), keeps the diagrams that may be
 //! linked and places a label for each, and returns one undoable [`Edit::Batch`]: per diagram an
-//! added text (`Edit::AddText`, so it stays upright on a turned page and can be moved or edited
-//! later like any added text) and a link over it (`Edit::AddLinks`, a URI action; nothing is
-//! fetched — PdfCraft makes no network request, the reader's viewer opens it when clicked).
+//! added text (`Edit::AddKeyedText`, so it stays upright on a turned page and can be moved or
+//! edited later like any added text) and a link over it (`Edit::AddMarkedLinks`, a URI action;
+//! nothing is fetched — PdfCraft makes no network request, the reader's viewer opens it when
+//! clicked), the two keyed alike.
 //!
 //! **Which diagrams.** Only a position that is legal with the side to move it was given and that
 //! the decoder did not repair gets a link, from the side the diagram is printed from (the one rule
@@ -13,16 +14,19 @@
 //! pass the reading gate (every square read with confidence), so a doubtful reading is not
 //! published as the book's position. Every skipped diagram is reported with the reason.
 //!
-//! **Run again** (plan A9-G9, finding A4-09). A diagram's own label and link are found by their
-//! mark, never taken for the book's: the label is an added text (`/PCMark /Added`) saying the
-//! label's text, under a link whose address is a lichess analysis board. One that links to the same
-//! address already is kept, and the diagram skipped, so running twice adds nothing; one that
-//! links elsewhere (a correction changed the position) is taken away in the same undoable step
-//! that adds the new one, so the diagram never has two. A lichess link near the diagram without
-//! such a label (the book's own, or a label someone edited) is never removed: the diagram is
-//! skipped, "it already links to another position". The page's other links and added items are
-//! kept clear of, like its diagrams. Each existing link is the diagram's whose label areas it is
-//! in, the nearest diagram when two could have it.
+//! **Run again** (plan A9-G9, A9-G9b; finding A4-09). A diagram's own label and link are found by
+//! their mark, never by where they are: the link carries `/PCMark /Added` and a key (`/PCKey`,
+//! [`KEY_PREFIX`], the diagram's number on its page and the address), and the label, an added
+//! text, the same key. A pair to the same address is kept, and the diagram skipped, so running
+//! twice adds nothing (another pair of the diagram's, stale, goes); a pair to another address (a
+//! correction changed the position) is taken away in the same undoable step that adds the new one,
+//! so the diagram never has two, wherever its label was moved. Only a pair of ours is ever taken
+//! away, and only its diagram's run takes it: a pair whose label's text or link's address someone
+//! changed stays, and the diagram is skipped; a lichess link of anyone else by the diagram (the
+//! book's own, or one drawn over our label) stays, and the diagram is skipped. A pair from an older
+//! build, which keyed neither, is taken for ours only in the shape it wrote: a lichess link exactly
+//! over a label saying the label's text, by one diagram alone; anything else is left. The page's
+//! links and added items are kept clear of, like its diagrams.
 //!
 //! **Where.** Below the diagram, [`GAP`] points under it, left-aligned with it. When that would
 //! leave the displayed page (inside [`MARGIN`]), to the right of the diagram, at its foot (or as
@@ -108,25 +112,130 @@ fn label_areas(diagram: ViewRect, (w, h): (f32, f32)) -> [ViewRect; 3] {
     ]
 }
 
-/// The distance between two boxes (0 when they overlap).
-fn distance(a: &ViewRect, b: &ViewRect) -> f32 {
-    let dx = (b.x0 - a.x1).max(a.x0 - b.x1).max(0.0);
-    let dy = (b.y0 - a.y1).max(a.y0 - b.y1).max(0.0);
-    dx.hypot(dy)
+/// The key a label and its link carry (`/PCKey`; plan A9-G9b): this, the diagram's number in its
+/// page's reading order (1-based) and the address. The two find each other and their diagram by
+/// it, never by where they are.
+pub const KEY_PREFIX: &str = "pdfcraft-lichess ";
+
+/// What the plan says of a confirmed position whose diagram's reading does not say which side it
+/// is printed from ([`PlannedLink::note`]).
+pub const SIDE_ASSUMED: &str = "side assumed: White (nothing says which side the diagram is printed from)";
+
+/// How far an older build's label may be from its link's box, in points, to be taken for the one it
+/// wrote under it; its bottom may be up to a tenth of its height further (the box is read back with
+/// the text's own line height).
+const SAME: f32 = 0.5;
+
+/// The key of the label and link of diagram `index` (0-based) to `url`.
+fn pair_key(index: usize, url: &str) -> String {
+    format!("{KEY_PREFIX}{} {url}", index.saturating_add(1))
 }
 
-/// A lichess link already on a page, with the label under it when it is one of ours.
-#[derive(Clone, Debug)]
-struct Existing {
-    /// Its index among the page's annotations (`Edit::DeleteLink`).
-    link: usize,
-    url: String,
+/// The diagram (0-based) and the address key `key` names; `None` for a key that is no lichess
+/// label's.
+fn key_parts(key: &str) -> Option<(usize, &str)> {
+    let (n, url) = key.strip_prefix(KEY_PREFIX)?.split_once(' ')?;
+    let n = n.parse::<usize>().ok()?.checked_sub(1)?;
+    lichess_address(url).then_some((n, url))
+}
+
+/// Whether box `label` is where an older build put a label under its link `link`.
+fn same_box(label: &ViewRect, link: &ViewRect) -> bool {
+    let bottom = SAME + (link.y1 - link.y0).abs() * 0.1;
+    (label.x0 - link.x0).abs() <= SAME
+        && (label.x1 - link.x1).abs() <= SAME
+        && (label.y0 - link.y0).abs() <= SAME
+        && (label.y1 - link.y1).abs() <= bottom
+}
+
+/// An added item of a page: its index among the page's added items, its box (view space), its
+/// text when it is text, and its key when it is a lichess label's.
+struct PageItem<'a> {
+    item: usize,
     view: ViewRect,
-    /// Our label under it: its index among the page's added items (`Edit::DeleteContent`) and box.
-    label: Option<(usize, ViewRect)>,
+    text: Option<&'a str>,
+    key: Option<&'a str>,
 }
 
-/// One label and link this run takes away, replaced by a new one.
+/// A link of a page: its index among the page's annotations, its box (view space), its web
+/// address when it has one, and its key when PdfCraft marked it as a lichess label's.
+struct PageLink<'a> {
+    annot: usize,
+    view: ViewRect,
+    url: Option<&'a str>,
+    key: Option<&'a str>,
+}
+
+/// A label and link of ours on a page, and the diagram they belong to.
+#[derive(Clone, Debug, PartialEq)]
+struct Pair {
+    diagram: usize,
+    /// The address: its key's.
+    url: String,
+    /// Its links' indices among the page's annotations, and its labels' among the page's added
+    /// items.
+    links: Vec<usize>,
+    labels: Vec<usize>,
+    /// Someone changed it since it was added (its label's text, or its link's address): it stays.
+    edited: bool,
+}
+
+/// The pairs of ours among a page's added `items` and `links`: each by its key, the label's and
+/// the link's the same; and, from an older build that keyed neither, a lichess link exactly over
+/// a label saying the label's text (`ours`), the shape it wrote, when one diagram alone has it in
+/// its label areas (a label `label` large). Geometry only finds an older pair's diagram: nothing
+/// else is ever taken for ours.
+fn pairs_of<'a>(
+    items: &[PageItem<'a>],
+    links: &[PageLink<'a>],
+    diagrams: &[Option<ViewRect>],
+    label: (f32, f32),
+    ours: impl Fn(&str) -> bool,
+) -> Vec<Pair> {
+    /// The pair keyed `key`, made when it is the first of its key.
+    fn slot<'a, 'k>(keyed: &'k mut Vec<(&'a str, Pair)>, key: &'a str) -> Option<&'k mut Pair> {
+        let at = match keyed.iter().position(|(k, _)| *k == key) {
+            Some(at) => at,
+            None => {
+                let (diagram, url) = key_parts(key)?;
+                keyed.push((key, Pair { diagram, url: url.to_owned(), links: Vec::new(), labels: Vec::new(), edited: false }));
+                keyed.len().checked_sub(1)?
+            }
+        };
+        keyed.get_mut(at).map(|(_, p)| p)
+    }
+    let mut keyed: Vec<(&'a str, Pair)> = Vec::new();
+    for l in links {
+        let Some(p) = l.key.and_then(|key| slot(&mut keyed, key)) else { continue };
+        p.links.push(l.annot);
+        // An address changed in Link Properties makes the link the person's.
+        p.edited |= l.url != Some(p.url.as_str());
+    }
+    for i in items {
+        let Some(p) = i.key.and_then(|key| slot(&mut keyed, key)) else { continue };
+        p.labels.push(i.item);
+        p.edited |= !i.text.is_some_and(&ours);
+    }
+    let mut out: Vec<Pair> = keyed.into_iter().map(|(_, p)| p).collect();
+    for l in links.iter().filter(|l| l.key.is_none()) {
+        let Some(url) = l.url.filter(|u| lichess_address(u)) else { continue };
+        let Some(under) = items.iter().find(|i| i.key.is_none() && i.text.is_some_and(&ours) && same_box(&i.view, &l.view)) else { continue };
+        if out.iter().any(|p| p.labels.contains(&under.item)) {
+            continue;
+        }
+        let mut owners = diagrams
+            .iter()
+            .enumerate()
+            .filter(|(_, d)| d.is_some_and(|d| label_areas(d, label).iter().any(|a| overlaps(a, &l.view))))
+            .map(|(k, _)| k);
+        let (Some(diagram), None) = (owners.next(), owners.next()) else { continue };
+        out.push(Pair { diagram, url: url.to_owned(), links: vec![l.annot], labels: vec![under.item], edited: false });
+    }
+    out
+}
+
+/// One label and link of a diagram this run takes away: replaced by a new one, or, in
+/// [`LinkPlan::removed`], a stale one beside the diagram's pair to its position.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Replaced {
     pub page: usize,
@@ -160,6 +269,9 @@ pub struct PlannedLink {
     /// The address of the label and link it replaces (plan A9-G9), when the diagram had one of
     /// ours to another position.
     pub replaces: Option<String>,
+    /// What was assumed, said with the link: [`SIDE_ASSUMED`] for a confirmed position whose
+    /// diagram's reading does not say which side it is printed from (plan A9-G9b).
+    pub note: Option<String>,
 }
 
 /// A diagram that gets no label, and why.
@@ -175,7 +287,11 @@ pub struct SkippedDiagram {
 pub struct LinkPlan {
     pub links: Vec<PlannedLink>,
     pub skipped: Vec<SkippedDiagram>,
-    /// The undoable edit (a [`Edit::Batch`] labelled [`LABEL`]); `None` when there is nothing to add.
+    /// Stale labels and links of ours taken away from a diagram that keeps its pair to its
+    /// position (plan A9-G9b).
+    pub removed: Vec<Replaced>,
+    /// The undoable edit (a [`Edit::Batch`] labelled [`LABEL`]); `None` when there is nothing to
+    /// add or take away.
     pub edit: Option<Edit>,
 }
 
@@ -274,6 +390,7 @@ impl Session {
         let (w, h) = ((pdfcraft_fonts::helvetica_width(&text, settings.size) as f32 + 2.0), size * LINE);
         let mut links = Vec::new();
         let mut skipped = Vec::new();
+        let mut removed = Vec::new();
         // What this run takes away: (page, link index) and (page, added item index).
         let mut gone_links: Vec<(usize, usize)> = Vec::new();
         let mut gone_labels: Vec<(usize, usize)> = Vec::new();
@@ -288,75 +405,58 @@ impl Session {
             let view = geometry.view_size();
             let readings = page.readings.as_deref().unwrap_or_default();
             let diagrams: Vec<Option<ViewRect>> = page.diagrams.iter().map(|d| geometry.user_to_view(d.candidate.bbox_user)).collect();
-            // The page's added items, by their index among them (in view space), and its lichess
-            // links, each with our label under it when there is one.
-            let items: Vec<(usize, ViewRect, Option<&str>)> = added
+            // The page's added items and links, in view space, with their keys.
+            let items: Vec<PageItem<'_>> = added
                 .iter()
                 .filter(|a| a.page == page.page)
                 .enumerate()
-                .filter_map(|(i, a)| {
+                .filter_map(|(item, a)| {
                     let text = match &a.content {
                         pdfcraft_edit::Content::Text(t) => Some(t.text.as_str()),
                         pdfcraft_edit::Content::Image(_) => None,
                     };
-                    Some((i, display_to_view(a.content.rect(), view.1)?, text))
+                    Some(PageItem {
+                        item,
+                        view: display_to_view(a.content.rect(), view.1)?,
+                        text,
+                        key: a.key.as_deref().filter(|k| key_parts(k).is_some()),
+                    })
                 })
                 .collect();
-            let ours = |t: Option<&str>| t.is_some_and(|t| t == text || t == DEFAULT_TEXT);
-            let lichess: Vec<Existing> = existing
+            let page_links: Vec<PageLink<'_>> = existing
                 .iter()
                 .filter(|l| l.page == page.page)
                 .filter_map(|l| {
-                    let pdfcraft_annot::links::LinkAction::Uri(url) = &l.action else { return None };
-                    if !lichess_address(url) {
-                        return None;
-                    }
                     let [x0, y0, x1, y1] = l.rect.map(|v| v as f32);
                     let view = geometry.user_to_view(pdfcraft_chessvision::coords::PageRect::new(x0, y0, x1, y1))?;
-                    let label = items.iter().find(|(_, r, t)| ours(*t) && overlaps(r, &view)).map(|(i, r, _)| (*i, *r));
-                    Some(Existing { link: l.index, url: url.clone(), view, label })
+                    let url = match &l.action {
+                        pdfcraft_annot::links::LinkAction::Uri(u) => Some(u.as_str()),
+                        _ => None,
+                    };
+                    let key = l.key.as_deref().filter(|k| l.mark.as_deref() == Some(crate::ADDED_MARK) && key_parts(k).is_some());
+                    Some(PageLink { annot: l.index, view, url, key })
                 })
                 .collect();
-            // Each lichess link is the diagram's whose label areas it is in, the nearest one's.
-            let owner: Vec<Option<usize>> = lichess
-                .iter()
-                .map(|e| {
-                    diagrams
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, d)| d.map(|d| (i, d)))
-                        .filter(|(_, d)| label_areas(*d, (w, h)).iter().any(|a| overlaps(a, &e.view)))
-                        .min_by(|a, b| distance(&a.1, &e.view).total_cmp(&distance(&b.1, &e.view)))
-                        .map(|(i, _)| i)
-                })
-                .collect();
-            // What labels keep clear of: every diagram, the labels placed before, and the page's
-            // other links and added items (by the lichess link they belong to, when they do, so a
-            // replaced one leaves its place).
+            let ours = |t: &str| t == text || t == DEFAULT_TEXT;
+            let pairs = pairs_of(&items, &page_links, &diagrams, (w, h), ours);
+            // The lichess links that are no pair of ours: never taken away.
+            let paired = |annot: usize| pairs.iter().any(|p| p.links.contains(&annot));
+            let foreign: Vec<&PageLink<'_>> = page_links.iter().filter(|l| !paired(l.annot)).collect();
             let mut placed: Vec<ViewRect> = Vec::new();
-            let mut occupied: Vec<(ViewRect, Option<usize>)> = lichess.iter().enumerate().map(|(k, e)| (e.view, Some(k))).collect();
-            for l in existing.iter().filter(|l| l.page == page.page) {
-                let [x0, y0, x1, y1] = l.rect.map(|v| v as f32);
-                if let Some(v) = geometry.user_to_view(pdfcraft_chessvision::coords::PageRect::new(x0, y0, x1, y1))
-                    && !lichess.iter().any(|e| e.link == l.index)
-                {
-                    occupied.push((v, None));
-                }
-            }
-            for (i, r, _) in &items {
-                let pair = lichess.iter().position(|e| e.label.is_some_and(|(j, _)| j == *i));
-                occupied.push((*r, pair));
-            }
-            let mut replaced: Vec<usize> = Vec::new();
+            // What this page's diagrams take away, so a later label may go there.
+            let mut gone_here: (Vec<usize>, Vec<usize>) = (Vec::new(), Vec::new());
             for (index, _) in page.diagrams.iter().enumerate() {
-                let (fen, url) = if let Some(t) = &settings.only {
+                let (fen, url, note) = if let Some(t) = &settings.only {
                     if index != t.index {
                         continue;
                     }
-                    // The position a person confirmed, from the side its diagram is printed from.
-                    let from = readings.get(index).and_then(|r| r.outcome.as_ref().ok()).map_or(Color::White, |p| p.printed_from());
+                    // The position a person confirmed, from the side its diagram is printed from,
+                    // when its reading says; else White's, and the plan says it was assumed.
+                    let read = readings.get(index).and_then(|r| r.outcome.as_ref().ok());
+                    let from = read.map_or(Color::White, |p| p.printed_from());
+                    let note = read.is_none_or(|p| p.orientation.is_none()).then(|| SIDE_ASSUMED.to_owned());
                     match pdfcraft_chess::lichess::link(&t.fen, from, false) {
-                        Ok(url) => (t.fen.clone(), url),
+                        Ok(url) => (t.fen.clone(), url, note),
                         Err(e) => {
                             skip(index, &e.to_string());
                             continue;
@@ -385,30 +485,55 @@ impl Session {
                         skip(index, "the reading did not pass the gate (a square read with little confidence); review it first");
                         continue;
                     }
-                    (position.fen.clone(), url)
+                    (position.fen.clone(), url, None)
                 };
-                let mine: Vec<usize> = owner.iter().enumerate().filter(|(_, o)| **o == Some(index)).map(|(k, _)| k).collect();
-                let same = |u: &str| u == url;
-                if mine.iter().any(|k| lichess.get(*k).is_some_and(|e| same(&e.url)))
-                    || existing.iter().any(|l| l.page == page.page && matches!(&l.action, pdfcraft_annot::links::LinkAction::Uri(u) if same(u)))
-                {
-                    skip(index, "the page already links to this position");
-                    continue;
-                }
-                if mine.iter().any(|k| lichess.get(*k).is_some_and(|e| e.label.is_none())) {
-                    skip(index, "the diagram already links to another position (a link this did not add, or a label someone edited)");
-                    continue;
-                }
                 let Some(diagram) = diagrams.get(index).copied().flatten() else {
                     skip(index, "the diagram's box is not finite");
                     continue;
                 };
+                let key = pair_key(index, &url);
+                if key.len() > pdfcraft_edit::MAX_KEY_LEN {
+                    skip(index, "the position's address is too long to mark its label with");
+                    continue;
+                }
+                let mine: Vec<&Pair> = pairs.iter().filter(|p| p.diagram == index).collect();
+                if mine.iter().any(|p| p.edited) {
+                    skip(index, "its label or link was changed since it was added, so it is kept (delete it to link the diagram again)");
+                    continue;
+                }
+                let areas = label_areas(diagram, (w, h));
+                if foreign.iter().any(|l| l.url.is_some_and(lichess_address) && areas.iter().any(|a| overlaps(a, &l.view))) {
+                    skip(index, "the diagram already links to another position (a link this did not add)");
+                    continue;
+                }
+                if foreign.iter().any(|l| l.url == Some(url.as_str())) {
+                    skip(index, "the page already links to this position");
+                    continue;
+                }
+                // Its own pair to this position stays; any other of its pairs goes (a stale one, or
+                // one missing its label or link).
+                let current = mine.iter().position(|p| p.url == url && !p.links.is_empty() && !p.labels.is_empty());
+                let stale: Vec<&Pair> = mine.iter().enumerate().filter(|(k, _)| Some(*k) != current).map(|(_, p)| *p).collect();
+                let stale_links: Vec<usize> = stale.iter().flat_map(|p| p.links.iter().copied()).collect();
+                let stale_labels: Vec<usize> = stale.iter().flat_map(|p| p.labels.iter().copied()).collect();
+                if current.is_some() {
+                    gone_links.extend(stale_links.iter().map(|&k| (page.page, k)));
+                    gone_labels.extend(stale_labels.iter().map(|&k| (page.page, k)));
+                    gone_here.0.extend(&stale_links);
+                    gone_here.1.extend(&stale_labels);
+                    removed.extend(stale.iter().map(|p| Replaced { page: page.page, index, url: p.url.clone() }));
+                    skip(index, "the page already links to this position");
+                    continue;
+                }
+                // Clear of every diagram, the labels placed before, and the page's links and added
+                // items, but those taken away.
                 let taken: Vec<ViewRect> = diagrams
                     .iter()
                     .flatten()
                     .copied()
                     .chain(placed.iter().copied())
-                    .chain(occupied.iter().filter(|(_, pair)| pair.is_none_or(|k| !replaced.contains(&k) && !mine.contains(&k))).map(|(r, _)| *r))
+                    .chain(page_links.iter().filter(|l| !gone_here.0.contains(&l.annot) && !stale_links.contains(&l.annot)).map(|l| l.view))
+                    .chain(items.iter().filter(|i| !gone_here.1.contains(&i.item) && !stale_labels.contains(&i.item)).map(|i| i.view))
                     .collect();
                 let Some((side, label_view)) = place_label(diagram, view, (w, h), &taken) else {
                     skip(index, "there is no room for a label beside the diagram");
@@ -419,17 +544,12 @@ impl Session {
                     continue;
                 };
                 placed.push(label_view);
-                for k in &mine {
-                    if let Some(e) = lichess.get(*k) {
-                        gone_links.push((page.page, e.link));
-                        if let Some((label, _)) = e.label {
-                            gone_labels.push((page.page, label));
-                        }
-                    }
-                }
-                let replaces = mine.first().and_then(|k| lichess.get(*k)).map(|e| e.url.clone());
-                replaced.extend(mine);
-                links.push(PlannedLink { page: page.page, index, fen, url, side, label_view, link_user, replaces });
+                gone_links.extend(stale_links.iter().map(|&k| (page.page, k)));
+                gone_labels.extend(stale_labels.iter().map(|&k| (page.page, k)));
+                gone_here.0.extend(&stale_links);
+                gone_here.1.extend(&stale_labels);
+                let replaces = stale.first().map(|p| p.url.clone());
+                links.push(PlannedLink { page: page.page, index, fen, url, side, label_view, link_user, replaces, note });
             }
         }
         if let Some(t) = &settings.only
@@ -438,10 +558,10 @@ impl Session {
         {
             skipped.push(SkippedDiagram { page: t.page, index: t.index, reason: "the page has no such diagram".into() });
         }
-        let edit = (!links.is_empty()).then(|| {
+        let edit = (!links.is_empty() || !gone_links.is_empty() || !gone_labels.is_empty()).then(|| {
             let mut edits: Vec<Edit> = Vec::with_capacity(links.len() + gone_links.len() + gone_labels.len() + 1);
-            // The replaced labels and links first, each page's from the last index, so the indices
-            // of the rest stay what they were.
+            // The labels and links taken away first, each page's from the last index, so the
+            // indices of the rest stay what they were.
             gone_links.sort_unstable_by(|a, b| b.cmp(a));
             gone_links.dedup();
             gone_labels.sort_unstable_by(|a, b| b.cmp(a));
@@ -457,12 +577,15 @@ impl Session {
                     color: BLUE,
                     ..AddedText::default()
                 };
-                edits.push(Edit::AddText { page: l.page, text: added });
+                edits.push(Edit::AddKeyedText { page: l.page, text: added, key: pair_key(l.index, &l.url) });
             }
-            let style = LinkStyle { underline: false, ..LinkStyle::default() };
-            edits.push(Edit::AddLinks { links: links.iter().map(|l| (l.page, vec![l.link_user], l.url.clone())).collect(), style });
+            if !links.is_empty() {
+                let style = LinkStyle { underline: false, ..LinkStyle::default() };
+                let marked = links.iter().map(|l| (l.page, l.link_user, l.url.clone(), pair_key(l.index, &l.url))).collect();
+                edits.push(Edit::AddMarkedLinks { links: marked, style });
+            }
             Edit::Batch { label: LABEL.into(), edits }
         });
-        Ok(LinkPlan { links, skipped, edit })
+        Ok(LinkPlan { links, skipped, removed, edit })
     }
 }
