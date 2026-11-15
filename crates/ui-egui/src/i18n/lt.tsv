@@ -3861,3 +3861,11 @@ progress bar	Progress	Eiga
 	Language: {lang}	Kalba: {lang}
 	from the book's text	pagal knygos tekstą
 	Games: read from the text, linked to the book's PGN	Partijos: perskaitytos iš teksto, susietos su knygos PGN
+	More Text tab actions	Daugiau kortelės „Tekstas“ veiksmų
+	Read with OCR	Skaityti su OCR
+	illegal	neleistinas
+	ambiguous	dviprasmis
+	out of sequence	ne iš eilės
+	not reached	nepasiektas
+	not checked	nepatikrintas
+	caption	paaiškinimas

@@ -3685,3 +3685,11 @@ progress bar	Progress	Průběh
 	Language: {lang}	Jazyk: {lang}
 	from the book's text	podle textu knihy
 	Games: read from the text, linked to the book's PGN	Partie: přečtené z textu, propojené s PGN knihy
+	More Text tab actions	Další akce karty Text
+	Read with OCR	Číst pomocí OCR
+	illegal	neplatný
+	ambiguous	nejednoznačný
+	out of sequence	mimo pořadí
+	not reached	nedosažen
+	not checked	nezkontrolován
+	caption	popisek

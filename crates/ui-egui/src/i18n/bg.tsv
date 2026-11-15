@@ -3574,3 +3574,11 @@ progress bar	Progress	Напредък
 	Language: {lang}	Език: {lang}
 	from the book's text	от текста на книгата
 	Games: read from the text, linked to the book's PGN	Партии: прочетени от текста, свързани с PGN на книгата
+	More Text tab actions	Още действия в раздела „Текст“
+	Read with OCR	Четене с OCR
+	illegal	невъзможен
+	ambiguous	двусмислен
+	out of sequence	извън поредността
+	not reached	недостигнат
+	not checked	непроверен
+	caption	надпис

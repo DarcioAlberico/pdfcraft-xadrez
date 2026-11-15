@@ -3823,3 +3823,11 @@ progress bar	Progress	Avanzamento
 	Language: {lang}	Lingua: {lang}
 	from the book's text	dal testo del libro
 	Games: read from the text, linked to the book's PGN	Partite: lette dal testo, collegate al PGN del libro
+	More Text tab actions	Altre azioni della scheda Testo
+	Read with OCR	Leggi con OCR
+	illegal	illegale
+	ambiguous	ambigua
+	out of sequence	fuori sequenza
+	not reached	non raggiunta
+	not checked	non verificata
+	caption	didascalia

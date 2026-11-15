@@ -3752,3 +3752,11 @@ progress bar	Progress	Progreso
 	Language: {lang}	Idioma: {lang}
 	from the book's text	del texto del libro
 	Games: read from the text, linked to the book's PGN	Partidas: leídas del texto, enlazadas al PGN del libro
+	More Text tab actions	Más acciones de la pestaña Texto
+	Read with OCR	Leer con OCR
+	illegal	ilegal
+	ambiguous	ambigua
+	out of sequence	fuera de secuencia
+	not reached	no alcanzada
+	not checked	no comprobada
+	caption	pie de diagrama
