@@ -3,7 +3,8 @@
 //! (`chess_tools::NAV_KEYS`), the signs typed (`chess_annotate::TYPED`), the Diagram tab's keys
 //! (`chess_diagram_keys::TAB_KEYS`) — and the app's own one-letter tools (V, H), which the chess
 //! keys must leave alone. The key scope takes its keys from it ([`scope_keys`]), the shortcut sheet
-//! (step I16) is to list it, and a test (`collisions`) refuses one key with two meanings.
+//! lists it (`chess_commands`, plan A9-I16), and a test (`collisions`) refuses one key with two
+//! meanings.
 //!
 //! Two keys may share a trigger only when they mean the same thing, or when neither is a one-key
 //! shortcut and they belong to different places: Esc, Page Up and Page Down act on the place the
@@ -65,8 +66,8 @@ impl Binding {
     }
 }
 
-/// The shortcut sheet (`chess.shortcuts`, step I16): F1, since `?` is the "poor move" sign typed.
-pub(crate) const SHORTCUT_SHEET: Binding = Binding { planned: Some("I16"), ..Binding::key(Place::Scope, ChessKey::plain(Key::F1), "shortcuts") };
+/// The shortcut sheet (`chess.shortcuts`, plan A9-I16): F1, since `?` is the "poor move" sign typed.
+pub(crate) const SHORTCUT_SHEET: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::F1), "shortcuts");
 
 /// The Diagram tab's Original / Read switch (finding A6-14, step I0): Alt+O, since O alone is the
 /// rail's OCR area. One of the tab's keys (`chess_diagram_keys::TAB_KEYS`).
@@ -154,7 +155,7 @@ mod tests {
         // The scope takes the rail's keys and moving about, not the keys still planned.
         let taken: Vec<ChessKey> = scope_keys().collect();
         assert!(taken.contains(&ChessKey::plain(Key::B)) && taken.contains(&ChessKey::plain(Key::PageUp)));
-        assert!(!taken.contains(&ChessKey::plain(Key::F1)), "the sheet comes with I16");
+        assert!(taken.contains(&ChessKey::plain(Key::F1)), "the sheet, since I16");
         // One-key shortcuts are letters and signs, not Esc, Enter, the arrows or Ctrl with a letter.
         assert!(Trigger::Key(ChessKey::shift(Key::X)).is_character() && Trigger::Text("!").is_character());
         assert!(!Trigger::Key(ChessKey::plain(Key::Escape)).is_character());

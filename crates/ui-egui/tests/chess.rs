@@ -809,6 +809,11 @@ fn chapter() -> Vec<u8> {
 
 /// [`chapter`] with `moves` as its line of moves.
 fn chapter_with(moves: &str) -> Vec<u8> {
+    chapter_in("", moves)
+}
+
+/// [`chapter_with`] whose catalogue holds `catalog` too (` /Lang (ja)`).
+fn chapter_in(catalog: &str, moves: &str) -> Vec<u8> {
     let mut content = format!("BT /F2 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F2 11 Tf 60 730 Td ({moves}) Tj ET\n");
     content.push_str("BT /F1 20 Tf 60 584 Td ");
     for (i, line) in MERIDA_START.iter().enumerate() {
@@ -820,7 +825,7 @@ fn chapter_with(moves: &str) -> Vec<u8> {
     content.push_str("ET\n");
     let widths = vec!["1000"; 95].join(" ");
     let objs = [
-        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        format!("<< /Type /Catalog /Pages 2 0 R{catalog} >>"),
         "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
         "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>".to_string(),
         format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
@@ -5647,6 +5652,79 @@ fn the_export_dialogs_choices_are_remembered() {
         serde_json::json!({ "format": "epub", "positions": "unused", "source": "book", "descriptions": "words" }),
         "the settings keep the dialog's choices"
     );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The app on [`chapter_in`] with `catalog`, the Chess panel shown.
+fn chapter_harness_in(catalog: &str) -> Harness<'static, PdfCraftApp> {
+    let pdf = chapter_in(catalog, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6");
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("chapter.pdf", None, pdf).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h
+}
+
+/// Export `h`'s document as an EPUB through the dialog, as it is set, and give its package.
+fn export_epub_package(h: &mut Harness<'static, PdfCraftApp>, dir: &std::path::Path) -> String {
+    let out = dir.join("book.epub");
+    let _ = std::fs::remove_file(&out);
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    let epub = std::fs::read(&out).expect("written");
+    String::from_utf8(zip_entry(&epub, "OEBPS/content.opf").unwrap()).unwrap()
+}
+
+/// Plan A9-X2 (review of #387): a PDF whose `/Lang` names a language with no notation of its own
+/// (`ja`) is exported in it, and the dialog says so: "As the book says (ja)", "Language: ja" — not
+/// the text's language nor English.
+#[test]
+fn the_dialog_says_a_declared_language_the_export_writes() {
+    let dir = corrections_dir("x2b-ja");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = chapter_harness_in(" /Lang (ja)");
+    h.get_by_label("Export book…").click();
+    h.run_steps(2);
+    h.get_by_label("EPUB — e-book").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Language: ja");
+    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book's language"))
+        .value()
+        .filter(|v| v == "As the book says (ja)")
+        .expect("the list says the PDF's language");
+    let opf = export_epub_package(&mut h, &dir);
+    assert!(opf.contains("<dc:language>ja</dc:language>"), "{opf}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-X2 (review of #387): choosing the language the PDF's `/Lang` names keeps its region
+/// (`pt-BR` chosen as Português stays `pt-BR`); another language is written as chosen.
+#[test]
+fn choosing_the_declared_language_keeps_its_region() {
+    let dir = corrections_dir("x2b-region");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = chapter_harness_in(" /Lang (pt-BR)");
+    for (choice, written) in [("Português", "pt-BR"), ("Español", "es")] {
+        h.get_by_label("Export book…").click();
+        h.run_steps(2);
+        h.get_by_label("EPUB — e-book").click();
+        h.run_steps(2);
+        h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book's language")).click();
+        h.run_steps(2);
+        h.get_by_label(choice).click();
+        h.run_steps(2);
+        let opf = export_epub_package(&mut h, &dir);
+        assert!(opf.contains(&format!("<dc:language>{written}</dc:language>")), "{choice}: {opf}");
+        h.state_mut().chess.export_done = None;
+        h.run_steps(2);
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 
