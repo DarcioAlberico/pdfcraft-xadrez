@@ -2480,8 +2480,10 @@ pub(crate) fn pgn_field(ui: &mut egui::Ui, state: &mut BoardState, rows: usize) 
 
 /// The Board tab's FEN/PGN ▾ menu (plan A9-I0b): Copy FEN, Copy PGN and its shorter copies for
 /// programs that want less (plan A8 V4), the position on lichess, the standard start (with moves
-/// on the board, a new game: plan A8, W4).
-pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState) -> Option<BoardAction> {
+/// on the board, a new game: plan A8, W4). `printed`: the side the board's diagram is printed
+/// from, when it came from one ([`crate::chess_ui::ChessResults::printed_from`]); its lichess
+/// link is seen from there, else from the side the board is shown from.
+pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState, printed: Option<Color>) -> Option<BoardAction> {
     let mut action = None;
     let item = |ui: &mut egui::Ui, on: bool, label: &str| crate::widgets::menu_entry(ui, on, egui::Button::new(label));
     if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
@@ -2503,13 +2505,15 @@ pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState) -> Option
     }
     ui.separator();
     // The move shown's position, from the game's board, not read again from its FEN text (plan
-    // A9-T1b).
-    if legal && let Some(p) = state.game.fen_at(state.game.current()) {
-        let url =
-            pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(p.position(), if state.flipped { Color::Black } else { Color::White });
-        if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
-            action = Some(BoardAction::OpenLichess(url));
-        }
+    // A9-T1b), through the one rule of every lichess link, from the side its diagram is printed
+    // from (plan A9-G9).
+    let side = printed.unwrap_or(if state.flipped { Color::Black } else { Color::White });
+    if legal
+        && let Some(p) = state.game.fen_at(state.game.current())
+        && let Ok(url) = pdfcraft_engine::chess::pdfcraft_chess::lichess::link(&p.to_string(), side, false)
+        && item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked()
+    {
+        action = Some(BoardAction::OpenLichess(url));
     }
     let tip = if state.game.is_empty() {
         tl!("Start again from the standard position.")

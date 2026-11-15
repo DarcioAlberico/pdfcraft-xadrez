@@ -525,6 +525,14 @@ impl ChessResults {
         }
     }
 
+    /// The side diagram `index` of `page` is printed from, as its reading says (White when it was
+    /// not read, as the engine takes it): the side its lichess links are seen from, the board's
+    /// as the editor's and the PDF's (plan A9-G9).
+    pub(crate) fn printed_from(&self, page: usize, index: usize) -> pdfcraft_engine::chess::pdfcraft_chess::placement::Color {
+        let read = self.pages.iter().find(|p| p.page == page).and_then(|p| Self::reading(p, index)).and_then(BoardReading::position);
+        read.map_or(pdfcraft_engine::chess::pdfcraft_chess::placement::Color::White, ReadPosition::printed_from)
+    }
+
     /// Diagram `index` on `page` (0-based): its box in user space and its FEN when read.
     pub fn diagram(&self, page: usize, index: usize) -> Option<([f32; 4], Option<&str>)> {
         let p = self.pages.iter().find(|p| p.page == page)?;
