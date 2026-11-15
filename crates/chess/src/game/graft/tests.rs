@@ -434,6 +434,22 @@ const TEXTS: [&str; 6] = ["a", "two words", "{braces}", "  spaced \n out ", "é 
 const NAGS: [u16; 9] = [0, 1, 2, 5, 14, 22, 36, 146, 300];
 const JUNK: [&str; 4] = ["Qh8", "Nf3", "O-O-O", "e8=Q"];
 
+/// A comment before a move, and another before the same move met again at the start of a
+/// variation that repeats it, are one comment before it, so grafting the items again adds nothing
+/// (the proptest's seed bb8aa107, which shrinks to this: the second graft said
+/// `{(braces) a (braces) a}`).
+#[test]
+fn comments_before_a_move_met_twice_are_one_and_grafting_again_adds_nothing() {
+    let fragment = items("{x} a3 ( <y> a3");
+    let (once, report) = Game::standard().graft(0, GraftMode::Follow, &fragment, Some(1));
+    assert_eq!(once.movetext(), "{x y} 1. a3");
+    assert_eq!(report.unbalanced, [2], "the variation is never closed");
+    let (twice, again) = once.graft(0, GraftMode::Follow, &fragment, Some(1));
+    assert_eq!(twice.pgn(), once.pgn());
+    assert!(again.new_nodes.is_empty());
+    assert_eq!(again.already_there, [0, 3], "both pieces said there already");
+}
+
 proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(96))]
 
