@@ -360,6 +360,19 @@ impl Automation {
     /// The scan settings from the arguments. Out-of-range numbers are refused, not clamped, so
     /// the agent learns what is allowed.
     pub(crate) fn chess_settings(&self, a: &Args) -> Result<ChessScanSettings> {
+        let mut s = self.scan_settings(a)?;
+        // Pages' readings kept on disk (plan A9-N5b): only where `cache` names a folder, confined
+        // like any written path; without it every page is read, as before.
+        if let Some(dir) = a.opt_str("cache")? {
+            let encrypted = a.opt_bool("allow_encrypted")?.unwrap_or(false);
+            s.cache = Some(chess::ReadingCache { dir: self.resolve(dir, true)?, encrypted });
+        }
+        Ok(s)
+    }
+
+    /// [`Self::chess_settings`] without `cache`: for a tool that only reads what is kept
+    /// (`chess_position_find`, plan A9-N3), which never scans.
+    pub(crate) fn scan_settings(&self, a: &Args) -> Result<ChessScanSettings> {
         let mut s = ChessScanSettings::default();
         if let Some(dpi) = a.opt_num("dpi")? {
             if !(f64::from(chess::MIN_DPI)..=f64::from(chess::MAX_DPI)).contains(&dpi) {
@@ -390,12 +403,6 @@ impl Automation {
             s.allow_unverified_fonts = b;
         }
         s.models_dir = self.models_dir(a)?;
-        // Pages' readings kept on disk (plan A9-N5b): only where `cache` names a folder, confined
-        // like any written path; without it every page is read, as before.
-        if let Some(dir) = a.opt_str("cache")? {
-            let encrypted = a.opt_bool("allow_encrypted")?.unwrap_or(false);
-            s.cache = Some(chess::ReadingCache { dir: self.resolve(dir, true)?, encrypted });
-        }
         Ok(s)
     }
 
