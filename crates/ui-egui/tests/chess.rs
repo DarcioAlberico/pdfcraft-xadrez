@@ -5928,7 +5928,8 @@ fn a_correction_the_store_refuses_keeps_the_question_open_and_says_why() {
         assert!(failed.as_deref().is_some_and(|w| w.contains("newer PdfCraft")), "attempt {attempt}: the question stays, saying why: {failed:?}");
         assert!(h.state().said().is_some_and(|t| t.contains("couldn't be saved")), "attempt {attempt}: said each time");
         let said = "The diagram corrections couldn't be saved: the corrections file was written by a newer PdfCraft";
-        assert_eq!(h.query_all_by_label_contains(said).count(), 2, "attempt {attempt}: in the question and in the notice");
+        // In the question, and in the error notice: its text and its Dismiss's name (plan A9-I17).
+        assert_eq!(h.query_all_by_label_contains(said).count(), 3, "attempt {attempt}: in the question and in the notice");
     }
     assert_eq!(kind(&h, 1), None);
     let _ = std::fs::remove_dir_all(&dir);
@@ -6342,7 +6343,8 @@ fn a_failed_write_is_an_alert_that_stays_until_dismissed() {
     h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &missing);
     h.run_steps(4);
     let alert = |h: &Harness<'static, PdfCraftApp>| {
-        let node = h.get_all_by_role(Role::Alert).find(|n| n.query_by_label_contains("Couldn't write").is_some()).expect("the error is an alert");
+        let node =
+            h.get_all_by_role(Role::Alert).find(|n| n.query_all_by_label_contains("Couldn't write").next().is_some()).expect("the error is an alert");
         assert_eq!(node.accesskit_node().live(), Live::Assertive);
         node.accesskit_node().id()
     };
@@ -6361,7 +6363,7 @@ fn a_failed_write_is_an_alert_that_stays_until_dismissed() {
     assert!(page.contains_rect(dismiss.rect()), "{:?} in {page:?}", dismiss.rect());
     dismiss.click();
     h.run_steps(2);
-    assert!(h.get_all_by_role(Role::Alert).all(|n| n.query_by_label_contains("Couldn't write").is_none()), "dismissed");
+    assert!(h.query_all_by_role(Role::Alert).all(|n| n.query_all_by_label_contains("Couldn't write").next().is_none()), "dismissed");
     assert_eq!(h.state().alert, None);
 }
 

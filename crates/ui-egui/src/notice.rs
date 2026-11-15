@@ -126,13 +126,14 @@ impl PdfCraftApp {
         }
     }
 
-    /// What the app says now: the error shown, else the notice, else the toast (the control
-    /// channel's `notice`, and what the tests read).
+    /// What the app says now: the error shown, else the toast, else the notice (the control
+    /// channel's `notice`, and what the tests read). The toast comes before the notice: a notice
+    /// with a button stays until the next action, and a toast said after it is the newer.
     pub fn said(&self) -> Option<&str> {
-        self.alert.as_ref().map(|n| n.text.as_str()).or(self.notice.as_ref().map(|n| n.text.as_str())).or(self.toast.as_ref().map(|t| t.0.as_str()))
+        self.alert.as_ref().map(|n| n.text.as_str()).or(self.toast.as_ref().map(|t| t.0.as_str())).or(self.notice.as_ref().map(|n| n.text.as_str()))
     }
 
-    /// Take away what the app says now (the error, the notice and the toast), and give its text as
+    /// Take away what the app says now (the error, the toast and the notice), and give its text as
     /// [`Self::said`] does (a test starts afresh with it).
     pub fn take_said(&mut self) -> Option<String> {
         let said = self.said().map(str::to_owned);
@@ -180,11 +181,25 @@ pub fn announced(ctx: &egui::Context) -> Option<String> {
 fn say(ctx: &egui::Context) {
     let Some(said) = ctx.data(|d| d.get_temp::<Announcement>(announcement_id())) else { return };
     let (role, live) = said.level.speech();
+    // A point at the window's corner: a node with no place is one assistive technology and the
+    // tests' walks over the tree can't place.
+    let corner = egui::Rect::from_min_size(ctx.content_rect().min, vec2(1.0, 1.0));
     ctx.accesskit_node_builder(egui::Id::new(("announcement", said.serial)), |node| {
         node.set_role(role);
         node.set_live(live);
         node.set_label(said.text);
+        node.set_bounds(bounds(corner));
     });
+}
+
+/// `rect` as AccessKit's bounds (in points, as egui gives its widgets').
+fn bounds(rect: egui::Rect) -> egui::accesskit::Rect {
+    egui::accesskit::Rect { x0: rect.min.x.into(), y0: rect.min.y.into(), x1: rect.max.x.into(), y1: rect.max.y.into() }
+}
+
+/// Give the group `id` (a frame's inner `Ui`, made a live region) the frame's place.
+fn place(ctx: &egui::Context, id: egui::Id, rect: egui::Rect) {
+    ctx.accesskit_node_builder(id, |node| node.set_bounds(bounds(rect)));
 }
 
 /// How a [`callout`] looks: its icon and its colours of text and fill.
@@ -212,14 +227,15 @@ impl Tone {
 pub(crate) fn callout(ui: &mut egui::Ui, tone: Tone, text: &str) -> egui::Response {
     let t = Tokens::get(ui.ctx());
     let (icon, ink, fill, edge) = tone.look(&t);
-    egui::Frame::NONE
+    let shown = egui::Frame::NONE
         .fill(fill)
         .stroke(egui::Stroke::new(1.0, edge))
         .corner_radius(egui::CornerRadius::same(t.radius))
         .inner_margin(egui::Margin::symmetric(8, 6))
         .show(ui, |ui| {
+            let id = ui.unique_id();
             if tone == Tone::Danger {
-                ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+                ui.ctx().accesskit_node_builder(id, |node| {
                     node.set_role(egui::accesskit::Role::Alert);
                     node.set_live(egui::accesskit::Live::Assertive);
                 });
@@ -228,8 +244,12 @@ pub(crate) fn callout(ui: &mut egui::Ui, tone: Tone, text: &str) -> egui::Respon
                 ui.add(crate::icons::image(icon, 14.0, ink));
                 ui.add(egui::Label::new(egui::RichText::new(text).color(ink)).wrap());
             });
-        })
-        .response
+            id
+        });
+    if tone == Tone::Danger {
+        place(ui.ctx(), shown.inner, shown.response.rect);
+    }
+    shown.response
 }
 
 /// Whether this pass's input holds the user's next action, which takes away a notice with an
@@ -266,7 +286,7 @@ fn draw(ctx: &egui::Context, t: &Tokens, n: &Notice, area: egui::Rect, bottom: f
         .pivot(Align2::CENTER_BOTTOM)
         .fixed_pos(egui::pos2(area.center().x, bottom))
         .show(ctx, |ui| {
-            egui::Frame::NONE
+            let framed = egui::Frame::NONE
                 .fill(fill)
                 .stroke(egui::Stroke::new(1.0, edge))
                 .corner_radius(egui::CornerRadius::same(t.radius))
@@ -275,7 +295,8 @@ fn draw(ctx: &egui::Context, t: &Tokens, n: &Notice, area: egui::Rect, bottom: f
                     ui.set_max_width((area.width() - 32.0).clamp(1.0, 560.0));
                     // Said when it appears: its text is the label inside it.
                     let (role, live) = n.level.speech();
-                    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+                    let id = ui.unique_id();
+                    ui.ctx().accesskit_node_builder(id, |node| {
                         node.set_role(role);
                         node.set_live(live);
                     });
@@ -303,7 +324,9 @@ fn draw(ctx: &egui::Context, t: &Tokens, n: &Notice, area: egui::Rect, bottom: f
                             }
                         }
                     });
+                    id
                 });
+            place(ui.ctx(), framed.inner, framed.response.rect);
         });
     (pressed, shown.response.rect)
 }
