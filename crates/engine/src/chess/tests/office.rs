@@ -68,6 +68,7 @@ fn options(pieces: &PieceSet) -> OfficeOptions<'_> {
         sign_font: None,
         lang: "en",
         page_labels: &[],
+        naming: pdfcraft_chess::describe::Naming::Letters,
     }
 }
 

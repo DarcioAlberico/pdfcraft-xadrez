@@ -3553,6 +3553,28 @@ progress bar	Progress	进度
 	Endgame tables (Syzygy)	残局库（Syzygy）
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	每项设置仅在引擎接受时才会发送给它。开始分析即可看到此引擎接受哪些设置。
 	This engine does not take: {names}	此引擎不接受：{names}
+	PGN — exercises	PGN — 练习
+	Anki — cards	Anki — 卡片
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	书中带编号的棋图及其解答，作为标准的习题 PGN。
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki 可导入的文本文件，每道练习一张卡片，棋图的图片放在旁边的文件夹中。
+	Book's language	书的语言
+	As the book says ({lang})	按书中所述 ({lang})
+	As the book's text says	按书的正文判断
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	导出所用的语言，也用于描述其棋图。如果书被识别成另一种语言，请更正。
+	Diagram descriptions	棋图描述
+	Letters (Kg1)	字母 (Kg1)
+	Words (king g1)	文字 (王 g1)
+	How a screen reader says each diagram's pieces.	屏幕阅读器如何读出每个棋图的棋子。
+	Pages: {n}	页数：{n}
+	Diagrams: {n}	棋图：{n}
+	not checked: {n}	未检查：{n}
+	Diagrams: not detected yet	棋图：尚未检测
+	Games from the book's PGN: {n}	来自书中 PGN 的对局：{n}
+	Games: read from the text	对局：从正文读取
+	Your games, linked first: {n}	你的对局（优先关联）：{n}
+	Language: {lang}	语言：{lang}
+	from the book's text	根据书的正文
+	Games: read from the text, linked to the book's PGN	对局：从正文读取，并关联到书中的 PGN
 	More Text tab actions	“文本”选项卡的更多操作
 	Read with OCR	用 OCR 识别
 	illegal	不合规则

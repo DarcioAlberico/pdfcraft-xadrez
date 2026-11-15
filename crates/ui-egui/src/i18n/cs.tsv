@@ -3663,6 +3663,28 @@ progress bar	Progress	Průběh
 	Endgame tables (Syzygy)	Tabulky koncovek (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Každé nastavení dostane engine jen tehdy, pokud ho přijímá. Spusťte analýzu a uvidíte, která tento engine přijímá.
 	This engine does not take: {names}	Tento engine nepřijímá: {names}
+	PGN — exercises	PGN — cvičení
+	Anki — cards	Anki — kartičky
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Číslované diagramy knihy s jejich řešeními jako standardní PGN úloh.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Textový soubor, který Anki importuje, jedna kartička na cvičení, s obrázky diagramů ve složce vedle.
+	Book's language	Jazyk knihy
+	As the book says ({lang})	Jak uvádí kniha ({lang})
+	As the book's text says	Jak vyplývá z textu knihy
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Jazyk, ve kterém je export napsán a popisuje své diagramy. Opravte ho, když byla kniha přečtena jako jiný jazyk.
+	Diagram descriptions	Popis diagramů
+	Letters (Kg1)	Písmena (Kg1)
+	Words (king g1)	Slova (král g1)
+	How a screen reader says each diagram's pieces.	Jak čtečka obrazovky říká figury každého diagramu.
+	Pages: {n}	Stránky: {n}
+	Diagrams: {n}	Diagramy: {n}
+	not checked: {n}	nezkontrolováno: {n}
+	Diagrams: not detected yet	Diagramy: dosud nerozpoznány
+	Games from the book's PGN: {n}	Partie z PGN knihy: {n}
+	Games: read from the text	Partie: přečtené z textu
+	Your games, linked first: {n}	Vaše partie, propojené jako první: {n}
+	Language: {lang}	Jazyk: {lang}
+	from the book's text	podle textu knihy
+	Games: read from the text, linked to the book's PGN	Partie: přečtené z textu, propojené s PGN knihy
 	More Text tab actions	Další akce karty Text
 	Read with OCR	Číst pomocí OCR
 	illegal	neplatný

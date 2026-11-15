@@ -3589,6 +3589,28 @@ progress bar	Progress	Progression
 	Endgame tables (Syzygy)	Tables de finales (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Chacune n'est transmise au moteur que s'il l'accepte. Lancez l'analyse pour voir celles que ce moteur accepte.
 	This engine does not take: {names}	Ce moteur n'accepte pas : {names}
+	PGN — exercises	PGN — exercices
+	Anki — cards	Anki — cartes
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Les diagrammes numérotés du livre avec leurs solutions, en PGN de problèmes standard.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Un fichier texte qu'Anki importe, une carte par exercice, avec les images des diagrammes dans un dossier à côté.
+	Book's language	Langue du livre
+	As the book says ({lang})	Comme le dit le livre ({lang})
+	As the book's text says	Comme le dit le texte du livre
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	La langue dans laquelle l'export est écrit et décrit ses diagrammes. Corrigez-la quand le livre a été lu comme une autre.
+	Diagram descriptions	Description des diagrammes
+	Letters (Kg1)	Lettres (Rg1)
+	Words (king g1)	Mots (roi g1)
+	How a screen reader says each diagram's pieces.	Comment un lecteur d'écran dit les pièces de chaque diagramme.
+	Pages: {n}	Pages : {n}
+	Diagrams: {n}	Diagrammes : {n}
+	not checked: {n}	non vérifiés : {n}
+	Diagrams: not detected yet	Diagrammes : pas encore détectés
+	Games from the book's PGN: {n}	Parties du PGN du livre : {n}
+	Games: read from the text	Parties : lues dans le texte
+	Your games, linked first: {n}	Vos parties, liées en premier : {n}
+	Language: {lang}	Langue : {lang}
+	from the book's text	d'après le texte du livre
+	Games: read from the text, linked to the book's PGN	Parties : lues dans le texte, liées au PGN du livre
 	More Text tab actions	Autres actions de l'onglet Texte
 	Read with OCR	Lire avec l'OCR
 	illegal	illégal

@@ -44,11 +44,9 @@ pub struct DocChess {
     pub text: Option<crate::chess_text_ui::PageText>,
     /// The Diagrams list's filter, its keyboard and what it follows (plan A8, P2a1).
     pub(crate) list: crate::chess_list::ListState,
-    /// Which diagrams the PGN export gives a game of their own, for the session (plan A8, P9c).
-    pub pgn_positions: pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions,
-    /// Where the PGN export takes its games from when the document keeps a book's PGN, for the
-    /// session (plan "Carregar PGN do livro", R6b).
-    pub pgn_source: crate::chess_export_ui::PgnSource,
+    /// The pages and the book's language the export dialog was given for it, for the session
+    /// (plan A9-X2).
+    pub export: crate::chess_export_ui::DocExport,
     /// The corrections kept and forgotten in it, as steps Undo and Redo take (plan A9-G10).
     pub(crate) fixes: crate::chess_history::History<crate::chess_fixes::FixState>,
     /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered while the document
@@ -128,8 +126,12 @@ pub struct ChessState {
     /// The encrypted documents to ask about keeping their chess, the first asked now (plan
     /// A9-I1c, [`crate::chess_keep`]).
     pub(crate) keep_asking: Vec<DocId>,
-    /// The question before exporting while diagrams are still to review (P9c).
-    pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
+    /// The export dialog, while it is shown (plan A9-X2): the diagrams still to review are said
+    /// in it.
+    pub export_dialog: Option<crate::chess_export_ui::ExportDialog>,
+    /// The export dialog's choices that are remembered: the format, the PGN's choices and the
+    /// descriptions (plan A9-X2; the `chess_export` setting).
+    pub export: crate::chess_export_ui::ExportChoices,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
     /// Another book's review, waiting for the question before it is imported (plan A9-G5b).
@@ -1054,8 +1056,7 @@ pub(crate) fn tab_contents(
     if text {
         let busy = state.reading.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let doc = state.doc_mut(id);
-        let (positions, source) = (doc.pgn_positions, doc.pgn_source);
-        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, long.as_ref(), positions, pgn, source)
+        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, long.as_ref(), pgn)
             .map(PanelAction::Text);
     }
     let mut action = None;
@@ -1064,10 +1065,7 @@ pub(crate) fn tab_contents(
         (s.done, s.total)
     });
     // The header: Detect diagrams ▾, the export, board and models buttons, the progress (P2a2).
-    let kept = pgn.summary.is_some();
-    let doc = state.doc_mut(id);
-    let (positions, source) = (doc.pgn_positions, kept.then_some(doc.pgn_source));
-    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, positions, source) {
+    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running) {
         action = Some(a);
     }
     if let Some(row) = &long

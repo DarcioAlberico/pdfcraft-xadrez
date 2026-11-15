@@ -3863,6 +3863,28 @@ progress bar	Progress	التقدم
 	Endgame tables (Syzygy)	جداول النهايات (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	يُرسَل كل منها إلى المحرك فقط إذا كان يقبله. ابدأ التحليل لترى ما يقبله هذا المحرك.
 	This engine does not take: {names}	لا يقبل هذا المحرك: {names}
+	PGN — exercises	PGN — تمارين
+	Anki — cards	Anki — بطاقات
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	مخططات الكتاب المرقّمة مع حلولها، بصيغة PGN قياسية للمسائل.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	ملف نصي يستورده Anki، بطاقة لكل تمرين، مع صور المخططات في مجلد بجانبه.
+	Book's language	لغة الكتاب
+	As the book says ({lang})	كما يقول الكتاب ({lang})
+	As the book's text says	كما يقول نص الكتاب
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	اللغة التي يُكتب بها التصدير ويصف بها مخططاته. صحّحها إذا قُرئ الكتاب على أنه لغة أخرى.
+	Diagram descriptions	وصف المخططات
+	Letters (Kg1)	حروف (Kg1)
+	Words (king g1)	كلمات (الملك g1)
+	How a screen reader says each diagram's pieces.	كيف يقول قارئ الشاشة قطع كل مخطط.
+	Pages: {n}	الصفحات: {n}
+	Diagrams: {n}	المخططات: {n}
+	not checked: {n}	لم تُراجَع: {n}
+	Diagrams: not detected yet	المخططات: لم تُكتشف بعد
+	Games from the book's PGN: {n}	مباريات من PGN الكتاب: {n}
+	Games: read from the text	المباريات: تُقرأ من النص
+	Your games, linked first: {n}	مبارياتك، تُربط أولًا: {n}
+	Language: {lang}	اللغة: {lang}
+	from the book's text	من نص الكتاب
+	Games: read from the text, linked to the book's PGN	المباريات: تُقرأ من النص وتُربط بـ PGN الكتاب
 	More Text tab actions	مزيد من إجراءات علامة تبويب النص
 	Read with OCR	القراءة بالتعرف الضوئي
 	illegal	غير قانونية

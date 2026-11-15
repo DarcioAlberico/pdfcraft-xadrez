@@ -12,7 +12,8 @@ use crate::chess::epub::{
     EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, identifier_for_pages, identifier_from_id, modified,
     modified_at,
 };
-use crate::chess::export::{ChessExportOptions, ChessFormat};
+use crate::chess::export::{ChessExport, ChessExportOptions, ChessFormat};
+use pdfcraft_chessvision::doc::LangTag;
 
 fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
     HtmlOptions {
@@ -28,6 +29,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         lang: "",
         page_labels: &[],
         review_marks: true,
+        naming: pdfcraft_chess::describe::Naming::Letters,
     }
 }
 
@@ -168,6 +170,37 @@ fn a_book_without_page_labels_is_paged_by_its_printed_number() {
     // The other exports keep the page's own number, as before.
     let html = String::from_utf8(s.chess_export(id, ChessFormat::Html, &ChessExportOptions::new("Chapter", None)).unwrap().bytes).unwrap();
     assert!(html.contains("Diagram 1, page 1:") && !html.contains("<p>15</p>"), "{html}");
+}
+
+/// Plan A9-X2 (A2-08): the book's language as the user says it is the export's, over the one the
+/// reading decided, and its diagrams are said in it; their pieces in words when asked, for speech.
+#[test]
+fn the_books_language_and_the_pieces_in_words_are_the_users() {
+    let (mut s, id) = open(super::document::chapter());
+    let lang_of = |out: &ChessExport| {
+        let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
+        let page = String::from_utf8(zip_entry(&out.bytes, "OEBPS/page-00001.xhtml")).unwrap();
+        (opf, page)
+    };
+    let read = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter", None)).unwrap();
+    let (opf, page) = lang_of(&read);
+    assert!(opf.contains("<dc:language>en</dc:language>") && page.contains("Diagram 1, page 1") && page.contains("Ke1"), "{opf}\n{page}");
+    let o = ChessExportOptions {
+        text_lang: Some(LangTag::parse("pt-BR")),
+        naming: pdfcraft_chess::describe::Naming::Words,
+        ..ChessExportOptions::new("Chapter", None)
+    };
+    let said = s.chess_export(id, ChessFormat::Epub, &o).unwrap();
+    assert_eq!(said.read.text_lang.as_str(), "pt-BR");
+    let (opf, page) = lang_of(&said);
+    assert!(opf.contains("<dc:language>pt-BR</dc:language>"), "{opf}");
+    assert!(page.contains("lang=\"pt-BR\"") && page.contains("Diagrama 1, pág. 1"), "{page}");
+    assert!(page.contains("rei e1") && page.contains("dama d1") && !page.contains("Re1"), "{page}");
+    // An empty tag is not one: the reading's language stays.
+    let empty = s
+        .chess_export(id, ChessFormat::Epub, &ChessExportOptions { text_lang: Some(LangTag::default()), ..ChessExportOptions::new("Chapter", None) })
+        .unwrap();
+    assert!(lang_of(&empty).0.contains("<dc:language>en</dc:language>"));
 }
 
 /// Two books made from different pages of one PDF are two books to a reader: before plan A9 (G1)

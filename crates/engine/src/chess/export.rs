@@ -71,7 +71,16 @@ pub struct ChessExportOptions {
     /// Pages (0-based); empty: all.
     pub pages: Vec<usize>,
     pub scan: ChessScanSettings,
+    /// The piece letters' language of the moves in the PDF; `None`: chosen from the pages.
     pub lang: Option<Lang>,
+    /// The book's language as the user says it (plan A9-X2, A2-08), in place of the one the
+    /// reading decided (the PDF's `/Lang`, else what its prose says): the export's own language
+    /// (`<html lang>`, `dc:language`, `w:lang`) and the one its diagrams and notes are said in.
+    /// `None` (or an empty tag): the reading's.
+    pub text_lang: Option<LangTag>,
+    /// How the diagrams' text alternatives name the pieces: by the language's letters (the
+    /// default) or in words, for speech (plan A9-X2).
+    pub naming: pdfcraft_chess::describe::Naming,
     pub ocr: OcrMode,
     pub diagrams: DiagramMode,
     pub figurines: Figurines,
@@ -134,6 +143,8 @@ impl ChessExportOptions {
             pages: Vec::new(),
             scan: ChessScanSettings::default(),
             lang: None,
+            text_lang: None,
+            naming: pdfcraft_chess::describe::Naming::Letters,
             ocr: OcrMode::Auto,
             diagrams: DiagramMode::Svg,
             figurines: Figurines::Unicode,
@@ -248,6 +259,7 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
         lang: w.lang,
         page_labels: w.labels,
         review_marks: o.review_marks.unwrap_or(format != ChessFormat::Epub),
+        naming: o.naming,
     };
     let mut images = Vec::new();
     // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
@@ -290,6 +302,7 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
                 image_dir: &o.image_dir,
                 lang: w.lang,
                 page_labels: w.labels,
+                naming: o.naming,
             };
             markdown::write(doc, &md).into_bytes()
         }
@@ -306,6 +319,7 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
                 sign_font: o.sign_font.as_deref(),
                 lang: w.lang,
                 page_labels: w.labels,
+                naming: o.naming,
             };
             let (flow, count) = super::office::to_flow(doc, &office, notes);
             drawn = count;
@@ -361,6 +375,14 @@ impl Session {
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
         let mut read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        // The book's language as the user says it, over the one the reading decided (plan
+        // A9-X2): every page is then said in it, as a book read with that `/Lang` would be.
+        if let Some(tag) = o.text_lang.as_ref().filter(|t| !t.is_empty()) {
+            read.text_lang = tag.clone();
+            for page in &mut read.doc.pages {
+                page.text_lang = tag.clone();
+            }
+        }
         // One truth of the games for every format (plan A9-N2): the user's games, then the book's
         // PGN, then the reading.
         let refs: Vec<&ReferenceIndex> = [o.games.as_deref(), o.reference.as_deref()].into_iter().flatten().collect();
