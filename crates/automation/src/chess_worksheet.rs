@@ -50,6 +50,7 @@ impl Automation {
         options.pages = pages;
         options.scan = scan;
         options.lang = lang;
+        options.text_lang = crate::chess::text_lang_arg(a)?;
         options.ocr = ocr;
         options.book = book;
         options.reference = book_pgn.as_ref().map(|r| r.index.clone());
