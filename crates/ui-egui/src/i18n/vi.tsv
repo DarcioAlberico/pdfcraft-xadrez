@@ -3834,6 +3834,13 @@ progress bar	Progress	Tiến độ
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN của sách lớn hơn mức PdfCraft lập chỉ mục: chỉ {moves} nước đầu tiên của nó được liên kết với sách.
 	Engine: {name}, in {folder}	Engine: {name}, trong {folder}
 	Importing…	Đang nhập…
+	Chess engine	Engine cờ vua
+	Search threads	Luồng tìm kiếm
+	Hash table	Bảng băm
+	Engine's default	Mặc định của engine
+	Endgame tables (Syzygy)	Bảng tàn cuộc (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Mỗi thiết lập chỉ được gửi đến engine nếu engine nhận nó. Hãy bắt đầu phân tích để xem engine này nhận những thiết lập nào.
+	This engine does not take: {names}	Engine này không nhận: {names}
 	PGN — exercises	PGN — bài tập
 	Anki — cards	Anki — thẻ
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Các sơ đồ được đánh số của sách cùng lời giải, dưới dạng PGN bài toán chuẩn.

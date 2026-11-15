@@ -3581,6 +3581,13 @@ progress bar	Progress	Előrehaladás
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	A könyv PGN-je nagyobb, mint amennyit a PdfCraft indexel: csak az első {moves} lépése kapcsolódik a könyvhöz.
 	Engine: {name}, in {folder}	Motor: {name}, helye: {folder}
 	Importing…	Importálás…
+	Chess engine	Sakkmotor
+	Search threads	Keresési szálak
+	Hash table	Hash-tábla
+	Engine's default	A motor alapértéke
+	Endgame tables (Syzygy)	Végjátéktáblák (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Mindegyik csak akkor jut el a motorhoz, ha elfogadja. Indítsa el az elemzést, és meglátja, melyeket fogadja el ez a motor.
+	This engine does not take: {names}	Ez a motor nem fogadja el: {names}
 	PGN — exercises	PGN — feladatok
 	Anki — cards	Anki — kártyák
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	A könyv számozott diagramjai a megoldásukkal, szabványos feladat-PGN-ként.

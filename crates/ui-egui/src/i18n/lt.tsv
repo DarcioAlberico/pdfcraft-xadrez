@@ -3832,6 +3832,13 @@ progress bar	Progress	Eiga
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Knygos PGN didesnis, nei PdfCraft indeksuoja: su knyga susieti tik pirmieji {moves} jo ėjimai.
 	Engine: {name}, in {folder}	Variklis: {name}, aplanke {folder}
 	Importing…	Importuojama…
+	Chess engine	Šachmatų variklis
+	Search threads	Paieškos gijos
+	Hash table	Maišos lentelė
+	Engine's default	Variklio numatytoji
+	Endgame tables (Syzygy)	Endšpilio lentelės (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Kiekvienas nustatymas perduodamas varikliui tik tada, jei jis jį priima. Pradėkite analizę ir pamatysite, kuriuos šis variklis priima.
+	This engine does not take: {names}	Šis variklis nepriima: {names}
 	PGN — exercises	PGN — pratimai
 	Anki — cards	Anki — kortelės
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Sunumeruotos knygos diagramos su sprendimais, kaip standartinis uždavinių PGN.

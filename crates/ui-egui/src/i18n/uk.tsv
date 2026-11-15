@@ -3604,6 +3604,13 @@ progress bar	Progress	Хід виконання
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN книги більший, ніж індексує PdfCraft: з книгою пов'язано лише перші {moves} ходів.
 	Engine: {name}, in {folder}	Рушій: {name}, у {folder}
 	Importing…	Імпорт…
+	Chess engine	Шаховий рушій
+	Search threads	Потоки пошуку
+	Hash table	Геш-таблиця
+	Engine's default	Типове для рушія
+	Endgame tables (Syzygy)	Таблиці ендшпілю (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Кожне налаштування передається рушію, лише якщо він його приймає. Запустіть аналіз, щоб побачити, які приймає цей рушій.
+	This engine does not take: {names}	Цей рушій не приймає: {names}
 	PGN — exercises	PGN — вправи
 	Anki — cards	Anki — картки
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Пронумеровані діаграми книги з розв'язками, як стандартний PGN задач.

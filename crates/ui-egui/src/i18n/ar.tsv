@@ -3856,6 +3856,13 @@ progress bar	Progress	التقدم
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN الكتاب أكبر مما يفهرسه PdfCraft: لم تُربط بالكتاب إلا أول {moves} نقلة منه.
 	Engine: {name}, in {folder}	المحرك: {name}، في {folder}
 	Importing…	جارٍ الاستيراد…
+	Chess engine	محرك الشطرنج
+	Search threads	خيوط البحث
+	Hash table	جدول التجزئة
+	Engine's default	الافتراضي للمحرك
+	Endgame tables (Syzygy)	جداول النهايات (Syzygy)
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	يُرسَل كل منها إلى المحرك فقط إذا كان يقبله. ابدأ التحليل لترى ما يقبله هذا المحرك.
+	This engine does not take: {names}	لا يقبل هذا المحرك: {names}
 	PGN — exercises	PGN — تمارين
 	Anki — cards	Anki — بطاقات
 	The book's numbered diagrams with their solutions, as a standard PGN of problems.	مخططات الكتاب المرقّمة مع حلولها، بصيغة PGN قياسية للمسائل.
