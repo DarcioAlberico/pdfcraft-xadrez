@@ -485,6 +485,18 @@ pub fn menu_entry(ui: &mut egui::Ui, enabled: bool, button: egui::Button<'_>) ->
     response
 }
 
+/// A menu's choice of one among several (`selected`: the one chosen), drawn as [`radio`]: to
+/// assistive technology a radio menu item, checked when chosen. Clicked, it closes its menu as
+/// [`menu_entry`] does.
+pub fn menu_radio(ui: &mut egui::Ui, selected: bool, label: &str) -> Response {
+    let response = ui.add(radio(selected, label));
+    menu_roles(ui, &response, egui::accesskit::Role::MenuItemRadio);
+    if response.clicked() {
+        ui.close();
+    }
+    response
+}
+
 /// `item` is a menu item of `role` and `ui`, which holds it, is the menu.
 fn menu_roles(ui: &egui::Ui, item: &Response, role: egui::accesskit::Role) {
     ui.ctx().accesskit_node_builder(ui.unique_id(), |node| node.set_role(egui::accesskit::Role::Menu));

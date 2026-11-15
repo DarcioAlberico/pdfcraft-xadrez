@@ -289,14 +289,7 @@ pub enum TextAction {
 /// (load one, or the one beside the PDF; align the book to it) and the export, with Remove the
 /// book's PGN last, in the danger colour. While a PGN is being indexed (`pgn.indexing`, plan
 /// A9-I3b) none is offered.
-fn text_menu(
-    ui: &mut egui::Ui,
-    t: &Tokens,
-    origin: BookOrigin,
-    pgn: &crate::chess_reference_ui::BookPgnView,
-    positions: PgnPositions,
-    source: crate::chess_export_ui::PgnSource,
-) -> Option<TextAction> {
+fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
     let mut action = None;
     let entry = |ui: &mut egui::Ui, text: egui::WidgetText| crate::widgets::menu_entry(ui, true, egui::Button::new(text));
     // A submenu, not a list: egui keeps one popup open, so a list would close the menu.
@@ -349,7 +342,8 @@ fn text_menu(
             }
         }
     }
-    if let Some(a) = export_menu(ui, positions, book_pgn.map(|_| source)) {
+    // Export book… opens the export dialog (plan A9-X2), which holds the format and its choices.
+    if let Some(a) = crate::chess_export_ui::entry(ui) {
         action = Some(a);
     }
     if book_pgn.is_some() {
@@ -590,7 +584,7 @@ pub fn text_tab(
             let menu = egui::containers::menu::MenuButton::from_button(
                 egui::Button::image(crate::icons::image("ellipsis", 16.0, t.icon)).min_size(egui::vec2(28.0, 24.0)),
             );
-            let (r, picked) = menu.ui(ui, |ui| text_menu(ui, t, origin, pgn, positions, source));
+            let (r, picked) = menu.ui(ui, |ui| text_menu(ui, t, origin, pgn));
             r.on_hover_text(name).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
             if let Some(a) = picked.and_then(|p| p.inner) {
                 action = Some(a);
