@@ -10,6 +10,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::doc::errata::{self, Issue, Kin
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Inline, MoveAt, PageLabel};
 use pdfcraft_engine::chess::reference_store::Choice;
+use pdfcraft_engine::chess::review::{self, Computed, Found, Place};
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Result, failed};
@@ -38,7 +39,7 @@ impl Automation {
         // Plan A9-N19b: only the misprints, or only the rows to check; both by default.
         let only = match a.opt_str("kind")? {
             None | Some("all") => None,
-            Some(name) => Some(Kind::from_name(name).ok_or_else(|| Args::wrong("kind", "\"misprint\", \"check\" or \"all\""))?),
+            Some(name) => Some(Kind::from_name(name).ok_or_else(|| Args::wrong("kind", "\"misprint\", \"check\", \"engine\" or \"all\""))?),
         };
         // Resolved before reading, so a path outside the root costs nothing.
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p.to_owned(), r))).transpose()?;
@@ -68,7 +69,22 @@ impl Automation {
             }
             reference_reply = crate::chess::reference_reply(&r.shown, &r.index, &linked);
         }
-        let all = errata::errata(&read.doc, reference.as_ref().map(|r| &*r.index));
+        let mut all = errata::errata(&read.doc, reference.as_ref().map(|r| &*r.index));
+        // Plan A9-N17a: with the evaluations kept (evals_store), the `!` the engine refutes, after
+        // the rest (its own kind), in reading order.
+        let mut evals_reply = Value::Null;
+        if a.opt_str("evals_store")?.is_some() {
+            let limits = crate::chess_review::limits_arg(a)?;
+            let kept = self.kept_evals(a, id)?;
+            let refs: Vec<_> = reference.iter().map(|r| &*r.index).collect();
+            let review = review::divergences(&read.doc, &refs, &kept.file, &limits);
+            for d in &review.divergences {
+                let (Place::Move(at), Found::Refuted { .. }, Computed::Engine(e)) = (d.at, d.found, &d.computed) else { continue };
+                let expected = e.best.as_ref().map(|(san, _)| san.clone()).unwrap_or_default();
+                all.extend(errata::engine_row(&read.doc, at, d.printed.clone(), expected, d.computed_words()));
+            }
+            evals_reply = kept.reply;
+        }
         // The moves in conflict with the PGN that are no row: read by OCR, or a word repaired.
         let conflicts = read
             .doc
@@ -112,6 +128,9 @@ impl Automation {
             "reference": reference_reply,
             "reference_kept": reference_kept,
         });
+        if !evals_reply.is_null() {
+            result["evals"] = evals_reply;
+        }
         match out {
             Some((shown, path)) => {
                 // A CSV starts with a byte order mark only when asked, as a PGN does (Excel needs one

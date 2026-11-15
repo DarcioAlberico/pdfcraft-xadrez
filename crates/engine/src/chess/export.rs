@@ -121,6 +121,11 @@ pub struct ChessExportOptions {
     /// and [`ChessExport::images`] the diagrams' pictures, `diagram_px` wide, in
     /// [`ChessExportOptions::image_dir`], each drawn from the side the book prints it.
     pub anki: bool,
+    /// PGN: the evaluations kept for the document and the limits to hold the book's signs to (plan
+    /// A9-N17a, decision C): a move of the games read that the engine disagrees with gets the
+    /// engine's comment after the book's ([`super::review::annotate`]). The book's PGN's games and
+    /// the exercises are written as before.
+    pub engine: Option<Arc<super::review::EngineReview>>,
 }
 
 impl ChessExportOptions {
@@ -154,6 +159,7 @@ impl ChessExportOptions {
             games: None,
             exercises: false,
             anki: false,
+            engine: None,
         }
     }
 }
@@ -186,6 +192,8 @@ pub struct ChessExport {
     /// The links to [`ChessExportOptions::games`] and [`ChessExportOptions::reference`], in that
     /// order, those given (plan A9-N2).
     pub linked: Vec<reference::Linked>,
+    /// PGN with [`ChessExportOptions::engine`]: how many moves got the engine's comment.
+    pub engine_comments: Option<usize>,
 }
 
 impl ChessExport {
@@ -368,6 +376,13 @@ impl Session {
         // The book's language, not its piece letters' (plan A9-L6a, A2-08): `<html lang>`,
         // `dc:language`, `w:lang`; the letters' only when nothing says the text's.
         let book_lang = if read.text_lang.is_empty() { read.lang.lang.code() } else { read.text_lang.as_str() };
+        // The engine's word on the moves it disagrees with, as comments of the games read (plan
+        // A9-N17a).
+        let mut engine_comments = None;
+        if let (ChessFormat::Pgn, Some(engine)) = (format, o.engine.as_ref()) {
+            let review = super::review::divergences(&read.doc, &refs, &engine.evals, &engine.limits);
+            engine_comments = Some(super::review::annotate(&mut read.doc, &review, book_lang));
+        }
         // The printed page numbers and the book's language say each diagram (plan A8 P9b, P9d).
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
         let mut notes = Vec::new();
@@ -450,7 +465,20 @@ impl Session {
             }
         };
         let Written { bytes, images, drawn } = written;
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, exercises, notes, linked })
+        Ok(ChessExport {
+            bytes,
+            images,
+            read,
+            drawn,
+            position_games,
+            positions_skipped,
+            pgn_warnings,
+            annotated,
+            exercises,
+            notes,
+            linked,
+            engine_comments,
+        })
     }
 }
 

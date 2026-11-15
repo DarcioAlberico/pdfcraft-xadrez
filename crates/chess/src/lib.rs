@@ -16,6 +16,7 @@ pub mod draw;
 pub mod fen;
 pub mod fragment;
 pub mod game;
+pub mod judge;
 pub mod lichess;
 pub mod mate;
 pub mod nag;

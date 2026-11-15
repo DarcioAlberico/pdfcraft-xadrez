@@ -978,8 +978,8 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
         "{csv:#}"
     );
     assert_eq!(csv["rows"], 2);
-    assert_eq!(csv["issues"], json!({ "capture_mark": 1, "check_mark": 1, "mate_mark": 0, "move_number": 0, "book_pgn": 0 }));
-    assert_eq!((&csv["kind"], &csv["kinds"]), (&json!("all"), &json!({ "misprint": 2, "check": 0 })));
+    assert_eq!(csv["issues"], json!({ "capture_mark": 1, "check_mark": 1, "mate_mark": 0, "move_number": 0, "book_pgn": 0, "refuted_sign": 0 }));
+    assert_eq!((&csv["kind"], &csv["kinds"]), (&json!("all"), &json!({ "misprint": 2, "check": 0, "engine": 0 })));
     assert_eq!((csv["born_digital_pages"].as_u64(), csv["ocr_pages"].as_u64(), &csv["reference"]), (Some(1), Some(0), &Value::Null));
     // As Markdown, to a file inside the root, and nothing inline.
     let md = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "format": "markdown", "out": "errata.md", "title": "Marks" }));
@@ -1015,7 +1015,7 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     assert!(rows[0].starts_with("1,1,3.,3.Bxb5,capture_mark,Bb5,") && rows[0].ends_with(",text,misprint"), "{rows:?}");
     assert!(rows[1].starts_with("1,1,2.,2.Nf3,book_pgn,2.Nf3,\"the book's PGN (game 1, Chapter 1) plays 2.Nf3 from another position;"), "{rows:?}");
     assert!(rows[1].ends_with(",text,check"), "{rows:?}");
-    assert_eq!(pgn["kinds"], json!({ "misprint": 1, "check": 1 }), "{pgn:#}");
+    assert_eq!(pgn["kinds"], json!({ "misprint": 1, "check": 1, "engine": 0 }), "{pgn:#}");
     // One kind only; the counts of both stay.
     for (kind, issue) in [("misprint", "capture_mark"), ("check", "book_pgn")] {
         let only = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en", "reference_pgn": "book.pgn", "kind": kind }));
@@ -1044,7 +1044,7 @@ fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
     std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
     let decided = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en" }));
     assert_eq!((decided["rows"].as_u64(), decided["reference"]["kept_as_printed"].as_u64()), (Some(1), Some(1)), "{decided:#}");
-    assert_eq!(decided["kinds"], json!({ "misprint": 1, "check": 0 }), "the misprint stays: {decided:#}");
+    assert_eq!(decided["kinds"], json!({ "misprint": 1, "check": 0, "engine": 0 }), "the misprint stays: {decided:#}");
     assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
     let _ = std::fs::remove_dir_all(base);
 }
@@ -4455,5 +4455,186 @@ fn chess_position_find_looks_only_in_what_is_read() {
     // A move that cannot be played; and no position given is the start position.
     assert!(again.call("chess_position_find", &json!({ "doc": doc, "moves": ["e4", "e4"] })).unwrap_err().to_string().contains("move 2"));
     assert_eq!(ok(&mut again, "chess_position_find", json!({ "doc": doc }))["fen"], start);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── Plan A9, N17a: the book says × the engine says ──────────────────────────────────────────
+
+/// `placement` (a FEN's first field) in the Chess Merida layout of [`MERIDA_START`].
+fn merida_rows(placement: &str) -> Vec<String> {
+    placement
+        .split('/')
+        .enumerate()
+        .map(|(r, row)| {
+            let mut out = String::new();
+            for c in row.chars() {
+                let n = c.to_digit(10).unwrap_or(0);
+                for _ in 0..n.max(u32::from(n == 0)) {
+                    let light = (out.chars().count() + 1 + (8 - r)) % 2 == 1;
+                    let glyph = if n > 0 {
+                        if light { ' ' } else { '+' }
+                    } else {
+                        let white = "PNBRQK".find(c).map(|i| ['p', 'n', 'b', 'r', 'q', 'k'][i]);
+                        let black = "pnbrqk".find(c).map(|i| ['o', 'm', 'v', 't', 'w', 'l'][i]);
+                        let g = white.or(black).unwrap();
+                        if light { g } else { g.to_ascii_uppercase() }
+                    };
+                    out.push(glyph);
+                }
+            }
+            out
+        })
+        .collect()
+}
+
+/// A book of two pages, 600 × 800 pt, F1 Chess Merida and F2 Helvetica: a heading on the first;
+/// on the second the lines `moves` at the top, then a diagram of each of `diagrams` (placement,
+/// caption), one under the other, its caption under it.
+fn review_pdf(moves: &[&str], diagrams: &[(&str, &str)]) -> Vec<u8> {
+    let mut second = String::new();
+    for (i, line) in moves.iter().enumerate() {
+        second.push_str(&format!("BT /F2 10 Tf 50 {} Td ({line}) Tj ET\n", 760 - 15 * i));
+    }
+    for (k, (placement, caption)) in diagrams.iter().enumerate() {
+        let top = 150 + 270 * k;
+        second.push_str(&format!("BT /F1 20 Tf 50 {} Td ", 800 - top - 16));
+        for (i, row) in merida_rows(placement).iter().enumerate() {
+            if i > 0 {
+                second.push_str("0 -20 Td ");
+            }
+            second.push_str(&format!("({row}) Tj "));
+        }
+        second.push_str("ET\n");
+        second.push_str(&format!("BT /F2 10 Tf 50 {} Td ({caption}) Tj ET\n", 800 - top - 174));
+    }
+    let contents = ["BT /F2 14 Tf 60 700 Td (Chapter 1) Tj ET\n".to_owned(), second];
+    let widths = vec!["1000"; 95].join(" ");
+    let mut objs: Vec<String> = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".into(),
+        "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 600 800] >>".into(),
+        "<< /Type /Page /Parent 2 0 R /Contents 5 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>".into(),
+        "<< /Type /Page /Parent 2 0 R /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> >>".into(),
+    ];
+    objs.extend(contents.iter().map(|c| format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len())));
+    objs.push(format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"));
+    objs.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into());
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// The 12 moves before the card's `12.Nf3!`.
+const BEFORE_NF3: [&str; 22] = [
+    "d4", "d5", "c4", "e6", "Nc3", "Nf6", "Bg5", "Be7", "e3", "O-O", "Rc1", "h6", "Bh4", "b6", "cxd5", "exd5", "Bd3", "Bb7", "Qc2", "c5", "Bf5",
+    "Nc6",
+];
+
+/// The position key (FEN's first four fields) after `sans` from the start.
+fn key_after(sans: &[&str]) -> String {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut g = Game::standard();
+    for s in sans {
+        g.play_san(s).unwrap();
+    }
+    g.fen().split(' ').take(4).collect::<Vec<_>>().join(" ")
+}
+
+/// The card's check (plan A9-N17a): in a book with `12.Nf3!` on its second page, an evaluation kept
+/// that loses two pawns to the engine's move is one divergence, on that page; the "#2" with no mate
+/// (plan A9-N4) is in the same list from the solver, and "White to play and win" with −3 kept is
+/// contradicted. The limits are the caller's, the store stays inside the root, `chess_errata` with
+/// the store lists the refuted `!`, and the PGN export gives the move the engine's comment.
+#[test]
+fn chess_engine_review_lists_where_the_book_and_the_computation_disagree() {
+    let (base, root) = workdir("engine-review");
+    let moves = ["1.d4 d5 2.c4 e6 3.Nc3 Nf6 4.Bg5 Be7 5.e3 O-O 6.Rc1 h6", "7.Bh4 b6 8.cxd5 exd5 9.Bd3 Bb7 10.Qc2 c5 11.Bf5 Nc6 12.Nf3! Qd7"];
+    let rook = "4k3/8/8/8/8/8/8/R4K2";
+    let pdf = review_pdf(&moves, &[(rook, "White to play and win"), ("8/8/8/4k3/8/8/8/K6R", "White to play. Mate in 2")]);
+    std::fs::write(root.join("book.pdf"), pdf).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "book.pdf" }))["doc"].as_u64().unwrap();
+    let store = ".pdfcraft/chess-evals";
+    // Nothing kept: the solver's word only, and the signs not judged for want of evaluations.
+    let bare = ok(&mut a, "chess_engine_review", json!({ "doc": doc, "lang": "en", "evals_store": store }));
+    assert_eq!(bare["findings"]["no_mate"], 1, "{bare:#}");
+    assert_eq!(bare["not_judged"]["no_eval"], 2, "the ! and the goal: {bare:#}");
+    // The evaluations as the app keeps them.
+    let file = root.join(store).join(bare["evals"]["file"].as_str().unwrap());
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    let mut with_nf3 = BEFORE_NF3.to_vec();
+    with_nf3.push("Nf3");
+    let mut evals = serde_json::Map::new();
+    evals.insert(key_after(&BEFORE_NF3), json!({ "depth": 20, "cp": 50, "pv": ["a2a3"], "engine": "Stockfish 17", "at": 10 }));
+    evals.insert(key_after(&with_nf3), json!({ "depth": 20, "cp": -150, "pv": ["d8d7"], "engine": "Stockfish 17", "at": 10 }));
+    evals.insert(format!("{rook} w - -"), json!({ "depth": 20, "cp": -300, "pv": ["a1a8"], "engine": "Stockfish 17", "at": 10 }));
+    let kept = json!({ "format": "pdfcraft-chess-evals", "version": 1, "doc": { "pages": 2 }, "evals": evals });
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+
+    let r = ok(&mut a, "chess_engine_review", json!({ "doc": doc, "lang": "en", "evals_store": store }));
+    let found: Vec<(u64, &str, &str)> = r["divergences"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| (d["page"].as_u64().unwrap(), d["finding"].as_str().unwrap(), d["source"].as_str().unwrap()))
+        .collect();
+    assert_eq!(found, [(2, "refuted", "engine"), (2, "goal_contradicted", "engine"), (2, "no_mate", "solver")], "{r:#}");
+    let nf3 = &r["divergences"][0];
+    assert_eq!((nf3["printed"].as_str(), nf3["nag"].as_u64(), nf3["loss"].as_i64()), (Some("12.Nf3!"), Some(1), Some(200)), "{nf3:#}");
+    assert_eq!((&nf3["eval"], &nf3["best"]), (&json!({ "cp": -150 }), &json!({ "move": "12.a3", "eval": { "cp": 50 } })), "{nf3:#}");
+    assert_eq!((nf3["depth"].as_u64(), nf3["engine"].as_str()), (Some(20), Some("Stockfish 17")));
+    assert_eq!(r["divergences"][1]["found"], json!({ "band": "black_wins", "sign": "−+" }), "{r:#}");
+    assert_eq!((r["count"].as_u64(), r["judged"].as_u64(), &r["not_judged"]), (Some(3), Some(3), &json!({ "no_eval": 0, "shallow": 0 })));
+    assert_eq!(r["limits"], json!({ "refuted": 150, "questioned": 30, "bands": [30, 70, 150], "min_depth": 18 }));
+    // The caller's limits: a ! may lose 2.5 pawns, and depth 20 is too shallow for 25.
+    let lenient = ok(&mut a, "chess_engine_review", json!({ "doc": doc, "lang": "en", "evals_store": store, "limits": { "refuted": 250 } }));
+    assert_eq!(lenient["findings"]["refuted"], 0, "{lenient:#}");
+    let deep = ok(&mut a, "chess_engine_review", json!({ "doc": doc, "lang": "en", "evals_store": store, "limits": { "min_depth": 25 } }));
+    assert_eq!((deep["count"].as_u64(), deep["not_judged"]["shallow"].as_u64()), (Some(1), Some(2)), "{deep:#}");
+    let e = a.call("chess_engine_review", &json!({ "doc": doc, "limits": { "bands": [70, 30, 150] } })).unwrap_err();
+    assert!(e.to_string().contains("limits"), "{e}");
+    // As CSV inside the root; the store and out stay inside it.
+    let csv = ok(&mut a, "chess_engine_review", json!({ "doc": doc, "lang": "en", "evals_store": store, "out": "review.csv" }));
+    assert_eq!(csv["out"], "review.csv");
+    let written = std::fs::read_to_string(root.join("review.csv")).unwrap();
+    assert!(written.lines().nth(1).unwrap().starts_with("2,2,move,12.Nf3!,refuted,!,"), "{written}");
+    for (arg, path) in [("evals_store", "../outside/evals"), ("out", "../outside/review.csv")] {
+        match a.call("chess_engine_review", &json!({ "doc": doc, arg: path })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{arg}: {m}"),
+            other => panic!("{arg} outside the root accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+
+    // chess_errata with the store lists the refuted !, of its own kind, last.
+    let errata = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "evals_store": store }));
+    assert_eq!(errata["kinds"], json!({ "misprint": 0, "check": 0, "engine": 1 }), "{errata:#}");
+    let rows: Vec<&str> = errata["text"].as_str().unwrap().lines().skip(1).collect();
+    assert_eq!(rows.len(), 1, "{errata:#}");
+    assert!(rows[0].starts_with("2,2,12.,12.Nf3!,refuted_sign,12.a3,"), "{rows:?}");
+    assert!(rows[0].ends_with(",text,engine"), "{rows:?}");
+    // Without it, as before.
+    let plain = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en" }));
+    assert_eq!((plain["rows"].as_u64(), plain.get("evals")), (Some(0), None), "{plain:#}");
+
+    // The PGN export gives 12.Nf3 the engine's comment.
+    let pgn = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "lang": "en", "out": "book.pgn", "evals_store": store }));
+    assert_eq!(pgn["engine_comments"], 1, "{pgn:#}");
+    // In lines of at most 79 columns, as every PGN is written.
+    let text = std::fs::read_to_string(root.join("book.pgn")).unwrap().split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(text.contains("12. Nf3 $1 {Engine: \u{2212}1.50/20; 12.a3 +0.50/20 (Stockfish 17)} 12... Qd7"), "{text}");
+    let plain = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "lang": "en", "out": "plain.pgn" }));
+    assert_eq!(plain["engine_comments"], Value::Null);
+    assert!(!std::fs::read_to_string(root.join("plain.pgn")).unwrap().contains("Engine:"));
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
     let _ = std::fs::remove_dir_all(base);
 }
