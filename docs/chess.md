@@ -47,6 +47,8 @@ HTML embeds the fonts (the file stays self-contained); an EPUB carries them as f
 
 Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`chess.scan`).
 
+**Finding chess** (plan A9-I16). **Menu ▸ Chess** holds Scan chess diagrams, Chess diagrams panel, Load the book's PGN…, Export and Import a book's review, Make the book's bookmarks…, **Chess board**, **Analyze the position**, **Export chess book…** (the export dialog) and **Chess shortcuts**; **Tools ▸ Chess** has the scan, the panel, the board, Capture, the book's PGN and the export. The palette (Ctrl+K) finds them by name: "analyze", "board", "export book". **Analyze the position** analyses the diagram open in the Diagram tab, as edited, else the board's position. A book set in a chess font, or with a PGN beside it, shows the chess button on the right rail before anything was detected, with a dot until its Chess panel is opened.
+
 ### Reviewing a book in 5 steps
 
 1. **Detect diagrams.** Click **Detect diagrams** at the top of the panel. It finds every diagram in the book and reads its position; its ▾ offers the whole book (with its number of pages) or **On this page**. While it runs, the header says **Detecting… page 75 of 703**, and × stops it (the diagrams found so far stay). At the end it sums up: **548 diagrams · 40 to review**. Each open book keeps its own list: detecting in another book never empties this one's, and while another book is being detected, a book with no detection of its own says **Detecting in another book… page 306 of 748** under its header (Detect waits for it).
@@ -339,7 +341,7 @@ Steps 2–4 are tests of the engine (`engine::chess::capture`), of `chess_pgn_ed
 
 ### Keyboard
 
-These work while the chess scope is on (the keyboard focus or a click in the chess panels), and not while a text field has the keyboard. The letters and the signs are one-key shortcuts, which Preferences can turn off. Ctrl is ⌘ on macOS.
+These work while the chess scope is on (the keyboard focus or a click in the chess panels), and not while a text field has the keyboard. The letters and the signs are one-key shortcuts, which Preferences can turn off. Ctrl is ⌘ on macOS. **F1** there (or **Chess ▸ Chess shortcuts**) shows the sheet of these keys, made from the same key map the panels run, the board's and the Diagram tab's (plan A9-I16).
 
 | Key | Does |
 |---|---|

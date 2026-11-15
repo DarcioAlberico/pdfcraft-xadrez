@@ -3602,3 +3602,22 @@ progress bar	Progress	Орындалу барысы
 	Language: {lang}	Тіл: {lang}
 	from the book's text	кітап мәтіні бойынша
 	Games: read from the text, linked to the book's PGN	Партиялар: мәтіннен оқылады, кітаптың PGN-імен байланысады
+	Analyze the position	Позицияны талдау
+	Export chess book…	Шахмат кітабын экспорттау…
+	Chess shortcuts	Шахмат пернелер тіркесімдері
+	Board, move list and Chess panel	Тақта, жүрістер тізімі және шахмат панелі
+	Diagram tab	«Диаграмма» қойындысы
+	Move back	Бір жүріс артқа
+	Move forward	Бір жүріс алға
+	The variation above	Жоғарыдағы нұсқа
+	The variation below	Төмендегі нұсқа
+	Start of the game	Партияның басы
+	End of the line	Сызықтың соңы
+	End of the main line	Негізгі сызықтың соңы
+	Previous variation	Алдыңғы нұсқа
+	Next variation	Келесі нұсқа
+	Leave the chess panel	Шахмат панелінен шығу
+	Next tool of {group}	{group}: келесі құрал
+	Previous diagram	Алдыңғы диаграмма
+	Next diagram	Келесі диаграмма
+	The original or the position read	Түпнұсқа немесе оқылған позиция

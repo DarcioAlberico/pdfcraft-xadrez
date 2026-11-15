@@ -3600,3 +3600,22 @@ progress bar	Progress	İlerleme
 	Language: {lang}	Dil: {lang}
 	from the book's text	kitabın metninden
 	Games: read from the text, linked to the book's PGN	Oyunlar: metinden okunur, kitabın PGN'ine bağlanır
+	Analyze the position	Konumu çözümle
+	Export chess book…	Satranç kitabını dışa aktar…
+	Chess shortcuts	Satranç kısayolları
+	Board, move list and Chess panel	Tahta, hamle listesi ve satranç paneli
+	Diagram tab	Diyagram sekmesi
+	Move back	Bir hamle geri
+	Move forward	Bir hamle ileri
+	The variation above	Üstteki varyant
+	The variation below	Alttaki varyant
+	Start of the game	Oyunun başı
+	End of the line	Hattın sonu
+	End of the main line	Ana hattın sonu
+	Previous variation	Önceki varyant
+	Next variation	Sonraki varyant
+	Leave the chess panel	Satranç panelinden çık
+	Next tool of {group}	{group}: sonraki araç
+	Previous diagram	Önceki diyagram
+	Next diagram	Sonraki diyagram
+	The original or the position read	Özgün ya da okunan konum

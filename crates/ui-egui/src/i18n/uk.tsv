@@ -3626,3 +3626,22 @@ progress bar	Progress	Хід виконання
 	Language: {lang}	Мова: {lang}
 	from the book's text	за текстом книги
 	Games: read from the text, linked to the book's PGN	Партії: прочитано з тексту, пов'язано з PGN книги
+	Analyze the position	Аналізувати позицію
+	Export chess book…	Експортувати шахову книгу…
+	Chess shortcuts	Шахові сполучення клавіш
+	Board, move list and Chess panel	Дошка, список ходів і шахова панель
+	Diagram tab	Вкладка «Діаграма»
+	Move back	Хід назад
+	Move forward	Хід уперед
+	The variation above	Варіант вище
+	The variation below	Варіант нижче
+	Start of the game	Початок партії
+	End of the line	Кінець лінії
+	End of the main line	Кінець головної лінії
+	Previous variation	Попередній варіант
+	Next variation	Наступний варіант
+	Leave the chess panel	Вийти з шахової панелі
+	Next tool of {group}	Наступний інструмент групи «{group}»
+	Previous diagram	Попередня діаграма
+	Next diagram	Наступна діаграма
+	The original or the position read	Оригінал або прочитана позиція

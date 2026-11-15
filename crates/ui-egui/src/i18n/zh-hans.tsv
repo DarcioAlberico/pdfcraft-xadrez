@@ -3568,3 +3568,22 @@ progress bar	Progress	进度
 	Language: {lang}	语言：{lang}
 	from the book's text	根据书的正文
 	Games: read from the text, linked to the book's PGN	对局：从正文读取，并关联到书中的 PGN
+	Analyze the position	分析局面
+	Export chess book…	导出国际象棋书…
+	Chess shortcuts	国际象棋快捷键
+	Board, move list and Chess panel	棋盘、着法列表和国际象棋面板
+	Diagram tab	棋图选项卡
+	Move back	后退一步
+	Move forward	前进一步
+	The variation above	上方的变着
+	The variation below	下方的变着
+	Start of the game	对局开始
+	End of the line	该线路的末尾
+	End of the main line	主线的末尾
+	Previous variation	上一个变着
+	Next variation	下一个变着
+	Leave the chess panel	离开国际象棋面板
+	Next tool of {group}	{group}的下一个工具
+	Previous diagram	上一张棋图
+	Next diagram	下一张棋图
+	The original or the position read	原图或读出的局面

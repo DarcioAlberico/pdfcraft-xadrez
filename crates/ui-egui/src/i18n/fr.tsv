@@ -3604,3 +3604,22 @@ progress bar	Progress	Progression
 	Language: {lang}	Langue : {lang}
 	from the book's text	d'après le texte du livre
 	Games: read from the text, linked to the book's PGN	Parties : lues dans le texte, liées au PGN du livre
+	Analyze the position	Analyser la position
+	Export chess book…	Exporter le livre d'échecs…
+	Chess shortcuts	Raccourcis d'échecs
+	Board, move list and Chess panel	Échiquier, liste des coups et panneau Échecs
+	Diagram tab	Onglet Diagramme
+	Move back	Reculer d'un coup
+	Move forward	Avancer d'un coup
+	The variation above	La variante au-dessus
+	The variation below	La variante en dessous
+	Start of the game	Début de la partie
+	End of the line	Fin de la ligne
+	End of the main line	Fin de la ligne principale
+	Previous variation	Variante précédente
+	Next variation	Variante suivante
+	Leave the chess panel	Quitter le panneau Échecs
+	Next tool of {group}	Outil suivant de {group}
+	Previous diagram	Diagramme précédent
+	Next diagram	Diagramme suivant
+	The original or the position read	L'original ou la position lue

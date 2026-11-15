@@ -40,6 +40,7 @@ mod chess_bookmarks_ui;
 mod chess_capture;
 mod chess_cipher_ui;
 mod chess_collection;
+mod chess_commands;
 mod chess_correct;
 mod chess_corrections_ui;
 mod chess_deleted;
@@ -3524,6 +3525,7 @@ impl eframe::App for PdfCraftApp {
             chess_fixes::forget_prompt(self, &ctx);
             chess_keep::prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
+            chess_commands::sheet(self, &ctx);
             chess_review_ui::prompt(self, &ctx);
             chess_bookmarks_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
@@ -3605,6 +3607,7 @@ impl eframe::App for PdfCraftApp {
         chess_fixes::forget_prompt(self, &ctx);
         chess_keep::prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
+        chess_commands::sheet(self, &ctx);
         chess_review_ui::prompt(self, &ctx);
         chess_bookmarks_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
