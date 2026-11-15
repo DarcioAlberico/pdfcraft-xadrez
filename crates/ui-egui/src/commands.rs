@@ -512,6 +512,11 @@ impl PdfCraftApp {
             "chess.review.export" => self.export_chess_review(),
             "chess.review.import" => self.import_chess_review(),
             "chess.bookmarks" => self.read_book_for_bookmarks(),
+            // Plan A9-I16 (R4-02): the chess tools by name, without the panel.
+            "chess.board.show" => self.show_chess_board(),
+            "chess.analyze" => self.analyze_chess_position(),
+            "chess.export" => self.open_chess_export(),
+            "chess.shortcuts" => self.show_chess_shortcuts(),
             "chess.models" => self.choose_chess_models(),
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
