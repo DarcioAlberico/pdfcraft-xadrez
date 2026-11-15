@@ -4379,6 +4379,114 @@ fn chess_export_exercises_writes_a_problem_pgn() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N12a (A8-14, decision D30): `chess_export_worksheet` writes the book's exercises as a
+/// new PDF — four diagrams a page, each captioned, the solutions at the end, the numbered diagram
+/// whose solution was not read among them with "solution not read" — that opens without repair,
+/// and never over the book or outside the root.
+#[test]
+fn chess_export_worksheet_writes_the_exercises_as_a_new_pdf() {
+    let (base, root) = workdir("worksheet");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5 2.Nf3 Nc6")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5 2.c4")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+        ("Exercise 4", board("OoOoOo+o"), None),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let made = ok(
+        &mut a,
+        "chess_export_worksheet",
+        json!({ "doc": doc, "lang": "en", "out": "sheet.pdf", "per_page": 4, "solutions": true, "title": "Openings" }),
+    );
+    assert_eq!((made["pages"].as_u64(), made["diagram_pages"].as_u64(), made["key_pages"].as_u64()), (Some(2), Some(1), Some(1)), "{made:#}");
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3, 4], "{made:#}");
+    assert_eq!(made["exercises"][3]["solution"], Value::Null, "{made:#}");
+    // The sheet opens without a repair note, and its text holds the captions and the key.
+    let sheet = ok(&mut a, "doc_open", json!({ "path": "sheet.pdf" }));
+    let id = sheet["doc"].as_u64().unwrap();
+    assert_eq!(sheet["pages"], 2, "{sheet:#}");
+    assert!(sheet.get("repairs").is_none_or(|r| r.as_array().is_none_or(Vec::is_empty)), "{sheet:#}");
+    let text = ok(&mut a, "text_extract", json!({ "doc": id }));
+    let all = text.to_string();
+    for k in 1..=4 {
+        assert!(all.contains(&format!("Nº {k} · p. {k} · White to move")), "caption {k}: {all}");
+    }
+    assert!(all.contains("Nº 1 · p. 1: 1.e4 e5 2.Nf3 Nc6") && all.contains("Nº 4 · p. 4: solution not read"), "{all}");
+    // Never over the open book, never outside the root.
+    match a.call("chess_export_worksheet", &json!({ "doc": doc, "out": "exercises.pdf" })) {
+        Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => assert!(m.contains("open"), "{m}"),
+        other => panic!("wrote over the open book: {other:?}"),
+    }
+    match a.call("chess_export_worksheet", &json!({ "doc": doc, "out": "../outside/sheet.pdf" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    let e = a.call("chess_export_worksheet", &json!({ "doc": doc, "out": "x.pdf", "per_page": 5 })).unwrap_err();
+    assert!(e.to_string().contains("per_page"), "{e}");
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-N12a's check with the user's piece model (`PDFCRAFT_CHESS_TEST_MODELS`; skipped
+/// without one): the sheet's boards, drawn with a shipped piece set, read back as the exercises'
+/// positions.
+#[test]
+fn the_worksheet_reads_back_with_the_piece_model() {
+    let Some(models) = pdfcraft_engine::chess::pdfcraft_chessvision::models::test_models().unwrap() else {
+        eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
+        return;
+    };
+    let (base, root) = workdir("worksheet-model");
+    let board = |rank7: &'static str| {
+        let mut b = MERIDA_START;
+        b[1] = rank7;
+        b
+    };
+    let pages = [
+        ("Exercise 1", board("OoOoOoO "), Some("1.e4 e5")),
+        ("Exercise 2", board("+oOoOoOo"), Some("1.d4 d5")),
+        ("Exercise 3", board("O OoOoOo"), Some("1.c4 c5")),
+    ];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new();
+    let path = |p: &Path| p.to_string_lossy().into_owned();
+    let doc = ok(&mut a, "doc_open", json!({ "path": path(&root.join("exercises.pdf")) }))["doc"].as_u64().unwrap();
+    let made = ok(&mut a, "chess_export_worksheet", json!({ "doc": doc, "lang": "en", "out": path(&root.join("sheet.pdf")), "pieces": "chessnut" }));
+    let fens: Vec<String> = made["exercises"].as_array().unwrap().iter().map(|e| e["caption"].as_str().unwrap().to_owned()).collect();
+    assert_eq!(fens.len(), 3, "{made:#}");
+    let sheet = ok(&mut a, "doc_open", json!({ "path": path(&root.join("sheet.pdf")) }))["doc"].as_u64().unwrap();
+    let read = ok(&mut a, "chess_read", json!({ "doc": sheet, "pages": [1], "models_dir": path(&models) }));
+    let placements: Vec<String> = read["pages"][0]["readings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|d| d["fen"].as_str().map(|f| f.split(' ').next().unwrap_or_default().to_owned()))
+        .collect();
+    let original = ok(&mut a, "chess_read", json!({ "doc": doc }));
+    let expected: Vec<String> = original["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|p| p["readings"][0]["fen"].as_str().map(|f| f.split(' ').next().unwrap_or_default().to_owned()))
+        .collect();
+    eprintln!("read back {placements:?}, the book's {expected:?}");
+    // The sheet fills its grid row by row; the reader takes a page of two columns column by
+    // column: the same positions, in its order.
+    let (mut placements, mut expected) = (placements, expected);
+    placements.sort();
+    expected.sort();
+    assert_eq!(placements, expected, "{read:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan A9-N10b (A8-05): `chess_export_anki` writes the same exercises as Anki's cards — a text
 /// file in the form Anki's manual gives (its headers, a tab between front and back, HTML on) and
 /// a picture per card in a folder beside it — named and drawn the same on every run, and says

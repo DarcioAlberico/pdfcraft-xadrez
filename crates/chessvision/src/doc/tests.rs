@@ -15,6 +15,7 @@ mod fragment;
 mod from_games;
 mod html;
 mod markdown;
+mod worksheet;
 
 use super::*;
 use crate::board::Unreadable;
