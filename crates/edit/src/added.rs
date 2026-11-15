@@ -213,7 +213,14 @@ pub struct Added {
     /// The item's content stream.
     pub obj: ObjRef,
     pub content: Content,
+    /// The key a feature of PdfCraft gave the item to find it again by (`/PCKey` in its stream's
+    /// dictionary, [`add_content_keyed`]), kept when the item is moved, resized or retyped; `None`
+    /// for an item added by hand.
+    pub key: Option<String>,
 }
+
+/// The longest `/PCKey` read back; a longer one is no key of PdfCraft's.
+pub const MAX_KEY_LEN: usize = 256;
 
 /// PdfCraft-owned page content discovered in one page/content traversal.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -974,7 +981,13 @@ pub fn scan_markers(doc: &Document) -> MarkerScan {
                             .and_then(Object::as_f64)
                             .filter(|u| u.is_finite() && *u >= 1.0)
                             .map_or(1.0, |u| u.min(pdfcraft_model::MAX_USER_UNIT));
-                        scan.added.push(Added { page: pi, obj, content: content.scaled(page.user_unit(doc) / written) });
+                        let key = dict.get(b"PCKey").and_then(|k| {
+                            doc.resolve(k)
+                                .as_string()
+                                .filter(|s| s.bytes.len() <= MAX_KEY_LEN)
+                                .map(|s| String::from_utf8_lossy(&s.bytes).into_owned())
+                        });
+                        scan.added.push(Added { page: pi, obj, content: content.scaled(page.user_unit(doc) / written), key });
                     }
                 });
             });
@@ -1027,8 +1040,11 @@ fn validate(c: &Content) -> Result<(), EditError> {
 }
 
 /// Write an item's stream (new, or replacing `obj`) and make its resources available to the page.
-fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> Result<ObjRef, EditError> {
+/// Write item `c` on `page`: a new one, or over `obj`. `key` is the new item's `/PCKey`; an item
+/// written over keeps the key it had.
+fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>, key: Option<&str>) -> Result<ObjRef, EditError> {
     validate(c)?;
+    let kept = obj.and_then(|r| doc.get(r).as_dict().and_then(|d| d.get(b"PCKey")).cloned());
     let all = page_list(doc);
     check(&[page], all.len())?;
     let p = &all[page];
@@ -1057,6 +1073,11 @@ fn write(doc: &mut Document, page: usize, c: &Content, obj: Option<ObjRef>) -> R
         added.set(b"UserUnit".to_vec(), Object::Real(user_unit));
     }
     sd.set(b"PCAdded".to_vec(), Object::Dict(added));
+    match (key, kept) {
+        (Some(key), _) => sd.set(b"PCKey".to_vec(), PdfString::literal(key.as_bytes())),
+        (None, Some(kept)) => sd.set(b"PCKey".to_vec(), kept),
+        (None, None) => {}
+    }
     let stream = Stream::flate(sd, &content);
     match obj {
         Some(r) => {
@@ -1082,8 +1103,18 @@ pub fn list_added(doc: &Document) -> Vec<Added> {
 
 /// Add an item to a page (0-based). Returns its index among the page's added items.
 pub fn add_content(doc: &mut Document, page: usize, c: &Content) -> Result<usize, EditError> {
-    write(doc, page, c, None)?;
+    write(doc, page, c, None, None)?;
     Ok(list_added(doc).iter().filter(|a| a.page == page).count() - 1)
+}
+
+/// [`add_content`], the item keyed `key` (at most [`MAX_KEY_LEN`] bytes) so the feature that added
+/// it finds it again by its key, never by where it is ([`Added::key`]).
+pub fn add_content_keyed(doc: &mut Document, page: usize, c: &Content, key: &str) -> Result<usize, EditError> {
+    if key.is_empty() || key.len() > MAX_KEY_LEN {
+        return Err(EditError::Invalid("an item's key must be given and short".into()));
+    }
+    write(doc, page, c, None, Some(key))?;
+    Ok(list_added(doc).iter().filter(|a| a.page == page).count().saturating_sub(1))
 }
 
 fn find(doc: &Document, page: usize, index: usize) -> Result<Added, EditError> {
@@ -1100,7 +1131,7 @@ pub fn update_content(doc: &mut Document, page: usize, index: usize, c: &Content
     if std::mem::discriminant(&a.content) != std::mem::discriminant(c) {
         return Err(EditError::Invalid("an item can't change between text and image".into()));
     }
-    write(doc, page, c, Some(a.obj))?;
+    write(doc, page, c, Some(a.obj), None)?;
     Ok(())
 }
 

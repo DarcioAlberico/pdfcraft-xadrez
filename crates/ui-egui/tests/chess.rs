@@ -666,6 +666,59 @@ fn the_editor_links_the_corrected_position() {
     assert!(h.state().session.get(id).unwrap().links().is_empty(), "undone");
 }
 
+/// Plan A9-G9 (R3-02): a diagram printed from Black's side opens on lichess from Black's side
+/// (`?color=black`) from the list, the Diagram tab and the board alike, whichever way each view is
+/// turned, and Add lichess link writes the same address into the PDF: all four through the one
+/// rule (`pdfcraft_chess::lichess::link`), from the side the reading says it is printed from.
+#[test]
+fn a_diagram_printed_from_blacks_side_opens_on_lichess_from_blacks_side_everywhere() {
+    // The start position as printed from Black's side: the board turned, its pieces with it.
+    let black: [String; 8] = std::array::from_fn(|i| MERIDA_START[7 - i].chars().rev().collect());
+    let mut h = harness_on(pdf_of(&font_board(&black), "<< /Type /Catalog /Pages 2 0 R >>"), 0.25);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let url = "https://lichess.org/analysis/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201?color=black";
+    let opened = |h: &mut Harness<'static, PdfCraftApp>, label: &str| {
+        h.state_mut().last_opened_url = None;
+        h.get_by_label(label).click();
+        h.run_steps(2);
+        h.state().last_opened_url.clone()
+    };
+    // The list's row menu.
+    row_menu(&mut h, "Diagram 1 · ");
+    assert_eq!(opened(&mut h, "Open in lichess").as_deref(), Some(url), "the list's");
+    // The Diagram tab's, its view turned to White's side.
+    let row = h.get_all_by_label_contains("Diagram 1 · ").next().expect("listed").accesskit_node().label().unwrap_or_default().to_string();
+    h.get_by_label(&row).click();
+    h.run_steps(3);
+    let ed = h.state_mut().chess.editor.as_mut().expect("picking a diagram opens the editor");
+    assert!(ed.flipped, "the editor opens as the diagram is printed");
+    ed.flipped = false;
+    h.run_steps(2);
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
+    assert_eq!(opened(&mut h, "Open in lichess").as_deref(), Some(url), "the Diagram tab's");
+    // The PDF's: Add lichess link, in the same tab.
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
+    h.get_by_label("Add lichess link").click();
+    h.run_steps(3);
+    assert_eq!(h.state().said(), Some("Lichess link added"));
+    let id = h.state().active_ids().unwrap().1;
+    let links = h.state().session.get(id).unwrap().links().to_vec();
+    assert_eq!(links.iter().map(|l| l.action.clone()).collect::<Vec<_>>(), [pdfcraft_engine::LinkAction::Uri(url.into())], "the PDF's");
+    // The board's, shown from White's side: it opens as the editor shows the diagram (turned
+    // above), as the list's Open on the board opens it.
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(3);
+    assert!(!h.state().chess.board().flipped, "the board takes the editor's view");
+    assert!(h.state().chess.board().source.is_some(), "from the diagram");
+    h.get_by_label("FEN/PGN").click_accesskit();
+    h.run_steps(2);
+    assert_eq!(opened(&mut h, "Open in lichess").as_deref(), Some(url), "the board's");
+}
+
 /// The Diagrams panel's header (plan A8, P2a2): before any scan it says what detecting does;
 /// Detect diagrams ▾ offers the whole book (with its page count) or this page; once the scan is
 /// done the panel sums it up ("2 diagrams · 1 to review") and Review now opens the first diagram

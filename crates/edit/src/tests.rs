@@ -665,6 +665,27 @@ fn added_text_and_images_are_page_content_that_stays_editable() {
     assert!(marks_present(&doc).is_empty());
 }
 
+/// Plan A9-G9b: an item a feature adds with a key keeps it, read back after a save and through
+/// a move or a retype; an item added by hand has none; an empty or overlong key is refused.
+#[test]
+fn a_keyed_item_keeps_its_key_when_it_is_edited() {
+    use crate::added::{MAX_KEY_LEN, add_content_keyed};
+    let mut doc = fixture();
+    let text = AddedText { rect: [72.0, 600.0, 300.0, 620.0], text: "Analyze on lichess".into(), ..AddedText::default() };
+    assert_eq!(add_content_keyed(&mut doc, 0, &Content::Text(text.clone()), "lichess diagram 1").unwrap(), 0);
+    add_content(&mut doc, 0, &Content::Text(AddedText { text: "By hand".into(), ..text.clone() })).unwrap();
+    let mut doc = reopen(&doc);
+    let keys = |doc: &Document| list_added(doc).into_iter().map(|a| a.key).collect::<Vec<_>>();
+    assert_eq!(keys(&doc), [Some("lichess diagram 1".to_owned()), None]);
+    update_content(&mut doc, 0, 0, &Content::Text(AddedText { rect: [100.0, 500.0, 300.0, 520.0], text: "Mine now".into(), ..text.clone() }))
+        .unwrap();
+    assert_eq!(keys(&doc), [Some("lichess diagram 1".to_owned()), None], "kept through a move and a retype");
+    for bad in ["", &"k".repeat(MAX_KEY_LEN + 1)[..]] {
+        assert!(add_content_keyed(&mut doc, 0, &Content::Text(text.clone()), bad).is_err());
+    }
+    assert_eq!(list_added(&doc).len(), 2, "a refused key adds nothing");
+}
+
 #[test]
 fn added_arabic_text_is_shaped_in_display_order_and_stays_searchable() {
     let mut doc = fixture();
