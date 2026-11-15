@@ -136,6 +136,8 @@ pub struct ChessState {
     /// Review packs the browser read, imported at the next frame (plan A9-G5b).
     #[cfg(target_arch = "wasm32")]
     pub(crate) review_uploads: std::sync::Arc<std::sync::Mutex<Vec<(DocId, String, Result<Vec<u8>, String>)>>>,
+    /// The book's bookmarks, read and shown before they are made (plan A9-N6).
+    pub(crate) bookmarks: Option<crate::chess_bookmarks_ui::BookmarksPreview>,
     /// The file Open folder last showed (what tests see instead of the file manager).
     pub last_revealed: Option<std::path::PathBuf>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
@@ -698,6 +700,8 @@ pub enum PanelAction {
     Review {
         import: bool,
     },
+    /// Make the book's bookmarks… (plan A9-N6).
+    Bookmarks,
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -1750,6 +1754,7 @@ impl PdfCraftApp {
             PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
             PanelAction::Review { import: false } => self.export_chess_review(),
             PanelAction::Review { import: true } => self.import_chess_review(),
+            PanelAction::Bookmarks => self.read_book_for_bookmarks(),
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

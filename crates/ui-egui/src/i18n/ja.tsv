@@ -3533,6 +3533,21 @@ the move's comment	Move comment	手のコメント
 	The board is in the column beside.	盤は隣の列にあります。
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	チェスのしおりを追加
+	Make the book's bookmarks…	本のしおりを作成…
+	Reading the book for its bookmarks…	しおりのために本を読み取り中…
+	Reading the book for its bookmarks: page {done} of {of}	しおりのために本を読み取り中: {done} / {of} ページ
+	Reading was stopped: no bookmark was added.	読み取りを中止しました。しおりは追加されていません。
+	The book's bookmarks	本のしおり
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	章: {chapters} · 対局: {games} · 問題: {exercises}
+	Chapters	章
+	Games	対局
+	Exercises	問題
+	Exercise	問題
+	Title of the bookmark	しおりのタイトル
+	No chapter, game or exercise was found in the book.	本の中に章、対局、問題が見つかりませんでした。
+	Add the bookmarks	しおりを追加
+	The document changed since it was read: make its bookmarks again.	読み取り後に文書が変更されました。しおりをもう一度作成してください。
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	「{title}」の下にしおりを追加しました: {n}。取り消しで削除できます。
 	More board actions	盤のその他の操作
 	Back to the moves	指し手に戻る
 	Back to the moves (Esc)	指し手に戻る (Esc)

@@ -4415,3 +4415,70 @@ fn the_cipher_kept_for_a_book_is_where_its_next_reading_starts() {
     assert!(reader.call("chess_document", &no_copy).is_err(), "a document that forbids copying is not even read");
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Two games reaching the same position by two move orders (plan A9-N3).
+const TRANSPOSED_PGN: &str =
+    "[Event \"Open\"]\n[White \"Open\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n\n[Event \"Reti\"]\n[White \"Reti\"]\n\n1.Nf3 Nc6 2.e4 e5 3.Bc4 *\n";
+
+/// Plan A9-N3: `chess_position_find` looks only in what is read. With nothing read it says so
+/// and reads nothing; with the book's PGN, the position two move orders reach is found twice and
+/// the transposition counted; a diagram read in the session, and one kept on disk by another
+/// session, is found by its page; the paths are confined to the root.
+#[test]
+fn chess_position_find_looks_only_in_what_is_read() {
+    let (base, root) = workdir("position-find");
+    std::fs::write(root.join("book.pgn"), TRANSPOSED_PGN).unwrap();
+    std::fs::write(base.join("outside").join("book.pgn"), TRANSPOSED_PGN).unwrap();
+    let (mut a, doc) = opened(&root);
+    let start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let four = json!(["e4", "e5", "Nf3", "Nc6"]);
+    // Nothing read: said, and no page is scanned for it.
+    let none = ok(&mut a, "chess_position_find", json!({ "doc": doc, "moves": four, "cache": "reading" }));
+    assert_eq!((none["read"]["nothing"].as_bool(), none["occurrences"].as_u64()), (Some(true), Some(0)), "{none:#}");
+    assert!(none["why"].as_str().unwrap().contains("nothing of the book is read"), "{none:#}");
+    assert_eq!(none["read"]["pages_read"], 0);
+    assert_eq!(none["read"]["pages"], 1);
+    assert_eq!(a.session().chess_scanned(), 0, "no page was read for it");
+    // The book's PGN: twice, by two orders.
+    let pgn = ok(&mut a, "chess_position_find", json!({ "doc": doc, "moves": four, "reference_pgn": "book.pgn" }));
+    assert_eq!((pgn["occurrences"].as_u64(), pgn["read"]["nothing"].as_bool()), (Some(2), Some(false)), "{pgn:#}");
+    let p = &pgn["pgn"];
+    assert_eq!((p["total"].as_u64(), p["lines"].as_u64(), p["transpositions"].as_u64()), (Some(2), Some(2), Some(1)), "{pgn:#}");
+    let found = p["found"].as_array().unwrap();
+    assert_eq!((found[0]["game"].as_u64(), found[0]["move"].as_str(), found[0]["transposition"].as_bool()), (Some(1), Some("2...Nc6"), Some(false)));
+    assert_eq!((found[1]["game"].as_u64(), found[1]["move"].as_str(), found[1]["transposition"].as_bool()), (Some(2), Some("2...e5"), Some(true)));
+    assert_eq!(found[1]["name"], "Reti");
+    assert!(found.iter().all(|f| f["main_line"] == true));
+    // The same, given as a FEN; and a position the book does not reach.
+    let fen = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+    assert_eq!(ok(&mut a, "chess_position_find", json!({ "doc": doc, "fen": fen, "reference_pgn": "book.pgn" }))["occurrences"], 2);
+    let elsewhere = ok(&mut a, "chess_position_find", json!({ "doc": doc, "moves": ["d4"], "reference_pgn": "book.pgn" }));
+    assert_eq!((elsewhere["occurrences"].as_u64(), elsewhere["read"]["nothing"].as_bool()), (Some(0), Some(false)), "{elsewhere:#}");
+    // A diagram read in this session: the font diagram, the start position (and both games' start);
+    // its side to move is assumed (no caption says it), so its pieces are compared.
+    ok(&mut a, "chess_read", json!({ "doc": doc, "models_dir": "models" }));
+    let read = ok(&mut a, "chess_position_find", json!({ "doc": doc, "fen": start, "reference_pgn": "book.pgn" }));
+    assert_eq!(read["diagrams"]["found"], json!([{ "page": 1, "index": 1, "side_assumed": true, "from_disk": false }]), "{read:#}");
+    assert_eq!((read["read"]["pages_read"].as_u64(), read["occurrences"].as_u64()), (Some(1), Some(3)), "{read:#}");
+    // Kept on disk by a session that reads the page (this one answers from its own cache, and
+    // keeps nothing), found by another that read nothing.
+    let (mut keeper, kept_doc) = opened(&root);
+    let kept = ok(&mut keeper, "chess_document", json!({ "doc": kept_doc, "models_dir": "models", "cache": "reading" }));
+    assert_eq!(kept["cache"]["kept"], 1, "{kept:#}");
+    let (mut again, doc) = opened(&root);
+    let kept = ok(&mut again, "chess_position_find", json!({ "doc": doc, "fen": start, "models_dir": "models", "cache": "reading" }));
+    assert_eq!(kept["diagrams"]["found"], json!([{ "page": 1, "index": 1, "side_assumed": true, "from_disk": true }]), "{kept:#}");
+    assert_eq!((kept["read"]["from_disk"].as_u64(), kept["read"]["nothing"].as_bool()), (Some(1), Some(false)), "{kept:#}");
+    assert_eq!(again.session().chess_scanned(), 0, "taken from the disk, not read");
+    // Confined to the root.
+    for (arg, path) in [("reference_pgn", "../outside/book.pgn"), ("cache", "../outside/reading")] {
+        match again.call("chess_position_find", &json!({ "doc": doc, "fen": start, arg: path })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{arg}: {m}"),
+            other => panic!("{arg} outside the root accepted: {other:?}"),
+        }
+    }
+    // A move that cannot be played; and no position given is the start position.
+    assert!(again.call("chess_position_find", &json!({ "doc": doc, "moves": ["e4", "e4"] })).unwrap_err().to_string().contains("move 2"));
+    assert_eq!(ok(&mut again, "chess_position_find", json!({ "doc": doc }))["fen"], start);
+    let _ = std::fs::remove_dir_all(base);
+}

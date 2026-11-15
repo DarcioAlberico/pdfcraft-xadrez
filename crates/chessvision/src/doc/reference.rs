@@ -52,7 +52,7 @@ use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline
 mod index;
 
 use index::PositionKey;
-pub use index::{Cut, IndexMemo, MEMO_INDEXES, ReferenceGame, ReferenceIndex};
+pub use index::{Cut, IndexMemo, MEMO_INDEXES, Occurrences, PgnOccurrence, ReferenceGame, ReferenceIndex};
 
 /// Largest PGN text [`ReferenceIndex::from_pgn`] reads: the one cap of every PGN read (plan
 /// A9-F4).

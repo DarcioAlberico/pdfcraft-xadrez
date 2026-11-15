@@ -2030,6 +2030,7 @@ pub mod links;
 pub mod notes;
 pub mod office;
 mod page_key;
+pub mod position_find;
 pub mod reading;
 pub mod reference_store;
 pub mod replace;

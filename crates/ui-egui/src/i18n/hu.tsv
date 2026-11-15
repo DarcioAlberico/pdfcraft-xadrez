@@ -3530,6 +3530,21 @@ the move's comment	Move comment	A lépés megjegyzése
 	The board is in the column beside.	A tábla a szomszédos oszlopban van.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Sakk-könyvjelzők hozzáadása
+	Make the book's bookmarks…	A könyv könyvjelzőinek létrehozása…
+	Reading the book for its bookmarks…	A könyv olvasása a könyvjelzőihez…
+	Reading the book for its bookmarks: page {done} of {of}	A könyv olvasása a könyvjelzőihez: {done}. oldal / {of}
+	Reading was stopped: no bookmark was added.	Az olvasás leállt: nem lett könyvjelző hozzáadva.
+	The book's bookmarks	A könyv könyvjelzői
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Fejezetek: {chapters} · Játszmák: {games} · Feladatok: {exercises}
+	Chapters	Fejezetek
+	Games	Játszmák
+	Exercises	Feladatok
+	Exercise	Feladat
+	Title of the bookmark	A könyvjelző címe
+	No chapter, game or exercise was found in the book.	A könyvben nem található fejezet, játszma vagy feladat.
+	Add the bookmarks	Könyvjelzők hozzáadása
+	The document changed since it was read: make its bookmarks again.	A dokumentum az olvasás óta megváltozott: hozza létre újra a könyvjelzőit.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Könyvjelzők hozzáadva ez alá: „{title}”: {n}. A Visszavonás eltávolítja őket.
 	More board actions	További táblaműveletek
 	Back to the moves	Vissza a lépésekhez
 	Back to the moves (Esc)	Vissza a lépésekhez (Esc)

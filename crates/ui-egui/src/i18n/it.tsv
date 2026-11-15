@@ -3743,6 +3743,21 @@ the move's comment	Move comment	Commento della mossa
 	The board is in the column beside.	La scacchiera è nella colonna accanto.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Aggiungi segnalibri degli scacchi
+	Make the book's bookmarks…	Crea i segnalibri del libro…
+	Reading the book for its bookmarks…	Lettura del libro per i suoi segnalibri…
+	Reading the book for its bookmarks: page {done} of {of}	Lettura del libro per i suoi segnalibri: pagina {done} di {of}
+	Reading was stopped: no bookmark was added.	La lettura è stata interrotta: nessun segnalibro è stato aggiunto.
+	The book's bookmarks	Segnalibri del libro
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Capitoli: {chapters} · Partite: {games} · Esercizi: {exercises}
+	Chapters	Capitoli
+	Games	Partite
+	Exercises	Esercizi
+	Exercise	Esercizio
+	Title of the bookmark	Titolo del segnalibro
+	No chapter, game or exercise was found in the book.	Nel libro non è stato trovato alcun capitolo, partita o esercizio.
+	Add the bookmarks	Aggiungi i segnalibri
+	The document changed since it was read: make its bookmarks again.	Il documento è cambiato da quando è stato letto: crea di nuovo i suoi segnalibri.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Segnalibri aggiunti sotto «{title}»: {n}. Annulla li toglie.
 	More board actions	Altre azioni della scacchiera
 	Back to the moves	Torna alle mosse
 	Back to the moves (Esc)	Torna alle mosse (Esc)
