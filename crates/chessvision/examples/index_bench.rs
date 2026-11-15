@@ -5,6 +5,7 @@
 //! ```text
 //! cargo run --release -p pdfcraft-chessvision --example index_bench -- make 4096 book.pgn
 //! cargo run --release -p pdfcraft-chessvision --example index_bench -- index book.pgn [MIB]
+//! cargo run --release -p pdfcraft-chessvision --example index_bench -- pattern book.pgn KRP-KR
 //! ```
 //!
 //! `index` reads the file as the app does (`pgn::decode`) and indexes it once
@@ -12,6 +13,10 @@
 //! PGN was loaded. With `MIB`, the index is given that many MiB in place of its cap
 //! (`from_pgn_within`, plan A9-I3b). Without it, the example uses only what the index had before
 //! plan A9-I3b, so the same file measured the build before and after.
+//!
+//! `pattern` indexes the file, then looks for the material signature in it as `chess_pattern_find`
+//! does (plan A9-N16a, `ReferenceIndex::stretches`: each game the index holds played again once),
+//! and says how long the search took.
 
 use std::time::Instant;
 
@@ -50,7 +55,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Held to the end, so the peak measured from outside is the index's.
             std::hint::black_box(&index);
         }
-        _ => return Err("usage: index_bench make GAMES OUT | index PGN [MIB]".into()),
+        ["pattern", path, signature] => {
+            use pdfcraft_chess::pattern::{Material, Query};
+            let query = Query { material: Some(Material::parse(signature)?), either_side: true, ..Query::default() };
+            let (text, _) = pdfcraft_chess::pgn::decode(&std::fs::read(path)?);
+            let index = ReferenceIndex::from_pgn(&text)?;
+            let t = Instant::now();
+            let found = index.stretches(&query, 1000);
+            let ms = t.elapsed().as_secs_f64() * 1000.0;
+            println!(
+                "{signature} in {path}: {ms:.0} ms, {} games played (of {} indexed, {} moves), {} stretches in {} games",
+                found.played,
+                index.games().iter().filter(|g| g.moves > 0).count(),
+                index.moves(),
+                found.total,
+                found.per_game.len()
+            );
+        }
+        _ => return Err("usage: index_bench make GAMES OUT | index PGN [MIB] | pattern PGN SIGNATURE".into()),
     }
     Ok(())
 }

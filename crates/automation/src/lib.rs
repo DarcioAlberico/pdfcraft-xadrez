@@ -26,6 +26,7 @@ mod chess_errata;
 mod chess_evals;
 mod chess_files;
 mod chess_games;
+mod chess_pattern;
 mod chess_pgn;
 mod chess_position;
 mod chess_reference;
@@ -867,6 +868,7 @@ impl Automation {
             "chess_game" => self.chess_game(&a)?,
             "chess_mate" => self.chess_mate(&a)?,
             "chess_position_find" => self.chess_position_find(&a)?,
+            "chess_pattern_find" => self.chess_pattern_find(&a)?,
             "chess_pgn_edit" => self.chess_pgn_edit(&a)?,
             "chess_games" => self.chess_games(&a)?,
             "chess_games_book" => self.chess_games_book(&a)?,
