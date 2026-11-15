@@ -115,15 +115,11 @@ pub struct CaptureState {
     pub drawn: Vec<(usize, [f32; 4])>,
     /// The layer's boxes, with a key over the games they were read from.
     layer: Option<(u64, Layer)>,
-    /// The notice after a capture went in, with its Undo, until the game changes again.
-    pub toast: Option<Toast>,
     /// Enter was pressed while a plan waits: it applies the plan (taken before anything else
     /// that uses Enter can see it).
     enter: bool,
     /// Notices for the user, shown at the next tick.
     notes: Vec<(crate::notice::Level, String)>,
-    /// The notice's Undo was clicked: done at the next tick.
-    undo: bool,
     /// The OCR area (T9): drawing an area of a scan to read with chess OCR.
     pub area: crate::chess_ocr_area::AreaState,
     /// Collecting corrected characters for retraining (T11, opt-in).
@@ -140,15 +136,6 @@ impl CaptureState {
     pub(crate) fn note(&mut self, level: crate::notice::Level, text: String) {
         self.notes.push((level, text));
     }
-}
-
-/// The notice after a capture went in: what it did, and Undo. It stays (no timeout: WCAG 2.2.1)
-/// while the game is as the capture left it.
-pub struct Toast {
-    pub text: String,
-    /// The game it is about (the collection's id for it) and its revision after the capture.
-    game: u64,
-    revision: u64,
 }
 
 /// The moves a capture just added, tinted in the notation: for a few seconds, or with reduced
@@ -630,7 +617,7 @@ impl PdfCraftApp {
                 self.chess.capture.paste_mode = Some(mode);
                 self.chess.enter_scope();
                 let key = self.ctx.as_ref().map(|ctx| crate::commands::shortcut_label(ctx, PASTE)).unwrap_or_default();
-                self.notify(crate::i18n::fmt(tl!("Press {key} to capture the text on the clipboard."), &[("key", &key)]));
+                self.inform(crate::i18n::fmt(tl!("Press {key} to capture the text on the clipboard."), &[("key", &key)]));
             }
         }
     }
@@ -639,7 +626,7 @@ impl PdfCraftApp {
     /// user to look at.
     pub(crate) fn start_capture(&mut self, request: Request) {
         if self.chess.board().illegal.is_some() {
-            self.notify(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
+            self.inform(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
             return;
         }
         // A new capture replaces the one waiting.
@@ -659,11 +646,11 @@ impl PdfCraftApp {
     /// A plan is made: say why nothing fits, keep it for the user, or apply it.
     fn finish_capture(&mut self, request: Request, plan: CapturePlan, replanned: bool) {
         if self.chess.games.current_doc() != request.doc {
-            self.notify(tl!("The capture was dropped: another document's games are shown now.").to_owned());
+            self.inform(tl!("The capture was dropped: another document's games are shown now.").to_owned());
             return;
         }
         if plan.reasons.contains(&PreviewReason::TooLong) {
-            self.notify(tl!("Too much text to capture at once: at most 64 KiB.").to_owned());
+            self.inform(tl!("Too much text to capture at once: at most 64 KiB.").to_owned());
             return;
         }
         if plan.chosen.is_none() {
@@ -676,7 +663,7 @@ impl PdfCraftApp {
             } else {
                 tl!("Nothing was captured: no move of the text fits the game here.")
             };
-            self.notify(why.to_owned());
+            self.inform(why.to_owned());
             return;
         }
         if plan.needs_preview || request.text.review() {
@@ -726,10 +713,10 @@ impl PdfCraftApp {
         // Undo goes to the game, whatever the pointer is over (D12).
         self.chess.enter_scope();
         if !rest_kept {
-            self.notify(tl!("The rest is too long to keep as a comment; it is still on the page.").to_owned());
+            self.inform(tl!("The rest is too long to keep as a comment; it is still on the page.").to_owned());
         }
         if !recorded {
-            self.notify(tl!("Nothing new: the moves are in the game already.").to_owned());
+            self.inform(tl!("Nothing new: the moves are in the game already.").to_owned());
             return;
         }
         let now = self.ctx.as_ref().map_or(0.0, |ctx| ctx.input(|i| i.time));
@@ -738,7 +725,9 @@ impl PdfCraftApp {
         let nodes = candidate(plan, choice).map(|c| c.report.new_nodes.iter().filter_map(|p| board.game.node_at(p)).collect()).unwrap_or_default();
         let revision = board.game.revision();
         board.fresh = Fresh { nodes, revision, since: now };
-        self.chess.capture.toast = Some(Toast { text: summary(plan, choice, kind), game: game_id, revision });
+        // What it did, with Undo: the app's notice (plan A9-I17), gone when the game changes.
+        let undo = (tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoCapture { game: game_id, revision });
+        self.post_notice(summary(plan, choice, kind), Some(undo));
     }
 
     /// Apply the plan waiting for the user, as candidate `choice` (its chosen one when `None`),
@@ -749,11 +738,10 @@ impl PdfCraftApp {
         self.apply_capture(p.request, &p.plan, choice, false, keep_rest);
     }
 
-    /// The capture notice's Undo: the capture it is about is undone, if it is still the game's
-    /// last change.
-    pub fn undo_capture(&mut self) {
-        let Some(toast) = self.chess.capture.toast.take() else { return };
-        if toast.is_current(&self.chess) && matches!(self.chess.board().history.undo_edit(), Some(ChessEdit::Capture(_))) {
+    /// The capture notice's Undo: the capture that left game `game` at `revision` is undone, if
+    /// the game is still as it left it and the capture is its last change.
+    pub(crate) fn undo_capture_at(&mut self, game: u64, revision: u64) {
+        if capture_is_current(&self.chess, game, revision) && matches!(self.chess.board().history.undo_edit(), Some(ChessEdit::Capture(_))) {
             self.chess.board_mut().undo();
         }
     }
@@ -766,12 +754,15 @@ impl PdfCraftApp {
         {
             self.quick_tool = crate::QuickTool::Select;
         }
-        if std::mem::take(&mut self.chess.capture.undo) {
-            self.undo_capture();
+        // The capture's notice goes once the game is no longer as the capture left it.
+        if let Some(crate::notice::Notice { action: Some((_, crate::notice::NoticeAction::UndoCapture { game, revision })), .. }) = &self.notice
+            && !capture_is_current(&self.chess, *game, *revision)
+        {
+            self.notice = None;
         }
         for (level, note) in std::mem::take(&mut self.chess.capture.notes) {
             match level {
-                crate::notice::Level::Info => self.notify(note),
+                crate::notice::Level::Info => self.inform(note),
                 crate::notice::Level::Error => self.post_error(note),
             }
         }
@@ -888,15 +879,12 @@ pub(crate) fn page_overlay(
         chess.capture.pending = None;
         chess.capture.note(crate::notice::Level::Info, tl!("The capture was closed: the document was edited.").to_owned());
     }
-    if chess.capture.toast.as_ref().is_some_and(|t| !t.is_current(chess)) {
-        chess.capture.toast = None;
-    }
     let tool = chess.tools.tool;
     let armed = mode_of(tool).is_some();
     let reading_area = crate::chess_ocr_area::reading(chess);
     let busy = chess.capture.job.is_some() || reading_area;
     let waiting = chess.capture.pending.is_some();
-    if !armed && !busy && !waiting && chess.capture.toast.is_none() {
+    if !armed && !busy && !waiting {
         return None;
     }
     let free = !ctx.text_edit_focused() && !egui::Popup::is_any_open(&ctx);
@@ -941,28 +929,6 @@ pub(crate) fn page_overlay(
             }
             PreviewAction::Lang(lang) => relang(chess, lang),
             PreviewAction::Correct(change) => crate::chess_correct::correct(chess, change),
-        }
-    }
-    if let Some(toast) = chess.capture.toast.as_ref() {
-        let text = toast.text.clone();
-        let mut undo = false;
-        egui::Area::new(egui::Id::new("chess-capture-toast"))
-            .order(egui::Order::Foreground)
-            .pivot(egui::Align2::CENTER_BOTTOM)
-            .fixed_pos(pos2(area.center().x, area.bottom() - 24.0))
-            .show(&ctx, |ui| {
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.add(icons::image("check", 14.0, t.accent));
-                        ui.label(&text);
-                        let r = ui.button(tl!("Undo"));
-                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Undo this capture")));
-                        undo = r.clicked();
-                    });
-                });
-            });
-        if undo {
-            chess.capture.undo = true;
         }
     }
     apply
@@ -1288,11 +1254,10 @@ fn leftover(c: &Candidate) -> String {
     out
 }
 
-impl Toast {
-    /// Whether the game is as the capture left it.
-    fn is_current(&self, chess: &ChessState) -> bool {
-        chess.games.scope_stamp().0 == self.game && chess.board().game.revision() == self.revision
-    }
+/// Whether the game shown is game `game` (its id in the collection) at `revision`: as a capture
+/// left it.
+fn capture_is_current(chess: &ChessState, game: u64, revision: u64) -> bool {
+    chess.games.scope_stamp().0 == game && chess.board().game.revision() == revision
 }
 
 /// Take Enter out of a frame's `events` (the main window's raw input, or the chess window's

@@ -190,7 +190,7 @@ impl crate::PdfCraftApp {
         if s.written >= MAX_SAMPLES {
             if !std::mem::replace(&mut s.capped, true) {
                 let n = MAX_SAMPLES.to_string();
-                self.notify(crate::i18n::fmt(tl!("Collecting stopped: {n} character samples were saved this session."), &[("n", &n)]));
+                self.inform(crate::i18n::fmt(tl!("Collecting stopped: {n} character samples were saved this session."), &[("n", &n)]));
             }
             return;
         }

@@ -94,9 +94,9 @@ impl PdfCraftApp {
         self.chess_fix_shown(id, &edit, &target);
         let label = edit.text();
         if undo {
-            self.notify_fmt("Undid {label}", &[("label", &label)]);
+            self.inform_fmt("Undid {label}", &[("label", &label)]);
         } else {
-            self.notify_fmt("Redid {label}", &[("label", &label)]);
+            self.inform_fmt("Redid {label}", &[("label", &label)]);
         }
         true
     }

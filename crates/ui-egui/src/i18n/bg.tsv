@@ -3603,3 +3603,6 @@ progress bar	Progress	Напредък
 	The original or the position read	Оригиналът или прочетената позиция
 	variation {n}	вариант {n}
 	with comment	с коментар
+	The book's alignment was undone.	Подравняването на книгата е отменено.
+	Another file dialog is still open. Finish with it first.	Друг прозорец за избор на файл все още е отворен. Първо приключете с него.
+	(and {n} more)	(и още {n})

@@ -966,7 +966,7 @@ fn pgn_files_with_a_bom_or_in_latin_1_open_whole() {
     assert_eq!(h.state_mut().import_chess_pgn("bom.pgn", &bom), 2);
     h.run_steps(3);
     assert_eq!(listed(h.state()).0, ["Réti–João", "B"]);
-    let toast = format!("{:?}", h.state().said());
+    let toast = format!("{:?}", h.state().all_said().collect::<Vec<_>>());
     assert!(!toast.contains("Windows-1252"), "{toast}");
     let latin1: Vec<u8> = two.chars().map(|c| u8::try_from(u32::from(c)).unwrap()).collect();
     assert_eq!(h.state_mut().import_chess_pgn("latin1.pgn", &latin1), 2);

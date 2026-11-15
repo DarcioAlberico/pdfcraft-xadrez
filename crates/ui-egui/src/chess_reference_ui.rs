@@ -445,7 +445,7 @@ impl PdfCraftApp {
             match (result, chosen) {
                 (Ok(Indexed::Kept { index, name, decisions }), _) => {
                     if let Some(cut) = cut_note(&index) {
-                        self.notify(cut);
+                        self.inform(cut);
                     }
                     self.session.set_chess_book_pgn(id, Some(BookPgn { name, index, decisions }));
                     // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
@@ -633,6 +633,9 @@ impl PdfCraftApp {
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
+        // Undo takes away a PGN kept for a document that kept none (plan A9-I17); one that took
+        // another's place has no Undo, for the one before is not kept.
+        let first = self.session.chess_book_pgn(id).is_none();
         let kept = self.book_pgn_place(id).and_then(|write| self.chess.book_pgns.store.set(write, &keys, pages, pgn, |san| index.has_move(san)));
         // The decisions stay, with the same PGN (plan A9-F1) and with another (decision D25, plan
         // A9-G4); those naming a move the new one doesn't have are said.
@@ -675,7 +678,26 @@ impl PdfCraftApp {
                 &[("n", &unmatched.to_string())],
             ));
         }
-        self.notify(note);
+        let undo = first.then(|| (tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoBookPgn { doc: id }));
+        self.post_notice(note, undo);
+    }
+
+    /// The notice's Undo after a book's PGN was kept for document `doc` (plan A9-I17): it is
+    /// removed again, as Remove the book's PGN does, while `doc` is shown and keeps one.
+    pub(crate) fn undo_book_pgn(&mut self, doc: DocId) {
+        if self.active_ids().map(|(_, id)| id) == Some(doc) && self.session.chess_book_pgn(doc).is_some() {
+            self.clear_book_pgn();
+        }
+    }
+
+    /// The notice's Undo after Align (plan A9-I17): document `doc`'s book is linked to what it
+    /// was before (nothing, or the earlier Align's links).
+    pub(crate) fn undo_book_align(&mut self, doc: DocId) {
+        let Some(view) = self.chess.docs.get_mut(&doc) else { return };
+        if let Some(before) = view.link_before.take() {
+            view.book_link = before;
+            self.inform(tl!("The book's alignment was undone."));
+        }
     }
 
     /// The answer to the offer of the PGN beside the active document's PDF (R6f): use it, or not
@@ -793,7 +815,7 @@ impl PdfCraftApp {
                 view.text = None;
                 self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
-                self.notify(said.to_string());
+                self.inform(said.to_string());
             }
             Err(e) => self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e)])),
         }
@@ -875,7 +897,7 @@ impl PdfCraftApp {
             && let Some(name) = self.book_pgn_view(id).offer
         {
             self.chess.book_pgns.told.push(id);
-            self.notify(crate::i18n::fmt(
+            self.inform(crate::i18n::fmt(
                 tl!("{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN."),
                 &[("name", &name)],
             ));

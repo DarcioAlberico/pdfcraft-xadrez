@@ -2874,6 +2874,13 @@ impl PdfCraftApp {
         }
     }
 
+    /// The games were written (`said`, what and where): an earlier write's error is stale now
+    /// (plan A9-I17).
+    fn games_saved(&mut self, said: String) {
+        self.settle_error("games-pgn");
+        self.inform(said);
+    }
+
     fn show_chess_notes(&mut self) {
         let errors = std::mem::take(&mut self.chess.games.errors);
         if !errors.is_empty() {
@@ -2881,7 +2888,7 @@ impl PdfCraftApp {
         }
         let notes = std::mem::take(&mut self.chess.games.notes);
         if !notes.is_empty() {
-            self.notify(notes.join(" · "));
+            self.inform(notes.join(" · "));
         }
     }
 
@@ -2991,7 +2998,7 @@ impl PdfCraftApp {
         if source.is_some() {
             c.open_diagram(board);
         } else if c.add_games(vec![board], ChessEdit::LoadDiagram, true) == 0 {
-            self.notify(full_note(1));
+            self.inform(full_note(1));
             return false;
         }
         self.chess.study.setup = None;
@@ -3027,7 +3034,7 @@ impl PdfCraftApp {
                 }
             }
             // At the cap a game added is refused, and said (plan A9-G8).
-            GamesAction::New | GamesAction::Duplicate(_) if self.chess.games.collection().room() == 0 => self.notify(full_note(1)),
+            GamesAction::New | GamesAction::Duplicate(_) if self.chess.games.collection().room() == 0 => self.inform(full_note(1)),
             GamesAction::New => {
                 self.chess.games.collection_mut().new_game();
                 self.chess.study.setup = None;
@@ -3037,7 +3044,7 @@ impl PdfCraftApp {
                 let done = self.chess.games.collection_mut().get_mut(i).map(|e| e.rename(&names)).unwrap_or_default();
                 let lost: Vec<String> = done.cut.into_iter().chain(done.refused).collect();
                 if !lost.is_empty() {
-                    self.notify(crate::i18n::fmt(
+                    self.inform(crate::i18n::fmt(
                         tl!("Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags)."),
                         &[("tags", &lost.join(", "))],
                     ));
@@ -3083,7 +3090,7 @@ impl PdfCraftApp {
                     self.chess.enter_scope();
                 }
                 if made < places.len() {
-                    self.notify(full_note(places.len().saturating_sub(made)));
+                    self.inform(full_note(places.len().saturating_sub(made)));
                 }
             }
             GamesAction::MoveMany(places, up) => {
@@ -3136,7 +3143,7 @@ impl PdfCraftApp {
             }
         }
         if games.is_empty() {
-            return self.notify(tl!("Nothing to export: an illegal position has no game.").to_string());
+            return self.inform(tl!("Nothing to export: an illegal position has no game.").to_string());
         }
         let stem = self.active_ids().and_then(|(_, id)| self.session.get(id)).map_or_else(
             || "games".to_owned(),
@@ -3152,7 +3159,7 @@ impl PdfCraftApp {
         let meta = GamesBookMeta { now_secs, identity, ..GamesBookMeta::default() };
         let book = match games_book(&games, format, &options, &meta) {
             Ok(book) => book,
-            Err(e) => return self.post_error(e),
+            Err(e) => return self.post_error_for("games-pgn", e),
         };
         let left_out =
             (skipped > 0).then(|| crate::i18n::fmt(tl!("Games left out (an illegal position has no game): {n}"), &[("n", &skipped.to_string())]));
@@ -3166,28 +3173,37 @@ impl PdfCraftApp {
                 if !book.images.is_empty() {
                     let dir = dest.with_file_name(&image_dir);
                     if let Err(e) = std::fs::create_dir_all(&dir) {
-                        return app.post_error_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+                        return app.post_error_fmt_for(
+                            "games-pgn",
+                            "Couldn't write {name}: {e}",
+                            &[("name", &dir.display().to_string()), ("e", &e.to_string())],
+                        );
                     }
                     for (rel, png) in &book.images {
                         let Some(file) = std::path::Path::new(rel).file_name() else { continue };
                         let target = dir.join(file);
                         if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
-                            return app
-                                .post_error_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                            return app.post_error_fmt_for(
+                                "games-pgn",
+                                "Couldn't write {name}: {e}",
+                                &[("name", &target.display().to_string()), ("e", &e.to_string())],
+                            );
                         }
                     }
                 }
                 match crate::editing::write_atomically(&dest.to_string_lossy(), &book.bytes) {
-                    Ok(()) => app.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &dest.display().to_string())]), left_out)),
-                    Err(e) => app.post_error_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+                    Ok(()) => {
+                        app.games_saved(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &dest.display().to_string())]), left_out))
+                    }
+                    Err(e) => app.post_error_fmt_for("games-pgn", "Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
         // On the web the file is downloaded (Markdown without its diagram images).
         #[cfg(target_arch = "wasm32")]
         match crate::editing::download(&name, &book.bytes) {
-            Ok(()) => self.notify(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]), left_out)),
-            Err(e) => self.post_error_fmt("Couldn't save {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
+            Ok(()) => self.games_saved(with_note(crate::i18n::fmt(tl!("Exported to {path}"), &[("path", &name)]), left_out)),
+            Err(e) => self.post_error_fmt_for("games-pgn", "Couldn't save {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
         }
     }
 
@@ -3227,7 +3243,7 @@ impl PdfCraftApp {
             }
         }
         if text.is_empty() {
-            self.notify(tl!("Nothing to save: an illegal position has no PGN.").to_string());
+            self.inform(tl!("Nothing to save: an illegal position has no PGN.").to_string());
             return None;
         }
         Some((text.join("\n"), skipped))
@@ -3322,9 +3338,9 @@ impl PdfCraftApp {
                         if let Some((cid, fp)) = whole {
                             app.chess.games.left.insert(cid, fp);
                         }
-                        app.notify(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out));
+                        app.games_saved(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out));
                     }
-                    Err(e) => app.post_error_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+                    Err(e) => app.post_error_fmt_for("games-pgn", "Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
@@ -3334,9 +3350,9 @@ impl PdfCraftApp {
                 if let Some((cid, fp)) = whole {
                     self.chess.games.left.insert(cid, fp);
                 }
-                self.notify(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out));
+                self.games_saved(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out));
             }
-            Err(e) => self.post_error_fmt("Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
+            Err(e) => self.post_error_fmt_for("games-pgn", "Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
         }
     }
 
@@ -3409,7 +3425,7 @@ impl PdfCraftApp {
         }
         let added = self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, true);
         if added == 0 {
-            self.notify(full_note(read));
+            self.inform(full_note(read));
             return 0;
         }
         self.chess.study.setup = None;
@@ -3431,7 +3447,7 @@ impl PdfCraftApp {
             note.push_str(" · ");
             note.push_str(&crate::i18n::fmt(tl!("Only the first {n} were read."), &[("n", &chess_autosave::MAX_GAMES.to_string())]));
         }
-        self.notify(note);
+        self.inform(note);
         added
     }
 }
@@ -3466,7 +3482,7 @@ impl PdfCraftApp {
             note.push_str(" · ");
             note.push_str(&crate::i18n::fmt(tl!("Only the first {n} were read."), &[("n", &chess_autosave::MAX_GAMES.to_string())]));
         }
-        self.notify(note);
+        self.inform(note);
     }
 }
 

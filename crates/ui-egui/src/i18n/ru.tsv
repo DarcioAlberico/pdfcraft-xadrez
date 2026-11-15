@@ -3553,3 +3553,6 @@ progress bar	Progress	Ход выполнения
 	The original or the position read	Оригинал или прочитанная позиция
 	variation {n}	вариант {n}
 	with comment	с комментарием
+	The book's alignment was undone.	Выравнивание книги отменено.
+	Another file dialog is still open. Finish with it first.	Ещё открыто другое окно выбора файла. Сначала завершите работу с ним.
+	(and {n} more)	(и ещё {n})
