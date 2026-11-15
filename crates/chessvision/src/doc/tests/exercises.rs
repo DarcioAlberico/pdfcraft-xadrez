@@ -15,7 +15,7 @@ const QUEEN: &str = "8/8/8/8/8/6k1/5q2/7K b - - 0 1";
 
 /// A puzzle book: three numbered diagrams on a page and a fourth on the next, the solutions of
 /// the first three pages on, in another order, and none for the fourth.
-fn puzzle_book() -> ChessDoc {
+pub(super) fn puzzle_book() -> ChessDoc {
     let p0 = page_text(vec![line(45.0, "№1. Brown – Green"), line(245.0, "№2. Smith – Jones"), line(445.0, "№3. Doe – Roe")]);
     let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, ROOK, true, false), reading(2, 460.0, QUEEN, true, false)];
     let p1 = page_text(vec![line(45.0, "№4. Black – White")]);

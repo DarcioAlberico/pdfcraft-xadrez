@@ -663,7 +663,7 @@ pub struct Asked {
     start: String,
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     moves: Vec<String>,
-    /// Times it was asked and came back with nothing.
+    /// Times it was asked and came back with only a bound.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     tries: u8,
 }
@@ -681,8 +681,8 @@ pub struct Batch {
     pub capped: bool,
     /// The depth each position is asked to.
     pub depth: u32,
-    /// Positions the engine said nothing of (or only a bound) within the budget, twice: given up
-    /// on, and said ([`Ran::Done`]).
+    /// Positions given up on, and said ([`Ran::Done`]): the engine gave no line of them within the
+    /// budget (asked once), or only a bound (asked twice).
     skipped: Vec<Asked>,
 }
 
@@ -762,7 +762,8 @@ impl Batch {
         self.queue.is_empty()
     }
 
-    /// The positions given up on: the engine said nothing of them within the budget, asked twice.
+    /// The positions given up on: the engine gave no line of them within the budget (asked once),
+    /// or only a bound (asked twice).
     pub fn skipped(&self) -> &[Asked] {
         &self.skipped
     }
@@ -785,7 +786,7 @@ impl Asked {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use running::{Budget, Progress, Ran, run};
+pub use running::{Budget, Failure, Progress, Ran, run};
 
 /// Running a batch: desktop only (the engine is a process).
 #[cfg(not(target_arch = "wasm32"))]
@@ -795,7 +796,7 @@ mod running {
 
     use super::super::analysis::{Analyser, AnalysisError, AnalysisOptions, Line, MAX_DEPTH};
     use super::super::evals::{Eval, SecondLine};
-    use super::Batch;
+    use super::{Asked, Batch};
     use pdfcraft_chess::uci::Bound;
 
     /// How often the engine's progress is looked at.
@@ -804,8 +805,14 @@ mod running {
     /// How long an engine told to stop has to say its last line.
     const STOP_GRACE: Duration = Duration::from_secs(2);
 
-    /// How many times a position that came back with nothing is asked.
+    /// How many times a position that came back with only a bound is asked.
     const TRIES: u8 = 2;
+
+    /// How many positions in a row the engine may give no line of before the run gives it up
+    /// (plan A9-N17a3): hung (it never answers `stop`), or not searching. A hung engine costs a
+    /// position's budget and [`STOP_GRACE`] each, so a batch of hundreds would otherwise take as
+    /// many times that and end with all of them skipped.
+    const SILENT: usize = 3;
 
     /// What a batch may spend.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -834,17 +841,32 @@ mod running {
     /// How a run ended.
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Ran {
-        /// Every position was asked; `skipped` of them gave nothing twice ([`Batch::skipped`]).
+        /// Every position was asked; `skipped` of them were given up on ([`Batch::skipped`]).
         Done { skipped: usize },
         /// `stop` was set: the positions not asked stay in the batch.
         Stopped,
-        /// The engine stopped working: the position it was on stays in the batch.
-        Failed(AnalysisError),
+        /// The engine stopped working: the positions it was on stay in the batch.
+        Failed(Failure),
     }
 
-    /// The evaluation in `lines` (the engine's, best first) found by `name`, at `at`; `None` when
-    /// the best line is only a bound (a search stopped mid-way): never kept as the last word.
-    fn eval_of(lines: &[Line], name: Option<&str>, at: u64) -> Option<Eval> {
+    /// Why a run failed.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum Failure {
+        /// The engine could not start, did not answer as a UCI engine, or ended.
+        Engine(AnalysisError),
+        /// It gave no line of `positions` positions in a row ([`SILENT`]) within their budget:
+        /// hung, or not searching (plan A9-N17a3). Those positions go back to the front of the
+        /// batch, for a run with an engine that answers.
+        Silent { positions: usize },
+    }
+
+    /// The evaluation in `lines` (the engine's, best first) found by `name`, at `at`. A best line
+    /// that is only a bound (a search stopped mid-way) is never kept as the last word: the last
+    /// exact lines of the search (`exact`, [`super::super::analysis::Snapshot::exact`]) are taken
+    /// instead, one depth short (plan A9-N17a3); `None` when there are none.
+    fn eval_of(lines: &[Line], exact: &[Line], name: Option<&str>, at: u64) -> Option<Eval> {
+        let is_exact = |set: &[Line]| set.iter().any(|l| l.multipv == 1 && l.bound == Bound::Exact);
+        let lines = if is_exact(lines) { lines } else { exact };
         let best = lines.iter().find(|l| l.multipv == 1).filter(|l| l.bound == Bound::Exact)?;
         let eval = Eval::new(best.depth, best.score, best.bound, &best.uci, name, at)?;
         let second = lines.iter().find(|l| l.multipv == 2).and_then(|l| SecondLine::new(l.score, &l.uci));
@@ -861,28 +883,45 @@ mod running {
         now.checked_add(wait).or_else(|| now.checked_add(Duration::from_secs(1 << 30))).unwrap_or(now)
     }
 
+    /// The positions the engine gave no line of, given up on ([`Batch::skipped`]) and counted as
+    /// asked.
+    fn give_up(batch: &mut Batch, silent: &mut Vec<Asked>, done: &mut usize) {
+        *done = done.saturating_add(silent.len());
+        batch.skipped.append(silent);
+    }
+
+    /// The positions the engine gave no line of, back at the front of the batch in their order.
+    fn put_back(batch: &mut Batch, silent: &mut Vec<Asked>) {
+        for asked in silent.drain(..).rev() {
+            batch.queue.push_front(asked);
+        }
+    }
+
     /// Ask `analyser` (started by the caller, its settings set) for `batch`'s positions, one at a
     /// time, to `budget.depth` and for no longer than `budget.per_position` each, handing the
     /// evaluations to `progress` every `budget.chunk` positions and at the end. An engine still in
-    /// its handshake is waited for. Each position answered is taken off the batch; one the engine
-    /// says nothing of (or only a bound) within the budget is asked again at the end, and the
-    /// second time given up on ([`Batch::skipped`], counted in [`Ran::Done`]); `stop` (looked at
-    /// between and during positions) leaves the rest in the batch, so running it again asks only
-    /// those. The analyser's lines and depth are set for each position (1 line, 2 for an
-    /// exercise's); the caller sets its own back after.
+    /// its handshake is waited for. Each position answered is taken off the batch. One the engine
+    /// gives only a bound of within the budget is asked again at the end, and the second time
+    /// given up on; one it gives no line of is given up on at once ([`Batch::skipped`], counted in
+    /// [`Ran::Done`]), and [`SILENT`] of those in a row end the run ([`Failure::Silent`]): the
+    /// engine hung (plan A9-N17a3). `stop` (looked at between and during positions) leaves the
+    /// rest in the batch, so running it again asks only those. The analyser's lines and depth are
+    /// set for each position (1 line, 2 for an exercise's); the caller sets its own back after.
     pub fn run(analyser: &Analyser, batch: &mut Batch, budget: &Budget, stop: &AtomicBool, mut progress: impl FnMut(Progress)) -> Ran {
         let depth = budget.depth.clamp(1, MAX_DEPTH);
         let chunk = budget.chunk.max(1);
         let total = batch.len();
         let (mut done, skipped_before) = (0usize, batch.skipped.len());
         let mut found: Vec<(String, Eval)> = Vec::new();
+        // The positions in a row the engine gave no line of (plan A9-N17a3).
+        let mut silent: Vec<Asked> = Vec::new();
         let mut set: Option<AnalysisOptions> = None;
         // An engine still in its handshake has not taken a position yet (one asked before then
         // waits, and stopping would drop it): wait for it, or for its refusal.
         loop {
             let s = analyser.snapshot();
             if let Some(e) = s.error {
-                return Ran::Failed(e);
+                return Ran::Failed(Failure::Engine(e));
             }
             if s.ready {
                 break;
@@ -896,7 +935,8 @@ mod running {
             if stop.load(Ordering::Relaxed) {
                 break Ran::Stopped;
             }
-            let Some(asked) = batch.queue.front().cloned() else { break Ran::Done { skipped: batch.skipped.len().saturating_sub(skipped_before) } };
+            // Done's count of the positions given up on is made below, the last silent ones among them.
+            let Some(asked) = batch.queue.front().cloned() else { break Ran::Done { skipped: 0 } };
             let options = AnalysisOptions { lines: asked.lines, depth };
             if set != Some(options) {
                 analyser.set_options(options);
@@ -910,28 +950,31 @@ mod running {
             analyser.analyse_game(&game);
             let mut deadline = after(budget.per_position);
             let mut told_to_stop = false;
-            // The lines found for the position and the engine's name; `None`: none came in time.
-            let lines = loop {
+            // The lines found for the position, its last exact ones and the engine's name; `None`:
+            // none came in time.
+            let heard = loop {
                 if stop.load(Ordering::Relaxed) {
                     analyser.stop();
+                    give_up(batch, &mut silent, &mut done);
                     let skipped = batch.skipped.len().saturating_sub(skipped_before);
                     progress(Progress { done, total, skipped, evals: std::mem::take(&mut found) });
                     return Ran::Stopped;
                 }
                 let s = analyser.snapshot();
                 if let Some(e) = s.error {
+                    put_back(batch, &mut silent);
                     let skipped = batch.skipped.len().saturating_sub(skipped_before);
                     progress(Progress { done, total, skipped, evals: std::mem::take(&mut found) });
-                    return Ran::Failed(e);
+                    return Ran::Failed(Failure::Engine(e));
                 }
                 let this = s.fen.as_deref() == Some(fen.as_str());
                 if s.ready && this && !s.searching {
-                    break Some((s.lines, s.name));
+                    break Some((s.lines, s.exact, s.name));
                 }
                 if Instant::now() >= deadline {
                     if told_to_stop {
                         // It never said its last line: what it has for this position, if anything.
-                        break this.then_some((s.lines, s.name));
+                        break this.then_some((s.lines, s.exact, s.name));
                     }
                     analyser.stop();
                     told_to_stop = true;
@@ -940,13 +983,29 @@ mod running {
                 std::thread::sleep(POLL);
             };
             batch.queue.pop_front();
-            match lines.and_then(|(lines, name)| eval_of(&lines, name.as_deref(), now())) {
+            let (lines, exact, name) = heard.unwrap_or_default();
+            // No line at all within the budget: asking again would spend it again (plan
+            // A9-N17a3). Given up on, unless it is the SILENT-th in a row: then the engine hung,
+            // and the run ends with those positions back in the batch.
+            if lines.is_empty() && exact.is_empty() {
+                silent.push(asked);
+                if silent.len() >= SILENT {
+                    let positions = silent.len();
+                    put_back(batch, &mut silent);
+                    let skipped = batch.skipped.len().saturating_sub(skipped_before);
+                    progress(Progress { done, total, skipped, evals: std::mem::take(&mut found) });
+                    return Ran::Failed(Failure::Silent { positions });
+                }
+                continue;
+            }
+            give_up(batch, &mut silent, &mut done);
+            match eval_of(&lines, &exact, name.as_deref(), now()) {
                 Some(eval) => {
                     done = done.saturating_add(1);
                     found.push((asked.fen.clone(), eval));
                 }
-                // Nothing, or only a bound, within the budget: asked once more at the end of the
-                // batch, then given up on and said (plan A9-N17a2).
+                // Only a bound within the budget: asked once more at the end of the batch, then
+                // given up on and said (plan A9-N17a2).
                 None => {
                     let tries = asked.tries.saturating_add(1);
                     if tries < TRIES {
@@ -962,9 +1021,10 @@ mod running {
                 progress(Progress { done, total, skipped, evals: std::mem::take(&mut found) });
             }
         };
+        give_up(batch, &mut silent, &mut done);
         let skipped = batch.skipped.len().saturating_sub(skipped_before);
         progress(Progress { done, total, skipped, evals: found });
-        ran
+        if matches!(ran, Ran::Done { .. }) { Ran::Done { skipped } } else { ran }
     }
 }
 
@@ -1012,11 +1072,14 @@ pub fn annotate(doc: &mut ChessDoc, review: &Review, lang: &str) -> usize {
         let Some(node) = at.find(doc).and_then(|m| m.game) else { continue };
         let Some(comment) = engine_comment(d, lang) else { continue };
         let Some(n) = doc.games.get_mut(node.game).and_then(|g| g.score.nodes.get_mut(node.node)) else { continue };
-        // As the comment writes it (spaces collapsed, `}` as `)`), so a second run finds it.
-        let mut written = String::new();
-        pdfcraft_chessvision::doc::games::append_comment(&mut written, &comment);
-        if !n.comment.contains(&written) {
-            pdfcraft_chessvision::doc::games::append_comment(&mut n.comment, &comment);
+        // What appending writes now: as the comment writes it (spaces collapsed, `}` as `)`), and
+        // only what the comment's cap lets in. A second run finds it, whole or as the piece the
+        // cap let in before (plan A9-N17a3), and the cap reached writes nothing.
+        let mut appended = n.comment.clone();
+        pdfcraft_chessvision::doc::games::append_comment(&mut appended, &comment);
+        let piece = appended.get(n.comment.len()..).unwrap_or_default().trim_start();
+        if !piece.is_empty() && !n.comment.contains(piece) {
+            n.comment = appended;
             added = added.saturating_add(1);
         }
     }

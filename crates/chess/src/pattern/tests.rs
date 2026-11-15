@@ -120,8 +120,8 @@ proptest! {
     fn a_signature_reads_back(p in any_placement()) {
         let m = Material::of(&p);
         let written = m.to_string();
-        // A side with no piece at all (a misread board) writes nothing for it, which no signature is.
-        if !written.starts_with('-') && !written.ends_with('-') {
+        // A side with no king (a misread board) is no signature (plan A9-N16a2).
+        if m.count(Color::White, PieceKind::King) > 0 && m.count(Color::Black, PieceKind::King) > 0 {
             prop_assert_eq!(Material::parse(&written), Ok(m));
         }
     }
@@ -132,4 +132,30 @@ proptest! {
         prop_assert_eq!(q.matches(&p), q.mirrored().matches(&mirrored(&p)));
         prop_assert_eq!(mirrored(&mirrored(&p)), p);
     }
+}
+
+/// Plan A9-N16a2: a side without its king is no signature: `Material::of` counts both kings, so
+/// `R-R` would never match and read as "not in the book".
+#[test]
+fn a_side_without_its_king_is_refused() {
+    assert_eq!(Material::parse("R-R"), Err(MaterialError::NoKing));
+    assert_eq!(Material::parse("KR-R"), Err(MaterialError::NoKing));
+    assert!(Material::parse("KR-K").is_ok());
+}
+
+/// Plan A9-N16a2: with `either_side`, the pawns' side is the side holding the material: swapped
+/// with it, as `Query::mirrored` swaps both.
+#[test]
+fn with_either_side_the_pawns_side_follows_the_material() {
+    // Black has the rook and the passed pawn: KR-KRP, the colours of KRP-KR swapped.
+    let p = placement("8/5k2/8/8/3p4/8/5K2/1R4r1");
+    let q = Query {
+        material: Material::parse("KRP-KR").ok(),
+        either_side: true,
+        pawns: PawnQuery { passed: true, side: Some(Color::White), ..PawnQuery::default() },
+    };
+    assert!(q.matches(&p), "the side with the extra pawn has a passed one");
+    assert!(!Query { either_side: false, ..q }.matches(&p));
+    // As the colour itself: White has no pawn, so a query for Black's material side fails.
+    assert!(!Query { pawns: PawnQuery { side: Some(Color::Black), ..q.pawns }, ..q }.matches(&p));
 }

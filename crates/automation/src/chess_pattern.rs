@@ -84,6 +84,7 @@ fn pgn_reply(shown: &str, index: &ReferenceIndex, found: &Stretches) -> Value {
         "games": found.per_game.iter().map(|(k, n)| json!({ "game": k.saturating_add(1), "name": name(*k), "stretches": n })).collect::<Vec<_>>(),
         "played": found.played,
         "unreadable": found.unreadable,
+        "capped": found.capped,
         "cut": index.cut().map(crate::chess::cut_name),
     })
 }

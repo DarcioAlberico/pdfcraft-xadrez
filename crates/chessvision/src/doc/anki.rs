@@ -152,7 +152,7 @@ pub fn image_name(prefix: &str, page: usize, index: usize) -> String {
 }
 
 /// A game's main line in SAN with its numbers: `1.Qh5 Nf6 2.Qxf7#`, `1...Qf1#`.
-fn solution(score: &GameScore) -> String {
+pub(crate) fn solution(score: &GameScore) -> String {
     let mut out = String::new();
     for (i, n) in score.mainline().into_iter().enumerate() {
         let Some(node) = score.nodes.get(n) else { break };

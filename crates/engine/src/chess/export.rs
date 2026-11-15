@@ -378,19 +378,24 @@ fn anki_cards(
     (Written { bytes, drawn: images.len(), images }, made)
 }
 
+/// The book's language as the user says it (`o.text_lang`), over the one the reading decided
+/// (plan A9-X2): every page is then said in it, as a book read with that `/Lang` would be. The
+/// exports' and the exercise sheet's (plan A9-N12a2).
+pub(super) fn say_text_lang(read: &mut ChessDocument, o: &ChessExportOptions) {
+    if let Some(tag) = o.text_lang.as_ref().filter(|t| !t.is_empty()) {
+        read.text_lang = tag.clone();
+        for page in &mut read.doc.pages {
+            page.text_lang = tag.clone();
+        }
+    }
+}
+
 impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
         let mut read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
-        // The book's language as the user says it, over the one the reading decided (plan
-        // A9-X2): every page is then said in it, as a book read with that `/Lang` would be.
-        if let Some(tag) = o.text_lang.as_ref().filter(|t| !t.is_empty()) {
-            read.text_lang = tag.clone();
-            for page in &mut read.doc.pages {
-                page.text_lang = tag.clone();
-            }
-        }
+        say_text_lang(&mut read, o);
         // One truth of the games for every format (plan A9-N2): the user's games, then the book's
         // PGN, then the reading.
         let refs: Vec<&ReferenceIndex> = [o.games.as_deref(), o.reference.as_deref()].into_iter().flatten().collect();

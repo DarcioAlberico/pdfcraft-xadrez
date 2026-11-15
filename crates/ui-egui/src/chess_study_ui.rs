@@ -618,7 +618,8 @@ enum EngineSays {
     /// The position has no move.
     NoMoves,
     /// Its lines so far (none yet while it starts).
-    Lines(pdfcraft_engine::chess::analysis::Snapshot),
+    /// Boxed: a snapshot is large (its lines, and since plan A9-N17a3 its exact lines too).
+    Lines(Box<pdfcraft_engine::chess::analysis::Snapshot>),
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -642,7 +643,7 @@ fn engine_says(study: &StudyState, board: &BoardState) -> Option<EngineSays> {
     if board.game.legal_moves().is_empty() {
         return Some(EngineSays::NoMoves);
     }
-    Some(EngineSays::Lines(snap))
+    Some(EngineSays::Lines(Box::new(snap)))
 }
 
 /// The engine's state in a few words, for the Board tab's navigation row while it analyses
