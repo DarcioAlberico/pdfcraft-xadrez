@@ -2394,6 +2394,13 @@ fn analyze_switches_the_engine() {
     // The score twice: the line's, and the bar's name.
     let reported = wait_for(&mut h, &log, |h| h.query_by_label_contains("Fake Engine 1").is_some() && h.query_all_by_label("+0.30").count() == 2);
     assert!(reported, "the engine's line is shown");
+    // The engine's state keeps the navigation row's end: the Move field waits behind its button,
+    // which opens it (plan A9-N7a).
+    use egui::accesskit::Role;
+    assert!(h.query_by_role_and_label(Role::TextInput, "Move").is_none(), "behind its button");
+    h.get_by_label("Type a move").click();
+    h.run_steps(2);
+    assert!(h.get_by_role_and_label(Role::TextInput, "Move").is_focused(), "the button opens the field");
     // Drawn frame after frame, the board keeps the one search going: it is not stopped and
     // started again each frame.
     h.run_steps(5);

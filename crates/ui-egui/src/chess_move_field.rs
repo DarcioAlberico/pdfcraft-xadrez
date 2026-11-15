@@ -249,6 +249,12 @@ fn play(state: &mut BoardState, text: &str, lang: Lang) -> Result<String, String
     Ok(String::new())
 }
 
+/// The button the field waits behind while the engine's state has the navigation row's end: it
+/// opens the field, as M does.
+pub(crate) fn open_button(ui: &mut egui::Ui) -> egui::Response {
+    crate::icons::button(ui, "text-cursor-input", 28.0, false, tl!("Type a move"))
+}
+
 /// The field, `width` points wide, on `state`'s board: Enter does what the line says, and the
 /// keyboard stays in the field for the next one. What failed is said as an alert and shown as the
 /// field's tooltip, with a danger edge, until the line is changed.
