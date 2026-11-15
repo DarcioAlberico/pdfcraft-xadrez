@@ -425,9 +425,10 @@ impl ChessCache {
 
     /// The result for `page` of `doc` that `wanted` would produce: one made for that page in
     /// the same document state, or one made for any page with the same content `key`, given
-    /// `page`'s index. An entry for that page that can never answer again (other settings, or
-    /// no key and another state) is dropped.
-    fn get(&mut self, doc: DocId, page: usize, key: Option<page_key::PageKey>, wanted: &ScanParams) -> Option<Arc<ChessPage>> {
+    /// `page`'s index; with what it was made with (a reading answers a request for detection
+    /// only). An entry for that page that can never answer again (other settings, or no key and
+    /// another state) is dropped.
+    fn get(&mut self, doc: DocId, page: usize, key: Option<page_key::PageKey>, wanted: &ScanParams) -> Option<(Arc<ChessPage>, ScanParams)> {
         let tick = self.tick();
         let d = self.docs.get_mut(&doc)?;
         let same_content = |e: &CacheEntry| key.is_some() && e.key == key;
@@ -436,10 +437,10 @@ impl ChessCache {
         let holds = |p: &usize| d.pages.get(p).is_some_and(|l| l.iter().any(answers));
         // The page itself first, then a page that held the same content.
         let from = if holds(&page) { page } else { key.and_then(|k| d.by_key.get(&k)).and_then(|pages| pages.iter().copied().find(holds))? };
-        let found = d.pages.get(&from).and_then(|l| l.iter().find(|e| answers(e))).map(|e| e.result.clone())?;
+        let (found, made) = d.pages.get(&from).and_then(|l| l.iter().find(|e| answers(e))).map(|e| (e.result.clone(), e.params.clone()))?;
         // Used now: the last of the document's pages to go.
         d.touch(from, tick);
-        Some(if found.page == page { found } else { Arc::new(ChessPage { page, ..(*found).clone() }) })
+        Some((if found.page == page { found } else { Arc::new(ChessPage { page, ..(*found).clone() }) }, made))
     }
 
     fn put(&mut self, doc: DocId, page: usize, key: Option<page_key::PageKey>, params: ScanParams, result: Arc<ChessPage>) {
@@ -1701,14 +1702,19 @@ impl Session {
         let wanted =
             ScanParams { generation: doc.generation, bytes: doc.bytes.len(), pages: doc.info.pages.len(), settings: settings.clone(), model };
         let keys = self.chess_page_keys(id, pages);
-        let found: Vec<Option<Arc<ChessPage>>> =
+        let found: Vec<Option<(Arc<ChessPage>, ScanParams)>> =
             pages.iter().enumerate().map(|(i, &p)| self.chess.get(id, p, keys.get(i).copied().flatten(), &wanted)).collect();
         for ((&p, page), key) in pages.iter().zip(&found).zip(&keys) {
-            if let Some(page) = page {
-                self.chess.put(id, p, *key, wanted.clone(), page.clone());
+            // Kept in this state as what it was made with: a reading that answered a request
+            // for detection only stays a reading, which a later reading request finds (plan
+            // A9-N12b: the page before a page read was taken down to detection only, and read
+            // again by the export).
+            if let Some((page, made)) = page {
+                let params = ScanParams { settings: made.settings.clone(), model: made.model.clone(), ..wanted.clone() };
+                self.chess.put(id, p, *key, params, page.clone());
             }
         }
-        (found, keys)
+        (found.into_iter().map(|f| f.map(|(page, _)| page)).collect(), keys)
     }
 
     /// Carry a scan of `pages` (0-based) of document `id`, made in state `then`, to the state
