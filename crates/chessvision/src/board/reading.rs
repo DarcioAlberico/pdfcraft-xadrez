@@ -237,14 +237,20 @@ impl ReadPosition {
     /// was given and the decoder did not have to change a square to make it so: an illegal reading
     /// gets no link, nor does a repaired one until a person confirms it (an empty board "repaired"
     /// with two kings would show a position the book does not have). Seen from Black when the
-    /// board was printed from Black's side. The same rule as the engine's `chess::lichess_url`.
+    /// board was printed from Black's side. The one rule of every lichess link
+    /// (`pdfcraft_chess::lichess::link`, plan A9-G9).
     pub fn lichess_url(&self) -> Option<String> {
-        if !self.legality.allows(self.side.color) || self.repaired() {
-            return None;
-        }
-        let parsed = pdfcraft_chess::fen::parse(&self.fen).ok()?;
-        let from = if self.orientation.is_some_and(|v| v.black_point_of_view) { Color::Black } else { Color::White };
-        Some(pdfcraft_chess::lichess::analysis_url(&parsed, from))
+        self.lichess_link().ok()
+    }
+
+    /// [`ReadPosition::lichess_url`], or why the reading gets none.
+    pub fn lichess_link(&self) -> Result<String, pdfcraft_chess::lichess::NoLink> {
+        pdfcraft_chess::lichess::link(&self.fen, self.printed_from(), self.repaired())
+    }
+
+    /// The side the board was printed from: Black when the reading turned it.
+    pub fn printed_from(&self) -> Color {
+        if self.orientation.is_some_and(|v| v.black_point_of_view) { Color::Black } else { Color::White }
     }
 }
 
