@@ -3839,3 +3839,25 @@ progress bar	Progress	Eiga
 	Endgame tables (Syzygy)	Endšpilio lentelės (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Kiekvienas nustatymas perduodamas varikliui tik tada, jei jis jį priima. Pradėkite analizę ir pamatysite, kuriuos šis variklis priima.
 	This engine does not take: {names}	Šis variklis nepriima: {names}
+	PGN — exercises	PGN — pratimai
+	Anki — cards	Anki — kortelės
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Sunumeruotos knygos diagramos su sprendimais, kaip standartinis uždavinių PGN.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Tekstinis failas, kurį importuoja Anki, po kortelę pratimui, su diagramų paveikslėliais aplanke šalia.
+	Book's language	Knygos kalba
+	As the book says ({lang})	Kaip nurodyta knygoje ({lang})
+	As the book's text says	Kaip rodo knygos tekstas
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Kalba, kuria parašytas eksportas ir aprašomos jo diagramos. Pataisykite ją, jei knyga buvo perskaityta kaip kita kalba.
+	Diagram descriptions	Diagramų aprašai
+	Letters (Kg1)	Raidės (Kg1)
+	Words (king g1)	Žodžiai (karalius g1)
+	How a screen reader says each diagram's pieces.	Kaip ekrano skaitytuvas pasako kiekvienos diagramos figūras.
+	Pages: {n}	Puslapių: {n}
+	Diagrams: {n}	Diagramų: {n}
+	not checked: {n}	nepatikrinta: {n}
+	Diagrams: not detected yet	Diagramos: dar neaptiktos
+	Games from the book's PGN: {n}	Partijų iš knygos PGN: {n}
+	Games: read from the text	Partijos: perskaitytos iš teksto
+	Your games, linked first: {n}	Jūsų partijų, susietų pirmiausia: {n}
+	Language: {lang}	Kalba: {lang}
+	from the book's text	pagal knygos tekstą
+	Games: read from the text, linked to the book's PGN	Partijos: perskaitytos iš teksto, susietos su knygos PGN

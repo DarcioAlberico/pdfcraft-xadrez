@@ -4,12 +4,42 @@
 //! [`title`] names the diagram, its page and the side to move (`Diagrama 1, pág. 17: brancas
 //! jogam`); [`pieces`] lists each side's pieces with the language's letters, the king first and
 //! the pawns last (`Brancas: Rg1, Df3; peões a2, b2. Pretas: Rg8; peões g7.`). [`describe`]
-//! gives both, and [`not_read`] the words for a diagram with no position.
+//! gives both, and [`not_read`] the words for a diagram with no position. [`Naming::Words`]
+//! names the pieces in words instead (`Brancas: rei g1, dama f3; …`), which a speech synthesiser
+//! says better than a letter run into a square (plan A9-X2).
 
 use crate::fen;
 use crate::origin::words;
 use crate::placement::{Color, PieceKind, Placement};
 use crate::san::Lang;
+
+/// How a description names the pieces: by the language's letters (`Kg1`, the default) or in
+/// words (`king g1`; plan A9-X2), for a screen reader whose speech says `Kg1` as one word.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Naming {
+    #[default]
+    Letters,
+    Words,
+}
+
+impl Naming {
+    /// The name the tools and the settings use (`letters`, `words`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Naming::Letters => "letters",
+            Naming::Words => "words",
+        }
+    }
+
+    /// The naming called `name` ([`Naming::name`]).
+    pub fn from_name(name: &str) -> Option<Naming> {
+        match name {
+            "letters" => Some(Naming::Letters),
+            "words" => Some(Naming::Words),
+            _ => None,
+        }
+    }
+}
 
 /// The words a description needs that the origin's comment does not.
 struct Sides {
@@ -55,6 +85,31 @@ fn sides(lang: Lang) -> Sides {
     }
 }
 
+/// The pieces in words, king, queen, rook, bishop and knight, as a list names them
+/// ([`Naming::Words`]): the nouns the language's letters stand for.
+fn piece_words(lang: Lang) -> [&'static str; 5] {
+    match lang {
+        Lang::En => ["king", "queen", "rook", "bishop", "knight"],
+        Lang::Pt => ["rei", "dama", "torre", "bispo", "cavalo"],
+        Lang::De => ["König", "Dame", "Turm", "Läufer", "Springer"],
+        Lang::Es => ["rey", "dama", "torre", "alfil", "caballo"],
+        Lang::Fr => ["roi", "dame", "tour", "fou", "cavalier"],
+        Lang::It => ["re", "donna", "torre", "alfiere", "cavallo"],
+        Lang::Ru => ["король", "ферзь", "ладья", "слон", "конь"],
+        Lang::Nl => ["koning", "dame", "toren", "loper", "paard"],
+        Lang::Pl => ["król", "hetman", "wieża", "goniec", "skoczek"],
+        Lang::Cs => ["král", "dáma", "věž", "střelec", "jezdec"],
+        Lang::Hu => ["király", "vezér", "bástya", "futó", "huszár"],
+        Lang::Da => ["konge", "dronning", "tårn", "løber", "springer"],
+        Lang::Sv => ["kung", "dam", "torn", "löpare", "springare"],
+        Lang::No => ["konge", "dronning", "tårn", "løper", "springer"],
+        Lang::Fi => ["kuningas", "kuningatar", "torni", "lähetti", "ratsu"],
+        Lang::Ro => ["rege", "damă", "turn", "nebun", "cal"],
+        Lang::Is => ["kóngur", "drottning", "hrókur", "biskup", "riddari"],
+        Lang::Ca => ["rei", "dama", "torre", "alfil", "cavall"],
+    }
+}
+
 /// The first letter in upper case.
 fn capital(word: &str) -> String {
     let mut chars = word.chars();
@@ -94,6 +149,12 @@ pub fn title_side_not_given(number: usize, page: &str, lang: Lang) -> String {
 /// Each side's pieces, the king first and the pawns last, each kind's squares from a1 to h8:
 /// `White: Kg1, Qf3; pawns a2, b2. Black: Kg8; pawns g7.` A side with no piece is left out.
 pub fn pieces(placement: &Placement, lang: Lang) -> String {
+    pieces_named(placement, lang, Naming::Letters)
+}
+
+/// [`pieces`] with the pieces named as `naming` says: in words, `White: king g1, queen f3; pawns
+/// a2, b2.`
+pub fn pieces_named(placement: &Placement, lang: Lang, naming: Naming) -> String {
     let s = sides(lang);
     let mut out = Vec::new();
     for (color, side) in [(Color::White, s.white), (Color::Black, s.black)] {
@@ -105,6 +166,8 @@ pub fn pieces(placement: &Placement, lang: Lang) -> String {
             for sq in squares {
                 if kind == PieceKind::Pawn {
                     pawns.push(sq.to_string());
+                } else if naming == Naming::Words {
+                    officers.push(format!("{} {sq}", piece_name(lang, kind)));
                 } else {
                     officers.push(format!("{}{sq}", lang.letter(kind)));
                 }
@@ -124,6 +187,19 @@ pub fn pieces(placement: &Placement, lang: Lang) -> String {
     out.join(" ")
 }
 
+/// A piece's name in words ([`piece_words`]); the pawns are listed under their own word.
+fn piece_name(lang: Lang, kind: PieceKind) -> &'static str {
+    let [king, queen, rook, bishop, knight] = piece_words(lang);
+    match kind {
+        PieceKind::King => king,
+        PieceKind::Queen => queen,
+        PieceKind::Rook => rook,
+        PieceKind::Bishop => bishop,
+        PieceKind::Knight => knight,
+        PieceKind::Pawn => sides(lang).pawns,
+    }
+}
+
 /// [`title`] and [`pieces`] of the position `fen`: `Diagram 1, page 17: White to move. White:
 /// Kg1…`. Only the title when the FEN cannot be read.
 pub fn describe(number: usize, page: &str, fen: &str, lang: Lang) -> String {
@@ -140,13 +216,15 @@ pub fn describe(number: usize, page: &str, fen: &str, lang: Lang) -> String {
 /// [`describe`] of a diagram whose side to move may be only assumed: when `side_known` is false,
 /// the title says it was not given ([`title_side_not_given`]) instead of `White to move`.
 pub fn describe_side(number: usize, page: &str, fen: &str, side_known: bool, lang: Lang) -> String {
-    if side_known {
-        return describe(number, page, fen, lang);
-    }
+    describe_side_named(number, page, fen, side_known, lang, Naming::Letters)
+}
+
+/// [`describe_side`] with the pieces named as `naming` says ([`pieces_named`]).
+pub fn describe_side_named(number: usize, page: &str, fen: &str, side_known: bool, lang: Lang, naming: Naming) -> String {
     match fen::parse(fen) {
         Ok(p) => {
-            let list = pieces(&p.placement, lang);
-            let head = title_side_not_given(number, page, lang);
+            let list = pieces_named(&p.placement, lang, naming);
+            let head = if side_known { title(number, page, p.side_to_move, lang) } else { title_side_not_given(number, page, lang) };
             if list.is_empty() { format!("{head}.") } else { format!("{head}. {list}") }
         }
         Err(_) => format!("{}.", name(number, page, lang)),
@@ -191,6 +269,32 @@ mod tests {
             let text = describe(1, "2", FEN, lang);
             assert!(text.contains("1") && text.contains("2") && text.contains("g7"), "{lang:?}: {text}");
             assert!(!not_read(1, "2", lang).contains("()"), "{lang:?}");
+            // In words, each piece is a word of its own before its square, and no letter is run
+            // into one (plan A9-X2).
+            let words = describe_side_named(1, "2", FEN, true, lang, Naming::Words);
+            assert!(
+                words.contains(" g1") && words.contains(" f3") && !words.contains(&format!("{}g1", lang.letter(PieceKind::King))),
+                "{lang:?}: {words}"
+            );
         }
+    }
+
+    /// Plan A9-X2: the pieces in words for a speech synthesiser, the pawns as before; the letters
+    /// stay the default.
+    #[test]
+    fn the_pieces_can_be_named_in_words() {
+        let words = |lang| describe_side_named(1, "17", FEN, true, lang, Naming::Words);
+        assert_eq!(words(Lang::En), "Diagram 1, page 17: White to move. White: king g1, queen f3; pawns a2, b2. Black: king g8; pawns g7.");
+        assert_eq!(words(Lang::Pt), "Diagrama 1, pág. 17: brancas jogam. Brancas: rei g1, dama f3; peões a2, b2. Pretas: rei g8; peões g7.");
+        assert_eq!(
+            describe_side_named(1, "17", FEN, false, Lang::En, Naming::Words),
+            "Diagram 1, page 17: side to move not given. White: king g1, queen f3; pawns a2, b2. Black: king g8; pawns g7."
+        );
+        assert_eq!(describe_side_named(1, "17", FEN, true, Lang::En, Naming::Letters), describe(1, "17", FEN, Lang::En));
+        assert_eq!(Naming::default(), Naming::Letters);
+        for n in [Naming::Letters, Naming::Words] {
+            assert_eq!(Naming::from_name(n.name()), Some(n));
+        }
+        assert_eq!(Naming::from_name("Words"), None);
     }
 }

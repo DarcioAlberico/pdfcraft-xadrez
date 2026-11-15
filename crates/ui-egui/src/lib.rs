@@ -2453,6 +2453,8 @@ impl PdfCraftApp {
         // The chess keys (plan A9-I18): the one-key shortcuts, and how long a typed sign waits.
         v["chess_one_key_shortcuts"] = serde_json::Value::Bool(!self.chess.one_key_off);
         v["chess_typed_wait"] = self.chess.typed_wait.to_json();
+        // The export dialog's format, PGN choices and descriptions (plan A9-X2).
+        v["chess_export"] = self.chess.export.to_json();
         v
     }
 
@@ -2472,6 +2474,9 @@ impl PdfCraftApp {
         }
         if let Some(wait) = crate::chess_annotate::TypedWait::from_json(&v["chess_typed_wait"]) {
             self.chess.typed_wait = wait;
+        }
+        if v.get("chess_export").is_some() {
+            self.chess.export = crate::chess_export_ui::ExportChoices::from_json(&v["chess_export"]);
         }
         if let Some(saved) = v.get("docking")
             && let Ok(mut workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
