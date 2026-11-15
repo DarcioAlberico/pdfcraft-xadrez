@@ -695,8 +695,14 @@ impl Automation {
                 // The address of the label and link it takes away (plan A9-G9): the diagram had
                 // one of ours to another position; null otherwise.
                 "replaces": l.replaces,
+                // What was assumed (plan A9-G9b): the side, for a confirmed position whose
+                // diagram's reading does not say it; null otherwise.
+                "note": l.note,
             })).collect::<Vec<_>>(),
             "skipped": plan.skipped.iter().map(|s| json!({ "page": s.page + 1, "index": s.index + 1, "reason": s.reason })).collect::<Vec<_>>(),
+            // Stale labels and links of ours taken from a diagram that keeps its pair to its
+            // position (plan A9-G9b).
+            "removed": plan.removed.iter().map(|r| json!({ "page": r.page + 1, "index": r.index + 1, "url": r.url })).collect::<Vec<_>>(),
             "corrections": corrections,
         });
         if let (Some(o), Value::Object(f)) = (out.as_object_mut(), fields) {

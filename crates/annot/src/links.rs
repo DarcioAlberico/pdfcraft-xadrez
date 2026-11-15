@@ -76,7 +76,15 @@ pub struct LinkItem {
     pub rect: [f64; 4],
     pub action: LinkAction,
     pub style: LinkStyle,
+    /// PdfCraft's mark on a link it wrote for a feature of its own (`/PCMark`, a name, as on
+    /// PdfCraft's page content), and the key tying it to what it was made with (`/PCKey`, a
+    /// string): see [`add_marked`]. `None` on any other link.
+    pub mark: Option<String>,
+    pub key: Option<String>,
 }
+
+/// The longest `/PCKey` read back; a longer one is no key of PdfCraft's.
+pub const MAX_KEY_LEN: usize = 256;
 
 fn nums(doc: &Document, o: Option<&Object>) -> Vec<f64> {
     o.map(|o| doc.resolve(o)).and_then(|a| a.as_array().map(|a| a.iter().filter_map(|x| doc.resolve(x).as_f64()).collect())).unwrap_or_default()
@@ -150,6 +158,10 @@ pub fn list(doc: &Document) -> Vec<LinkItem> {
                 rect: [r[0].min(r[2]), r[1].min(r[3]), r[0].max(r[2]), r[1].max(r[3])],
                 action: action_of(doc, &d, &pages),
                 style: style_of(doc, &d),
+                mark: d.name(b"PCMark").map(|n| String::from_utf8_lossy(n).into_owned()),
+                key: d.get(b"PCKey").and_then(|k| {
+                    doc.resolve(k).as_string().filter(|s| s.bytes.len() <= MAX_KEY_LEN).map(|s| String::from_utf8_lossy(&s.bytes).into_owned())
+                }),
             });
         }
     }
@@ -231,6 +243,34 @@ fn checked_rect(rect: [f64; 4]) -> Result<[f64; 4], AnnotError> {
 
 /// Add a link over `rect` (user space). Returns its index in the page's `/Annots`.
 pub fn add(doc: &mut Document, page: usize, rect: [f64; 4], action: &LinkAction, style: &LinkStyle) -> Result<usize, AnnotError> {
+    add_with(doc, page, rect, action, style, None)
+}
+
+/// [`add`], the link marked as PdfCraft's own (`/PCMark mark`) with `key` (`/PCKey`, at most
+/// [`MAX_KEY_LEN`] bytes) tying it to what it was made with, so the feature that wrote it finds it
+/// again by its mark, never by where it is ([`LinkItem::mark`], [`LinkItem::key`]).
+pub fn add_marked(
+    doc: &mut Document,
+    page: usize,
+    rect: [f64; 4],
+    action: &LinkAction,
+    style: &LinkStyle,
+    (mark, key): (&str, &str),
+) -> Result<usize, AnnotError> {
+    if mark.is_empty() || key.is_empty() || key.len() > MAX_KEY_LEN {
+        return Err(AnnotError::Invalid("a link's mark and key must be given and short".into()));
+    }
+    add_with(doc, page, rect, action, style, Some((mark, key)))
+}
+
+fn add_with(
+    doc: &mut Document,
+    page: usize,
+    rect: [f64; 4],
+    action: &LinkAction,
+    style: &LinkStyle,
+    mark: Option<(&str, &str)>,
+) -> Result<usize, AnnotError> {
     let p = page_ref(doc, page)?;
     let r = checked_rect(rect)?;
     if matches!(action, LinkAction::Other(_)) {
@@ -244,6 +284,10 @@ pub fn add(doc: &mut Document, page: usize, rect: [f64; 4], action: &LinkAction,
     d.set(b"F".to_vec(), Object::Int(4));
     write_style(&mut d, style);
     write_action(doc, &mut d, action)?;
+    if let Some((mark, key)) = mark {
+        d.set(b"PCMark".to_vec(), Object::name(mark));
+        d.set(b"PCKey".to_vec(), PdfString::literal(key.as_bytes()));
+    }
     let obj = doc.add(Object::Dict(d));
     let mut list = annots(doc, p);
     list.push(Object::Ref(obj));
