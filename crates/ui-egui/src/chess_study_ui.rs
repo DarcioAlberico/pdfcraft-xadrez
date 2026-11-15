@@ -137,6 +137,10 @@ pub struct StudyState {
     pub engine_path: Option<PathBuf>,
     #[cfg(not(target_arch = "wasm32"))]
     start_error: Option<pdfcraft_engine::chess::analysis::AnalysisError>,
+    /// The program the engine running was started from, or the last one tried (plan A9-I13): the
+    /// board's menu names it ([`engine_program`]).
+    #[cfg(not(target_arch = "wasm32"))]
+    program: Option<PathBuf>,
     /// No engine was found the last time one was looked for.
     no_engine: bool,
     /// The position last given to the engine.
@@ -170,6 +174,8 @@ impl Default for StudyState {
             engine_path: None,
             #[cfg(not(target_arch = "wasm32"))]
             start_error: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            program: None,
             no_engine: false,
             sent: None,
             assistant: false,
@@ -257,6 +263,7 @@ impl StudyState {
     pub fn use_engine(&mut self, engine: pdfcraft_engine::chess::analysis::Analyser) {
         self.engine = Some(engine);
         self.start_error = None;
+        self.program = None;
         self.no_engine = false;
         self.sent = None;
         self.analysis = true;
@@ -303,6 +310,7 @@ impl StudyState {
             self.engine = None;
             self.start_error = None;
             self.evals.finish();
+            self.program = None;
         }
         self.no_engine = false;
         self.sent = None;
@@ -313,6 +321,12 @@ impl StudyState {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn take_evals(&mut self) -> Vec<crate::chess_evals_ui::Found> {
         self.evals.take()
+    }
+
+    /// The program the engine runs from, or was last tried from (plan A9-I13).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn program(&self) -> Option<&std::path::Path> {
+        self.program.as_deref()
     }
 
     /// Start the engine when analysis is on, close it when off, and give it the position shown.
@@ -339,6 +353,7 @@ impl StudyState {
                         Ok(engine) => self.engine = Some(engine),
                         Err(e) => self.start_error = Some(e),
                     }
+                    self.program = Some(path);
                 }
             }
         }
@@ -732,6 +747,18 @@ pub(crate) fn engine_rows(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, boa
     }
 }
 
+/// The program `path` as the board's menu names it (plan A9-I13): "Engine: x.exe, in
+/// engine\aux", its folder said from the folder the app is installed in (`install`) when it is
+/// in there, so that of two programs in the `engine` folder the one taken is said.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn engine_program(path: &std::path::Path, install: Option<&std::path::Path>) -> String {
+    let name = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
+    let folder = path.parent().map_or_else(String::new, |dir| {
+        install.and_then(|i| dir.strip_prefix(i).ok()).filter(|d| !d.as_os_str().is_empty()).unwrap_or(dir).display().to_string()
+    });
+    crate::i18n::fmt(tl!("Engine: {name}, in {folder}"), &[("name", &name), ("folder", &folder)])
+}
+
 /// How to get an engine, as the no-engine assistant and the Analysis section say it.
 fn engine_help() -> &'static str {
     if cfg!(windows) {
@@ -966,6 +993,35 @@ mod tests {
         // The start position brings every right back.
         s.set_placement(Placement::standard(), true);
         assert_eq!(s.position.castling.fen(), "KQkq");
+    }
+
+    /// Plan A9-I13: with `engine/aux/x.exe` and `engine/stockfish/stockfish.exe` beside the app,
+    /// the engine found is named with its folder, so that the one taken of the two is said; a
+    /// program picked elsewhere is named with its whole folder.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn the_engine_found_is_named_with_its_folder() {
+        use std::path::Path;
+        let install = std::env::temp_dir().join(format!("pdfcraft-ui-engine-two-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&install);
+        let exe = |name: &str| if cfg!(windows) { format!("{name}.exe") } else { name.to_owned() };
+        for program in [install.join("engine").join("aux").join(exe("x")), install.join("engine").join("stockfish").join(exe("stockfish"))] {
+            std::fs::create_dir_all(program.parent().unwrap()).unwrap();
+            std::fs::write(&program, "x").unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+        }
+        if std::env::var_os("PDFCRAFT_CHESS_ENGINE").is_none() {
+            let found = pdfcraft_engine::chess::analysis::locate_engine(Some(&install)).unwrap();
+            let folder = Path::new("engine").join("aux");
+            assert_eq!(engine_program(&found.path, Some(&install)), format!("Engine: {}, in {}", exe("x"), folder.display()));
+        }
+        let elsewhere = std::env::temp_dir().join("sf").join(exe("sf"));
+        assert_eq!(engine_program(&elsewhere, Some(&install)), format!("Engine: {}, in {}", exe("sf"), elsewhere.parent().unwrap().display()));
+        let _ = std::fs::remove_dir_all(&install);
     }
 
     #[test]

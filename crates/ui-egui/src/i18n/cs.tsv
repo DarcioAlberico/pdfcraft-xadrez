@@ -3633,6 +3633,18 @@ the move's comment	Move comment	Komentář k tahu
 	Alt+O switches between the board as read and the page's own picture.	Alt+O přepíná mezi šachovnicí, jak byla přečtena, a vlastním obrázkem stránky.
 	Original diagram, page {p}, diagram {n}	Původní diagram, strana {p}, diagram {n}
 	The page's picture of this diagram shows once its page is drawn.	Obrázek stránky s tímto diagramem se ukáže, jakmile se jeho stránka vykreslí.
+	Export the book's review…	Exportovat revizi knihy…
+	Import a book's review…	Importovat revizi knihy…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Šachy tohoto šifrovaného dokumentu se podle vašeho přání neuchovávají: revizi z něj nelze exportovat ani do něj importovat.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Zatím není co exportovat: tento dokument neuchovává žádnou opravu, volbu ani partii.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Revize exportována do {path} (opravy: {corrections}, volby: {decisions}, partie: {games}). Komentáře partií mohou obsahovat text knihy: soubor si ponechte pro vlastní potřebu.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Revize importována z {name} (opravy: {corrections}, volby: {decisions}, partie: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Opravy pro stránky, které tento dokument nemá: {n} (uchovány, bez diagramu).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Volby čekající na PGN knihy: {n} (načtěte PGN a pak revizi importujte znovu).
+	Entries that couldn't be read and were left out: {n}.	Položky, které nešlo přečíst a byly vynechány: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} je revize jiné knihy ({pages} stran; tato má {here}). Přesto ji importovat do tohoto dokumentu?
+	Another book's review	Revize jiné knihy
+	Import anyway	Přesto importovat
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Nepotvrzeno
 progress bar	Progress	Průběh
@@ -3642,6 +3654,8 @@ progress bar	Progress	Průběh
 	Games left out (an illegal position has no game): {n}	Vynechané partie (neplatná pozice nemá partii): {n}
 	Indexing the book's PGN…	Indexuje se PGN knihy…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knihy je větší, než kolik PdfCraft indexuje: s knihou je propojeno jen prvních {moves} tahů.
+	Engine: {name}, in {folder}	Engine: {name}, ve složce {folder}
+	Importing…	Importuje se…
 	Chess engine	Šachový engine
 	Search threads	Vlákna hledání
 	Hash table	Hašovací tabulka

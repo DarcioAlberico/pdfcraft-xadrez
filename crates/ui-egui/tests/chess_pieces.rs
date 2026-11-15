@@ -40,6 +40,13 @@ fn press(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
     h.run_steps(3);
 }
 
+/// Wait for the import running on a worker (plan A9-V6b: imports never run on the interface's
+/// thread), then show what it did.
+fn imported(h: &mut Harness<'static, PdfCraftApp>) {
+    assert!(h.state().wait_piece_import(std::time::Duration::from_secs(120)), "the import came back");
+    h.run_steps(3);
+}
+
 #[test]
 fn a_set_picked_for_each_role_is_used_at_once_and_remembered() {
     let mut h = harness("");
@@ -101,28 +108,29 @@ fn imported_sets_are_reported_and_replaced_only_when_asked() {
     let mut h = harness("");
     assert!(h.query_by_label("Import a folder…").is_some() && h.query_by_label("Import from a web page…").is_some());
     h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("Imported: squares. Their licence is not known").is_some());
     assert!(into.join("squares/wK.svg").is_file());
     let first = std::fs::metadata(into.join("squares/ORIGIN.txt")).unwrap().modified().unwrap();
     // Again: nothing is written until Replace.
     std::fs::write(into.join("squares/wK.svg"), "mine").unwrap();
     h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("Already in the pieces folder: squares. Replace them?").is_some());
     press(&mut h, "Cancel");
     assert!(h.query_by_label_contains("Already in the pieces folder").is_none());
     assert_eq!(std::fs::read_to_string(into.join("squares/wK.svg")).unwrap(), "mine");
     h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     press(&mut h, "Replace");
+    imported(&mut h);
     assert!(h.query_by_label_contains("Imported: squares.").is_some());
     assert_ne!(std::fs::read_to_string(into.join("squares/wK.svg")).unwrap(), "mine");
     assert!(std::fs::metadata(into.join("squares/ORIGIN.txt")).unwrap().modified().unwrap() >= first);
     // A page with no sets says so.
     std::fs::write(dir.join("empty.html"), "<html></html>").unwrap();
     h.state_mut().import_pieces_into(dir.join("empty.html"), into, false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("The pieces cannot be imported:").is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -144,25 +152,68 @@ fn imported_fonts_are_reported_and_replaced_only_when_asked() {
     let mut h = harness("");
     assert!(h.query_by_label("Import fonts…").is_some());
     h.state_mut().import_fonts_into(vec![from.clone()], into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("Imported: HastingsFigurine, Chess Leipzig DG. Their licence is not known").is_some());
     assert!(into.join("LeipzigDG.ttf").is_file() && !into.join("Plain.ttf").exists());
     // A different font of the same file name: nothing is written until Replace.
     let other = font("Chess Leipzig DG", "phbrqkojntwl+ *", true, 0);
     std::fs::write(from.join("LeipzigDG.ttf"), &other).unwrap();
     h.state_mut().import_fonts_into(vec![from.join("LeipzigDG.ttf")], into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("Already in the fonts folder: LeipzigDG.ttf. Replace them?").is_some());
     press(&mut h, "Cancel");
     assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), leipzig);
     h.state_mut().import_fonts_into(vec![from.join("LeipzigDG.ttf")], into.clone(), false);
-    h.run_steps(3);
+    imported(&mut h);
     press(&mut h, "Replace");
+    imported(&mut h);
     assert!(h.query_by_label_contains("Imported: Chess Leipzig DG.").is_some());
     assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), other);
     // No chess font at all says so.
     h.state_mut().import_fonts_into(vec![from.join("Plain.ttf")], into, false);
-    h.run_steps(3);
+    imported(&mut h);
     assert!(h.query_by_label_contains("The fonts cannot be imported:").is_some());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-V6b (finding A3-07: twelve PNGs of 2,048 px took 2.4 s, on the interface's thread):
+/// importing a folder of large piece images runs on a worker. The call returns at once with the
+/// import still running, the import row says Importing… with its buttons off, and the frame after
+/// the import is done says what it imported.
+#[test]
+fn importing_large_pieces_never_blocks_the_frame() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-piece-import-large-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (from, into) = (dir.join("large"), dir.join("pieces"));
+    std::fs::create_dir_all(&from).unwrap();
+    // A disc of 1,024 px for each piece (traced reduced to 512), black for Black's, white ringed in black for White's.
+    let side = 1024u32;
+    for (i, name) in ["wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"].iter().enumerate() {
+        let shade = if i < 6 { 255 } else { 0 };
+        let image = image::RgbaImage::from_fn(side, side, |x, y| {
+            let d = (x as f32 - side as f32 / 2.0).hypot(y as f32 - side as f32 / 2.0) / side as f32;
+            let r = 0.3 + 0.01 * i as f32;
+            if d < r - 0.04 {
+                image::Rgba([shade, shade, shade, 255])
+            } else if d < r {
+                image::Rgba([0, 0, 0, 255])
+            } else {
+                image::Rgba([0, 0, 0, 0])
+            }
+        });
+        image.save(from.join(format!("{name}.png"))).unwrap();
+    }
+    let mut h = harness("");
+    h.state_mut().import_pieces_into(from.clone(), into.clone(), false);
+    // Back at once, the import on its worker: nothing said yet.
+    assert!(h.state().piece_import_running(), "the import runs on a worker");
+    h.run_steps(1);
+    if h.state().piece_import_running() {
+        h.get_by_label("Importing…");
+    }
+    imported(&mut h);
+    assert!(!h.state().piece_import_running());
+    assert!(h.query_by_label_contains("Imported: large. Their licence is not known").is_some());
+    assert!(into.join("large/wK.png").is_file() && into.join("large/bP.png").is_file());
     let _ = std::fs::remove_dir_all(&dir);
 }

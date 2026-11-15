@@ -3523,6 +3523,18 @@ the move's comment	Move comment	此着法的评论
 	Alt+O switches between the board as read and the page's own picture.	Alt+O 在读出的棋盘与页面本身的图像之间切换。
 	Original diagram, page {p}, diagram {n}	原始棋图，第 {p} 页，棋图 {n}
 	The page's picture of this diagram shows once its page is drawn.	此棋图的页面图像会在其页面绘制后显示。
+	Export the book's review…	导出本书的审阅…
+	Import a book's review…	导入一本书的审阅…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	按您的选择，此加密文档的国际象棋内容不予保存：无法从中导出审阅，也无法向其导入审阅。
+	There is nothing to export yet: this document keeps no correction, choice or game.	暂无可导出的内容：此文档没有保存任何更正、选择或对局。
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	审阅已导出到 {path}（更正：{corrections}，选择：{decisions}，对局：{games}）。对局的注释可能含有书中文字：请仅供个人使用。
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	已从 {name} 导入审阅（更正：{corrections}，选择：{decisions}，对局：{games}）。
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	针对此文档没有的页面的更正：{n}（已保留，未对应任何棋图）。
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	等待本书 PGN 的选择：{n}（请先加载 PGN，再重新导入审阅）。
+	Entries that couldn't be read and were left out: {n}.	无法读取而被略过的条目：{n}。
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} 是另一本书的审阅（{pages} 页；本书有 {here} 页）。仍要导入到此文档吗？
+	Another book's review	另一本书的审阅
+	Import anyway	仍然导入
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	未确认
 progress bar	Progress	进度
@@ -3532,6 +3544,8 @@ progress bar	Progress	进度
 	Games left out (an illegal position has no game): {n}	未导出的对局（非法局面没有对局）：{n}
 	Indexing the book's PGN…	正在为本书的 PGN 建立索引…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本书的 PGN 超出了 PdfCraft 的索引上限：只有前 {moves} 步与本书关联。
+	Engine: {name}, in {folder}	引擎：{name}，位于 {folder}
+	Importing…	正在导入…
 	Chess engine	国际象棋引擎
 	Search threads	搜索线程
 	Hash table	哈希表

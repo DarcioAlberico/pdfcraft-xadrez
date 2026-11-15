@@ -3558,6 +3558,18 @@ the move's comment	Move comment	A lépés megjegyzése
 	Alt+O switches between the board as read and the page's own picture.	Az Alt+O vált a beolvasott tábla és az oldal saját képe között.
 	Original diagram, page {p}, diagram {n}	Eredeti diagram, {p}. oldal, {n}. diagram
 	The page's picture of this diagram shows once its page is drawn.	A diagram oldalképe akkor jelenik meg, amikor az oldala kirajzolódott.
+	Export the book's review…	A könyv átnézésének exportálása…
+	Import a book's review…	Egy könyv átnézésének importálása…
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Ennek a titkosított dokumentumnak a sakkadatait, ahogy kérte, nem tároljuk: átnézés nem exportálható belőle és nem importálható bele.
+	There is nothing to export yet: this document keeps no correction, choice or game.	Még nincs mit exportálni: ehhez a dokumentumhoz nincs tárolt javítás, választás vagy játszma.
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Az átnézés exportálva ide: {path} (javítások: {corrections}, választások: {decisions}, játszmák: {games}). A játszmák megjegyzései tartalmazhatják a könyv szövegét: a fájlt tartsa meg saját használatra.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Az átnézés importálva innen: {name} (javítások: {corrections}, választások: {decisions}, játszmák: {games}).
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Javítások olyan oldalakhoz, amelyek nincsenek ebben a dokumentumban: {n} (tárolva, diagram nélkül).
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	A könyv PGN-jére váró választások: {n} (töltse be a PGN-t, majd importálja újra az átnézést).
+	Entries that couldn't be read and were left out: {n}.	Olvashatatlan, kihagyott bejegyzések: {n}.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	A(z) {name} egy másik könyv átnézése ({pages} oldal; ez {here} oldalas). Mégis importálja ebbe a dokumentumba?
+	Another book's review	Másik könyv átnézése
+	Import anyway	Importálás mégis
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Not confirmed	Nincs megerősítve
 progress bar	Progress	Előrehaladás
@@ -3567,6 +3579,8 @@ progress bar	Progress	Előrehaladás
 	Games left out (an illegal position has no game): {n}	Kihagyott játszmák (szabálytalan állásnak nincs játszmája): {n}
 	Indexing the book's PGN…	A könyv PGN-jének indexelése…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	A könyv PGN-je nagyobb, mint amennyit a PdfCraft indexel: csak az első {moves} lépése kapcsolódik a könyvhöz.
+	Engine: {name}, in {folder}	Motor: {name}, helye: {folder}
+	Importing…	Importálás…
 	Chess engine	Sakkmotor
 	Search threads	Keresési szálak
 	Hash table	Hash-tábla
