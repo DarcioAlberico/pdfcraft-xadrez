@@ -71,6 +71,7 @@ mod chess_budget;
 mod chess_source;
 mod chess_store_ui;
 mod chess_study_ui;
+mod chess_text_para;
 mod chess_text_ui;
 mod chess_tools;
 mod chess_trash;

@@ -3567,3 +3567,11 @@ progress bar	Progress	Progression
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Le PGN du livre est plus grand que ce que PdfCraft indexe : seuls ses {moves} premiers coups sont liés au livre.
 	Engine: {name}, in {folder}	Moteur : {name}, dans {folder}
 	Importing…	Importation…
+	More Text tab actions	Autres actions de l'onglet Texte
+	Read with OCR	Lire avec l'OCR
+	illegal	illégal
+	ambiguous	ambigu
+	out of sequence	hors séquence
+	not reached	non atteint
+	not checked	non vérifié
+	caption	légende

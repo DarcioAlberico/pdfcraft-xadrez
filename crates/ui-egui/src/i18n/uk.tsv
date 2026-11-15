@@ -3589,3 +3589,11 @@ progress bar	Progress	Хід виконання
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN книги більший, ніж індексує PdfCraft: з книгою пов'язано лише перші {moves} ходів.
 	Engine: {name}, in {folder}	Рушій: {name}, у {folder}
 	Importing…	Імпорт…
+	More Text tab actions	Інші дії вкладки «Текст»
+	Read with OCR	Прочитати з OCR
+	illegal	неможливий
+	ambiguous	неоднозначний
+	out of sequence	поза послідовністю
+	not reached	не досягнуто
+	not checked	не перевірено
+	caption	підпис

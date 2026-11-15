@@ -3819,3 +3819,11 @@ progress bar	Progress	Tiến độ
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN của sách lớn hơn mức PdfCraft lập chỉ mục: chỉ {moves} nước đầu tiên của nó được liên kết với sách.
 	Engine: {name}, in {folder}	Engine: {name}, trong {folder}
 	Importing…	Đang nhập…
+	More Text tab actions	Thêm thao tác của thẻ Văn bản
+	Read with OCR	Đọc bằng OCR
+	illegal	không hợp lệ
+	ambiguous	mơ hồ
+	out of sequence	sai thứ tự
+	not reached	chưa tới
+	not checked	chưa kiểm tra
+	caption	chú thích

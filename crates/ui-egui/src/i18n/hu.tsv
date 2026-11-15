@@ -3566,3 +3566,11 @@ progress bar	Progress	Előrehaladás
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	A könyv PGN-je nagyobb, mint amennyit a PdfCraft indexel: csak az első {moves} lépése kapcsolódik a könyvhöz.
 	Engine: {name}, in {folder}	Motor: {name}, helye: {folder}
 	Importing…	Importálás…
+	More Text tab actions	A Szöveg lap további műveletei
+	Read with OCR	Olvasás OCR-rel
+	illegal	szabálytalan
+	ambiguous	kétértelmű
+	out of sequence	sorrenden kívül
+	not reached	nem elért
+	not checked	nem ellenőrzött
+	caption	képaláírás

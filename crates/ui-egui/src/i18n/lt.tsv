@@ -3817,3 +3817,11 @@ progress bar	Progress	Eiga
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Knygos PGN didesnis, nei PdfCraft indeksuoja: su knyga susieti tik pirmieji {moves} jo ėjimai.
 	Engine: {name}, in {folder}	Variklis: {name}, aplanke {folder}
 	Importing…	Importuojama…
+	More Text tab actions	Daugiau kortelės „Tekstas“ veiksmų
+	Read with OCR	Skaityti su OCR
+	illegal	neleistinas
+	ambiguous	dviprasmis
+	out of sequence	ne iš eilės
+	not reached	nepasiektas
+	not checked	nepatikrintas
+	caption	paaiškinimas

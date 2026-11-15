@@ -3569,3 +3569,11 @@ progress bar	Progress	進行状況
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	本の PGN は PdfCraft が索引付けできる大きさを超えています: 本に関連付けられるのは最初の {moves} 手だけです。
 	Engine: {name}, in {folder}	エンジン: {name}（{folder}）
 	Importing…	インポートしています…
+	More Text tab actions	テキストタブのその他の操作
+	Read with OCR	OCR で読み取る
+	illegal	不正
+	ambiguous	あいまい
+	out of sequence	順序外
+	not reached	未到達
+	not checked	未確認
+	caption	キャプション

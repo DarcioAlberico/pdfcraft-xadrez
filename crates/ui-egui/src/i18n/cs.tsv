@@ -3641,3 +3641,11 @@ progress bar	Progress	Průběh
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knihy je větší, než kolik PdfCraft indexuje: s knihou je propojeno jen prvních {moves} tahů.
 	Engine: {name}, in {folder}	Engine: {name}, ve složce {folder}
 	Importing…	Importuje se…
+	More Text tab actions	Další akce karty Text
+	Read with OCR	Číst pomocí OCR
+	illegal	neplatný
+	ambiguous	nejednoznačný
+	out of sequence	mimo pořadí
+	not reached	nedosažen
+	not checked	nezkontrolován
+	caption	popisek

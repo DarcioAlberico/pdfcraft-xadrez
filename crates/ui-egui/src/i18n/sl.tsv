@@ -3572,3 +3572,11 @@ progress bar	Progress	Napredek
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN knjige je večji, kot ga PdfCraft indeksira: s knjigo je povezanih le prvih {moves} potez.
 	Engine: {name}, in {folder}	Šahovski program: {name}, v mapi {folder}
 	Importing…	Uvažanje…
+	More Text tab actions	Več dejanj zavihka Besedilo
+	Read with OCR	Preberi z OCR
+	illegal	neveljavna
+	ambiguous	dvoumna
+	out of sequence	zunaj zaporedja
+	not reached	ni dosežena
+	not checked	ni preverjena
+	caption	napis

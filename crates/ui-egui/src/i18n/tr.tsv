@@ -3563,3 +3563,11 @@ progress bar	Progress	İlerleme
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Kitabın PGN'i PdfCraft'ın dizinlediğinden büyük: kitaba yalnızca ilk {moves} hamlesi bağlandı.
 	Engine: {name}, in {folder}	Motor: {name}, konum: {folder}
 	Importing…	İçe aktarılıyor…
+	More Text tab actions	Metin sekmesinin diğer eylemleri
+	Read with OCR	OCR ile oku
+	illegal	kuraldışı
+	ambiguous	belirsiz
+	out of sequence	sıra dışı
+	not reached	ulaşılmadı
+	not checked	denetlenmedi
+	caption	altyazı
