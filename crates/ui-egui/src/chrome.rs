@@ -652,6 +652,8 @@ fn main_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     });
                 })
             });
+            // The chess tools by name, without the panel (plan A9-I16, finding R4-02).
+            ui.menu_button(tl!("Chess"), |ui| scroll_menu(ui, |ui| crate::commands::registry_menu(app, ui, "Chess")));
             ui.menu_button(tl!("Help"), |ui| scroll_menu(ui, |ui| crate::commands::registry_menu(app, ui, "Help")));
         })
     });
@@ -660,6 +662,13 @@ fn main_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 pub fn right_rail(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     let Some((index, id)) = app.active_ids() else { return };
+    // A book in a chess font or with a PGN beside it has the chess button before any detection,
+    // with a dot until its Chess panel shows (plan A9-I16, §2.8.1).
+    if app.right == Some(RightPanel::Chess) {
+        app.chess.doc_mut(id).chess_seen = true;
+    }
+    let chess_book = app.chess_book_hint(id);
+    let chess_offer = chess_book && app.chess.results_of(id).is_none() && !app.chess.doc(id).is_some_and(|d| d.chess_seen);
     let Some(doc) = app.session.get(id) else { return };
     let has_signatures = doc.is_signed();
     let has_check = app.a11y.report.as_ref().is_some_and(|(d, _)| *d == id);
@@ -690,8 +699,8 @@ pub fn right_rail(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 panels.push((RightPanel::Accessibility, "accessibility", "Accessibility Checker", false));
             }
             panels.push((RightPanel::Tags, "tag", "Tags", false));
-            if has_chess {
-                panels.push((RightPanel::Chess, "grid-3x3", "Chess", false));
+            if has_chess || chess_book {
+                panels.push((RightPanel::Chess, "grid-3x3", "Chess", chess_offer));
             }
             // Measured (plan A8, P5): the panels that fit above the navigation, the rest under ⋯,
             // so no two of the rail's targets ever overlap however short the window.

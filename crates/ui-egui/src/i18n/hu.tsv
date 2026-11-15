@@ -3618,3 +3618,22 @@ progress bar	Progress	Előrehaladás
 	not reached	nem elért
 	not checked	nem ellenőrzött
 	caption	képaláírás
+	Analyze the position	Állás elemzése
+	Export chess book…	Sakkönyv exportálása…
+	Chess shortcuts	Sakk billentyűparancsok
+	Board, move list and Chess panel	Tábla, lépéslista és sakkpanel
+	Diagram tab	Diagram lap
+	Move back	Egy lépés vissza
+	Move forward	Egy lépés előre
+	The variation above	A fenti változat
+	The variation below	A lenti változat
+	Start of the game	A játszma eleje
+	End of the line	A sor vége
+	End of the main line	A főváltozat vége
+	Previous variation	Előző változat
+	Next variation	Következő változat
+	Leave the chess panel	Kilépés a sakkpanelből
+	Next tool of {group}	{group}: következő eszköz
+	Previous diagram	Előző diagram
+	Next diagram	Következő diagram
+	The original or the position read	Az eredeti vagy a beolvasott állás

@@ -57,6 +57,11 @@ pub struct DocChess {
     /// The user's answer about keeping its chess, when it is encrypted and was asked (plan
     /// A9-I1c, [`crate::chess_keep`]): for the session.
     pub(crate) keep: Option<bool>,
+    /// Whether it looks like a chess book before any detection (a chess font, a PGN beside it),
+    /// found once (plan A9-I16, [`PdfCraftApp::chess_book_hint`]).
+    pub(crate) chess_hint: Option<bool>,
+    /// Its Chess panel was shown: the rail's chess button no longer has its dot (plan A9-I16).
+    pub(crate) chess_seen: bool,
 }
 
 /// Chess diagrams: each open document's view, and the running scan.
@@ -134,6 +139,9 @@ pub struct ChessState {
     pub export: crate::chess_export_ui::ExportChoices,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
+    /// The sheet of the chess keys is shown (plan A9-I16: `chess.shortcuts`, F1 in the chess
+    /// panels).
+    pub shortcuts_open: bool,
     /// Another book's review, waiting for the question before it is imported (plan A9-G5b).
     pub(crate) review_import: Option<crate::chess_review_ui::PendingImport>,
     /// Review packs the browser read, imported at the next frame (plan A9-G5b).

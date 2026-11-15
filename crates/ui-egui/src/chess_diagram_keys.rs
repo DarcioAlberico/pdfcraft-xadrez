@@ -142,6 +142,21 @@ pub(crate) enum TabKey {
     Original,
 }
 
+/// What the tab's key named `action` ([`TabKey::action`]) does, in the current language: for the
+/// sheet of the chess keys (plan A9-I16).
+pub(crate) fn tab_key_name(action: &str) -> Option<&'static str> {
+    let (_, key) = TAB_KEYS.iter().find(|(_, key)| key.action() == action)?;
+    Some(match key {
+        TabKey::ConfirmNext => tl!("Confirm and next"),
+        TabKey::Previous => tl!("Previous diagram"),
+        TabKey::Next => tl!("Next diagram"),
+        TabKey::Undo => tl!("Undo"),
+        TabKey::Redo => tl!("Redo"),
+        TabKey::BackToList => tl!("Back to Diagrams"),
+        TabKey::Original => tl!("The original or the position read"),
+    })
+}
+
 impl TabKey {
     /// What the key does, as the chess key map names it (`chess_keymap`): Page Up and Page Down
     /// and Esc are named as the board's are, since they do the same kind of thing in each place.
