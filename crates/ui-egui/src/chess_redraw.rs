@@ -57,7 +57,7 @@ impl PdfCraftApp {
         let kept = match target.as_ref().map(|t| self.store_chess_correction(t, fen.clone())) {
             Some(Ok(stored)) => Some(stored.uid),
             Some(Err(why)) => {
-                self.notify(crate::i18n::fmt(tl!("Nothing was drawn in the PDF: the correction couldn't be kept ({e})."), &[("e", &why)]));
+                self.post_error(crate::i18n::fmt(tl!("Nothing was drawn in the PDF: the correction couldn't be kept ({e})."), &[("e", &why)]));
                 return false;
             }
             None => None,

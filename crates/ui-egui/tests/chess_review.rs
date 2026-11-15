@@ -131,7 +131,7 @@ fn a_books_review_goes_to_another_machine_and_comes_in_once() {
     assert!(h.state_mut().execute("chess.review.export"));
     h.run_steps(3);
     h.state_mut().pick_override = None;
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("(corrections: 1, choices: 0, games: 2)") && said.contains("for your own use"), "{said}");
     let text = std::fs::read_to_string(&pack).unwrap_or_else(|e| panic!("{e}: {said}"));
     let around = a.file_name().unwrap().to_string_lossy().into_owned();
@@ -144,7 +144,7 @@ fn a_books_review_goes_to_another_machine_and_comes_in_once() {
     let mut h = machine(&b, book);
     assert_eq!((corrections(&mut h), games(&h).len()), (0, 0));
     import_from_menu(&mut h, &pack);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("Review imported from review.json (corrections: 1, choices: 0, games: 2)."), "{said}");
     assert_eq!((corrections(&mut h), games(&h)), (1, expected.clone()), "the same review here");
     import_from_menu(&mut h, &pack);
@@ -166,14 +166,14 @@ fn another_books_review_is_asked_about_first() {
     assert!(h.state_mut().execute("chess.review.export"));
     h.run_steps(3);
     h.state_mut().pick_override = None;
-    assert!(pack.is_file(), "{:?}", h.state().toast);
+    assert!(pack.is_file(), "{:?}", h.state().said());
     drop(h);
 
     let mut h = machine(&b, pdf("Another book, longer than the first"));
     import_from_menu(&mut h, &pack);
     // Asked first, naming the file and both books' pages.
     let asked = h.query_by_label_contains("review.json is the review of another book (2 pages; this one has 2)").is_some();
-    assert!(asked, "asked first: {:?}", h.state().toast);
+    assert!(asked, "asked first: {:?}", h.state().said());
     h.get_by_label("Cancel").click();
     h.run_steps(2);
     assert!(h.query_by_label("Another book's review").is_none(), "the question is gone");
@@ -181,7 +181,7 @@ fn another_books_review_is_asked_about_first() {
     import_from_menu(&mut h, &pack);
     h.get_by_label("Import anyway").click();
     h.run_steps(2);
-    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    let said = h.state().said().unwrap_or_default().to_owned();
     assert!(said.contains("(corrections: 1, choices: 0, games: 0)"), "{said}");
     assert_eq!(corrections(&mut h), 1, "kept in this document's store");
     let _ = std::fs::remove_dir_all(&a);

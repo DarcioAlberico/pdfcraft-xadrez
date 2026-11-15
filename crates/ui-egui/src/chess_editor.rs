@@ -22,6 +22,7 @@ use egui::{Color32, TextureHandle};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_engine::chess::pdfcraft_chess::fen::{Castling, Position};
+use pdfcraft_engine::chess::pdfcraft_chess::lichess::NoLink;
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 use pdfcraft_engine::chess::pdfcraft_chess::recognize::Uncertain;
 use pdfcraft_engine::chess::pdfcraft_chess::repair::GameContext;
@@ -61,7 +62,11 @@ pub struct DiagramEditor {
     /// unconfirmed changes when its position is another (plan A8, P3b3).
     pub start: String,
     pub uncertain: Vec<Uncertain>,
+    /// The board seen from Black's side: the view only (the reading's side to begin with).
     pub flipped: bool,
+    /// The side the diagram is printed from, as its reading says (White when it was not read): the
+    /// side its lichess links are seen from, whatever the view (plan A9-G9).
+    pub printed: Color,
     pub brush: Brush,
     /// The square the keyboard acts on (plan A8, P3c).
     pub cursor: Square,
@@ -93,7 +98,8 @@ impl DiagramEditor {
             .unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) });
         let start = position.fen();
         let uncertain: Vec<Uncertain> = read.map(|p| p.uncertain.clone()).unwrap_or_default();
-        let flipped = read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view);
+        let printed = read.map_or(Color::White, |p| p.printed_from());
+        let flipped = printed == Color::Black;
         // The first square the model doubted, else the top left one as shown.
         let cursor = uncertain.first().map_or(if flipped { Square::H1 } else { Square::A8 }, |u| u.square);
         DiagramEditor {
@@ -105,6 +111,7 @@ impl DiagramEditor {
             start,
             uncertain,
             flipped,
+            printed,
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
             cursor,
             focus: true,
@@ -126,6 +133,13 @@ impl DiagramEditor {
     /// in check, castling rights that fit.
     pub fn legal(&self) -> bool {
         GameContext::from_fen(&self.fen()).is_some()
+    }
+
+    /// The position's lichess analysis link, seen from the side its diagram is printed from (not
+    /// the view's flip), or why it gets none: the one rule of every lichess link, which the link
+    /// Add lichess link writes into the PDF goes through too (plan A9-G9).
+    pub fn lichess_link(&self) -> Result<String, NoLink> {
+        pdfcraft_engine::chess::pdfcraft_chess::lichess::link(&self.fen(), self.printed, false)
     }
 
     /// Why the position is not legal, as the panel says it ("Not a legal position: Black's king is
@@ -733,7 +747,8 @@ pub fn editor_ui(
         }
     });
     let fen = ed.fen();
-    let legal = ed.illegal_text().is_none();
+    // The one rule decides both lichess actions, and the address (plan A9-G9).
+    let link = ed.lichess_link();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
     second_readings(ui, ed);
     ui.add_space(4.0);
@@ -746,7 +761,7 @@ pub fn editor_ui(
             action = Some(EditorAction::Redraw);
         }
         if ui
-            .add_enabled(legal, egui::Button::new(tl!("Add lichess link")))
+            .add_enabled(link.is_ok(), egui::Button::new(tl!("Add lichess link")))
             .on_hover_text(tl!("Put a link to this position on lichess under the diagram."))
             .clicked()
         {
@@ -755,12 +770,10 @@ pub fn editor_ui(
         if ui.small_button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
-        if legal {
-            let url =
-                pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&ed.position, if ed.flipped { Color::Black } else { Color::White });
-            if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
-                action = Some(EditorAction::OpenLichess(url));
-            }
+        if let Ok(url) = &link
+            && ui.small_button(tl!("Open in lichess")).on_hover_text(url).clicked()
+        {
+            action = Some(EditorAction::OpenLichess(url.clone()));
         }
         if ui.small_button(tl!("Open on the board")).clicked() {
             action = Some(EditorAction::OpenBoard);

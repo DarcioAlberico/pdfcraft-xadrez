@@ -197,7 +197,7 @@ impl crate::PdfCraftApp {
         let png = match self.session.chess_glyph_sample(fix.doc, fix.page, fix.rect, fix.dpi) {
             Ok(png) => png,
             Err(e) => {
-                self.notify(crate::i18n::fmt(tl!("Couldn't save a character sample: {e}"), &[("e", &e.to_string())]));
+                self.post_error(crate::i18n::fmt(tl!("Couldn't save a character sample: {e}"), &[("e", &e.to_string())]));
                 return;
             }
         };
@@ -212,7 +212,7 @@ impl crate::PdfCraftApp {
         let base = samples::base_name(fix.confidence, &hash, fix.page);
         match samples::write_sample(&folder, &samples::class_folder(&fix.text), &base, &png, write_file) {
             Ok(_) => self.chess.capture.samples.written = self.chess.capture.samples.written.saturating_add(1),
-            Err(e) => self.notify(crate::i18n::fmt(tl!("Couldn't save a character sample: {e}"), &[("e", &e.to_string())])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("Couldn't save a character sample: {e}"), &[("e", &e.to_string())])),
         }
     }
 }

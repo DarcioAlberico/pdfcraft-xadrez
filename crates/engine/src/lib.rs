@@ -272,7 +272,12 @@ fn scope_of(edit: &Edit) -> Scope {
         | Edit::FillAnnotation { .. }
         | Edit::FontSizeAnnotation { .. }
         | Edit::SetAnnotationInfo { .. } => Scope::Comments,
-        Edit::AddLink { .. } | Edit::SetLink { .. } | Edit::DeleteLink { .. } | Edit::RemoveLinks { .. } | Edit::AddLinks { .. } => Scope::Links,
+        Edit::AddLink { .. }
+        | Edit::SetLink { .. }
+        | Edit::DeleteLink { .. }
+        | Edit::RemoveLinks { .. }
+        | Edit::AddLinks { .. }
+        | Edit::AddMarkedLinks { .. } => Scope::Links,
         Edit::SetFieldValue { .. } | Edit::ResetForm { .. } | Edit::SetFieldImage { .. } | Edit::ApplyScriptChanges { .. } => Scope::Form,
         // Page content, resources and added content/marks only: the page tree, annotations,
         // fields, links and document metadata are untouched (see `refresh_content`).
@@ -282,6 +287,7 @@ fn scope_of(edit: &Edit) -> Scope {
         | Edit::EditTextBlock { .. }
         | Edit::EditPageImage { .. }
         | Edit::AddText { .. }
+        | Edit::AddKeyedText { .. }
         | Edit::AddImage { .. }
         | Edit::AddContent { .. }
         | Edit::RemoveTextLines { .. }
@@ -1275,6 +1281,10 @@ impl Protection {
     }
 }
 
+/// The `/PCMark` of a link PdfCraft adds for a feature of its own ([`Edit::AddMarkedLinks`]), as
+/// on the page content it adds (plan A9-G9b).
+pub const ADDED_MARK: &str = "Added";
+
 /// Edits that can be applied to a document. Page indices are 0-based.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Edit {
@@ -1683,6 +1693,13 @@ pub enum Edit {
         page: usize,
         text: AddedText,
     },
+    /// [`Edit::AddText`], the item keyed `key` for the feature that adds it to find it again by
+    /// its key, never by where it is ([`pdfcraft_edit::add_content_keyed`]; plan A9-G9b).
+    AddKeyedText {
+        page: usize,
+        text: AddedText,
+        key: String,
+    },
     /// Edit a PDF ▸ Add content ▸ Image: an image file placed at `rect` (display space), or at
     /// its natural size centred on the page (shrunk to fit).
     AddImage {
@@ -1766,6 +1783,14 @@ pub enum Edit {
     /// Create links from URLs in the text: (page, line rects in user space, URI).
     AddLinks {
         links: Vec<(usize, Vec<[f64; 4]>, String)>,
+        style: LinkStyle,
+    },
+    /// Web links each marked as PdfCraft's own (`/PCMark /Added`) with its key, for the feature
+    /// that adds them to find them again by their mark, never by where they are
+    /// ([`pdfcraft_annot::links::add_marked`]; plan A9-G9b): `(page, rect in user space, address,
+    /// key)`.
+    AddMarkedLinks {
+        links: Vec<(usize, [f64; 4], String, String)>,
         style: LinkStyle,
     },
     /// Import comments and/or form data (XFDF, FDF, XML, CSV, tab-delimited text).
@@ -2118,7 +2143,7 @@ impl Edit {
             Edit::RemoveMarks { kind: MarkKind::HeaderFooter } => Label::of("Remove header & footer"),
             Edit::RemoveMarks { kind: MarkKind::Watermark } => Label::of("Remove watermark"),
             Edit::RemoveMarks { kind: MarkKind::Background } => Label::of("Remove background"),
-            Edit::AddText { .. } => Label::of("Add text"),
+            Edit::AddText { .. } | Edit::AddKeyedText { .. } => Label::of("Add text"),
             Edit::AddImage { .. } => Label::of("Add image"),
             Edit::AddContent { .. } => Label::of("Add content"),
             Edit::RemoveTextLines { .. } => Label::of("Edit text"),
@@ -2136,6 +2161,7 @@ impl Edit {
             Edit::DeleteLink { .. } => Label::of("Delete link"),
             Edit::RemoveLinks { .. } => Label::of("Remove all links"),
             Edit::AddLinks { links, .. } => plural("Create link", "Create links", links.len()),
+            Edit::AddMarkedLinks { links, .. } => plural("Create link", "Create links", links.len()),
             Edit::Sanitize => Label::of("Sanitize document"),
             Edit::XfaToStatic => Label::of("Convert to a static form"),
             Edit::Flatten { comments: true, fields: false } => Label::of("Flatten comments"),
@@ -2296,6 +2322,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::AddField { .. }
         | Edit::ApplyRedactions { .. }
         | Edit::AddText { .. }
+        | Edit::AddKeyedText { .. }
         | Edit::AddImage { .. }
         | Edit::AddContent { .. }
         | Edit::RemoveTextLines { .. }
@@ -2314,6 +2341,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::DeleteLink { .. }
         | Edit::RemoveLinks { .. }
         | Edit::AddLinks { .. }
+        | Edit::AddMarkedLinks { .. }
         | Edit::Sanitize
         | Edit::XfaToStatic
         | Edit::SetFieldProps { .. }
@@ -2739,6 +2767,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         Edit::AddText { page, text } => {
             pdfcraft_edit::add_content(doc, *page, &AddedContent::Text(text.clone()))?;
         }
+        Edit::AddKeyedText { page, text, key } => {
+            pdfcraft_edit::add_content_keyed(doc, *page, &AddedContent::Text(text.clone()), key)?;
+        }
         Edit::AddImage { page, rect, name, bytes } => {
             let (image, natural) = embed_image(doc, name, bytes)?;
             let rect = match rect {
@@ -2785,6 +2816,14 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         Edit::AddLinks { links, style } => {
             if pdfcraft_annot::links::add_many(doc, links, style)? == 0 {
                 return Err(EditError::Edit(pdfcraft_edit::EditError::Invalid("no web addresses were found".into())));
+            }
+        }
+        Edit::AddMarkedLinks { links, style } => {
+            if links.is_empty() {
+                return Err(EditError::Edit(pdfcraft_edit::EditError::Invalid("there are no links to add".into())));
+            }
+            for (page, rect, uri, key) in links {
+                pdfcraft_annot::links::add_marked(doc, *page, *rect, &pdfcraft_annot::links::LinkAction::Uri(uri.clone()), style, (ADDED_MARK, key))?;
             }
         }
         Edit::ImportData { bytes, .. } => {
@@ -4122,7 +4161,12 @@ impl Session {
         let touches_added = edit.is_none_or(|e| {
             matches!(
                 e,
-                Edit::AddText { .. } | Edit::AddImage { .. } | Edit::UpdateContent { .. } | Edit::DeleteContent { .. } | Edit::ReplaceImage { .. }
+                Edit::AddText { .. }
+                    | Edit::AddKeyedText { .. }
+                    | Edit::AddImage { .. }
+                    | Edit::UpdateContent { .. }
+                    | Edit::DeleteContent { .. }
+                    | Edit::ReplaceImage { .. }
             ) || matches!(e, Edit::MoveObjects { objects, .. } | Edit::DeleteObjects { objects, .. } if objects.iter().any(|o| o.kind == ObjectKind::Added))
         });
         let touches_marks = edit.is_none_or(|e| {

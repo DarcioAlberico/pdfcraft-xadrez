@@ -62,8 +62,9 @@ fn press(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
     h.run_steps(3);
 }
 
+/// What the app says now: the error, the notice or the toast.
 fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default()
+    h.state().said().unwrap_or_default().to_owned()
 }
 
 /// The Diagrams tab's Chess models… picks the folder, checks it at once (each model found or not,
@@ -88,6 +89,8 @@ fn the_chosen_models_folder_is_checked_shown_and_remembered() {
         "{said}"
     );
     assert_eq!(h.state().chess.models.models_dir().as_deref(), Some(dir.as_path()), "the chosen folder comes first");
+    // A model that couldn't be loaded: an error, kept until dismissed (plan A9-I17).
+    assert!(h.state().alert.as_ref().is_some_and(|a| a.text == said), "said as an error");
 
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
     assert_eq!(saved["chess_models"]["folder"].as_str(), dir.to_str(), "{saved}");
@@ -97,6 +100,13 @@ fn the_chosen_models_folder_is_checked_shown_and_remembered() {
     press(&mut h, "Check again");
     h.get_by_label("Piece model: not found");
     assert!(h.query_by_label_contains("Glyph model: couldn't be loaded").is_some());
+    // A danger callout, an alert, not small grey text (plan A9-I17, finding R4-09).
+    let alert = h.get_all_by_role(egui::accesskit::Role::Alert).find(|n| n.query_by_label_contains("Glyph model: couldn't be loaded").is_some());
+    assert!(alert.is_some(), "the model that couldn't be loaded is an alert");
+    assert!(
+        h.get_all_by_role(egui::accesskit::Role::Alert).all(|n| n.query_by_label("Piece model: not found").is_none()),
+        "a model not found is not"
+    );
 
     // The folder gone: kept, but the search is used, and Preferences says so.
     std::fs::remove_dir_all(&dir).unwrap();
@@ -178,7 +188,7 @@ fn model_files_picked_are_installed_for_the_session() {
         installed.glyphs
     );
     assert_eq!(report.ignored, ["readme.txt"]);
-    assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("piece model couldn't be loaded")), "{:?}", app.toast);
+    assert!(app.said().is_some_and(|t| t.contains("piece model couldn't be loaded")), "{:?}", app.said());
 }
 
 /// With no folder chosen and none installed from files, there are no models: what the web app

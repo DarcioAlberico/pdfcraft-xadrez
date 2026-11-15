@@ -110,7 +110,7 @@ impl PdfCraftApp {
             let Some((pack, bytes)) = self.chess_review_bytes(id) else { return };
             match crate::editing::download(&name, &bytes) {
                 Ok(()) => self.say_chess_review_exported(&pack, &name),
-                Err(e) => self.notify_error(e),
+                Err(e) => self.post_error(e.to_string()),
             }
         }
     }
@@ -125,7 +125,7 @@ impl PdfCraftApp {
         let shown = path.display().to_string();
         match crate::editing::write_atomically(&path.to_string_lossy(), &bytes) {
             Ok(()) => self.say_chess_review_exported(&pack, &shown),
-            Err(e) => self.notify_fmt("Couldn't write {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
+            Err(e) => self.post_error_fmt("Couldn't write {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
         }
     }
 
@@ -140,7 +140,7 @@ impl PdfCraftApp {
         match pack.to_bytes() {
             Ok(bytes) => Some((pack, bytes)),
             Err(e) => {
-                self.notify_error(e);
+                self.post_error(e.to_string());
                 None
             }
         }
@@ -193,7 +193,7 @@ impl PdfCraftApp {
                 let name = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
                 match pdfcraft_engine::chess::corrections::read_capped(&path, MAX_PACK_BYTES) {
                     Ok(bytes) => app.import_chess_review_bytes(id, &name, &bytes),
-                    Err(e) => app.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
+                    Err(e) => app.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e.to_string())]),
                 }
             });
         }
@@ -219,7 +219,7 @@ impl PdfCraftApp {
         for (id, name, bytes) in picked {
             match bytes {
                 Ok(bytes) => self.import_chess_review_bytes(id, &name, &bytes),
-                Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+                Err(e) => self.post_error_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
             }
         }
     }
@@ -232,7 +232,7 @@ impl PdfCraftApp {
         }
         let unpacked = match review_pack::unpack(bytes) {
             Ok(u) => u,
-            Err(e) => return self.notify_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", &e)]),
+            Err(e) => return self.post_error_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", &e)]),
         };
         let Some(doc) = self.session.get(id) else { return };
         let here = DocRecord::new(&doc.doc_keys(), doc.info.pages.len());
@@ -292,11 +292,12 @@ impl PdfCraftApp {
                 said.push_str(&crate::i18n::fmt(text, &[("n", &n.to_string())]));
             }
         }
+        let any_failed = !failed.is_empty();
         for f in failed {
             said.push(' ');
             said.push_str(&f);
         }
-        self.notify(said);
+        if any_failed { self.post_error(said) } else { self.notify(said) }
     }
 
     /// Merge `theirs` into document `id`'s corrections: how many of them are for pages the

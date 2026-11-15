@@ -150,7 +150,7 @@ fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
 }
 
 fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default()
+    h.state().said().unwrap_or_default().to_owned()
 }
 
 fn close(a: [f32; 4], b: [f32; 4]) -> bool {
@@ -250,6 +250,9 @@ fn no_model_and_nothing_read_are_said() {
     support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
     draw_area(&mut h);
     assert!(toast(&h).contains("chess-glyphs") && toast(&h).contains("Chess models…"), "{}", toast(&h));
+    // An error, kept until it is dismissed (plan A9-I17).
+    assert!(h.state().alert.is_some(), "said as an error");
+    h.state_mut().take_said();
     let asked: Asked = Arc::default();
     h.state_mut().set_chess_area_reader(Some(reader("", 0, &asked)));
     draw_area(&mut h);

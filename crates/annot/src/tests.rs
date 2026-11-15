@@ -588,6 +588,34 @@ fn links_are_added_edited_listed_and_removed() {
     assert!(links::add(&mut doc, 0, [0.0, 0.0, 1.0, 1.0], &LinkAction::Page(0), &LinkStyle::default()).is_err(), "too small");
 }
 
+/// Plan A9-G9b: a link PdfCraft writes for a feature of its own carries its mark and key, read
+/// back after a save and kept when the link is edited; any other link has neither; an empty or
+/// overlong key is refused, and a key read back that is not a string, or too long, is none.
+#[test]
+fn a_marked_link_keeps_its_mark_and_key() {
+    use crate::links::{self, LinkAction, LinkStyle, MAX_KEY_LEN};
+    let mut doc = fixture();
+    let url = LinkAction::Uri("https://lichess.org/analysis/8/8/8/4k3/8/8/8/4K3".into());
+    let i = links::add_marked(&mut doc, 0, [10.0, 10.0, 110.0, 30.0], &url, &LinkStyle::default(), ("Added", "lichess diagram 1")).unwrap();
+    let j = links::add(&mut doc, 0, [10.0, 40.0, 110.0, 60.0], &url, &LinkStyle::default()).unwrap();
+    let mut doc = reopen(&doc);
+    let of = |doc: &pdfcraft_cos::Document, index: usize| links::list(doc).into_iter().find(|l| l.page == 0 && l.index == index).unwrap();
+    let marked = of(&doc, i);
+    assert_eq!((marked.mark.as_deref(), marked.key.as_deref()), (Some("Added"), Some("lichess diagram 1")));
+    assert_eq!((of(&doc, j).mark, of(&doc, j).key), (None, None), "a link of no feature");
+    links::set(&mut doc, 0, i, Some([0.0, 0.0, 50.0, 20.0]), None, None).unwrap();
+    assert_eq!(of(&doc, i).key.as_deref(), Some("lichess diagram 1"), "kept when edited");
+    for bad in [("Added", ""), ("", "k"), ("Added", &"k".repeat(MAX_KEY_LEN + 1)[..])] {
+        assert!(links::add_marked(&mut doc, 0, [10.0, 10.0, 110.0, 30.0], &url, &LinkStyle::default(), bad).is_err(), "{bad:?}");
+    }
+    // A key that is a number, or too long, read back: none.
+    let r = links::list(&doc).into_iter().find(|l| l.index == j).and_then(|l| l.obj).unwrap();
+    doc.update_dict(r, |d| d.set(b"PCKey".to_vec(), pdfcraft_cos::Object::Int(7))).unwrap();
+    assert_eq!(of(&doc, j).key, None);
+    doc.update_dict(r, |d| d.set(b"PCKey".to_vec(), pdfcraft_cos::PdfString::literal(vec![b'k'; MAX_KEY_LEN + 1]))).unwrap();
+    assert_eq!(of(&doc, j).key, None);
+}
+
 #[test]
 fn link_uri_is_percent_encoded_to_7_bit_ascii() {
     use crate::links::{self, LinkAction, LinkStyle};

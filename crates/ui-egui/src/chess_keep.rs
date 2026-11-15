@@ -96,7 +96,7 @@ impl PdfCraftApp {
                 self.say_corrections_not_kept(&why);
             }
             if let Err(e) = self.book_pgn_place(id) {
-                self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
+                self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be saved: {e}"), &[("e", &e)]));
             }
             self.flush_chess_games();
             // What its readings taught meanwhile (plan A9-G3c).

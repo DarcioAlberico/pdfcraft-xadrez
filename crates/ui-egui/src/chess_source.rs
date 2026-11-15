@@ -196,7 +196,7 @@ impl PdfCraftApp {
             return;
         }
         let Some(book) = read.board_game(at.game) else {
-            self.notify(tl!("This game can't go on the board: its start position isn't legal.").to_string());
+            self.post_error(tl!("This game can't go on the board: its start position isn't legal.").to_string());
             return;
         };
         let source = match read.games.get(at.game).map(|g| g.origin) {
@@ -245,7 +245,7 @@ impl PdfCraftApp {
         }
         // Read again from its text: the index keeps no game (plan A9-I3b).
         let Some(pgn_game) = self.book_pgn_index(id).and_then(|index| index.game(game)) else {
-            self.notify(tl!("This game of the book's PGN can't be read.").to_string());
+            self.post_error(tl!("This game of the book's PGN can't be read.").to_string());
             return;
         };
         self.sync_chess_docs();

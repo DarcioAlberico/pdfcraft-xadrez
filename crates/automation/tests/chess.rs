@@ -1166,6 +1166,32 @@ fn chess_add_lichess_links_links_the_read_diagram_and_says_why_not_the_others() 
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-G9 (A4-09): run, correct the diagram, run again: the diagram has one label and one
+/// link, to the corrected position (the second run replaces its own and says what it replaced);
+/// before, a second label and link were stacked on the first, which kept the wrong position.
+#[test]
+fn running_twice_with_a_correction_between_leaves_one_link_with_the_new_url() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("links-again");
+    let (mut a, doc) = opened(&root);
+    let first = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models" }));
+    let old = first["links"][0]["url"].as_str().unwrap().to_owned();
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    let again = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models" }));
+    assert_eq!(again["added"], 1, "{again:#}");
+    let new = again["links"][0]["url"].as_str().unwrap().to_owned();
+    assert!(new.contains("4P3") && new != old, "{again:#}");
+    assert_eq!(again["links"][0]["replaces"].as_str(), Some(old.as_str()), "{again:#}");
+    let listed = ok(&mut a, "link_list", json!({ "doc": doc }));
+    let urls: Vec<&str> =
+        listed["links"].as_array().unwrap().iter().filter_map(|l| l["url"].as_str()).filter(|u| u.contains("lichess.org")).collect();
+    assert_eq!(urls, [new.as_str()], "one link, the new address: {listed:#}");
+    let labels =
+        ok(&mut a, "content_list", json!({ "doc": doc }))["items"].as_array().unwrap().iter().filter(|i| i["text"] == "Analyze on lichess").count();
+    assert_eq!(labels, 1, "one label");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// The page exports as HTML with its three diagrams in order: the font one redrawn as SVG with
 /// its FEN and lichess link, the two unread ones as figures without a position. Read back from
 /// the file.

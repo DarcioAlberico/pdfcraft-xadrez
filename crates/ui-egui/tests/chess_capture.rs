@@ -164,7 +164,7 @@ fn pdf_undo(h: &Harness<'static, PdfCraftApp>) -> Option<String> {
 }
 
 fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default()
+    h.state().said().unwrap_or_default().to_owned()
 }
 
 /// The capture's own notice (what went in, with Undo).

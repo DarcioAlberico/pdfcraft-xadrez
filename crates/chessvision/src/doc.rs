@@ -1029,8 +1029,8 @@ impl DiagramBlock {
         if !shown.confirmed && (self.lichess_url.is_none() || Some(shown.fen) == read) {
             return self.lichess_url.clone();
         }
-        let position = pdfcraft_chess::fen::parse(shown.fen).ok()?;
-        Some(pdfcraft_chess::lichess::analysis_url(&position, self.orientation()))
+        // The one rule of every lichess link (plan A9-G9): a confirmed position too must be legal.
+        pdfcraft_chess::lichess::link(shown.fen, self.orientation(), false).ok()
     }
 }
 

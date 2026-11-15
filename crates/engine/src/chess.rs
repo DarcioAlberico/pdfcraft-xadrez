@@ -656,16 +656,8 @@ pub fn model_state<T>(state: &ModelState<T>) -> (&'static str, Option<&str>) {
 /// reading gets no link, nor does a repaired one until a person confirms it: either would show a
 /// position the book may not have (an empty board "repaired" with two kings, say).
 pub fn lichess_url(position: &ReadPosition) -> Option<String> {
-    if !position.legality.allows(position.side.color) || position.repaired() {
-        return None;
-    }
-    let parsed = pdfcraft_chess::fen::Fen::parse(&position.fen).ok()?;
-    let from = if position.orientation.is_some_and(|v| v.black_point_of_view) {
-        pdfcraft_chess::placement::Color::Black
-    } else {
-        pdfcraft_chess::placement::Color::White
-    };
-    Some(pdfcraft_chess::lichess::analysis_url(parsed.position(), from))
+    // The one rule of every lichess link (plan A9-G9): the reading's.
+    position.lichess_url()
 }
 
 /// One page's inputs taken from the document's object graph when the job is made.

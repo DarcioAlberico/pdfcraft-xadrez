@@ -271,7 +271,7 @@ impl PdfCraftApp {
     fn say_unread_corrections(&mut self, loaded: &Loaded) {
         let unread = loaded.unreadable.clone().or_else(|| (loaded.skipped > 0).then(|| (loaded.name.clone(), format!("{} entries", loaded.skipped))));
         if let Some((name, why)) = unread {
-            self.notify(crate::i18n::fmt(
+            self.post_error(crate::i18n::fmt(
                 tl!("Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted."),
                 &[("why", &why), ("name", &name)],
             ));
@@ -282,7 +282,7 @@ impl PdfCraftApp {
     /// unreadable entries it dropped).
     pub(crate) fn say_corrections_set_aside(&mut self, loaded: &Loaded) {
         if let Some((name, why)) = &loaded.set_aside {
-            self.notify(crate::i18n::fmt(
+            self.post_error(crate::i18n::fmt(
                 tl!("Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}."),
                 &[("why", why), ("name", name)],
             ));
@@ -291,7 +291,7 @@ impl PdfCraftApp {
 
     fn say_corrections_failed(&mut self, why: &str) {
         if !std::mem::replace(&mut self.chess.corrections.said, true) {
-            self.notify(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]));
+            self.post_error(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]));
         }
     }
 
@@ -505,7 +505,7 @@ impl PdfCraftApp {
                 Some(done) => {
                     let (d, n) = (done.checked.to_string(), done.of.to_string());
                     let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &d), ("n", &n)]);
-                    self.chess.diagram_keys.announce = said.clone();
+                    self.announce(crate::notice::Level::Info, said.clone());
                     self.chess.review_done = Some(done);
                     self.notify(said);
                 }

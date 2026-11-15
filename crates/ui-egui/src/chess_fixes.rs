@@ -186,7 +186,7 @@ impl PdfCraftApp {
 
     /// Say that a change the user asked for could not be kept, and why: each time, not once.
     pub(crate) fn say_corrections_not_kept(&mut self, why: &str) {
-        self.notify(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]));
+        self.post_error(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]));
     }
 }
 

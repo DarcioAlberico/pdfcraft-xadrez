@@ -525,6 +525,14 @@ impl ChessResults {
         }
     }
 
+    /// The side diagram `index` of `page` is printed from, as its reading says (White when it was
+    /// not read, as the engine takes it): the side its lichess links are seen from, the board's
+    /// as the editor's and the PDF's (plan A9-G9).
+    pub(crate) fn printed_from(&self, page: usize, index: usize) -> pdfcraft_engine::chess::pdfcraft_chess::placement::Color {
+        let read = self.pages.iter().find(|p| p.page == page).and_then(|p| Self::reading(p, index)).and_then(BoardReading::position);
+        read.map_or(pdfcraft_engine::chess::pdfcraft_chess::placement::Color::White, ReadPosition::printed_from)
+    }
+
     /// Diagram `index` on `page` (0-based): its box in user space and its FEN when read.
     pub fn diagram(&self, page: usize, index: usize) -> Option<([f32; 4], Option<&str>)> {
         let p = self.pages.iter().find(|p| p.page == page)?;
@@ -1098,25 +1106,24 @@ pub(crate) fn tab_contents(
         }
         return action;
     };
+    // What limits the list, and what failed, as callouts (plan A9-I17, finding R4-09: they were
+    // small grey text, as a hint is).
+    use crate::notice::{Tone, callout};
     if Some(results.stamp) != current {
-        ui.label(egui::RichText::new(tl!("The document changed since the scan. Scan again to update the diagrams.")).color(t.text_muted));
+        callout(ui, Tone::Warning, tl!("The document changed since the scan. Scan again to update the diagrams."));
         ui.add_space(4.0);
     }
     match &results.model {
         ModelNote::Loaded => {}
         ModelNote::Missing => {
-            ui.label(
-                egui::RichText::new(tl!(
-                    "No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx."
-                ))
-                .small()
-                .color(t.text_muted),
+            callout(
+                ui,
+                Tone::Warning,
+                tl!("No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx."),
             );
         }
         ModelNote::Invalid(why) => {
-            ui.label(
-                egui::RichText::new(crate::i18n::fmt(tl!("The piece model couldn't be loaded: {e}"), &[("e", why)])).small().color(t.text_muted),
-            );
+            callout(ui, Tone::Danger, &crate::i18n::fmt(tl!("The piece model couldn't be loaded: {e}"), &[("e", why)]));
         }
     }
     if running.is_none() && results.count() == 0 {
@@ -1319,7 +1326,7 @@ impl PdfCraftApp {
         let Some(run) = self.chess.run.take() else { return };
         // The scan's work panicked: said, the pages it scanned kept.
         if let Err(why) = finished {
-            self.notify(why);
+            self.post_error(why);
         }
         // The pages it was for are the list's even when the document changed meanwhile: the list
         // is carried to the state now, and they with it.
@@ -1574,7 +1581,8 @@ impl PdfCraftApp {
                 &walk_place(filter, place, walk.len()),
                 ed.uncertain.len(),
             );
-            self.chess.diagram_keys.announce = said;
+            // A node of its own, so the same diagram opened twice is said twice (plan A9-I17).
+            self.announce(crate::notice::Level::Info, said);
             self.chess.review_done = None;
             self.chess.editor = Some(ed);
             self.restore_chess_draft();
@@ -1908,10 +1916,10 @@ impl PdfCraftApp {
                 }
                 None => {
                     let why = plan.skipped.first().map(|s| s.reason.clone()).unwrap_or_default();
-                    self.notify(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &why)]));
+                    self.post_error(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &why)]));
                 }
             },
-            Err(e) => self.notify(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &e)])),
+            Err(e) => self.post_error(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &e)])),
         }
     }
 
@@ -2070,7 +2078,7 @@ impl PdfCraftApp {
     /// drawn: the docking workspace settles `moves_beside` again from what it draws.
     pub(crate) fn settle_move_list(&mut self) {
         if let Err(error) = crate::docking::drain_moves(&mut self.docking, self.chess.moves_request.take()) {
-            self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
+            self.post_error_fmt("Panel move was not applied: {error}", &[("error", &error)]);
         }
         let drawn = !(self.full_screen && self.active.is_some()) && (self.mode != crate::Mode::Read || self.active.is_some());
         self.chess.moves_beside = drawn && self.docking.exposed(crate::docking::Panel::Moves);

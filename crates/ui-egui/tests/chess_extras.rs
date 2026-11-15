@@ -291,7 +291,7 @@ fn a_line_is_copied_as_a_book_prints_it() {
     assert!(copied(&mut h, "1.e4 e5 2.♘f3 ♘c6"));
     assert!(h.state_mut().execute("chess.moves.copy_letters"));
     assert!(copied(&mut h, "1.e4 e5 2.Nf3 Nc6"));
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Line copied"));
+    assert_eq!(h.state().said(), Some("Line copied"));
     // At the start there is no line to copy.
     put_game(&mut h, "1. e4 *", &[]);
     assert!(!h.state_mut().execute("chess.moves.copy_letters"));
