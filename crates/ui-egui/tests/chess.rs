@@ -3525,6 +3525,8 @@ fn keys_typed_in_a_comment_stay_in_the_comment() {
 fn the_structure_group_opens_and_switches_from_the_keyboard() {
     use egui::{Key, Modifiers};
     let mut h = harness();
+    // The moves named as SAN stores them (plan A9-I10: every name follows the list's notation).
+    h.state_mut().set_option("move-pieces", "english").unwrap();
     h.state_mut().show_chess_board();
     h.run_steps(3);
     put_game(&mut h, "1. e4 e5 (1... c5) 2. Nf3 Nc6 (2... d6) 3. Bb5 *", &[0, 0, 0, 0, 0]);
@@ -4131,6 +4133,8 @@ fn glyphs_typed_in_the_chess_scope_go_on_the_move_and_not_into_a_text_field() {
 #[test]
 fn the_comment_before_a_move_goes_where_pgn_has_room_and_says_where_it_has_none() {
     let mut h = harness();
+    // The moves named as SAN stores them (plan A9-I10: every name follows the list's notation).
+    h.state_mut().set_option("move-pieces", "english").unwrap();
     h.state_mut().show_chess_board();
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0, 1]);
