@@ -4420,6 +4420,12 @@ fn chess_export_worksheet_writes_the_exercises_as_a_new_pdf() {
         assert!(all.contains(&format!("Nº {k} · p. {k} · White to move")), "caption {k}: {all}");
     }
     assert!(all.contains("Nº 1 · p. 1: 1.e4 e5 2.Nf3 Nc6") && all.contains("Nº 4 · p. 4: solution not read"), "{all}");
+    // Plan A9-N12a2: the book's language as the user says it (text_lang, which the sheet ignored):
+    // the captions' and the key's.
+    let pt = ok(&mut a, "chess_export_worksheet", json!({ "doc": doc, "lang": "en", "out": "sheet-pt.pdf", "text_lang": "pt-BR" }));
+    assert_eq!(pt["exercises"][0]["caption"], "Nº 1 · p. 1 · Brancas jogam", "{pt:#}");
+    let e = a.call("chess_export_worksheet", &json!({ "doc": doc, "out": "x.pdf", "text_lang": "" })).unwrap_err();
+    assert!(e.to_string().contains("text_lang"), "{e}");
     // Never over the open book, never outside the root.
     match a.call("chess_export_worksheet", &json!({ "doc": doc, "out": "exercises.pdf" })) {
         Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => assert!(m.contains("open"), "{m}"),

@@ -82,3 +82,43 @@ fn the_grid_takes_four_six_or_nine_a_page() {
     }
     assert_eq!((PerPage::of(6), PerPage::of(5)), (Some(PerPage::Six), None));
 }
+
+/// Plan A9-N12a2: the numbered diagram whose solution was not read, its side to move assumed,
+/// says both in the key, in each language the key is written in; the English beside it always.
+#[test]
+fn the_key_says_the_side_was_assumed_in_its_language() {
+    let mut doc = puzzle_book();
+    for page in &mut doc.pages {
+        for block in &mut page.blocks {
+            if let Block::Diagram(d) = block
+                && d.puzzle == Some(4)
+            {
+                if let Some(r) = d.reading.as_mut() {
+                    r.side_source = crate::doc::SideSource::Assumed;
+                }
+                if let Some(s) = d.settled.as_mut() {
+                    s.side = crate::doc::SideSource::Assumed;
+                }
+            }
+        }
+    }
+    for (lang, said) in [
+        (Lang::Pt, "solução não lida (lado suposto)"),
+        (Lang::Es, "solución no leída (turno supuesto)"),
+        (Lang::De, "Lösung nicht gelesen (Zugrecht angenommen)"),
+        (Lang::Fr, "solution non lue (trait supposé)"),
+        (Lang::It, "soluzione non letta (tratto presunto)"),
+        (Lang::Nl, "oplossing niet gelezen (aan zet aangenomen)"),
+        (Lang::En, "solution not read (side to move assumed)"),
+        // A language the key has no words for: English.
+        (Lang::Ru, "solution not read (side to move assumed)"),
+    ] {
+        let sheet = worksheet(&doc, &book(&["7", "8", "9"]), &Layout { solutions: true, lang: Some(lang), ..Layout::default() });
+        assert!(sheet.items().nth(3).is_some_and(|i| i.side_assumed && i.solution.is_none()), "{lang:?}");
+        assert_eq!(
+            sheet.solutions[3],
+            (format!("Nº 4 · p. 8: {said}"), "Nº 4 · p. 8: solution not read (side to move assumed)".to_owned()),
+            "{lang:?}"
+        );
+    }
+}
