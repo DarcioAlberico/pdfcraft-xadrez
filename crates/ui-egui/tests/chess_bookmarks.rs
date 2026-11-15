@@ -182,3 +182,29 @@ fn cancel_makes_no_bookmark_and_the_title_can_be_named() {
     let top: Vec<String> = outline(&h).into_iter().filter(|(d, _)| *d == 0).map(|(_, t)| t).collect();
     assert_eq!(top, ["Xadrez"], "the bookmark named as typed");
 }
+
+/// Plan A9-G3c with N6: reading the book for its bookmarks keeps what the reading taught of the
+/// book's cipher in the app's data folder, as Export and Align the book keep theirs.
+#[test]
+fn reading_the_book_for_its_bookmarks_keeps_its_cipher() {
+    use pdfcraft_engine::chess::cipher_store::DirStore;
+    use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
+    let dir = std::env::temp_dir().join(format!("pdfcraft-bookmarks-cipher-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let data = dir.join("chess");
+    let mut h = harness();
+    h.state_mut().use_chess_data(data.clone(), None);
+    let (_, id) = h.state().active_ids().unwrap();
+    let (keys, pages) = h.state().session.get(id).map(|d| (d.doc_keys(), d.info.pages.len())).unwrap();
+    // What the session learned of the book and has not kept yet.
+    let learned = BookCipher::from_json(r#"{"entries":{"W":{"evidence":{"Q":{"legality":6,"glyph":0}},"examples":[]}}}"#).unwrap();
+    h.state_mut().session.set_chess_cipher(id, learned.clone());
+    assert!(DirStore::new(data.join("cipher")).load(&keys, pages).unwrap().file.cipher.is_empty(), "nothing kept yet");
+    assert!(h.state_mut().execute("chess.bookmarks"));
+    h.run_steps(2);
+    support::wait_until(&mut h, "the book read", |app| app.chess.long.is_none());
+    h.run_steps(2);
+    let kept = DirStore::new(data.join("cipher")).load(&keys, pages).unwrap().file.cipher;
+    assert_eq!(kept, learned, "the reading's cipher is kept");
+    let _ = std::fs::remove_dir_all(dir);
+}

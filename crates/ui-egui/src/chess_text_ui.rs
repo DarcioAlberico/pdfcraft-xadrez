@@ -131,8 +131,8 @@ enum JobDone {
     Game(Result<GameSpanRead, String>),
     Export(Result<pdfcraft_engine::chess::export::ChessExport, String>),
     Linked(Result<crate::chess_reference_ui::BookLink, String>),
-    /// The whole book read, for its bookmarks.
-    Outline(Result<ChessDoc, String>),
+    /// The whole book read, for its bookmarks, with the cipher the reading ended with.
+    Outline(Result<pdfcraft_engine::chess::document::ChessDocument, String>),
 }
 
 impl JobKind {
@@ -1025,7 +1025,7 @@ impl PdfCraftApp {
                 done = done.saturating_add(block.len());
                 ctl.progress(done, pages);
             }
-            JobDone::Outline(s.chess_document_with(id, &all, &settings, None, &options).map(|read| read.doc))
+            JobDone::Outline(s.chess_document_with(id, &all, &settings, None, &options))
         });
     }
 
@@ -1238,7 +1238,12 @@ impl PdfCraftApp {
                     return;
                 }
                 match read {
-                    Ok(doc) => self.preview_book_bookmarks(job.doc, doc),
+                    // What the reading taught of the book's cipher is kept, as Export and Align
+                    // keep theirs (plan A9-G3c).
+                    Ok(read) => {
+                        self.keep_chess_cipher(job.doc, read.cipher);
+                        self.preview_book_bookmarks(job.doc, read.doc);
+                    }
                     Err(e) => self.notify(e),
                 }
             }

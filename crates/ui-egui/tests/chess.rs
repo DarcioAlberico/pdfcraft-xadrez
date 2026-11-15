@@ -2182,6 +2182,12 @@ impl std::ops::Deref for EngineLog {
 /// e2e4 (e7e5 for Black) at +0.30 for the side to move, then waits for `stop`, as an engine
 /// searching deeper does. Every command it is given goes into the log.
 fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
+    fake_engine_with(&[], 3)
+}
+
+/// [`fake_engine`] announcing the `options` lines beside `MultiPV`, and reporting depths 1 to
+/// `depth`.
+fn fake_engine_with(options: &'static [&'static str], depth: u32) -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
     use std::io::{BufRead, Write};
     let (engine_in, our_out) = std::io::pipe().unwrap();
     let (our_in, mut engine_out) = std::io::pipe().unwrap();
@@ -2203,11 +2209,14 @@ fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, EngineLog) {
                 Some("uci") => {
                     say("id name Fake Engine 1");
                     say("option name MultiPV type spin default 1 min 1 max 5");
+                    for option in options {
+                        say(option);
+                    }
                     say("uciok");
                 }
                 Some("position") => position = line.clone(),
                 Some("go") => {
-                    for d in 1..=3 {
+                    for d in 1..=depth {
                         say(&format!("info depth {d} multipv 1 score cp 30 nodes 100 nps 1000 pv {mv}"));
                     }
                 }
@@ -2307,6 +2316,90 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     assert!(wait_for(&mut h, &log, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
     let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
+}
+
+/// Plan A9-N8 (A8-11): the board keeps what its engine found in the document's evaluations
+/// (`chess/evals` in the app's data folder, which `chess_evals` reads): the best line of each
+/// position it is finished with, when deep enough, for the document whose game it is.
+#[test]
+fn the_board_keeps_its_engines_evaluations_for_the_document() {
+    let dir = corrections_dir("chess-evals");
+    let data = dir.join("data").join("chess");
+    let mut h = harness();
+    h.state_mut().use_chess_data(data.clone(), None);
+    let id = h.state().views[0].id;
+    let (keys, pages) = h.state().session.get(id).map(|d| (d.doc_keys(), d.info.pages.len())).unwrap();
+    let kept = || pdfcraft_engine::chess::evals::DirStore::new(data.join("evals")).load(&keys, pages).unwrap().file;
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let searching = |log: &std::sync::Mutex<Vec<String>>| log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count();
+    // Too shallow (depth 3): nothing is kept of it.
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    assert!(wait_for(&mut h, &log, |h| h.query_by_label_contains("depth 3").is_some()), "searched");
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert!(wait_for(&mut h, &log, |_| searching(&log) == 2), "{:?}", log.lock().unwrap());
+    h.state_mut().flush_chess_games();
+    assert!(kept().evals.is_empty(), "{:?}", kept().evals);
+    // Deep enough: the position left is kept, with its depth, the score for White, the line and
+    // the engine's name; the one shown is not finished with yet.
+    let (engine, log) = fake_engine_with(&[], 12);
+    h.state_mut().chess.study.use_engine(engine);
+    assert!(wait_for(&mut h, &log, |h| h.query_by_label_contains("depth 12").is_some()), "searched");
+    click_square(&mut h, "e7");
+    click_square(&mut h, "e5");
+    assert!(wait_for(&mut h, &log, |_| searching(&log) == 2), "{:?}", log.lock().unwrap());
+    h.state_mut().flush_chess_games();
+    let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    let file = kept();
+    let e = file.get(after_e4).expect("the position left is kept");
+    // The engine says +0.30 for Black, the side to move: -0.30 for White.
+    assert_eq!((e.depth, e.cp, e.pv.as_slice(), e.engine.as_deref()), (12, Some(-30), ["e7e5".to_owned()].as_slice(), Some("Fake Engine 1")));
+    assert_eq!(file.evals.len(), 1, "{:?}", file.evals);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Plan A9-N8 (A8-11): Preferences ▸ Chess engine offers only the settings the engine announced,
+/// within its bounds; what is chosen goes to the engine as it announced it, and into the
+/// settings.
+#[test]
+fn preferences_offer_only_the_engine_settings_it_announced() {
+    use egui::accesskit::Role;
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let (engine, log) =
+        fake_engine_with(&["option name Threads type spin default 1 min 1 max 2", "option name hash type spin default 16 min 1 max 64"], 3);
+    h.state_mut().chess.study.use_engine(engine);
+    assert!(wait_for(&mut h, &log, |h| h.state().chess.study.settable.is_some()), "the handshake is done");
+    h.state_mut().dialog = Some(pdfcraft_ui_egui::Dialog::Preferences);
+    h.run_steps(3);
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Hash table")).scroll_to_me();
+    h.run_steps(2);
+    assert!(h.query_by_label("Endgame tables (Syzygy)").is_none(), "not announced: not offered");
+    assert!(h.query_by_label("This engine does not take: Endgame tables (Syzygy)").is_some(), "and said");
+    assert_eq!(h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Hash table")).value().as_deref(), Some("Engine's default"));
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Hash table")).hover();
+    h.run_steps(1);
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Hash table")).click();
+    h.run_steps(2);
+    assert!(h.query_by_label("128 MB").is_none(), "past the engine's most: not offered");
+    h.get_by_label("32 MB").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.study.settings.hash_mb, Some(32));
+    h.state_mut().dialog = None;
+    h.state_mut().show_chess_board();
+    assert!(
+        wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == "setoption name hash value 32")),
+        "sent under the engine's own spelling: {:?}",
+        log.lock().unwrap()
+    );
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_engine"]["hash_mb"], 32, "{saved}");
+    assert_eq!(saved["chess_engine"]["threads"], serde_json::Value::Null);
+    let h = harness_restoring(saved.to_string());
+    assert_eq!(h.state().chess.study.settings.hash_mb, Some(32), "kept for the next session");
 }
 
 /// Plan A8, P7: the Diagram tab's Analyze puts the position as edited on the board, with the

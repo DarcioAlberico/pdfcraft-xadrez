@@ -487,6 +487,12 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
         app.chess_models_action(action);
     }
     ui.add_space(8.0);
+    // The board's engine: threads, hash and endgame tables (plan A9-N8).
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        crate::chess_engine_prefs::section(ui, app, t);
+        ui.add_space(8.0);
+    }
     // How Save PGN… writes its files (plan A9-F1, decision D18).
     ui.add(widgets::checkbox(&mut app.chess.games.pgn_bom, tl!("Write PGN files with a byte order mark (BOM)")));
     ui.label(egui::RichText::new(tl!("Some Windows programs need the mark to read accents; most read PGN without it.")).small().color(t.text_muted));

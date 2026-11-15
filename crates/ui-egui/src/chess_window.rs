@@ -509,6 +509,11 @@ pub(crate) fn frame(app: &mut PdfCraftApp, ctx: &egui::Context) {
     app.chess_window.shown = false;
     // The engine rests while the board is not drawn, here or in the dock (T5c).
     app.chess.study.new_frame();
+    // What the engine finished with in the frame before, into the store (plan A9-N8).
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(due) = app.keep_chess_evals(false) {
+        ctx.request_repaint_after(due);
+    }
     // The app commands the PGN tool rails asked for in the last frame (the Own window tool).
     for id in app.chess.tools.take_commands() {
         app.execute(id);
