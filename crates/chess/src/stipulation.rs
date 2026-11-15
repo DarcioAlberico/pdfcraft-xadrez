@@ -15,8 +15,10 @@
 
 use crate::placement::Color;
 
-/// What the book asks for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// What the book asks for. Kept in the document's diagrams (plan A9-N17a) and in a reading kept on
+/// disk, as `{"mate": 2}`, `"win"`, `"draw"`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Goal {
     /// The side to play mates in this many moves (`#2`, `Mate in 2`).
     Mate(u8),

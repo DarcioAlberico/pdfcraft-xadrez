@@ -107,3 +107,33 @@ fn the_store_keeps_them_by_document_and_merges() {
     assert_eq!(loaded.file.get(START).map(|e| (e.depth, e.cp)), Some((12, Some(33))));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Plan A9-N17a: an exercise's second line is kept with the evaluation, by addition: it reads back,
+/// a bad one makes the evaluation unreadable, and a build before it (whose evaluation has no such
+/// field) keeps it among the fields it does not know.
+#[test]
+fn a_second_line_is_kept_by_addition() {
+    let second = SecondLine::new(Score::Mate(3), &["a1a7".to_owned()]).unwrap();
+    let mut file = EvalFile::empty(DocRecord::default());
+    assert!(file.keep(START, eval(24, 900, 5).with_second(Some(second.clone()))));
+    let bytes = file.to_bytes().unwrap();
+    let Parsed::File { file: back, skipped: 0 } = EvalFile::parse(&bytes) else { panic!("{}", String::from_utf8_lossy(&bytes)) };
+    assert_eq!(back.get(START).and_then(|e| e.second.clone()), Some(second));
+    assert!(SecondLine::new(Score::Centipawns(1), &["no".to_owned()]).is_none());
+    // A second line that is not one: the evaluation is left out, as any unreadable one.
+    let mut value: Value = serde_json::from_slice(&bytes).unwrap();
+    let key = position_key(START).unwrap();
+    value["evals"][&key]["second"] = serde_json::json!({ "cp": 5, "pv": ["nonsense"] });
+    let Parsed::File { file: bad, skipped } = EvalFile::parse(&serde_json::to_vec(&value).unwrap()) else { panic!() };
+    assert_eq!((bad.evals.len(), skipped), (0, 1));
+    // A build before it: its evaluation had no `second`, and keeps it as a field it does not know.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    struct Before {
+        depth: u32,
+        #[serde(flatten)]
+        other: Map<String, Value>,
+    }
+    let entry = serde_json::to_value(back.get(START).unwrap()).unwrap();
+    let before: Before = serde_json::from_value(entry.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&before).unwrap(), entry, "written back as it was");
+}
