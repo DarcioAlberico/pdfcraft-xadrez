@@ -21,6 +21,7 @@ pub mod lichess;
 pub mod mate;
 pub mod nag;
 pub mod origin;
+pub mod pattern;
 pub mod pgn;
 pub mod pgn_style;
 pub mod placement;

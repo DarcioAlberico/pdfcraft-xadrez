@@ -3411,6 +3411,10 @@ fn reading_args(tool: &pdfcraft_automation::ToolDef, doc: u64) -> Value {
     if props.get("models_dir").is_some() {
         args["models_dir"] = json!("models");
     }
+    // A search by material needs something to look for (chess_pattern_find).
+    if props.get("material").is_some() {
+        args["material"] = json!("KR-K");
+    }
     for name in tool.input_schema["required"].as_array().into_iter().flatten().filter_map(Value::as_str) {
         let value = match name {
             "doc" => continue,
@@ -3946,6 +3950,76 @@ fn chess_evals_reads_what_is_kept_inside_the_root() {
         other => panic!("a store outside the root accepted: {other:?}"),
     }
     assert!(!base.join("outside").join("evals").exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── Plan A9, N16a: positions by material and pawn structure ─────────────────────────────────
+
+/// The book's PGN of two rook endings with a pawn against a rook (the second with the colours
+/// swapped) and a queen's game.
+const ENDINGS_PGN: &str = "[Event \"Rook ending\"]\n[SetUp \"1\"]\n[FEN \"6k1/8/8/3P4/8/8/r7/4K2R w - - 0 1\"]\n\n\
+1.d6 Ra8 2.d7 Rd8 3.Rh7 Kf8 4.Rh8+ Ke7 5.Rxd8 Kxd8 *\n\n\
+[Event \"Rook ending, Black's pawn\"]\n[SetUp \"1\"]\n[FEN \"4k2r/R7/8/8/3p4/8/8/6K1 b - - 0 1\"]\n\n\
+1...d3 2.Ra1 d2 3.Rd1 Rh2 4.Kxh2 *\n\n\
+[Event \"Queen\"]\n[SetUp \"1\"]\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1\"]\n\n1.Qd8# 1-0\n";
+
+/// The card's check (plan A9-N16a): KRP-KR with either side gives the two rook endings, each one
+/// stretch (eight positions and five), and not the queen's game; a diagram read in this session
+/// with doubled pawns is found by its pawns; a book nothing of which is read says so, and nothing
+/// is scanned to answer.
+#[test]
+fn chess_pattern_find_finds_stretches_of_the_books_pgn_and_the_diagrams_read() {
+    let (base, root) = workdir("pattern");
+    std::fs::write(root.join("endings.pgn"), ENDINGS_PGN).unwrap();
+    // A diagram with White's pawns doubled on the c-file: 4k3/pp6/8/8/8/2P5/2P5/4K3 in Chess
+    // Merida (a white piece on a dark square in capitals, a black one in o m v t w l).
+    const PAWNS: [&str; 8] = [" + +l+ +", "Oo+ + + ", " + + + +", "+ + + + ", " + + + +", "+ P + + ", " +p+ + +", "+ + K + "];
+    std::fs::write(root.join("pawns.pdf"), chess_pdf_with(&PAWNS, None)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "pawns.pdf" }))["doc"].as_u64().unwrap();
+    // Nothing read yet, no PGN: said, and nothing scanned.
+    let none = ok(&mut a, "chess_pattern_find", json!({ "doc": doc, "pawns": { "doubled": true }, "reference": false }));
+    assert_eq!((none["read"]["nothing"].as_bool(), none["found"].as_u64()), (Some(true), Some(0)), "{none:#}");
+    assert!(none["why"].as_str().unwrap().contains("nothing of the book is read"), "{none:#}");
+    assert_eq!(a.session().chess_scanned(), 0, "nothing is scanned to answer");
+    // The book's PGN: the two stretches, one for each rook ending.
+    let r = ok(&mut a, "chess_pattern_find", json!({ "doc": doc, "material": "KRP-KR", "either_side": true, "reference_pgn": "endings.pgn" }));
+    let stretches: Vec<(u64, &str, &str, u64)> = r["pgn"]["found"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| (s["game"].as_u64().unwrap(), s["first"].as_str().unwrap(), s["last"].as_str().unwrap(), s["positions"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(stretches, [(1, "1.d6", "4...Ke7", 8), (2, "1...d3", "3...Rh2", 5)], "{r:#}");
+    assert_eq!((r["pgn"]["total"].as_u64(), r["pgn"]["played"].as_u64()), (Some(2), Some(3)), "each game played once: {r:#}");
+    assert_eq!(
+        r["pgn"]["games"],
+        json!([{ "game": 1, "name": "Rook ending", "stretches": 1 }, { "game": 2, "name": "Rook ending, Black's pawn", "stretches": 1 }]),
+        "{r:#}"
+    );
+    // Without either_side, the ending with Black's pawn is not found.
+    let white = ok(&mut a, "chess_pattern_find", json!({ "doc": doc, "material": "KRP-KR", "reference_pgn": "endings.pgn" }));
+    assert_eq!(white["pgn"]["total"], 1, "{white:#}");
+    // A diagram read in this session: found by its pawns, not by another's material.
+    ok(&mut a, "chess_read", json!({ "doc": doc }));
+    let pawns = ok(&mut a, "chess_pattern_find", json!({ "doc": doc, "pawns": { "doubled": true, "side": "white" }, "reference": false }));
+    assert_eq!(
+        pawns["diagrams"]["found"],
+        json!([{ "page": 1, "page_label": "1", "index": 1, "side_assumed": true, "from_disk": false }]),
+        "{pawns:#}"
+    );
+    assert_eq!(pawns["read"]["nothing"], false);
+    let black = ok(&mut a, "chess_pattern_find", json!({ "doc": doc, "pawns": { "doubled": true, "side": "black" }, "reference": false }));
+    assert_eq!(black["diagrams"]["total"], 0, "{black:#}");
+    // What it is not given is refused, with why; paths stay inside the root.
+    let e = a.call("chess_pattern_find", &json!({ "doc": doc })).unwrap_err();
+    assert!(e.to_string().contains("material, pawns"), "{e}");
+    let e = a.call("chess_pattern_find", &json!({ "doc": doc, "material": "KPR-K" })).unwrap_err();
+    assert!(e.to_string().contains("order"), "{e}");
+    match a.call("chess_pattern_find", &json!({ "doc": doc, "material": "K-K", "reference_pgn": "../outside/endings.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a PGN outside the root accepted: {other:?}"),
+    }
     let _ = std::fs::remove_dir_all(base);
 }
 

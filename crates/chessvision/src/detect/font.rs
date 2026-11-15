@@ -402,11 +402,9 @@ mod tests {
     /// baseline, the most a page is read for, are looked through in under a second in release
     /// (17 s before). `cargo test --release -p pdfcraft-chessvision --lib perf_font_boards -- --ignored`.
     ///
-    /// The gate runs it while other builds load the machine: one run then took up to 1.3 s, and
-    /// all three of a run up to 1.04 s, on trees that take about 0.85 s on an idle machine. So
-    /// the best of three runs is timed, and it fails past twice the second the card asks, the
-    /// margin the gate gives the timings it has a baseline for (`perf-baseline.json`): what this
-    /// guards against is the 17 s walk coming back, and a 2 s pause in `candidates` fails it.
+    /// Timed by the crate's one rule ([`crate::timing`]): the best of three runs, within twice the
+    /// card's second. What this guards against is the 17 s walk coming back; a 2 s pause in
+    /// `candidates` fails it.
     #[test]
     #[ignore = "a timing, in release"]
     fn perf_font_boards_on_one_baseline() {
@@ -422,18 +420,10 @@ mod tests {
                 });
             }
         }
-        let runs: Vec<f64> = (0..3)
-            .map(|_| {
-                let t = std::time::Instant::now();
-                let found = candidates(&glyphs, &page(), Options::default());
-                let ms = t.elapsed().as_secs_f64() * 1000.0;
-                assert!(found.is_empty());
-                ms
-            })
-            .collect();
-        let ms = runs.iter().copied().fold(f64::MAX, f64::min);
+        let (ms, runs, found) = crate::timing::best_of_three(|| candidates(&glyphs, &page(), Options::default()));
+        assert!(found.is_empty());
         println!("PERF font_boards_200k {ms:.0}");
-        assert!(ms < 2000.0, "best of three {ms:.0} ms ({runs:.0?})");
+        assert!(crate::timing::within(ms, 1000.0), "best of three {ms:.0} ms ({runs:.0?})");
     }
     use pdfcraft_chess::fen::format_placement;
     use pdfcraft_geom::{PageRect, Rotation};
