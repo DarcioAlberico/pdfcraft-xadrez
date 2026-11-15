@@ -375,6 +375,24 @@ fn columns_pair_the_moves_and_the_text_size_scales() {
     }
 }
 
+/// Plan A9-I10 (R5-09, WCAG 1.4.13): the position the keyboard opens on a move closes with Esc,
+/// the keyboard staying on the move (egui would take the focus away on Esc).
+#[test]
+fn esc_closes_the_keyboards_move_preview_and_keeps_the_focus() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut h = harness("", false);
+    let (game, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(3);
+    h.get_by_label("c5").focus();
+    h.run_steps(2);
+    assert!(h.query_by_label("Position after 1…c5").is_some(), "the keyboard's move shows its position");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    assert!(h.query_by_label("Position after 1…c5").is_none(), "Esc closes it");
+    assert!(h.get_by_label("c5").is_focused(), "the keyboard stays on the move");
+}
+
 /// Plan HC13: a move the pointer rests on shows its position after the delay, not before, and
 /// the board keeps the move it shows; off in the preferences, nothing shows.
 #[test]

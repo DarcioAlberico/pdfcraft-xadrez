@@ -1895,10 +1895,30 @@ const PREVIEW_SIDE: f32 = 168.0;
 /// The position after move `node` in a tooltip (plan HC13): once the pointer has rested on the
 /// move for [`PREVIEW_DELAY`], or at once while the move has the keyboard focus; in the boards'
 /// theme and pieces, its move marked, the board shown left as it is. Off in Preferences.
+///
+/// Esc closes the one the keyboard opened and leaves the keyboard on the move (plan A9-I10, WCAG
+/// 1.4.13, finding R5-09): egui would take the focus away on Esc, so while the preview shows the
+/// move keeps Esc for itself; the move keeps the preview closed until the keyboard leaves it.
 fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Response) {
     let ctx = ui.ctx();
     if !crate::chess_figurines::preview_on(ctx) {
         return;
+    }
+    let closed = egui::Id::new("chess-move-preview-closed");
+    if r.has_focus() {
+        if ctx.data(|d| d.get_temp::<NodeId>(closed)) == Some(node) {
+            ctx.memory_mut(|m| m.set_focus_lock_filter(r.id, egui::EventFilter::default()));
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            ctx.data_mut(|d| d.insert_temp(closed, node));
+            ctx.memory_mut(|m| m.set_focus_lock_filter(r.id, egui::EventFilter::default()));
+            return;
+        }
+        // The next Esc closes the preview, not the focus.
+        ctx.memory_mut(|m| m.set_focus_lock_filter(r.id, egui::EventFilter { escape: true, ..Default::default() }));
+    } else if ctx.data(|d| d.get_temp::<NodeId>(closed)) == Some(node) {
+        ctx.data_mut(|d| d.remove::<NodeId>(closed));
     }
     let key = egui::Id::new("chess-move-preview-hover");
     let now = ctx.input(|i| i.time);

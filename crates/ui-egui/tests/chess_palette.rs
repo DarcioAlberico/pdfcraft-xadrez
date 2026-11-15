@@ -44,6 +44,8 @@ fn harness_of(size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
     let mut h = Harness::builder().with_size(size).build_eframe(|_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
+        // The moves named as SAN stores them (plan A9-I10: every name follows the list's notation).
+        app.set_option("move-pieces", "english").unwrap();
         app.open_bytes("blank.pdf", None, blank()).unwrap();
         app.run_inline = true;
         app
