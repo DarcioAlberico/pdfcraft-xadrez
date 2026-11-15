@@ -172,6 +172,8 @@ const EDIT: Option<&str> = Some("Edit");
 const VIEW: Option<&str> = Some("View");
 const PAGES: Option<&str> = Some("Pages");
 const HELP: Option<&str> = Some("Help");
+/// The Chess menu (plan A9-I16, finding R4-02): what finds the chess tools without the panel.
+const CHESS: Option<&str> = Some("Chess");
 
 /// Every command, in menu order.
 pub const COMMANDS: &[CommandSpec] = &[
@@ -375,8 +377,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("a11y.alt_text", "Add alternate text…", None, None, Modification, "image"),
     c("a11y.autotag_fields", "Tag form fields", None, None, Modification, "tag"),
     c("a11y.tags", "Tags panel", None, None, Document, "tag"),
-    c("chess.scan", "Scan chess diagrams", None, None, Copying, "grid-3x3"),
-    c("chess.panel", "Chess diagrams panel", None, None, Document, "grid-3x3"),
+    c("chess.scan", "Scan chess diagrams", CHESS, None, Copying, "grid-3x3"),
+    c("chess.panel", "Chess diagrams panel", CHESS, None, Document, "grid-3x3"),
     // The diagrams of the page shown read with confidence, kept as checked (plan A8, P2b).
     c("chess.verify_page", "Mark the page as checked", None, None, Document, "badge-check"),
     // Where the chess models come from (U4): a folder on the desktop, files on the web.
@@ -387,16 +389,23 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
     // The book's own PGN, kept with the document (plan "Carregar PGN do livro", R6a).
-    c("chess.reference.load", "Load the book's PGN…", None, None, Document, "book-open"),
+    c("chess.reference.load", "Load the book's PGN…", CHESS, None, Document, "book-open"),
     c("chess.reference.clear", "Remove the book's PGN", None, None, Document, "file-x"),
     // Every page read and linked to it: the summary and its games' pages (R6d).
     c("chess.reference.link", "Link the whole book to its PGN", None, None, Copying, "link"),
     // A book's review to and from another machine (plan A9-G5b): its corrections, its choices on
     // the book's PGN and its games, in one file.
-    c("chess.review.export", "Export the book's review…", None, None, Copying, "file-output"),
-    c("chess.review.import", "Import a book's review…", None, None, Copying, "folder-open"),
+    c("chess.review.export", "Export the book's review…", CHESS, None, Copying, "file-output"),
+    c("chess.review.import", "Import a book's review…", CHESS, None, Copying, "folder-open"),
     // The book's outline from its reading, shown before it is made (plan A9-N6).
-    c("chess.bookmarks", "Make the book's bookmarks…", None, None, Assembly, "bookmark"),
+    c("chess.bookmarks", "Make the book's bookmarks…", CHESS, None, Assembly, "bookmark"),
+    // Found by name in the palette and the Chess menu (plan A9-I16, R4-02): the board, an
+    // engine's analysis of the position, the export dialog (plan A9-X2) and the sheet of the
+    // chess keys (F1 in the chess panels).
+    c("chess.board.show", "Chess board", CHESS, None, Nothing, "grid-3x3"),
+    c("chess.analyze", "Analyze the position", CHESS, None, Nothing, "gauge"),
+    c("chess.export", "Export chess book…", CHESS, None, Copying, "file-output"),
+    c("chess.shortcuts", "Chess shortcuts", CHESS, None, Nothing, "circle-help"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),

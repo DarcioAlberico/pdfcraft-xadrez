@@ -3532,3 +3532,22 @@ progress bar	Progress	Ход выполнения
 	not reached	не достигнут
 	not checked	не проверен
 	caption	подпись
+	Analyze the position	Анализировать позицию
+	Export chess book…	Экспортировать шахматную книгу…
+	Chess shortcuts	Шахматные сочетания клавиш
+	Board, move list and Chess panel	Доска, список ходов и шахматная панель
+	Diagram tab	Вкладка «Диаграмма»
+	Move back	Ход назад
+	Move forward	Ход вперёд
+	The variation above	Вариант выше
+	The variation below	Вариант ниже
+	Start of the game	Начало партии
+	End of the line	Конец линии
+	End of the main line	Конец главной линии
+	Previous variation	Предыдущий вариант
+	Next variation	Следующий вариант
+	Leave the chess panel	Выйти из шахматной панели
+	Next tool of {group}	Следующий инструмент группы «{group}»
+	Previous diagram	Предыдущая диаграмма
+	Next diagram	Следующая диаграмма
+	The original or the position read	Оригинал или прочитанная позиция

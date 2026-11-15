@@ -245,12 +245,26 @@ pub struct DocExport {
 
 /// What the book says its language is, when the dialog opened: what the reading will decide
 /// unless the user says otherwise.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum BookSays {
     /// The PDF's `/Lang`, or the page the Text tab read, names it.
     Lang(Lang),
+    /// The PDF's `/Lang` names a language with no notation of its own (`ja`): the export is
+    /// written in it, as the tag says.
+    Tag(LangTag),
     /// The reading will decide it from the book's text.
     FromText,
+}
+
+impl BookSays {
+    /// The language as the dialog names it: by its own name, else by its tag.
+    fn name(&self) -> Option<String> {
+        match self {
+            BookSays::Lang(lang) => Some(crate::chess_capture::endonym(*lang).to_owned()),
+            BookSays::Tag(tag) => Some(tag.as_str().to_owned()),
+            BookSays::FromText => None,
+        }
+    }
 }
 
 /// The export dialog while it is shown (plan A9-X2).
@@ -287,6 +301,12 @@ pub struct Done {
     pub notes: Vec<String>,
 }
 
+/// The language document `doc`'s PDF says it is in (its `/Lang`), as a tag; empty when it says
+/// none, or something that is not a tag.
+fn declared_lang(doc: &pdfcraft_engine::Document) -> LangTag {
+    LangTag::parse(doc.initial_view().language.as_deref().unwrap_or_default())
+}
+
 /// Export book…: the one entry that opens the dialog, an item of the Text tab's ⋯ menu (plan
 /// A9-I9).
 pub fn entry(ui: &mut egui::Ui) -> Option<TextAction> {
@@ -299,14 +319,17 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let page_count = doc.info.pages.len();
-        // What the reading will take the book's language to be: its PDF's `/Lang`, else what the
-        // page the Text tab read says (the prose of every page decides it in the export).
-        let declared = LangTag::parse(doc.initial_view().language.as_deref().unwrap_or_default());
+        // What the reading will take the book's language to be: its PDF's `/Lang`, whatever
+        // language it names (the export writes it), else what the page the Text tab read says
+        // (the prose of every page decides it in the export).
+        let declared = declared_lang(doc);
         let kept = self.chess.doc(id).map(|d| d.export).unwrap_or_default();
         let read = self.chess.doc(id).and_then(|d| d.text.as_ref()).and_then(|t| t.chess.pages.first()).and_then(|p| p.text_lang.lang());
-        let says = match declared.lang().or(read) {
-            Some(lang) => BookSays::Lang(lang),
-            None => BookSays::FromText,
+        let says = match (declared.lang(), declared.is_empty(), read) {
+            (Some(lang), _, _) => BookSays::Lang(lang),
+            (None, false, _) => BookSays::Tag(declared),
+            (None, true, Some(lang)) => BookSays::Lang(lang),
+            (None, true, None) => BookSays::FromText,
         };
         self.chess.export_dialog = Some(ExportDialog { doc: id, choices: self.chess.export, pages: kept.pages, lang: kept.lang, page_count, says });
     }
@@ -342,7 +365,10 @@ impl PdfCraftApp {
         let count = self.session.get(id).map_or(0, |d| d.info.pages.len());
         let kept = self.chess.doc(id).map(|d| d.export).unwrap_or_default();
         options.pages = kept.pages.pages(count);
-        options.text_lang = kept.lang.map(LangTag::of);
+        // The language chosen, with the region the PDF's `/Lang` gives it when it is that one
+        // (`pt-BR` stays `pt-BR` when Português is chosen).
+        let declared = self.session.get(id).map(declared_lang).unwrap_or_default();
+        options.text_lang = kept.lang.map(|lang| if declared.lang() == Some(lang) { declared.clone() } else { LangTag::of(lang) });
         options.naming = self.chess.export.naming;
         options.positions = self.chess.export.positions;
         options.exercises = matches!(format, ExportFormat::Exercises | ExportFormat::Anki);
@@ -420,9 +446,9 @@ impl PdfCraftApp {
                 parts.push(crate::i18n::fmt(tl!("Your games, linked first: {n}"), &[("n", &yours.to_string())]));
             }
         }
-        let lang = match (d.lang, d.says) {
-            (Some(lang), _) | (None, BookSays::Lang(lang)) => crate::chess_capture::endonym(lang).to_owned(),
-            (None, BookSays::FromText) => tl!("from the book's text").to_owned(),
+        let lang = match d.lang {
+            Some(lang) => crate::chess_capture::endonym(lang).to_owned(),
+            None => d.says.name().unwrap_or_else(|| tl!("from the book's text").to_owned()),
         };
         parts.push(crate::i18n::fmt(tl!("Language: {lang}"), &[("lang", &lang)]));
         (parts.join(" · "), to_review)
@@ -491,9 +517,9 @@ fn fields(ui: &mut egui::Ui, d: &mut ExportDialog, book_pgn: bool) {
         });
     });
     row(ui, tl!("Book's language"), |ui, label| {
-        let as_book = match d.says {
-            BookSays::Lang(lang) => crate::i18n::fmt(tl!("As the book says ({lang})"), &[("lang", crate::chess_capture::endonym(lang))]),
-            BookSays::FromText => tl!("As the book's text says").to_owned(),
+        let as_book = match d.says.name() {
+            Some(lang) => crate::i18n::fmt(tl!("As the book says ({lang})"), &[("lang", &lang)]),
+            None => tl!("As the book's text says").to_owned(),
         };
         let shown = d.lang.map_or_else(|| as_book.clone(), |l| crate::chess_capture::endonym(l).to_owned());
         let combo = egui::ComboBox::from_id_salt("chess-export-lang").selected_text(shown).show_ui(ui, |ui| {

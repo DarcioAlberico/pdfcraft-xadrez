@@ -275,8 +275,8 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
             ],
         }],
     },
-    // Chess books (blueprint S16a): find the diagrams and read their positions. Replacing
-    // diagrams and adding lichess links come with S10 and S11.
+    // Chess books (blueprint S16a; complete since plan A9-I16, finding R4-02): find the diagrams,
+    // the panel and the board, capture printed moves, the book's PGN and the export.
     ToolGroup {
         id: "chess",
         label: "Chess",
@@ -286,7 +286,14 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
         availability: Ready,
         sections: &[ToolSection {
             title: "Diagrams",
-            items: &[item("Scan chess diagrams", "grid-3x3", "chess.scan", Ready), item("Chess diagrams panel", "grid-3x3", "chess.panel", Ready)],
+            items: &[
+                item("Scan chess diagrams", "grid-3x3", "chess.scan", Ready),
+                item("Chess diagrams panel", "grid-3x3", "chess.panel", Ready),
+                item("Chess board", "grid-3x3", "chess.board.show", Ready),
+                item("Capture (automatic)", "wand-sparkles", "chess.tool.capture", Ready),
+                item("Load the book's PGN…", "book-open", "chess.reference.load", Ready),
+                item("Export chess book…", "file-output", "chess.export", Ready),
+            ],
         }],
     },
     ToolGroup {

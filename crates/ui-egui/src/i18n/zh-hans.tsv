@@ -3583,3 +3583,22 @@ progress bar	Progress	进度
 	not reached	未到达
 	not checked	未核对
 	caption	图注
+	Analyze the position	分析局面
+	Export chess book…	导出国际象棋书…
+	Chess shortcuts	国际象棋快捷键
+	Board, move list and Chess panel	棋盘、着法列表和国际象棋面板
+	Diagram tab	棋图选项卡
+	Move back	后退一步
+	Move forward	前进一步
+	The variation above	上方的变着
+	The variation below	下方的变着
+	Start of the game	对局开始
+	End of the line	该线路的末尾
+	End of the main line	主线的末尾
+	Previous variation	上一个变着
+	Next variation	下一个变着
+	Leave the chess panel	离开国际象棋面板
+	Next tool of {group}	{group}的下一个工具
+	Previous diagram	上一张棋图
+	Next diagram	下一张棋图
+	The original or the position read	原图或读出的局面
