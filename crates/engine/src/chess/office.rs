@@ -63,6 +63,8 @@ pub struct OfficeOptions<'a> {
     /// The number printed on each page, by page index (empty, or an empty label: the page's own
     /// number from 1).
     pub page_labels: &'a [String],
+    /// How a diagram's alt text names the pieces: by letters or in words (plan A9-X2).
+    pub naming: describe::Naming,
 }
 
 /// The board as a PNG of `px` × `px` pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
@@ -198,7 +200,7 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                     });
                     match drawn_board {
                         Ok((png, placement)) => {
-                            let alt = describe::describe_side(number, &label, shown.fen, shown.side_known, lang);
+                            let alt = describe::describe_side_named(number, &label, shown.fen, shown.side_known, lang, o.naming);
                             // Word draws the SVG at any size; the PNG stays as its fallback.
                             let svg = Some(to_svg(&board(&placement, o.pieces, &o.style), &alt));
                             blocks.push(FlowBlock::Figure(Figure { png, svg, side_pt: DIAGRAM_PT, alt, caption }));

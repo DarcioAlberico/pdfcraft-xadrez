@@ -979,8 +979,8 @@ enum PreviewAction {
     Correct(crate::chess_correct::Change),
 }
 
-/// The language names the preview offers, each in its own language.
-fn endonym(lang: Lang) -> &'static str {
+/// The language names the preview and the export dialog offer, each in its own language.
+pub(crate) fn endonym(lang: Lang) -> &'static str {
     match lang {
         Lang::En => "English",
         Lang::Pt => "Português",

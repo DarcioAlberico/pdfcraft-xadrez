@@ -1,7 +1,7 @@
 //! Chess ▸ Diagrams: the panel's header (plan A8, P2a2).
 //!
 //! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export book…
-//! (`file-output`, the menu of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…, Make the
+//! (`file-output`, the dialog of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…, Make the
 //! book's bookmarks…, plan A9-N6, then Export the book's review… and Import a book's review…, plan
 //! A9-G5b). While a scan runs, a
 //! progress bar (`widgets::progress`) and "Detecting… page 75 of 703" (its width kept for the
@@ -9,7 +9,6 @@
 //! found diagrams, "548 diagrams · 40 to review" with Review now; before any, what detecting does.
 
 use egui::{Align, Layout, RichText, vec2};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 
 use crate::chess_ui::PanelAction;
 use crate::theme::Tokens;
@@ -20,18 +19,8 @@ const HEAD: f32 = 30.0;
 const BUTTON: f32 = 26.0;
 
 /// The header row. `busy`: a scan runs (for this document or another), so none can start;
-/// `pages`: the document's page count; `running`: this document's scan, pages done of the total;
-/// `positions`: which diagrams the PGN export gives a game of their own; `source`: where it takes
-/// its games from, when the document keeps a book's PGN.
-pub(crate) fn header(
-    ui: &mut egui::Ui,
-    t: &Tokens,
-    busy: bool,
-    pages: usize,
-    running: Option<(usize, usize)>,
-    positions: PgnPositions,
-    source: Option<crate::chess_export_ui::PgnSource>,
-) -> Option<PanelAction> {
+/// `pages`: the document's page count; `running`: this document's scan, pages done of the total.
+pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, busy: bool, pages: usize, running: Option<(usize, usize)>) -> Option<PanelAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         ui.set_min_height(HEAD);
@@ -65,12 +54,10 @@ pub(crate) fn header(
         if room > 0.0 {
             ui.add_space(room);
         }
-        let export = icons::button(ui, "file-output", BUTTON, false, tl!("Export book…"));
-        egui::Popup::menu(&export).show(|ui| {
-            if let Some(a) = crate::chess_export_ui::items(ui, positions, source) {
-                action = Some(PanelAction::Text(a));
-            }
-        });
+        // The export dialog (plan A9-X2, R4-04), in place of a menu of formats and choices.
+        if icons::button(ui, "file-output", BUTTON, false, tl!("Export book…")).clicked() {
+            action = Some(PanelAction::Text(crate::chess_text_ui::TextAction::OpenExport));
+        }
         let board = ui
             .add(egui::Button::image_and_text(icons::image("grid-3x3", 14.0, t.icon), board_label).min_size(vec2(board_width, BUTTON)))
             .on_hover_text(tl!("Chess board"));
@@ -199,7 +186,7 @@ mod tests {
                 return;
             }
             let t = Tokens::get(ui.ctx());
-            if let Some(a) = header(ui, &t, true, 703, Some((74, 703)), PgnPositions::default(), None) {
+            if let Some(a) = header(ui, &t, true, 703, Some((74, 703))) {
                 seen.set(Some(a));
             }
         });

@@ -13,7 +13,6 @@
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DiagramAt;
-use pdfcraft_engine::chess::export::ChessFormat;
 
 use crate::PdfCraftApp;
 use crate::chess_corrections_ui::DiagramTarget;
@@ -37,7 +36,7 @@ pub enum AfterDrafts {
     CloseTab(DocId),
     CloseAll,
     Quit,
-    Export(ChessFormat),
+    Export(crate::chess_export_ui::ExportFormat),
     /// Detect the diagrams again (`true`: in the whole book).
     Scan(bool),
 }

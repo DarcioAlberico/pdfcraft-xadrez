@@ -3502,3 +3502,25 @@ progress bar	Progress	Ход выполнения
 	Endgame tables (Syzygy)	Таблицы эндшпиля (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Каждая настройка передаётся движку, только если он её принимает. Запустите анализ, чтобы увидеть, какие принимает этот движок.
 	This engine does not take: {names}	Этот движок не принимает: {names}
+	PGN — exercises	PGN — упражнения
+	Anki — cards	Anki — карточки
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Пронумерованные диаграммы книги с решениями, как стандартный PGN задач.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Текстовый файл, который импортирует Anki, по карточке на упражнение, с изображениями диаграмм в папке рядом.
+	Book's language	Язык книги
+	As the book says ({lang})	Как указано в книге ({lang})
+	As the book's text says	Как следует из текста книги
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Язык, на котором написан экспорт и описаны его диаграммы. Исправьте его, если книга была прочитана как другой язык.
+	Diagram descriptions	Описание диаграмм
+	Letters (Kg1)	Буквы (Крg1)
+	Words (king g1)	Слова (король g1)
+	How a screen reader says each diagram's pieces.	Как программа чтения с экрана называет фигуры каждой диаграммы.
+	Pages: {n}	Страниц: {n}
+	Diagrams: {n}	Диаграмм: {n}
+	not checked: {n}	не проверено: {n}
+	Diagrams: not detected yet	Диаграммы: ещё не найдены
+	Games from the book's PGN: {n}	Партий из PGN книги: {n}
+	Games: read from the text	Партии: прочитаны из текста
+	Your games, linked first: {n}	Ваших партий, связанных первыми: {n}
+	Language: {lang}	Язык: {lang}
+	from the book's text	по тексту книги
+	Games: read from the text, linked to the book's PGN	Партии: прочитаны из текста, связаны с PGN книги

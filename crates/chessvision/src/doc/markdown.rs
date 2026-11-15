@@ -56,6 +56,8 @@ pub struct MarkdownOptions<'a> {
     /// The number printed on each page, by page index (empty, or an empty label: the page's own
     /// number from 1).
     pub page_labels: &'a [String],
+    /// How an image's alt text names the pieces: by letters or in words (plan A9-X2).
+    pub naming: describe::Naming,
 }
 
 /// The folder of a Markdown file's images: `<stem>_diagrams`, with what Windows does not allow
@@ -191,7 +193,7 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                             let dir = link_path(o.image_dir.trim_matches('/'));
                             let path = if dir.is_empty() { name } else { format!("{dir}/{name}") };
                             // The alt text says the diagram; the title keeps its FEN.
-                            let alt = esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, book_lang));
+                            let alt = esc(&describe::describe_side_named(number, &label, shown.fen, shown.side_known, book_lang, o.naming));
                             let fen: String = shown.fen.chars().filter(|c| !matches!(c, '"' | '\\') && !c.is_control()).collect();
                             let _ = write!(s, "![{alt}]({path} \"{fen}\")\n\n");
                         }
