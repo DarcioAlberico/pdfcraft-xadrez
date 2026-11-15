@@ -39,7 +39,7 @@ fn book_json(b: &BookStatus) -> Value {
 
 impl Automation {
     /// The readings' folder `cache` names, or the default, to change (`write`) or only to read.
-    fn reading_store(&self, a: &Args, write: bool) -> Result<Option<(ReadingStore, String)>> {
+    pub(crate) fn reading_store(&self, a: &Args, write: bool) -> Result<Option<(ReadingStore, String)>> {
         match self.chess_store_at(a, READING, write)? {
             StoreAt::Folder(dir) => {
                 let shown = self.shown_path(&dir).0;
