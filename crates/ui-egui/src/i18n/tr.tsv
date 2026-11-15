@@ -3527,6 +3527,21 @@ the move's comment	Move comment	Hamlenin yorumu
 	The board is in the column beside.	Tahta yandaki sütunda.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Satranç yer işaretleri ekle
+	Make the book's bookmarks…	Kitabın yer işaretlerini oluştur…
+	Reading the book for its bookmarks…	Yer işaretleri için kitap okunuyor…
+	Reading the book for its bookmarks: page {done} of {of}	Yer işaretleri için kitap okunuyor: sayfa {done} / {of}
+	Reading was stopped: no bookmark was added.	Okuma durduruldu: hiçbir yer işareti eklenmedi.
+	The book's bookmarks	Kitabın yer işaretleri
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Bölümler: {chapters} · Oyunlar: {games} · Alıştırmalar: {exercises}
+	Chapters	Bölümler
+	Games	Oyunlar
+	Exercises	Alıştırmalar
+	Exercise	Alıştırma
+	Title of the bookmark	Yer işaretinin başlığı
+	No chapter, game or exercise was found in the book.	Kitapta hiçbir bölüm, oyun veya alıştırma bulunamadı.
+	Add the bookmarks	Yer işaretlerini ekle
+	The document changed since it was read: make its bookmarks again.	Belge okunduktan sonra değişti: yer işaretlerini yeniden oluşturun.
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	“{title}” altına yer işaretleri eklendi: {n}. Geri al bunları kaldırır.
 	More board actions	Diğer tahta eylemleri
 	Back to the moves	Hamlelere dön
 	Back to the moves (Esc)	Hamlelere dön (Esc)
