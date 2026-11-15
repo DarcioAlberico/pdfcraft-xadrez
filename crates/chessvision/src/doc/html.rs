@@ -89,6 +89,9 @@ pub struct HtmlOptions<'a> {
     /// Highlight what the reading flagged for review (the `review` class's background). A book
     /// for readers leaves it off; the class stays on the elements either way.
     pub review_marks: bool,
+    /// How a diagram's text alternative names its pieces: by letters (`Kg1`) or in words (`king
+    /// g1`, for speech; plan A9-X2).
+    pub naming: describe::Naming,
 }
 
 /// Page `index` (0-based) as the book numbers it ([`PageLabel`]: its printed number, else its own
@@ -477,13 +480,13 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
             } else {
                 describe::title_side_not_given(number, &label, lang)
             };
-            board_described(&parsed.placement, o.pieces, &o.style, used, &id, &title, &describe::pieces(&parsed.placement, lang))
+            board_described(&parsed.placement, o.pieces, &o.style, used, &id, &title, &describe::pieces_named(&parsed.placement, lang, o.naming))
         }
         // A FEN says nothing to a listener: the position in words goes with it (plan A9-X3,
         // R5-06), as the board's own description does.
         _ => format!(
             "<code>{fen}</code><p class=\"position\">{}</p>",
-            esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, lang))
+            esc(&describe::describe_side_named(number, &label, shown.fen, shown.side_known, lang, o.naming))
         ),
     };
     // The caption is the PGN's comment for the diagram, then its link.

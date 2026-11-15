@@ -103,6 +103,7 @@ fn a_book_of_games_is_written_by_the_html_export() {
         lang: "pt-BR",
         page_labels: &[],
         review_marks: true,
+        naming: pdfcraft_chess::describe::Naming::Letters,
     };
     let html = write(&doc, &o);
     assert_eq!(html.matches("<figure class=\"diagram\"").count(), 2, "{html}");

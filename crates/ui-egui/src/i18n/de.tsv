@@ -3590,3 +3590,25 @@ progress bar	Progress	Fortschritt
 	Endgame tables (Syzygy)	Endspieltabellen (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Jede Einstellung geht nur an die Engine, wenn sie sie annimmt. Starten Sie die Analyse, um zu sehen, welche diese Engine annimmt.
 	This engine does not take: {names}	Diese Engine nimmt nicht an: {names}
+	PGN — exercises	PGN — Aufgaben
+	Anki — cards	Anki — Karten
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Die nummerierten Diagramme des Buchs mit ihren Lösungen, als Standard-PGN von Aufgaben.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Eine Textdatei, die Anki importiert, eine Karte je Aufgabe, mit den Bildern der Diagramme in einem Ordner daneben.
+	Book's language	Sprache des Buchs
+	As the book says ({lang})	Wie das Buch sagt ({lang})
+	As the book's text says	Wie der Text des Buchs sagt
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Die Sprache, in der der Export geschrieben ist und seine Diagramme beschreibt. Korrigieren Sie sie, wenn das Buch als eine andere gelesen wurde.
+	Diagram descriptions	Diagrammbeschreibungen
+	Letters (Kg1)	Buchstaben (Kg1)
+	Words (king g1)	Wörter (König g1)
+	How a screen reader says each diagram's pieces.	Wie ein Bildschirmleser die Figuren jedes Diagramms ansagt.
+	Pages: {n}	Seiten: {n}
+	Diagrams: {n}	Diagramme: {n}
+	not checked: {n}	nicht geprüft: {n}
+	Diagrams: not detected yet	Diagramme: noch nicht erkannt
+	Games from the book's PGN: {n}	Partien aus der PGN des Buchs: {n}
+	Games: read from the text	Partien: aus dem Text gelesen
+	Your games, linked first: {n}	Ihre Partien, zuerst verknüpft: {n}
+	Language: {lang}	Sprache: {lang}
+	from the book's text	aus dem Text des Buchs
+	Games: read from the text, linked to the book's PGN	Partien: aus dem Text gelesen, mit der PGN des Buchs verknüpft

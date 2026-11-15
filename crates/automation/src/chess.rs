@@ -24,7 +24,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosi
 use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus, markdown, reference};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, LangTag, MoveInline, MoveStatus, markdown, reference};
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
@@ -803,6 +803,19 @@ impl Automation {
         options.games = games.as_ref().map(|(_, index)| index.clone());
         options.exercises = exercises != Exercises::No;
         options.anki = exercises == Exercises::Anki;
+        // The book's language and the diagrams' descriptions, as the app's export dialog says
+        // them (plan A9-X2).
+        options.text_lang = match a.opt_str("text_lang")? {
+            None => None,
+            Some(t) => {
+                Some(Some(LangTag::parse(t)).filter(|tag| !tag.is_empty()).ok_or_else(|| Args::wrong("text_lang", "a BCP 47 language tag (pt-BR)"))?)
+            }
+        };
+        options.naming = match a.opt_str("descriptions")? {
+            None => pdfcraft_engine::chess::pdfcraft_chess::describe::Naming::Letters,
+            Some(name) => pdfcraft_engine::chess::pdfcraft_chess::describe::Naming::from_name(name)
+                .ok_or_else(|| Args::wrong("descriptions", "\"letters\" or \"words\""))?,
+        };
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         write_images(folder.as_deref(), &image_dir, &made.images)?;

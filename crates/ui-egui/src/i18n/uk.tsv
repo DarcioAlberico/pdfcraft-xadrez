@@ -3611,3 +3611,25 @@ progress bar	Progress	Хід виконання
 	Endgame tables (Syzygy)	Таблиці ендшпілю (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Кожне налаштування передається рушію, лише якщо він його приймає. Запустіть аналіз, щоб побачити, які приймає цей рушій.
 	This engine does not take: {names}	Цей рушій не приймає: {names}
+	PGN — exercises	PGN — вправи
+	Anki — cards	Anki — картки
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Пронумеровані діаграми книги з розв'язками, як стандартний PGN задач.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Текстовий файл, який імпортує Anki, по картці на вправу, із зображеннями діаграм у теці поруч.
+	Book's language	Мова книги
+	As the book says ({lang})	Як зазначено в книзі ({lang})
+	As the book's text says	Як випливає з тексту книги
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Мова, якою написано експорт і описано його діаграми. Виправте її, якщо книгу прочитано як іншу мову.
+	Diagram descriptions	Опис діаграм
+	Letters (Kg1)	Літери (Крg1)
+	Words (king g1)	Слова (король g1)
+	How a screen reader says each diagram's pieces.	Як програма читання з екрана називає фігури кожної діаграми.
+	Pages: {n}	Сторінок: {n}
+	Diagrams: {n}	Діаграм: {n}
+	not checked: {n}	не перевірено: {n}
+	Diagrams: not detected yet	Діаграми: ще не знайдено
+	Games from the book's PGN: {n}	Партій із PGN книги: {n}
+	Games: read from the text	Партії: прочитано з тексту
+	Your games, linked first: {n}	Ваших партій, пов'язаних першими: {n}
+	Language: {lang}	Мова: {lang}
+	from the book's text	за текстом книги
+	Games: read from the text, linked to the book's PGN	Партії: прочитано з тексту, пов'язано з PGN книги

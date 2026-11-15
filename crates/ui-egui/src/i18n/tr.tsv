@@ -3585,3 +3585,25 @@ progress bar	Progress	İlerleme
 	Endgame tables (Syzygy)	Oyun sonu tabloları (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Her biri motora yalnızca motor onu kabul ediyorsa gönderilir. Bu motorun hangilerini kabul ettiğini görmek için analizi başlatın.
 	This engine does not take: {names}	Bu motor kabul etmiyor: {names}
+	PGN — exercises	PGN — alıştırmalar
+	Anki — cards	Anki — kartlar
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Kitabın numaralı diyagramları çözümleriyle, standart bir problem PGN'i olarak.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki'nin içe aktardığı bir metin dosyası, alıştırma başına bir kart, diyagramların resimleri yanındaki bir klasörde.
+	Book's language	Kitabın dili
+	As the book says ({lang})	Kitabın dediği gibi ({lang})
+	As the book's text says	Kitabın metninin dediği gibi
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Dışa aktarmanın yazıldığı ve diyagramlarını anlattığı dil. Kitap başka bir dil olarak okunduysa düzeltin.
+	Diagram descriptions	Diyagram açıklamaları
+	Letters (Kg1)	Harfler (Şg1)
+	Words (king g1)	Sözcükler (şah g1)
+	How a screen reader says each diagram's pieces.	Ekran okuyucunun her diyagramın taşlarını nasıl söylediği.
+	Pages: {n}	Sayfalar: {n}
+	Diagrams: {n}	Diyagramlar: {n}
+	not checked: {n}	kontrol edilmemiş: {n}
+	Diagrams: not detected yet	Diyagramlar: henüz algılanmadı
+	Games from the book's PGN: {n}	Kitabın PGN'inden oyunlar: {n}
+	Games: read from the text	Oyunlar: metinden okunur
+	Your games, linked first: {n}	Oyunlarınız, önce bağlanır: {n}
+	Language: {lang}	Dil: {lang}
+	from the book's text	kitabın metninden
+	Games: read from the text, linked to the book's PGN	Oyunlar: metinden okunur, kitabın PGN'ine bağlanır

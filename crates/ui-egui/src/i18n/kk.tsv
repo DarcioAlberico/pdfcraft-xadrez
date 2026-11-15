@@ -3587,3 +3587,25 @@ progress bar	Progress	Орындалу барысы
 	Endgame tables (Syzygy)	Эндшпиль кестелері (Syzygy)
 	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Әрқайсысы қозғалтқышқа тек ол қабылдаса ғана жіберіледі. Бұл қозғалтқыш қайсысын қабылдайтынын көру үшін талдауды бастаңыз.
 	This engine does not take: {names}	Бұл қозғалтқыш қабылдамайды: {names}
+	PGN — exercises	PGN — жаттығулар
+	Anki — cards	Anki — карточкалар
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Кітаптың нөмірленген диаграммалары шешімдерімен, есептердің стандартты PGN түрінде.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki импорттайтын мәтіндік файл, әр жаттығуға бір карточка, диаграммалардың суреттері қасындағы қалтада.
+	Book's language	Кітаптың тілі
+	As the book says ({lang})	Кітапта айтылғандай ({lang})
+	As the book's text says	Кітап мәтінінде айтылғандай
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Экспорт жазылатын және диаграммаларын сипаттайтын тіл. Кітап басқа тіл ретінде оқылса, түзетіңіз.
+	Diagram descriptions	Диаграмма сипаттамалары
+	Letters (Kg1)	Әріптер (Кg1)
+	Words (king g1)	Сөздер (король g1)
+	How a screen reader says each diagram's pieces.	Экран оқу құралы әр диаграмманың фигураларын қалай атайды.
+	Pages: {n}	Беттер: {n}
+	Diagrams: {n}	Диаграммалар: {n}
+	not checked: {n}	тексерілмеген: {n}
+	Diagrams: not detected yet	Диаграммалар: әлі табылмаған
+	Games from the book's PGN: {n}	Кітаптың PGN-інен партиялар: {n}
+	Games: read from the text	Партиялар: мәтіннен оқылады
+	Your games, linked first: {n}	Сіздің партияларыңыз, алдымен байланысқан: {n}
+	Language: {lang}	Тіл: {lang}
+	from the book's text	кітап мәтіні бойынша
+	Games: read from the text, linked to the book's PGN	Партиялар: мәтіннен оқылады, кітаптың PGN-імен байланысады

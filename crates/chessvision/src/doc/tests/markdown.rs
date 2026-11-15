@@ -26,6 +26,7 @@ fn options() -> MarkdownOptions<'static> {
         image_dir: "",
         lang: "",
         page_labels: &[],
+        naming: pdfcraft_chess::describe::Naming::Letters,
     }
 }
 

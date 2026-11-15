@@ -971,7 +971,7 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
 
 /// Plan "Carregar PGN do livro", R6b: with the book's PGN kept, a diagram whose reading the PGN
 /// has is Confirmed by the PGN (its own chip, out of the review queue), and the PGN export writes
-/// the book's PGN with the book's text unless the menu says the text read.
+/// the book's PGN with the book's text unless the export dialog says the text read.
 #[test]
 fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
     let dir = corrections_dir("book-pgn-chip");
@@ -997,16 +997,17 @@ fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
     h.run_steps(4);
     let written = std::fs::read_to_string(&book).unwrap();
     assert!(written.contains("[White \"Ruy\"]") && written.contains("[SourceTitle "), "{written}");
-    // The menu's choice, on the Text tab.
+    // The export dialog's choice (plan A9-X2), from the Text tab.
     h.get_by_label("Text").click();
     h.run_steps(3);
-    h.get_all_by_label("Export book…").last().expect("the Text tab's Export book menu").click();
+    h.get_all_by_label("Export book…").last().expect("the Text tab's Export book…").click();
     h.run_steps(2);
-    h.get_by_label_contains("PGN games from").hover();
+    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("PGN games from")).click();
     h.run_steps(2);
     h.get_by_label("The text read from the PDF").click();
     h.run_steps(2);
-    h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &text);
+    h.state_mut().save_override = Some(text.to_string_lossy().into_owned());
+    h.get_by_label("Export…").click();
     h.run_steps(4);
     let written = std::fs::read_to_string(&text).unwrap();
     assert!(!written.contains("[White \"Ruy\"]") && written.contains("Bb5"), "{written}");
@@ -1403,9 +1404,10 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// Export… writes the document: PGN with the position's game, and Markdown with its image in a
-/// folder beside it. The menu names each format by what it makes, under "Export chess book";
-/// once written, a window says where, and Open folder shows the file (plan A8, P9c).
+/// Export book… opens the export dialog, which names each format by what it makes (plan A9-X2),
+/// and Export… writes the document: PGN with the position's game, and Markdown with its image in
+/// a folder beside it. Once written, a window says where, and Open folder shows the file (plan
+/// A8, P9c).
 #[test]
 fn export_writes_pgn_and_markdown_with_images() {
     let dir = std::env::temp_dir().join(format!("pdfcraft-chess-export-ui-{}", std::process::id()));
@@ -1416,11 +1418,13 @@ fn export_writes_pgn_and_markdown_with_images() {
         h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
         h.get_by_label("Export book…").click();
         h.run_steps(2);
-        h.get_by_label("Export chess book");
-        for other in ["EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
-            h.get_by_label(other);
+        h.get_by_role_and_label(egui::accesskit::Role::Dialog, "Export chess book");
+        for other in ["PGN — exercises", "Anki — cards", "EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
+            h.get_by_role_and_label(egui::accesskit::Role::RadioButton, other);
         }
         h.get_by_label(format).click();
+        h.run_steps(2);
+        h.get_by_label("Export…").click();
         h.run_steps(4);
         let said = format!("Exported to {}", dir.join(name).display());
         assert_eq!(h.state().chess.export_done.as_ref().map(|d| d.said.as_str()), Some(said.as_str()), "{format}");
@@ -4527,7 +4531,7 @@ fn each_document_keeps_its_own_diagrams_and_cipher() {
     let to_review = h.state().chess.results_of(a).map_or(0, |r| r.review_queue().len());
     assert!(to_review > 0, "the drawn board is to review");
     h.state_mut().save_override = Some(dir.join("a.pgn").to_string_lossy().into_owned());
-    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.state_mut().open_chess_export();
     h.run_steps(2);
     h.get_by_label(&format!("Diagrams not checked yet: {to_review}"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -4613,9 +4617,10 @@ fn every_chess_place_says_the_page_as_the_book_numbers_it() {
     assert!(names.iter().any(|n| n == "Diagram 1, p. 25"), "the game's name: {names:?}");
 }
 
-/// Plan A9-I11a (A6-10, §2.8.1, WCAG 4.1.2 and 2.4.3): a chess question is a modal dialog named
-/// by its title. It opens with the keyboard on its first control that changes nothing (Review
-/// first, not Export anyway), Esc closes it, and the keyboard goes back to the control that had it.
+/// Plan A9-I11a (A6-10, §2.8.1, WCAG 4.1.2 and 2.4.3): a chess dialog is a modal dialog named
+/// by its title. It opens with the keyboard on its first control that changes nothing (the export
+/// dialog's chosen format, not Export…), Esc closes it, and the keyboard goes back to the control
+/// that had it.
 #[test]
 fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
     use egui::accesskit::Role;
@@ -4630,13 +4635,12 @@ fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
     h.run_steps(2);
     assert!(h.get_by_label("Export book…").is_focused());
     h.state_mut().save_override = Some(dir.join("book.pgn").to_string_lossy().into_owned());
-    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.state_mut().open_chess_export();
     h.run_steps(3);
-    let title = format!("Diagrams not checked yet: {to_review}");
     let dialog = h.get_by(|n| n.role() == Role::Dialog);
-    assert_eq!(dialog.accesskit_node().label().as_deref(), Some(title.as_str()), "named by its title");
+    assert_eq!(dialog.accesskit_node().label().as_deref(), Some("Export chess book"), "named by its title");
     assert!(dialog.accesskit_node().data().is_modal());
-    assert!(h.get_by_label("Review first").is_focused(), "the keyboard on the first control that writes nothing");
+    assert!(h.get_by_label("PGN — games").is_focused(), "the keyboard on the first control that writes nothing");
     // With PDFCRAFT_CHESS_SHOTS set, a picture of the window with the question, at 1400 x 1000.
     shot(&mut h, "i11a-dialog.png");
     h.key_press(egui::Key::Escape);
@@ -4647,8 +4651,9 @@ fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Plan A9-I11a (R5-08): the panel's menus are menus to assistive technology, their entries menu
-/// items, and a choice of one among several a radio menu item, checked when chosen.
+/// Plan A9-I11a (R5-08): the panel's menus are menus to assistive technology and their entries
+/// menu items. (The export's choices of one among several, radio menu items before plan A9-X2,
+/// are the export dialog's radio buttons and lists now.)
 #[test]
 fn the_chess_menus_are_menus_of_menu_items() {
     use egui::accesskit::Role;
@@ -4664,14 +4669,10 @@ fn the_chess_menus_are_menus_of_menu_items() {
     h.get_by_role_and_label(Role::MenuItem, "On this page").click();
     h.run_steps(2);
     assert!(h.query_by(|n| n.role() == Role::Menu).is_none(), "an item closes its menu");
-    h.get_by_label("Export book…").click();
+    h.get_by_label("More chess actions").click();
     h.run_steps(2);
-    assert_eq!(h.get_by_label("PGN — games").accesskit_node().role(), Role::MenuItem);
-    h.get_by_label_contains("Diagrams as PGN games").click();
-    h.run_steps(2);
-    let only = h.get_by_label("Only those not in a game");
-    assert_eq!(only.accesskit_node().role(), Role::MenuItemRadio);
-    assert_eq!(only.accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "the default, chosen");
+    assert!(h.query_by(|n| n.role() == Role::Menu).is_some(), "the popup is a menu");
+    h.get_by_role_and_label(Role::MenuItem, "Chess models…");
 }
 
 /// Plan A9-I11a (A6-11, WCAG 4.1.2): every control that takes the keyboard in the window, with
@@ -4993,10 +4994,10 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
     journey("e) Back to the diagram", g.take(), 1);
 
-    // f) Export with the origin: Export…, the format, and the file's name in the save dialog
-    // (given here, counted as one); nothing is left to review, so nothing is asked, and the
-    // window that says where has Open folder. The journey starts at the Diagrams panel, in front
-    // again (the board came forward in d).
+    // f) Export with the origin: Export book…, Export… in its dialog (the PGN of games is the
+    // format it opens on), and the file's name in the save dialog (given here, counted as one);
+    // the window that says where has Open folder. The journey starts at the Diagrams panel, in
+    // front again (the board came forward in d).
     let out = dir.join("book.pgn");
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
     h.state_mut().choose_right_panel(Some(RightPanel::Chess));
@@ -5004,7 +5005,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     column_tab(&mut h, "Diagrams");
     to_list(&mut h);
     g.click(&mut h, "Export book…");
-    g.click(&mut h, "PGN — games");
+    g.click(&mut h, "Export…");
     h.run_steps(3);
     assert!(out.exists(), "written");
     let pgn = std::fs::read_to_string(&out).unwrap();
@@ -5275,11 +5276,11 @@ fn exporting_with_a_draft_confirms_it_first() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Exporting while diagrams are still to review asks first (plan A8, P9c): Review first opens
-/// the first of them and writes nothing; Export anyway writes the file, and the window says
-/// what the export noted.
+/// Plan A9-X2 (P9c's question, now inside the dialog): with diagrams still to review the export
+/// dialog says how many, and its Review first opens the first of them and writes nothing; Export…
+/// writes the file, the window saying what the export noted; Esc writes nothing.
 #[test]
-fn exporting_with_diagrams_to_review_asks_first() {
+fn the_export_dialog_says_the_diagrams_to_review_and_reviews_first() {
     let dir = corrections_dir("pending-export");
     std::fs::create_dir_all(&dir).unwrap();
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
@@ -5289,59 +5290,246 @@ fn exporting_with_diagrams_to_review_asks_first() {
     assert!(!queue.is_empty(), "the fixture has a diagram to review");
     let out = dir.join("book.pgn");
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
-    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.state_mut().open_chess_export();
     h.run_steps(2);
     h.get_by_label(&format!("Diagrams not checked yet: {}", queue.len()));
     h.get_by_label("Review first").click();
     h.run_steps(3);
     assert!(!out.exists(), "nothing written");
-    assert!(h.state().chess.export_prompt.is_none());
+    assert!(h.state().chess.export_dialog.is_none(), "the dialog closed");
     assert_eq!(
         h.state().chess.editor.as_ref().map(|e| pdfcraft_engine::chess::DiagramAt::new(e.page, e.index)),
         queue.first().copied(),
         "the first to review is open"
     );
-    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.state_mut().open_chess_export();
     h.run_steps(2);
-    h.get_by_label("Export anyway").click();
+    h.get_by_label("Export…").click();
     h.run_steps(6);
     assert!(out.exists(), "written once answered");
     assert!(h.state().chess.export_done.is_some(), "the window says where");
     // Esc asks nothing more and writes nothing.
     let _ = std::fs::remove_file(&out);
     h.state_mut().chess.export_done = None;
-    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.state_mut().open_chess_export();
     h.run_steps(2);
     h.key_press(egui::Key::Escape);
     h.run_steps(3);
-    assert!(h.state().chess.export_prompt.is_none() && !out.exists());
+    assert!(h.state().chess.export_dialog.is_none() && !out.exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// The menu holds which diagrams the PGN gives a game of their own (plan A8, P8b and P9c): with
-/// All of them, the diagram the game starts from gets a game too; with None, only the game.
+/// The export dialog holds which diagrams the PGN gives a game of their own (plan A8, P8b; plan
+/// A9-X2): with All of them, the diagram the game starts from gets a game too; with None, only
+/// the game.
 #[test]
-fn the_export_menu_chooses_the_pgns_diagram_games() {
+fn the_export_dialog_chooses_the_pgns_diagram_games() {
     let dir = std::env::temp_dir().join(format!("pdfcraft-chess-export-positions-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let mut games = Vec::new();
     for (choice, name) in [("All of them", "all.pgn"), ("None", "none.pgn")] {
         let mut h = chapter_harness();
+        h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
         h.get_by_label("Export book…").click();
         h.run_steps(2);
-        h.get_by_label_contains("Diagrams as PGN games").hover();
+        h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Diagrams as PGN games")).click();
         h.run_steps(2);
         h.get_by_label(choice).click();
         h.run_steps(2);
-        h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
-        h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+        h.get_by_label("Export…").click();
         h.run_steps(4);
         let pgn = std::fs::read_to_string(dir.join(name)).unwrap();
         games.push(pgn.matches("[Event ").count());
     }
     assert_eq!(games, [2, 1], "All of them: the position and the game; None: the game");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-X2 (R4-04, §5): the journey "book → saved EPUB" in the 1366 × 768 window, gesture by
+/// gesture: Detect diagrams, Export book…, EPUB — e-book, Export…, and the file's name in the save
+/// dialog (given here, counted as one). Before Export… the dialog says what will come out (the
+/// pages, the diagrams and the one not checked yet, where the games come from, the language),
+/// and the diagram to review is said inside it: no question comes between.
+#[test]
+fn the_book_to_a_saved_epub_takes_five_gestures_and_says_first_what_comes_out() {
+    let dir = corrections_dir("x2-journey");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), Some(dir.join("store")));
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+    let out = dir.join("book.epub");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    let mut g = Gestures::default();
+    g.click(&mut h, "Detect diagrams");
+    g.click(&mut h, "Export book…");
+    g.click(&mut h, "EPUB — e-book");
+    h.get_by_label("Pages: 1 · Diagrams: 2 (not checked: 1) · Games: read from the text · Language: from the book's text");
+    h.get_by_label("Diagrams not checked yet: 1");
+    g.click(&mut h, "Export…");
+    h.run_steps(4);
+    assert!(out.exists(), "written");
+    assert_eq!(&std::fs::read(&out).unwrap()[30..58], b"mimetypeapplication/epub+zip");
+    h.get_by_label("Open folder");
+    let gestures = g.take() + 1;
+    eprintln!("| Book → saved EPUB (the file's name counted as one) | {gestures} | 5 |");
+    assert!(gestures <= 5, "{gestures} gestures, the plan's target is 5");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// One entry of a zip archive (stored or deflated); a test's own reader.
+fn zip_entry(zip: &[u8], name: &str) -> Option<Vec<u8>> {
+    let at = |i: usize, n: usize| zip.get(i..i + n).map(|b| b.iter().rev().fold(0usize, |v, b| v << 8 | usize::from(*b)));
+    let mut i = 0;
+    while zip.get(i..)?.starts_with(b"PK\x03\x04") {
+        let (method, size, name_len, extra) = (at(i + 8, 2)?, at(i + 18, 4)?, at(i + 26, 2)?, at(i + 28, 2)?);
+        let data = i + 30 + name_len + extra;
+        let raw = zip.get(data..data + size)?;
+        if zip.get(i + 30..i + 30 + name_len)? == name.as_bytes() {
+            if method == 0 {
+                return Some(raw.to_vec());
+            }
+            let mut out = Vec::new();
+            std::io::Read::read_to_end(&mut flate2::read::DeflateDecoder::new(raw), &mut out).ok()?;
+            return Some(out);
+        }
+        i = data + size;
+    }
+    None
+}
+
+/// Plan A9-X2 (A2-08 made visible and correctable): the dialog says the book's language, and the
+/// one the user picks is the EPUB's (`dc:language`, each page's `lang`), its diagrams said in it;
+/// with Words a screen reader hears "rei e1", not "Re1".
+#[test]
+fn the_books_language_chosen_in_the_export_dialog_is_the_epubs() {
+    let dir = corrections_dir("x2-lang");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = chapter_harness();
+    let out = dir.join("book.epub");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.get_by_label("Export book…").click();
+    h.run_steps(2);
+    h.get_by_label("EPUB — e-book").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Language: from the book's text");
+    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book's language")).click();
+    h.run_steps(2);
+    h.get_by_label("Português").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Language: Português");
+    h.get_by_label("Words (king g1)").click();
+    h.run_steps(2);
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    let epub = std::fs::read(&out).expect("written");
+    let opf = String::from_utf8(zip_entry(&epub, "OEBPS/content.opf").unwrap()).unwrap();
+    assert!(opf.contains("<dc:language>pt</dc:language>"), "{opf}");
+    let page = String::from_utf8(zip_entry(&epub, "OEBPS/page-00001.xhtml").unwrap()).unwrap();
+    assert!(page.contains("lang=\"pt\"") && page.contains("Diagrama 1, pág. 1"), "{page}");
+    assert!(page.contains("rei e1") && !page.contains("Re1"), "the pieces in words: {page}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-X2 (P9c's open item: the PGN's choice was for the session): once exported, the dialog
+/// opens again on what was chosen — the document's language for the session, the format, the
+/// descriptions and the PGN's choices in the settings, read back by another start of the app.
+#[test]
+fn the_export_dialogs_choices_are_remembered() {
+    let dir = corrections_dir("x2-kept");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = chapter_harness();
+    h.state_mut().save_override = Some(dir.join("book.epub").to_string_lossy().into_owned());
+    h.get_by_label("Export book…").click();
+    h.run_steps(2);
+    h.get_by_label("EPUB — e-book").click();
+    h.run_steps(2);
+    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book's language")).click();
+    h.run_steps(2);
+    h.get_by_label("Português").click();
+    h.run_steps(2);
+    h.get_by_label("Words (king g1)").click();
+    h.run_steps(2);
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    assert!(dir.join("book.epub").exists(), "written");
+    h.state_mut().chess.export_done = None;
+    h.run_steps(2);
+    // Opened again: the document's language, and the format and descriptions chosen.
+    h.state_mut().open_chess_export();
+    h.run_steps(2);
+    h.get_by_label_contains("Language: Português");
+    let chosen =
+        |h: &Harness<'static, PdfCraftApp>, label: &str| h.get_by_label(label).accesskit_node().toggled() == Some(egui::accesskit::Toggled::True);
+    assert!(chosen(&h, "EPUB — e-book") && chosen(&h, "Words (king g1)"));
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    let mut again = PdfCraftApp::new();
+    again.restore(&h.state().persist());
+    assert_eq!(
+        again.chess.export.to_json(),
+        serde_json::json!({ "format": "epub", "positions": "unused", "source": "book", "descriptions": "words" }),
+        "the settings keep the dialog's choices"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-X2 (its own accessibility acceptance, §2.8.1): the export dialog is a modal Dialog
+/// named by its title; the formats, the pages and the descriptions are radio groups named by what
+/// they choose, each list and number field is named by the label beside it (`labelled_by`), and
+/// no control in it that takes the keyboard is without a name. Pictures at 1366 × 768, 1440 × 900
+/// and 1920 × 1080 with `PDFCRAFT_CHESS_SHOTS` set.
+#[test]
+fn the_export_dialog_is_a_dialog_whose_fields_are_named() {
+    use egui::accesskit::Role;
+    for (w, height) in [(1366.0, 768.0), (1440.0, 900.0), (1920.0, 1080.0)] {
+        let dir = corrections_dir(&format!("x2-a11y-{w}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut h = harness_with(boards(), 0.25, egui::vec2(w, height), Some(dir.join("store")));
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        h.get_by_label("Export book…").click();
+        h.run_steps(2);
+        h.get_by_label("EPUB — e-book").click();
+        h.run_steps(2);
+        let dialog = h.get_by(|n| n.role() == Role::Dialog);
+        assert_eq!(dialog.accesskit_node().label().as_deref(), Some("Export chess book"));
+        assert!(dialog.accesskit_node().data().is_modal());
+        let card = dialog.rect();
+        assert!(card.min.x >= 0.0 && card.min.y >= 0.0 && card.max.x <= w && card.max.y <= height, "the dialog fits the window: {card:?}");
+        // Every format is a radio button of the group "Format".
+        let group = h.get_by_role_and_label(Role::RadioGroup, "Format").accesskit_node().id();
+        for format in ["PGN — games", "PGN — exercises", "Anki — cards", "EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF", "Markdown"]
+        {
+            let radio = h.get_by_role_and_label(Role::RadioButton, format);
+            let mut up = radio.accesskit_node().parent();
+            while up.as_ref().is_some_and(|p| p.id() != group) {
+                up = up.and_then(|p| p.parent());
+            }
+            assert!(up.is_some(), "{format} is in the group Format");
+        }
+        h.get_by_role_and_label(Role::RadioGroup, "Pages");
+        h.get_by_role_and_label(Role::RadioGroup, "Diagram descriptions");
+        h.get_by(|n| n.role() == Role::ComboBox && n.label().as_deref() == Some("Book's language"));
+        for field in ["Pages from", "to"] {
+            h.get_by(|n| n.role() == Role::SpinButton && n.label().as_deref() == Some(field));
+        }
+        let nameless: Vec<String> = h
+            .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus) && n.label().is_none_or(|l| l.trim().is_empty()))
+            .filter(|n| card.contains_rect(n.rect()))
+            .map(|n| format!("{:?} {:?}", n.accesskit_node().role(), n.rect()))
+            .collect();
+        assert!(nameless.is_empty(), "{nameless:?}");
+        // The PGN's choices show for the PGN of games, the descriptions for the others.
+        h.get_by_label("PGN — games").click();
+        h.run_steps(2);
+        h.get_by(|n| n.role() == Role::ComboBox && n.label().as_deref() == Some("Diagrams as PGN games"));
+        assert!(h.query_by(|n| n.role() == Role::RadioGroup && n.label().as_deref() == Some("Diagram descriptions")).is_none());
+        h.get_by_label("EPUB — e-book").click();
+        h.run_steps(2);
+        shot(&mut h, &format!("x2-export-dialog-{w}x{height}.png"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 /// Detecting again over a draft asks first; Discard changes drops it and the scan runs.
