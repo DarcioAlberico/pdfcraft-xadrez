@@ -119,6 +119,8 @@ pub(crate) fn paragraph(
         let start = chars;
         match look_of(k, inline) {
             Some(look) => {
+                // A move with no text would take no place, and no stop (plan A9-I9b).
+                let text = if text.is_empty() { "…".to_owned() } else { text };
                 let format = TextFormat {
                     font_id: font.clone(),
                     color: look.colour,
@@ -144,6 +146,15 @@ pub(crate) fn paragraph(
         spans.push(start..chars);
     }
     Paragraph { job, moves, inlines: spans }
+}
+
+/// The marks of a move's rows (`parts`: each row's rectangle, whether the pointer is on it and
+/// whether it has the keyboard; only the first row takes the keyboard): every row is pointed at
+/// when one is, and shows the keyboard's ring when the move has it (plan A9-I9b).
+pub(crate) fn marks(parts: &[(egui::Rect, bool, bool)]) -> Vec<(egui::Rect, bool, bool)> {
+    let hovered = parts.iter().any(|(_, h, _)| *h);
+    let focused = parts.first().is_some_and(|(_, _, f)| *f);
+    parts.iter().map(|(r, _, _)| (*r, hovered, focused)).collect()
 }
 
 /// The rectangles characters `range` of `galley` take, one per row they are on, in the galley's
@@ -217,6 +228,78 @@ mod tests {
             assert_eq!(status_words(s).is_none(), s == MoveStatus::Valid, "{s:?}");
         }
         assert_eq!(marker(MoveStatus::Illegal), "×");
+    }
+
+    /// Plan A9-I9b: a move's state reads at 4.5:1 on the fill of the move pointed at too, in both
+    /// themes.
+    #[test]
+    fn every_move_state_reads_on_the_pointed_fill() {
+        for kind in [ThemeKind::Light, ThemeKind::Dark] {
+            let t = Tokens::for_kind(kind);
+            for s in ALL {
+                let c = contrast(status_colour(s, &t), t.hover);
+                assert!(c >= 4.5, "{kind:?} {s:?} on the hover fill: {c:.2}:1");
+            }
+        }
+    }
+
+    fn a_move(text: &str) -> Inline {
+        let json = serde_json::json!({ "type": "move", "text": text, "san": "e4", "status": "valid" });
+        serde_json::from_value(json).expect("a move inline")
+    }
+
+    fn look() -> Look {
+        Look { colour: Color32::BLACK, marker: "", underline: false, italics: false }
+    }
+
+    /// Plan A9-I9b (A6-23): the rows of a paragraph are as tall as each other, its moves (with
+    /// their shapes, underline and italics) and its prose alike.
+    #[test]
+    fn a_paragraphs_rows_are_as_tall_as_each_other() {
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let ctx = ui.ctx().clone();
+            let inlines: Vec<Inline> = (0..40usize).map(|i| if i.is_multiple_of(3) { a_move("Nf3") } else { a_move("e4") }).collect();
+            let looks = |k: usize| Look {
+                marker: if k.is_multiple_of(2) { "×?" } else { "" },
+                underline: k.is_multiple_of(3),
+                italics: k.is_multiple_of(5),
+                ..look()
+            };
+            let para = paragraph(
+                &inlines,
+                &FontId::proportional(13.0),
+                Color32::BLACK,
+                120.0,
+                |i| if let Inline::Move(m) = i { m.text.clone() } else { String::new() },
+                |k, _| Some(looks(k)),
+            );
+            let galley = ctx.fonts_mut(|f| f.layout_job(para.job));
+            let heights: Vec<f32> = galley.rows.iter().map(|r| r.rect().height()).collect();
+            assert!(heights.len() > 3, "it wraps: {heights:?}");
+            assert!(heights.iter().all(|h| (h - heights[0]).abs() < 0.01), "{heights:?}");
+        });
+        // The font atlas the frame made is not uploaded anywhere here.
+        out.textures_delta.clear();
+    }
+
+    /// Plan A9-I9b: a move with no text still takes a place, so it keeps its stop.
+    #[test]
+    fn a_move_with_no_text_keeps_a_place() {
+        let para = paragraph(&[a_move("")], &FontId::proportional(13.0), Color32::BLACK, 200.0, |_| String::new(), |_, _| Some(look()));
+        assert!(para.moves.first().is_some_and(|(_, r)| !r.is_empty()), "{:?}", para.moves);
+    }
+
+    /// Plan A9-I9b: a move wrapped onto two rows is pointed at, and has the keyboard's ring, on both.
+    #[test]
+    fn a_wrapped_moves_rows_are_marked_together() {
+        let (a, b) = (
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(10.0, 10.0)),
+            egui::Rect::from_min_size(egui::pos2(0.0, 12.0), egui::vec2(10.0, 10.0)),
+        );
+        assert_eq!(marks(&[(a, false, true), (b, true, false)]), [(a, true, true), (b, true, true)]);
+        assert_eq!(marks(&[(a, false, false), (b, false, false)]), [(a, false, false), (b, false, false)]);
+        assert!(marks(&[]).is_empty());
     }
 
     /// Plan A9-I9: the move's name says its number, the move in words, its state and its link.
