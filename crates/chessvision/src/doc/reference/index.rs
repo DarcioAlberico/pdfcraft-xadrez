@@ -109,6 +109,32 @@ pub struct ReferenceGame {
     pub error: Option<String>,
 }
 
+/// A move of the book's PGN that leads to a position (plan A9-N3), or a game's start.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PgnOccurrence {
+    /// The move, in its game ([`ReferenceIndex::san`] writes it); node 0 for a game's start.
+    pub at: RefNode,
+    /// The full-move number of the move.
+    pub number: u32,
+    /// Black played it.
+    pub black: bool,
+    /// It is on its game's main line, not in a variation.
+    pub main_line: bool,
+    /// The position was reached by another sequence of moves than at the first occurrence.
+    pub transposed: bool,
+}
+
+/// What [`ReferenceIndex::occurrences`] found.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Occurrences {
+    /// The first ones, at most the `max` asked for.
+    pub found: Vec<PgnOccurrence>,
+    /// How many moves lead to the position, all of them.
+    pub total: usize,
+    /// How many different sequences of moves lead to it: one more than its transpositions.
+    pub lines: usize,
+}
+
 /// A game's text and where its moves are in the index.
 #[derive(Clone, Debug)]
 struct GameText {
@@ -465,6 +491,67 @@ impl ReferenceIndex {
     /// a decision made against another PGN can still apply).
     pub fn has_move(&self, san: &str) -> bool {
         self.plain_id(san).is_some()
+    }
+
+    /// Where the position keyed `key` stands in the book's PGN (plan A9-N3): every move that
+    /// leads to it, in every game, in the index's order (game by game, each line before its
+    /// variations), at most `max` of them; with `side_assumed`, the same pieces with either side
+    /// to move. Each says whether it is on its game's main line and whether it was reached by
+    /// another sequence of moves than the first one found (a transposition, or a position the
+    /// line comes back to).
+    pub fn occurrences(&self, key: BookKey, side_assumed: bool, max: usize) -> Occurrences {
+        let positions = if side_assumed { self.with_pieces(PositionKey::pieces(key.placement)) } else { self.position_id(key).into_iter().collect() };
+        let mut out = Occurrences::default();
+        let mut lines: Vec<u64> = Vec::new();
+        for id in positions.iter().flat_map(|&p| self.standing(p).iter().map(|&n| n as usize)) {
+            out.total = out.total.saturating_add(1);
+            let Some(node) = self.nodes.get(id) else { continue };
+            let Some(line) = self.line_hash(id) else { continue };
+            let transposed = lines.first().is_some_and(|first| *first != line);
+            if !lines.contains(&line) {
+                lines.push(line);
+            }
+            if out.found.len() >= max {
+                continue;
+            }
+            let black = node.parent().and_then(|p| self.nodes.get(p)).and_then(|p| self.side(p.position())) == Some(Color::Black);
+            out.found.push(PgnOccurrence { at: node.at(), number: node.number(), black, main_line: self.on_main_line(id), transposed });
+        }
+        out.lines = lines.len();
+        out
+    }
+
+    /// The sequence of moves from its game's start to node `id`, as a hash of the start's position
+    /// and every move's two bytes; `None` for a broken chain.
+    fn line_hash(&self, id: usize) -> Option<u64> {
+        use std::hash::{Hash as _, Hasher as _};
+        let mut hasher = std::hash::DefaultHasher::new();
+        let mut node = self.nodes.get(id)?;
+        let mut steps = 0usize;
+        while let Some(parent) = node.parent() {
+            // A game has at most MAX_NODES moves, so a longer way back is not one.
+            steps = steps.checked_add(1).filter(|s| *s <= MAX_NODES)?;
+            node.step.hash(&mut hasher);
+            node = self.nodes.get(parent)?;
+        }
+        node.position.hash(&mut hasher);
+        Some(hasher.finish())
+    }
+
+    /// Whether node `id` is on its game's main line: each move on the way to it its parent's
+    /// first reply. Indexing gives a first reply the id after its parent's ([`Self::add_game`]
+    /// takes the line before its variations), and any other reply a later one.
+    fn on_main_line(&self, id: usize) -> bool {
+        let mut at = id;
+        let mut steps = 0usize;
+        while let Some(parent) = self.nodes.get(at).and_then(IndexNode::parent) {
+            steps = steps.saturating_add(1);
+            if steps > MAX_NODES || parent.checked_add(1) != Some(at) {
+                return false;
+            }
+            at = parent;
+        }
+        self.nodes.get(at).is_some()
     }
 
     /// Move `at` as the reference writes it; `None` for a node it does not have or a game's start.
