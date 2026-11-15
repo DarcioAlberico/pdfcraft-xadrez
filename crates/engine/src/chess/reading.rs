@@ -57,7 +57,11 @@ pub const VERSION: u32 = 1;
 /// The version of what a page's scan, and chess OCR of a page alone, give for the same page,
 /// settings and models. Raised by a change to detection, to the reading of boards or to chess OCR
 /// that changes what they find, so a reading an earlier build kept is not taken for this one's.
-pub const SCAN_VERSION: u32 = 1;
+/// 2: a reading keeps the goal its caption asks (plan A9-N17a, [`ReadPosition::goal`]), which one
+/// kept before lacks.
+///
+/// [`ReadPosition::goal`]: pdfcraft_chessvision::board::ReadPosition::goal
+pub const SCAN_VERSION: u32 = 2;
 /// Largest entry file read.
 pub const MAX_ENTRY_BYTES: usize = 16 << 20;
 /// Largest JSON an entry holds, inflated.

@@ -67,6 +67,7 @@ pub(super) fn diagram(number: usize, fen: &str) -> Block {
         }),
         lichess_url: None,
         puzzle: None,
+        goal: None,
         reference: None,
         review: Vec::new(),
         settled: None,

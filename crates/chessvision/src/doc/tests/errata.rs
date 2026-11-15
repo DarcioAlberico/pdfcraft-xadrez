@@ -153,6 +153,6 @@ fn a_move_cited_in_prose_against_the_books_pgn_is_to_check_and_a_mark_is_a_mispr
     // A number out of sequence may be a line label the walk did not attach: to check too.
     let numbers = errata(&page_doc(0, "1.e4 e5 2.Nf3 Nc6 5.Bb5 a6", false), None);
     assert_eq!(numbers.iter().map(|e| (e.issue, e.issue.kind())).collect::<Vec<_>>(), [(Issue::MoveNumber, Kind::Check)]);
-    assert_eq!(Kind::ALL.map(|k| Kind::from_name(k.name())), [Some(Kind::Misprint), Some(Kind::Check)]);
+    assert_eq!(Kind::ALL.map(|k| Kind::from_name(k.name())), [Some(Kind::Misprint), Some(Kind::Check), Some(Kind::Engine)]);
     assert_eq!(Kind::from_name("all"), None);
 }

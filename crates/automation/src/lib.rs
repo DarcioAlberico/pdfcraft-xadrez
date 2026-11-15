@@ -30,6 +30,7 @@ mod chess_pattern;
 mod chess_pgn;
 mod chess_position;
 mod chess_reference;
+mod chess_review;
 mod chess_review_pack;
 mod chess_sample;
 mod chess_states;
@@ -880,6 +881,7 @@ impl Automation {
             "chess_reference_set" => self.chess_reference_set(&a)?,
             "chess_reference_status" => self.chess_reference_status(&a)?,
             "chess_evals" => self.chess_evals(&a)?,
+            "chess_engine_review" => self.chess_engine_review(&a)?,
             "chess_bookmarks" => self.chess_bookmarks(&a)?,
             "chess_reference_clear" => self.chess_reference_clear(&a)?,
             "chess_store_migrate" => self.chess_store_migrate(&a)?,

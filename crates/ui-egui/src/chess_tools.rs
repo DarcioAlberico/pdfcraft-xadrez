@@ -203,7 +203,7 @@ impl ChessKey {
     }
 
     /// How the key is written on this platform ("Ctrl+Shift+↑", "⇧⌘↑").
-    fn label(self, ctx: &egui::Context) -> String {
+    pub(crate) fn label(self, ctx: &egui::Context) -> String {
         let key = match self.key {
             Key::Escape => "Esc",
             Key::Delete => "Delete",
@@ -652,6 +652,22 @@ pub(crate) enum Nav {
 }
 
 impl Nav {
+    /// What the key does, in the current language (the sheet of the chess keys, plan A9-I16).
+    fn name(self) -> String {
+        match self {
+            Nav::Escape => (NAVIGATE.label)(&BoardState::default()),
+            Nav::Back => tl!("Move back").to_owned(),
+            Nav::Forward => tl!("Move forward").to_owned(),
+            Nav::Up => tl!("The variation above").to_owned(),
+            Nav::Down => tl!("The variation below").to_owned(),
+            Nav::Start => tl!("Start of the game").to_owned(),
+            Nav::End => tl!("End of the line").to_owned(),
+            Nav::MainEnd => tl!("End of the main line").to_owned(),
+            Nav::PreviousVariation => tl!("Previous variation").to_owned(),
+            Nav::NextVariation => tl!("Next variation").to_owned(),
+        }
+    }
+
     /// What the key does, as the key map names it (`chess_keymap`): Esc is the Navigate tool's.
     pub(crate) fn action(self) -> &'static str {
         match self {
@@ -874,6 +890,26 @@ fn tool_label(tool: &Tool, chess: &ChessState) -> String {
     match tool.kind {
         Kind::History(undo) => chess.games.step_text(undo).unwrap_or_else(|| if undo { tl!("Undo") } else { tl!("Redo") }.to_owned()),
         _ => label(tool, chess.board()),
+    }
+}
+
+/// What the chess scope's key named `action` in the key map does, in the current language (the
+/// sheet of the chess keys, plan A9-I16): a rail tool's name, a group's "next of", a move about
+/// the game, F6 and F1; `None` for an action the map does not have.
+pub(crate) fn action_name(action: &str, chess: &ChessState) -> Option<String> {
+    if let Some(tool) = tools().find(|t| t.id == action) {
+        return Some(tool_label(tool, chess));
+    }
+    if let Some(group) = groups().find(|g| g.id == action) {
+        return Some(crate::i18n::fmt(tl!("Next tool of {group}"), &[("group", (group.label)())]));
+    }
+    if let Some((_, nav)) = NAV_KEYS.iter().find(|(_, nav)| nav.action() == action) {
+        return Some(nav.name());
+    }
+    match action {
+        "leave" => Some(tl!("Leave the chess panel").to_owned()),
+        "shortcuts" => Some(tl!("Chess shortcuts").to_owned()),
+        _ => None,
     }
 }
 
@@ -1316,6 +1352,13 @@ fn head_choices(ui: &mut egui::Ui, t: &Tokens, game: &Game, tool: &Tool, label: 
 /// A key the scope took: Esc and moving about first, then a group's letter, then a tool's key.
 /// `focused_group` is the popup of the group whose button has the keyboard focus (Down opens it).
 fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifiers, focused_group: Option<egui::Id>) {
+    // F1: the sheet of the chess keys (plan A9-I16).
+    if let crate::chess_keymap::Trigger::Key(sheet) = crate::chess_keymap::SHORTCUT_SHEET.trigger
+        && sheet.matches(key, m)
+    {
+        chess.shortcuts_open = true;
+        return;
+    }
     if let Some(nav) = NAV_KEYS.iter().find(|(k, _)| k.matches(key, m)).map(|(_, nav)| *nav) {
         match (nav, focused_group) {
             (Nav::Down, Some(popup)) => {
@@ -1449,9 +1492,12 @@ fn has_reply(game: &Game, node: NodeId) -> bool {
     game.line_of(node).last().is_some_and(|&last| last != node)
 }
 
-/// A move as books write it in running text: "20.fxg6", "18…Qd8".
+/// A move as books write it in running text: "20.fxg6", "18…Qd8", its piece in the list's
+/// notation (plan A9-I10: "18…Dd8" with the letters in Portuguese), so that the trail, the
+/// comments' fields, the capture's headline, the board's header and every name made of a move
+/// write it as the list does.
 pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
-    let san = game.san(node);
+    let san = crate::chess_figurines::Notation::current().san(game.san(node));
     let half = game.path_of(node).and_then(|p| {
         let mut up = p.indices().to_vec();
         up.pop()?;
@@ -1460,7 +1506,7 @@ pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
     match half {
         Some(half) if half % 2 == 1 => format!("{}…{san}", half / 2 + 1),
         Some(half) => format!("{}.{san}", half / 2 + 1),
-        None => san.to_owned(),
+        None => san,
     }
 }
 
