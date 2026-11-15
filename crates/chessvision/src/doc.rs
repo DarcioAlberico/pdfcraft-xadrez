@@ -55,6 +55,7 @@ mod tests;
 use pdfcraft_chess::placement::Color;
 use pdfcraft_chess::rules::Legality;
 use pdfcraft_chess::san::Lang;
+use pdfcraft_chess::stipulation::Goal;
 use serde::{Deserialize, Serialize};
 
 use crate::board::{BoardReading, MateFinding, ReadPosition, ReadingSource};
@@ -820,6 +821,12 @@ pub struct DiagramBlock {
     /// solution that starts with that number, however far on, is played from this diagram.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub puzzle: Option<u32>,
+    /// What the words printed by it, or over its page or section, ask of it (plan A9-N17a): mate in
+    /// n, a help- or selfmate, a win, a draw — the reading's
+    /// ([`crate::board::ReadPosition::goal`]). The engine's review holds the diagram to it; written
+    /// as `{"mate": 2}`, `"win"`, `"draw"`, and not when there is none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<Goal>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
     /// The position of the book's PGN it shows or nearly shows ([`reference::link`], R3).
@@ -1042,6 +1049,7 @@ impl DiagramBlock {
             reading: None,
             lichess_url: None,
             puzzle: None,
+            goal: None,
             reference: None,
             review: Vec::new(),
             settled: None,
@@ -1060,6 +1068,7 @@ impl DiagramBlock {
                     repaired: p.repaired(),
                 });
                 block.lichess_url = p.lichess_url();
+                block.goal = p.goal;
                 block.review = position_flags(p, legal);
             }
         }

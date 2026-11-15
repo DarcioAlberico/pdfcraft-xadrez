@@ -16,6 +16,8 @@ use std::sync::Arc;
 
 use pdfcraft_chess::fen::{BookKey, Fen};
 
+use pdfcraft_chessvision::board::ReadPosition;
+
 use super::reading::{self, ReadingStore};
 use super::{ChessPage, ChessScanSettings};
 use crate::{DocId, Session};
@@ -49,16 +51,31 @@ pub struct DiagramsFound {
 impl Session {
     /// The diagrams of document `id` already read whose position is the one keyed `key`: the
     /// same pieces, and the same side to move unless `any_side` or the reading assumed it
-    /// ([`BookKey::matches`]), at most `max` listed (plan A9-N3). From this session's scans (any
-    /// settings or model; a page with several readings counts once, with its first) and, for the
-    /// pages it has not read, the readings `disk` keeps for `settings` and the piece model they
-    /// name ([`reading::scan_key`]). Nothing is scanned. Fails as [`Session::chess_scan`] would:
-    /// no such document, or one that does not allow copying.
+    /// ([`BookKey::matches`]), at most `max` listed (plan A9-N3); see
+    /// [`Session::chess_matching_diagrams`].
     pub fn chess_position_diagrams(
         &mut self,
         id: DocId,
         key: BookKey,
         any_side: bool,
+        disk: Option<(&ReadingStore, &ChessScanSettings)>,
+        max: usize,
+    ) -> Result<DiagramsFound, String> {
+        let same = |p: &ReadPosition| Fen::parse(&p.fen).is_ok_and(|fen| fen.book_key().matches(key, any_side || p.side.is_assumed()));
+        self.chess_matching_diagrams(id, &same, disk, max)
+    }
+
+    /// The diagrams of document `id` already read whose reading `wanted` takes (plan A9-N3; a
+    /// predicate since plan A9-N16a, the search by material and pawns), at most `max` listed. From
+    /// this session's scans (any settings or model; a page with several readings counts once, with
+    /// its first) and, for the pages it has not read, the readings `disk` keeps for `settings` and
+    /// the piece model they name ([`reading::scan_key`]), read and dropped one at a time. Nothing is
+    /// scanned. Fails as [`Session::chess_scan`] would: no such document, or one that does not
+    /// allow copying.
+    pub fn chess_matching_diagrams(
+        &mut self,
+        id: DocId,
+        wanted: &dyn Fn(&ReadPosition) -> bool,
         disk: Option<(&ReadingStore, &ChessScanSettings)>,
         max: usize,
     ) -> Result<DiagramsFound, String> {
@@ -85,13 +102,17 @@ impl Session {
                 }
             }
         }
-        Ok(find_in_pages(key, any_side, pages.iter().map(|(p, (r, d))| (*p, &**r, *d)), max))
+        Ok(find_in_pages(wanted, pages.iter().map(|(p, (r, d))| (*p, &**r, *d)), max))
     }
 }
 
 /// The diagrams of `pages` (page, its reading, whether it came from the disk; in page order)
-/// whose reading is the position keyed `key`; see [`Session::chess_position_diagrams`].
-fn find_in_pages<'a>(key: BookKey, any_side: bool, pages: impl IntoIterator<Item = (usize, &'a ChessPage, bool)>, max: usize) -> DiagramsFound {
+/// whose reading `wanted` takes; see [`Session::chess_matching_diagrams`].
+fn find_in_pages<'a>(
+    wanted: &dyn Fn(&ReadPosition) -> bool,
+    pages: impl IntoIterator<Item = (usize, &'a ChessPage, bool)>,
+    max: usize,
+) -> DiagramsFound {
     let mut out = DiagramsFound::default();
     for (page, read, from_disk) in pages {
         let Some(readings) = read.readings.as_ref() else { continue };
@@ -99,9 +120,8 @@ fn find_in_pages<'a>(key: BookKey, any_side: bool, pages: impl IntoIterator<Item
         out.from_disk = out.from_disk.saturating_add(usize::from(from_disk));
         for (index, reading) in readings.iter().enumerate() {
             let Some(position) = reading.position() else { continue };
-            let Ok(fen) = Fen::parse(&position.fen) else { continue };
             let side_assumed = position.side.is_assumed();
-            if !fen.book_key().matches(key, any_side || side_assumed) {
+            if !wanted(position) {
                 continue;
             }
             out.total = out.total.saturating_add(1);

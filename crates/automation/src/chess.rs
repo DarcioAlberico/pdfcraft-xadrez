@@ -806,6 +806,15 @@ impl Automation {
         options.games = games.as_ref().map(|(_, index)| index.clone());
         options.exercises = exercises != Exercises::No;
         options.anki = exercises == Exercises::Anki;
+        // Plan A9-N17a (decision C): the PGN of the games read gets the engine's word on the moves
+        // it disagrees with, from the evaluations kept in evals_store.
+        let mut evals_json = Value::Null;
+        if format == ChessFormat::Pgn && exercises == Exercises::No && a.opt_str("evals_store")?.is_some() {
+            let limits = crate::chess_review::limits_arg(a)?;
+            let kept = self.kept_evals(a, id)?;
+            evals_json = kept.reply;
+            options.engine = Some(std::sync::Arc::new(pdfcraft_engine::chess::review::EngineReview { evals: kept.file, limits }));
+        }
         // The book's language and the diagrams' descriptions, as the app's export dialog says
         // them (plan A9-X2).
         options.text_lang = match a.opt_str("text_lang")? {
@@ -899,6 +908,10 @@ impl Automation {
                 "number": x.number,
                 "reason": x.reason.name(),
             })).collect::<Vec<_>>()),
+            // The moves that got the engine's comment, and the evaluations read (plan A9-N17a);
+            // null without evals_store.
+            "engine_comments": made.engine_comments,
+            "evals": evals_json,
         }))
     }
 

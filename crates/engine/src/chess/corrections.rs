@@ -1041,6 +1041,8 @@ pub fn corrected_position(
         repairs: Vec::new(),
         accepted,
         mate: None,
+        // What the caption asks stays the caption's.
+        goal: before.and_then(|p| p.goal),
     })
 }
 

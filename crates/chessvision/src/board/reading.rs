@@ -42,6 +42,7 @@ use pdfcraft_chess::recognize::orient::{Verdict, font_verdict, orient};
 use pdfcraft_chess::recognize::side::{SideSource, SideToMove, compose_position, infer_side_to_move};
 use pdfcraft_chess::recognize::{ACCEPT_MIN_CONFIDENCE, CLASS_COUNT, Probabilities, ProbabilityError, Reading, Uncertain};
 use pdfcraft_chess::rules::{Legality, check_position};
+use pdfcraft_chess::stipulation::Goal;
 use pdfcraft_geom::PageRect;
 
 use super::consts::BOARD_SIZE;
@@ -169,6 +170,12 @@ pub struct ReadPosition {
     /// What the solver found for the mate the page asks of the diagram (plan A9-N4); `None` when
     /// it asks none ([`ReadPosition::check_mate`]).
     pub mate: Option<MateFinding>,
+    /// What the words printed by the diagram, or over its page or section, ask of it (plan
+    /// A9-N17a; read by L6c): mate in n, a help- or selfmate, a win, a draw. `None` when they ask
+    /// nothing, or the page has no text layer. Not written when `None`, as in a reading kept
+    /// before it was.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<Goal>,
 }
 
 /// What [`ReadPosition::check_mate`] found.
@@ -481,7 +488,7 @@ fn finish(
 ) -> ReadPosition {
     let side = infer_side_to_move(&placement, None);
     let fen = compose_position(placement, side.color, None, 1).fen();
-    ReadPosition { placement, fen, legality, side, orientation, min_confidence, uncertain, repairs, accepted, mate: None }
+    ReadPosition { placement, fen, legality, side, orientation, min_confidence, uncertain, repairs, accepted, mate: None, goal: None }
 }
 
 /// The candidate's board as the model reads it: [`BOARD_SIZE`] pixels a side, upright as
