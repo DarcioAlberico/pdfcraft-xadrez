@@ -713,7 +713,10 @@ pub(crate) fn engine_rows(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, boa
             let colour = if line.score.white_share() >= 0.5 { Color32::from_gray(30) } else { Color32::from_gray(235) };
             let fill = if line.score.white_share() >= 0.5 { Color32::from_gray(235) } else { Color32::from_gray(50) };
             ui.label(egui::RichText::new(line.score.text()).monospace().strong().color(colour).background_color(fill));
-            let moves = numbered_moves(&fen, &line.san);
+            // In the list's notation (plan A9-I10): "Cf3" with the letters in Portuguese.
+            let notation = crate::chess_figurines::Notation::current();
+            let moves: Vec<(Option<String>, String)> =
+                numbered_moves(&fen, &line.san).into_iter().map(|(number, san)| (number, notation.san(&san))).collect();
             let whole: Vec<String> = moves.iter().map(|(n, san)| n.as_ref().map_or_else(|| san.clone(), |n| format!("{n}{san}"))).collect();
             let whole = format!("{} {}", line.score.text(), whole.join(" "));
             let mono = egui::TextStyle::Monospace.resolve(ui.style());
