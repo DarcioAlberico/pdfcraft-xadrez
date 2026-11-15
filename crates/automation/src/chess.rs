@@ -692,6 +692,9 @@ impl Automation {
                 "side": match l.side { Side::Below => "below", Side::Right => "right", Side::Above => "above" },
                 "rect": ([l.label_view.x0, l.label_view.y0, l.label_view.x1, l.label_view.y1].map(round)),
                 "link_user": (l.link_user.map(|v| round(v as f32))),
+                // The address of the label and link it takes away (plan A9-G9): the diagram had
+                // one of ours to another position; null otherwise.
+                "replaces": l.replaces,
             })).collect::<Vec<_>>(),
             "skipped": plan.skipped.iter().map(|s| json!({ "page": s.page + 1, "index": s.index + 1, "reason": s.reason })).collect::<Vec<_>>(),
             "corrections": corrections,

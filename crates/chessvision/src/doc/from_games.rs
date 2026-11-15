@@ -127,8 +127,8 @@ impl Page {
         let number = self.diagrams;
         self.diagrams = self.diagrams.saturating_add(1);
         let orientation = black.then_some(Color::Black);
-        let link =
-            pdfcraft_chess::fen::parse(fen).ok().map(|p| pdfcraft_chess::lichess::analysis_url(&p, if black { Color::Black } else { Color::White }));
+        // The one rule of every lichess link (plan A9-G9).
+        let link = pdfcraft_chess::lichess::link(fen, if black { Color::Black } else { Color::White }, false).ok();
         self.blocks.push(Block::Diagram(DiagramBlock {
             number,
             index: number,

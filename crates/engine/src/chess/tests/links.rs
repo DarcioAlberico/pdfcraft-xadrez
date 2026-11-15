@@ -154,3 +154,84 @@ fn one_diagram_is_linked_to_a_confirmed_position() {
     let none = s.chess_link_plan(id, &[], &no_model(), &only(7, fen)).unwrap();
     assert!(none.edit.is_none() && none.skipped[0].reason.contains("no such diagram"), "{none:#?}");
 }
+
+/// [`MERIDA_START`] as printed from Black's side: the board turned, its pieces with it.
+fn merida_from_black() -> [String; 8] {
+    std::array::from_fn(|i| MERIDA_START[7 - i].chars().rev().collect())
+}
+
+/// Plan A9-G9 (R3-02): a diagram printed from Black's side links from Black's side
+/// (`?color=black`), the same address whether it is the reading's, a confirmed position's (the
+/// diagram editor's) or the exported document's, and that address is the one written into the PDF.
+#[test]
+fn a_diagram_printed_from_blacks_side_links_from_blacks_side_everywhere() {
+    let black = merida_from_black();
+    let lines: [&str; 8] = std::array::from_fn(|i| black[i].as_str());
+    let (mut s, id) = open(pdf(&font_board(60.0, 60.0, lines), "ChessMerida", None, ""));
+    let read = s.chess_scan(id, &[0], &no_model(), true).unwrap();
+    let position = read[0].readings.as_deref().unwrap()[0].outcome.as_ref().unwrap().clone();
+    assert_eq!(position.printed_from(), pdfcraft_chess::placement::Color::Black, "{position:?}");
+    let url = format!("{START_URL}?color=black");
+    assert_eq!(position.lichess_url().as_deref(), Some(url.as_str()), "the reading's");
+    let plan = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    assert_eq!(plan.links.iter().map(|l| l.url.as_str()).collect::<Vec<_>>(), [url.as_str()], "the label's: {plan:#?}");
+    // The diagram editor's link: the position a person confirmed, from the diagram's side.
+    use crate::chess::links::LinkTarget;
+    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let only = LinkSettings { only: Some(LinkTarget { page: 0, index: 0, fen: fen.into() }), ..LinkSettings::default() };
+    let confirmed = s.chess_link_plan(id, &[], &no_model(), &only).unwrap();
+    assert_eq!(confirmed.links.iter().map(|l| l.url.as_str()).collect::<Vec<_>>(), [url.as_str()], "the confirmed one's: {confirmed:#?}");
+    // The document's: what the exports link to.
+    let doc = s.chess_document(id, &[0], &no_model(), None).unwrap().doc;
+    use pdfcraft_chessvision::doc::Block;
+    let Some(Block::Diagram(d)) = doc.pages[0].blocks.iter().find(|b| matches!(b, Block::Diagram(_))) else { panic!("no diagram") };
+    assert_eq!(d.link().as_deref(), Some(url.as_str()), "the document's");
+    s.apply(id, plan.edit.unwrap()).unwrap();
+    assert_eq!(s.get(id).unwrap().links()[0].action, LinkAction::Uri(url));
+}
+
+/// Plan A9-G9 (A4-09): a diagram whose own label links to another position (a correction changed
+/// it since) gets the new one in place of the old, in one step: one label, one link, the new
+/// address; undone, the old one is back. A lichess link by the diagram with no label of ours is
+/// never taken away: the diagram is skipped.
+#[test]
+fn running_again_replaces_the_diagrams_own_stale_link_and_never_stacks_a_second() {
+    use crate::chess::links::LinkTarget;
+    let (mut s, id) = open(page(60.0, ""));
+    // The label and link of a position confirmed before (White's king on d1 instead of e1).
+    let other = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w kq - 0 1";
+    let only = LinkSettings { only: Some(LinkTarget { page: 0, index: 0, fen: other.into() }), ..LinkSettings::default() };
+    let first = s.chess_link_plan(id, &[], &no_model(), &only).unwrap();
+    let old = first.links[0].url.clone();
+    s.apply(id, first.edit.unwrap()).unwrap();
+    let labels = |s: &Session| {
+        s.get(id).unwrap().added().iter().filter(|a| matches!(&a.content, pdfcraft_edit::Content::Text(t) if t.text == "Analyze on lichess")).count()
+    };
+    assert_eq!((s.get(id).unwrap().links().len(), labels(&s)), (1, 1));
+    // Run again over the reading: the stale label and link are replaced.
+    let plan = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    assert_eq!(plan.links.len(), 1, "{plan:#?}");
+    assert_eq!((plan.links[0].url.as_str(), plan.links[0].replaces.as_deref()), (START_URL, Some(old.as_str())));
+    s.apply(id, plan.edit.unwrap()).unwrap();
+    let links = s.get(id).unwrap().links().to_vec();
+    assert_eq!(links.len(), 1, "one link: {links:?}");
+    assert_eq!(links[0].action, LinkAction::Uri(START_URL.into()));
+    assert_eq!(labels(&s), 1, "one label");
+    // A third run adds nothing.
+    let again = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    assert!(again.edit.is_none() && again.skipped.iter().any(|k| k.reason.contains("already links to this position")), "{again:#?}");
+    // One undo brings the old one back.
+    s.undo(id).unwrap();
+    assert_eq!(s.get(id).unwrap().links()[0].action, LinkAction::Uri(old.clone()));
+    assert_eq!(labels(&s), 1);
+
+    // A lichess link by the diagram that is not one of ours (no label under it): kept, skipped.
+    let (mut s, id) = open(page(60.0, ""));
+    let below = [60.0, 800.0 - 236.0, 140.0, 800.0 - 224.0];
+    let style = pdfcraft_annot::links::LinkStyle::default();
+    s.apply(id, Edit::AddLinks { links: vec![(0, vec![below], old.clone())], style }).unwrap();
+    let plan = s.chess_link_plan(id, &[], &no_model(), &LinkSettings::default()).unwrap();
+    assert!(plan.edit.is_none(), "{plan:#?}");
+    assert!(plan.skipped.iter().any(|k| k.index == 0 && k.reason.contains("already links to another position")), "{plan:#?}");
+    assert_eq!(s.get(id).unwrap().links().len(), 1);
+}
