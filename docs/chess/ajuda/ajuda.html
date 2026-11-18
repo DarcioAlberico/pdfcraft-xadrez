@@ -113,7 +113,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <table>
 <tr><th style="width:32%">Lugar</th><th>Para que serve</th></tr>
 <tr><td>A coluna <b>Xadrez</b> (à direita, no lugar do Inspetor)</td><td>O painel de xadrez, com três abas: <b>Diagramas</b> detecta, lista e revisa os diagramas (capítulos 3 e 4); <b>Texto</b> mostra a página lida como xadrez (capítulo 5); <b>Tabuleiro</b> é o tabuleiro de análise (capítulos 7 a 15). Abre pelo botão de xadrez da barra da direita, por <b>Painel de xadrez</b> no menu <b>Xadrez</b> ou pela pesquisa de comandos (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
-<tr><td>O menu <b>Xadrez</b></td><td><b>Detectar diagramas</b>, <b>Painel de xadrez</b>, <b>Carregar PGN do livro…</b>, <b>Exportar revisão do livro…</b> e <b>Importar revisão de um livro…</b>, <b>Criar os marcadores do livro…</b>, <b>Tabuleiro</b>, <b>Analisar a posição</b>, <b>Exportar livro de xadrez…</b> e <b>Atalhos de xadrez</b>. Tem também <b>Procurar no livro por material…</b> (capítulo 9).</td></tr>
+<tr><td>O menu <b>Xadrez</b></td><td><b>Detectar diagramas</b>, <b>Painel de xadrez</b>, <b>Carregar PGN do livro…</b>, <b>Exportar revisão do livro…</b> e <b>Importar revisão de um livro…</b>, <b>Criar os marcadores do livro…</b>, <b>Tabuleiro</b>, <b>Analisar a posição</b>, <b>Exportar livro de xadrez…</b> e <b>Atalhos de xadrez</b>. Tem também <b>Procurar no livro por material…</b> (capítulo 9) e <b>Conferir com o motor…</b> (capítulo 8).</td></tr>
 <tr><td><b>Ferramentas</b> ▸ <b>Xadrez</b></td><td>O painel, o tabuleiro, a captura, o PGN do livro e a exportação, como ferramentas do painel <b>Ferramentas</b>.</td></tr>
 <tr><td><b>Lista de lances ao lado da página</b></td><td>A partida do tabuleiro como num livro, numa coluna própria ao lado do PDF (capítulo 10).</td></tr>
 <tr><td><b>Xadrez em janela própria</b></td><td>O tabuleiro e as abas numa janela separada, para outro monitor (capítulo 16).</td></tr>
@@ -348,6 +348,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li><b>Carregar PGN do livro…</b>, ou <b>Usar</b> o PGN que está ao lado do PDF (capítulo 6);</li>
 <li><b>Alinhar o livro ao PGN</b> (capítulo 6);</li>
 <li><b>Exportar livro…</b> (capítulo 18);</li>
+<li><b>Conferir com o motor…</b> e, depois de uma conferência, <b>Divergências (n)</b> (capítulo 8);</li>
 <li>por último, em vermelho, <b>Remover PGN do livro</b>.</li>
 </ul>
 <p>Com o PGN do livro, uma linha sob o alto conta os lances da página: “PGN do livro nesta página: 8 confirmados, 0 lidos do PGN, 0 em conflito.” Enquanto a página é lida, a aba diz uma vez <b>Lendo a página…</b>.</p>
@@ -498,6 +499,9 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><code>seta e2e4 vermelho</code>, <code>círculo d5</code></td><td>desenham no tabuleiro</td></tr>
 </table>
 
+<h2>O tabuleiro pelo teclado</h2>
+<p><kbd>Tab</kbd> chega ao tabuleiro, e um anel marca a casa onde o teclado está (e2 no começo, depois a última clicada). As setas andam pelas casas como o tabuleiro é mostrado (do lado das pretas também), e <kbd>Home</kbd> e <kbd>End</kbd> vão às pontas da fileira. <kbd>Enter</kbd> ou <kbd>Espaço</kbd> levanta a peça (“Peça levantada: Cavalo branco em b1”) e, em outra casa, a joga lá, como o clique. Com o teclado no tabuleiro as setas andam pelas casas; no resto do painel continuam passando pelos lances. O leitor de tela acha o tabuleiro como uma grade de 64 casas, cada uma no lugar dela na tela (“e4, Peão branco”; “c3, vazia”), e ouve a casa onde o teclado está. De qualquer ponto dos painéis de xadrez, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> diz as peças, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> as de uma fileira e <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>…<kbd>H</kbd> as de uma coluna, como o <code>p</code>, o <code>r 4</code> e o <code>f e</code> do campo Lance.</p>
+
 <h2>Desenhar no tabuleiro</h2>
 <p>Com o botão direito, como no lichess: um clique circula uma casa, e arrastar desenha uma seta. Segure <kbd>Shift</kbd> para vermelho, <kbd>Alt</kbd> para azul ou <kbd>Ctrl</kbd> para amarelo; sem tecla, a cor é verde. Desenhar a mesma coisa de novo apaga. <kbd>Alt</kbd>+clique em duas casas desenha uma seta sem arrastar (na mesma casa duas vezes, um círculo).</p>
 <p>Os desenhos pertencem ao lance mostrado e voltam quando você volta a ele; cada desenho é um passo de desfazer. No PGN, eles vão no comentário do lance, na convenção do ChessBase e do lichess (<code>{[%csl Rd7][%cal Gd1d7,Gb5d7] texto}</code>), e um PGN com esses comandos mostra os desenhos ao ser carregado, também os do comentário antes do primeiro lance de uma linha. <b>Apagar desenhos</b>, no menu ⋯, tira os desenhos do lance mostrado.</p>
@@ -540,6 +544,11 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <figcaption>O fim da seção <b>Xadrez</b> das Preferências: <b>Modelos de xadrez</b>, <b>Motor de xadrez</b> e o BOM do PGN. <span class="build">build 5e2ae7b 2026-11-18</span></figcaption>
 </figure>
 </div>
+
+<h2>Conferir o livro com o motor</h2>
+<p><b>Conferir com o motor…</b> (no menu ⋯ da aba Texto e no menu <b>Xadrez</b>; só no app de mesa) põe o motor para conferir o que o livro diz. O diálogo pede as páginas e <b>Até a profundidade</b> (18) ou <b>Segundos por posição</b> (0,3). <b>Contar as posições</b> lê as páginas, com uma barra, e diz antes de começar quantas posições o motor vai analisar e quanto tempo isso leva (“Posições a conferir: 12.000 (≈ 1 h)”), deixando de fora as que as avaliações guardadas já têm nessa profundidade.</p>
+<p><b>Começar a conferência</b> roda em segundo plano, com a linha “Conferindo com o motor: posição 5 de 12 (faltam …)” e <b>Parar</b> na aba Texto; o que o motor já achou fica guardado, e <b>Continuar a conferência (faltam n)</b>, no ⋯ e no diálogo, pede só as que faltam. Depois, cada lance da aba Texto mostra a avaliação da posição depois dele, e <b>Divergências (n)</b> (no ⋯ da aba, e um botão no alto dela quando há alguma) mostra a lista no lugar do texto da página: a página como o livro a numera, o que o livro diz, o que o cálculo diz, a fonte (motor ou solucionador de mate) e <b>Mostrar no PDF</b>; ‹ Texto e <kbd>Esc</kbd> voltam.</p>
+<p>A conferência aponta o <code>!</code> que perde mais de 1,5 peão para o lance do motor, o <code>?</code> que é o próprio lance do motor, o sinal de avaliação a duas faixas da avaliação (um <code>+−</code> abaixo de +0,70), o “Brancas jogam e ganham” que a avaliação desmente, o exercício com uma segunda linha que também ganha e o mate em n sem mate ou com mais de uma chave; abaixo da profundidade 18 nada é julgado. Uma divergência pode ser um erro de leitura, e não do livro: confira o diagrama e o lance na página antes de anotar a errata.</p>
 
 <!-- ============================================================ 9 -->
 <h1 id="c9"><span class="num">9</span>No livro: onde a posição aparece</h1>
@@ -930,6 +939,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Desfazer e refazer na partida.</td></tr>
 <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Capturar o texto da área de transferência.</td></tr>
 <tr><td><kbd>Alt</kbd>+clique</td><td>No tabuleiro, em duas casas: uma seta (na mesma casa, um círculo). Num lance impresso na página: abre a partida dele.</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>; <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd>; <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>…<kbd>H</kbd></td><td>Dizem as peças; as de uma fileira; as de uma coluna.</td></tr>
 <tr><td><kbd>F1</kbd></td><td>A folha dos atalhos de xadrez.</td></tr>
 <tr><td><kbd>F6</kbd></td><td><b>Sair do painel de xadrez</b>: leva o teclado para fora dos painéis de xadrez; abaixo de 1.000 pt, alterna a página e a coluna Xadrez.</td></tr>
 </table>
@@ -954,7 +964,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <ul>
 <li>Todo aviso e todo erro do xadrez, na hora; um erro fica até ser dispensado.</li>
 <li>O lance mostrado, a cada mudança: “2. cavalo f3 · variante 1 · com comentário · Bom lance”.</li>
-<li>O tabuleiro de análise pelo nome e pelas peças em palavras (“Tabuleiro, Brancas jogam, lance 7”), nunca a FEN; o tabuleiro do editor como uma grade de casas.</li>
+<li>O tabuleiro de análise pelo nome (“Tabuleiro, Brancas jogam, lance 7”), nunca a FEN, e, como o do editor, como uma grade de casas, com a casa onde o teclado está.</li>
 <li>Cada lance da aba Texto em palavras, com o estado e a ligação ao PGN.</li>
 <li>A linha da lista de diagramas com o estado inteiro.</li>
 </ul>
@@ -1008,7 +1018,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>A barra de progresso ainda não estima o tempo que falta. Ler uma página com OCR não pode ser parado depois de começar.</li>
 <li>No livro não conta os lances que a leitura achou no texto e que nenhum PGN tem, e dá a página onde a partida começa, não a do lance. A prévia do tabuleiro ao parar o ponteiro sobre um lance impresso na página ainda não existe.</li>
 <li>Uma partida que a linha de comando, outra janela ou uma revisão importada mudou ou apagou com o documento aberto só aparece assim quando você reabre o documento (as acrescentadas entram na hora).</li>
-<li>Criar os marcadores de novo acrescenta outra árvore. A lista de erratas e o livro × motor só existem pelas ferramentas.</li>
+<li>Criar os marcadores de novo acrescenta outra árvore. A lista de erratas só existe pelas ferramentas.</li>
 <li>Pelo app, a folha de exercícios sai só em A4 (Carta, pela ferramenta). A legenda e o enunciado dos exercícios ainda não dizem o objetivo impresso (“e ganham”). Nos cartões do Anki, as figuras são copiadas à mão para a <code>collection.media</code>.</li>
 <li>As notas de uma exportação e o motivo de uma folha recusada continuam em inglês.</li>
 <li>Num livro criptografado, a leitura da aba Texto ainda não é guardada, mesmo depois de <b>Guardar</b>. Nenhum botão do app limpa a leitura guardada; só a ferramenta <code>chess_cache_clear</code>.</li>
