@@ -3969,6 +3969,52 @@ progress bar	Progress	Tiến độ
 	Open game {n} on the board at {move}	Mở ván {n} trên bàn cờ tại {move}
 	Only the pieces were compared: the side to move isn't printed.	Chỉ so sánh các quân: lượt đi không được in.
 	The first {n} are listed.	Đã liệt kê {n} mục đầu tiên.
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Kiểm tra bằng engine…
+	Check with the engine	Kiểm tra bằng engine
+	Count the positions	Đếm các thế cờ
+	Reading the pages: page {done} of {of}	Đang đọc các trang: trang {done} / {of}
+	Positions to check: {n} ({time})	Thế cờ cần kiểm tra: {n} ({time})
+	Checked before at this depth, left out: {n}	Đã kiểm tra ở độ sâu này, bỏ qua: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Không có gì để kiểm tra: phần đánh giá đã có mọi thế cờ ở độ sâu này.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Các trang có nhiều thế cờ hơn {max} thế mà phần đánh giá giữ cho mỗi tài liệu: chỉ {max} thế đầu tiên được kiểm tra, và các đánh giá cũ hơn nhường chỗ.
+	Search each position	Phân tích mỗi thế cờ
+	To depth	Đến độ sâu
+	Seconds each	Số giây mỗi thế cờ
+	Start the check	Bắt đầu kiểm tra
+	Continue the check ({n} left)	Tiếp tục kiểm tra (còn {n})
+	≈ {m} min	≈ {m} phút
+	≈ {h} h	≈ {h} giờ
+	≈ {h} h {m} min	≈ {h} giờ {m} phút
+	Checking with the engine: position {done} of {of} ({time} left)	Đang kiểm tra bằng engine: thế cờ {done} / {of} (còn {time})
+	A check with the engine is already running: stop it first.	Đã có một lần kiểm tra bằng engine đang chạy: hãy dừng nó trước.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Kiểm tra xong. Số thế cờ đã kiểm tra: {n}. Chỗ khác nhau: {d}.
+	Positions the engine gave no answer for: {n}	Thế cờ engine không trả lời: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Đã dừng kiểm tra: đã kiểm tra {done} / {of} thế cờ. Những gì tìm được vẫn được giữ.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Những gì engine tìm được vẫn được giữ: Tiếp tục kiểm tra sẽ làm tiếp từ đó.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Engine không trả lời {n} thế cờ liên tiếp, nên đã dừng kiểm tra. Những gì nó tìm được vẫn được giữ.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Đã dừng kiểm tra {name}: tài liệu đã bị đóng. Những gì engine tìm được vẫn được giữ.
+	The engine's evaluations could not be kept: {why}	Không giữ được các đánh giá của engine: {why}
+	Divergences ({n})	Chỗ khác nhau ({n})
+	‹ Text	‹ Văn bản
+	Back to the page's text (Esc)	Quay lại văn bản của trang (Esc)
+	No divergence in what was checked.	Không có chỗ khác nhau nào trong phần đã kiểm tra.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Chưa đánh giá: {none} không có đánh giá, {shallow} tìm quá nông.
+	The book says: {what}	Sách nói: {what}
+	The calculation says: {what}	Tính toán nói: {what}
+	Engine	Engine cờ vua
+	Solver	Bộ giải
+	{value}: lets a mate go	{value}: bỏ lỡ một nước chiếu hết
+	{value}: loses {pawns} pawns to {best}	{value}: mất {pawns} tốt so với {best}
+	{value}: loses {pawns} pawns	{value}: mất {pawns} tốt
+	{value}: loses only {pawns} pawns	{value}: chỉ mất {pawns} tốt
+	{value}: the engine's best move	{value}: nước đi tốt nhất của engine
+	another solution: {move} {value}	lời giải khác: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Hỏi engine về mọi nước đi có ký hiệu và mọi sơ đồ của các trang bạn chọn, rồi liệt kê những chỗ sách và tính toán không khớp nhau.
+	Engine: {value} (depth {d})	Engine: {value} (độ sâu {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Khi tìm theo thời gian, một thế cờ có thể chưa đạt độ sâu {d}, mức mà báo cáo không đánh giá; kiểm tra đến độ sâu {d} sẽ hỏi lại thế cờ đó.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Phân tích trên bàn cờ cũng đang bật: khi engine của nó tìm, hai engine dùng chung bộ xử lý.
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	Tìm trong sách theo lực lượng…
 	Look for	Tìm
