@@ -227,7 +227,7 @@ fn count(h: &mut Harness<'static, PdfCraftApp>) -> String {
     text_menu_item(h, "Check with the engine…");
     h.get_by_label("Count the positions").click();
     h.run_steps(3);
-    said(&h, "Positions to check: ")
+    said(h, "Positions to check: ")
 }
 
 /// The text of the first node whose text holds `part` (a label's, or its value).
