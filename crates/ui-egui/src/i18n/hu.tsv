@@ -3660,6 +3660,8 @@ progress bar	Progress	Előrehaladás
 	Illegal move: {move} can't be played here.	Szabálytalan lépés: {move} itt nem játszható.
 	{move} is not a move.	{move} nem lépés.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Nyíl innen: {from}. Alt+kattintson a célmezőre, vagy ismét erre egy körhöz.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Szabálytalan lépés: {move} nem egyértelmű, lehet {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Szabálytalan lépés: {move} esetén meg kell adni, mivé alakul a gyalog, például {example}.
 	exercises	feladatok
 	Exercise sheet (PDF)	Feladatlap (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	A könyv számozott diagramjai egy új, nyomtatható PDF-ben, oldalanként 4, 6 vagy 9, a végén a megoldásokkal.

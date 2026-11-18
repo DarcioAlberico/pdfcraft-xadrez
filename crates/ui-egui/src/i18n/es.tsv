@@ -3802,6 +3802,8 @@ progress bar	Progress	Progreso
 	Illegal move: {move} can't be played here.	Jugada ilegal: {move} no se puede jugar aquí.
 	{move} is not a move.	{move} no es una jugada.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flecha desde {from}: Alt+clic en la casilla de destino, o de nuevo en esta para un círculo.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Jugada ilegal: {move} es ambigua, podría ser {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Jugada ilegal: {move} necesita la pieza en que se convierte el peón, como en {example}.
 	exercises	ejercicios
 	Exercise sheet (PDF)	Hoja de ejercicios (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Los diagramas numerados del libro en un PDF nuevo para imprimir, 4, 6 o 9 por página, con sus soluciones al final.

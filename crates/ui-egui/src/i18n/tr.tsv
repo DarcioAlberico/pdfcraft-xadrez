@@ -3657,6 +3657,8 @@ progress bar	Progress	İlerleme
 	Illegal move: {move} can't be played here.	Kurala aykırı hamle: {move} burada oynanamaz.
 	{move} is not a move.	{move} bir hamle değil.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} karesinden ok: gideceği kareye Alt+tıklayın ya da daire için bu kareye yeniden tıklayın.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Kurala aykırı hamle: {move} belirsiz, {moves} olabilir.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Kurala aykırı hamle: {move} için piyonun dönüşeceği taş gerekir, örneğin {example}.
 	exercises	alıştırmalar
 	Exercise sheet (PDF)	Alıştırma sayfası (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Kitabın numaralı diyagramları, yazdırmak için yeni bir PDF'de, sayfa başına 4, 6 veya 9, sonda çözümleriyle.

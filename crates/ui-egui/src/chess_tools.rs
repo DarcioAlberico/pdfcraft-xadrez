@@ -740,6 +740,10 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     chess.tools.keys.clear();
     chess.games.drop_list_keys();
     let shown = std::mem::take(&mut chess.tools.rail_shown);
+    // No panel since the last frame: nothing will take a request for the Move field (plan A9-N7a2).
+    if !shown {
+        chess.move_field.focus = false;
+    }
     // Enter applies a capture waiting for the user, before anything else can use it (T7b).
     crate::chess_capture::take_enter(chess, &mut raw.events, blocked || ctx.text_edit_focused());
     let free = !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx);
@@ -1099,7 +1103,15 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     }
     let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, top), area.max);
     let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
+    // M asked for the Move field before the panel was drawn: a request the panel did not take (the
+    // field was not shown: another tab, a pawn waiting for its piece) is dropped, so it never takes
+    // the keyboard on a later frame or another tab (plan A9-N7a2). One the panel makes (its
+    // button) is taken on the next frame.
+    let asked_field = chess.move_field.focus;
     let out = body(&mut body_ui, chess);
+    if asked_field {
+        chess.move_field.focus = false;
+    }
     // The glyph palette floats over the window the rail is in (U1).
     let anchor = chess.tools.palette_anchor;
     chess_annotate::palette_window(ui.ctx(), chess, anchor);
@@ -1445,6 +1457,8 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
             let board = chess.board_mut();
             board.selected = None;
             board.promotion = None;
+            // And an Alt+click arrow's start (plan A9-N7a2).
+            board.forget_arrow();
         }
         return;
     }

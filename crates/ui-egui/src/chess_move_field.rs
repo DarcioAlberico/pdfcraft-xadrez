@@ -18,8 +18,9 @@
 
 use egui::Key;
 use pdfcraft_engine::chess::pdfcraft_chess::describe::{self, Naming};
-use pdfcraft_engine::chess::pdfcraft_chess::placement::{PieceKind, Placement, Square};
-use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError};
+use pdfcraft_engine::chess::pdfcraft_chess::placement::{Piece, PieceKind, Placement, Square};
+use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, SanBody, Style};
 
 use crate::chess_board_ui::{BoardState, Mark, MarkColor};
 use crate::notice::Level;
@@ -50,6 +51,8 @@ pub(crate) fn width_in(room: f32, end: f32) -> Option<f32> {
 #[derive(Debug, Default)]
 pub struct MoveField {
     pub text: String,
+    /// M asked for the keyboard here: taken when the field is drawn, dropped when the panel was
+    /// drawn without it (plan A9-N7a2, `chess_tools::with_rail`).
     pub(crate) focus: bool,
     /// Why the last line could not be done, until the line is changed.
     pub(crate) error: Option<String>,
@@ -230,23 +233,84 @@ pub(crate) fn draw(state: &mut BoardState, mark: Mark) -> String {
 }
 
 /// Play the move `text` (SAN in `lang` or English, or UCI) on the move shown, as a click plays it.
+/// A move refused says why: an ambiguous one names the moves it could be, and a pawn reaching the
+/// last rank with no piece asks for one (plan A9-N7a2).
 fn play(state: &mut BoardState, text: &str, lang: Lang) -> Result<String, String> {
     let illegal = || crate::i18n::fmt(tl!("Illegal move: {move} can't be played here."), &[("move", text)]);
-    let mut probe = state.game.clone();
-    let played = if is_uci(text) {
-        probe.play_uci(text).is_ok()
-    } else {
-        let san = San::read(text, lang)
-            .or_else(|_| San::read(text, Lang::En))
-            .map_err(|_| crate::i18n::fmt(tl!("{move} is not a move."), &[("move", text)]))?;
-        let english = san.write(Lang::En, Style::Letters);
-        probe.play_san(&english).is_ok()
+    let needs_piece = |example: &str| {
+        crate::i18n::fmt(tl!("Illegal move: {move} needs the piece the pawn becomes, as in {example}."), &[("move", text), ("example", example)])
     };
+    let mut probe = state.game.clone();
+    if is_uci(text) {
+        match probe.play_uci(text) {
+            Ok(()) => {}
+            Err(GameError::NeedsPromotion) => return Err(needs_piece(&format!("{}q", text.trim()))),
+            Err(_) => return Err(illegal()),
+        }
+    } else {
+        let (san, letters) = match San::read(text, lang) {
+            Ok(san) => (san, lang),
+            Err(_) => (San::read(text, Lang::En).map_err(|_| crate::i18n::fmt(tl!("{move} is not a move."), &[("move", text)]))?, Lang::En),
+        };
+        if probe.play_san(&san.write(Lang::En, Style::Letters)).is_err() {
+            return Err(match refused(&state.game, &san, letters) {
+                Some(Refused::Ambiguous(moves)) => {
+                    crate::i18n::fmt(tl!("Illegal move: {move} is ambiguous, it could be {moves}."), &[("move", text), ("moves", &moves.join(", "))])
+                }
+                Some(Refused::NeedsPiece(example)) => needs_piece(&example),
+                None => illegal(),
+            });
+        }
+    }
     let at = probe.current();
-    let (true, Some((from, to))) = (played, probe.move_at(at)) else { return Err(illegal()) };
+    let Some((from, to)) = probe.move_at(at) else { return Err(illegal()) };
     let promotion = promotion_of(probe.san(at));
     state.play_typed(from, to, promotion);
     Ok(String::new())
+}
+
+/// Why a move typed in SAN can't be played, when it is more than "not legal here".
+#[derive(Debug, PartialEq, Eq)]
+enum Refused {
+    /// More than one piece can make it: the moves it could be, in `letters`.
+    Ambiguous(Vec<String>),
+    /// A pawn reaching the last rank with no piece named: the move with a queen, in `letters`.
+    NeedsPiece(String),
+}
+
+/// Why `san` can't be played on `game`'s move shown, written in `letters`: the pieces of the side
+/// to move that could make it, as typed (its file or rank when given), are more than one, or one
+/// pawn promoting with no piece named. `None` for any other reason.
+fn refused(game: &Game, san: &San, letters: Lang) -> Option<Refused> {
+    let SanBody::Move { piece, from_file, from_rank, capture, to, promotion } = san.body else { return None };
+    let want = Piece::new(game.side_to_move(), piece.unwrap_or(PieceKind::Pawn));
+    let from: Vec<Square> = game
+        .placement()
+        .pieces()
+        .filter(|(sq, p)| *p == want && from_file.is_none_or(|f| f == sq.file()) && from_rank.is_none_or(|r| r == sq.rank()))
+        .map(|(sq, _)| sq)
+        .filter(|sq| game.targets(*sq).contains(&to))
+        .collect();
+    let written = |english: &str| San::read(english, Lang::En).map(|s| s.write(letters, Style::Letters)).unwrap_or_else(|_| english.to_owned());
+    match from.as_slice() {
+        [one] if piece.is_none() && promotion.is_none() && game.is_promotion(*one, to) => {
+            let queen =
+                San { body: SanBody::Move { piece, from_file, from_rank, capture, to, promotion: Some(PieceKind::Queen) }, suffix: String::new() };
+            Some(Refused::NeedsPiece(queen.write(letters, Style::Letters)))
+        }
+        [_, _, ..] => {
+            let moves = from
+                .iter()
+                .filter_map(|&sq| {
+                    let mut each = game.clone();
+                    each.play(sq, to, promotion).ok()?;
+                    Some(written(each.san(each.current())))
+                })
+                .collect();
+            Some(Refused::Ambiguous(moves))
+        }
+        _ => None,
+    }
 }
 
 /// The button the field waits behind while the engine's state has the navigation row's end: it
@@ -325,6 +389,70 @@ mod tests {
         assert!(is_uci("e7e8q") && is_uci("g1f3") && !is_uci("e7e8k") && !is_uci("Nf3") && !is_uci("e2e9"));
         assert_eq!(promotion_of("exd8=N+"), Some(PieceKind::Knight));
         assert_eq!(promotion_of("Nf3"), None);
+    }
+
+    /// `line` typed on a board at `fen`: what is said (or why not), and the move shown after.
+    fn typed(fen: &str, line: &str) -> (Result<String, String>, String) {
+        let mut state = BoardState::default();
+        state.load_fen(fen, false, None);
+        let said = parse(line).map_or_else(|| Err("nothing typed".to_owned()), |t| run(&mut state, t));
+        (said, state.game.san(state.game.current()).to_owned())
+    }
+
+    const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    /// Plan A9-N7a2 (review of #405): a promotion typed with "=", without it and in UCI, and castling
+    /// in letters, in zeros and as the king's two steps, are played.
+    #[test]
+    fn promotions_and_castling_typed_are_played() {
+        let promote = "k7/4P3/8/8/8/8/8/4K3 w - - 0 1";
+        for line in ["e8=Q", "e8Q", "e7e8q", "e7e8Q"] {
+            assert_eq!(typed(promote, line), (Ok(String::new()), "e8=Q+".into()), "{line}");
+        }
+        assert_eq!(typed(promote, "e8=N"), (Ok(String::new()), "e8=N".into()));
+        let castle = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+        for line in ["O-O", "0-0", "e1g1", "o-o"] {
+            assert_eq!(typed(castle, line), (Ok(String::new()), "O-O".into()), "{line}");
+        }
+        assert_eq!(typed(castle, "O-O-O"), (Ok(String::new()), "O-O-O".into()));
+        assert_eq!(typed(castle, "e1c1"), (Ok(String::new()), "O-O-O".into()));
+    }
+
+    /// Plan A9-N7a2 (review of #405; the N7a card: "lance ilegal" with the reason): an ambiguous move
+    /// names the moves it could be, and a pawn reaching the last rank with no piece asks for one;
+    /// with the piece's file the move is played. Before, both were "can't be played here".
+    #[test]
+    fn an_ambiguous_move_or_a_promotion_without_a_piece_says_why() {
+        let knights = "4k3/8/8/8/8/5N2/8/1N2K3 w - - 0 1";
+        assert_eq!(typed(knights, "Nd2"), (Err("Illegal move: Nd2 is ambiguous, it could be Nbd2, Nfd2.".into()), String::new()));
+        assert_eq!(typed(knights, "Nbd2"), (Ok(String::new()), "Nbd2".into()));
+        assert_eq!(typed(knights, "Nfd2"), (Ok(String::new()), "Nfd2".into()));
+        // Two knights on one file: the file is not enough, the rank is.
+        let file = "4k3/8/8/8/8/1N6/8/1N2K3 w - - 0 1";
+        assert_eq!(typed(file, "Nbd2"), (Err("Illegal move: Nbd2 is ambiguous, it could be N1d2, N3d2.".into()), String::new()));
+        assert_eq!(typed(file, "N3d2"), (Ok(String::new()), "N3d2".into()));
+        let promote = "k2r4/4P3/8/8/8/8/8/4K3 w - - 0 1";
+        assert_eq!(typed(promote, "e8"), (Err("Illegal move: e8 needs the piece the pawn becomes, as in e8=Q.".into()), String::new()));
+        assert_eq!(typed(promote, "exd8"), (Err("Illegal move: exd8 needs the piece the pawn becomes, as in exd8=Q.".into()), String::new()));
+        assert_eq!(typed(promote, "e7e8"), (Err("Illegal move: e7e8 needs the piece the pawn becomes, as in e7e8q.".into()), String::new()));
+        // Any other refusal is the plain one.
+        assert_eq!(typed(START, "Nf4"), (Err("Illegal move: Nf4 can't be played here.".into()), String::new()));
+        assert_eq!(typed(START, "e2e5"), (Err("Illegal move: e2e5 can't be played here.".into()), String::new()));
+    }
+
+    /// Plan A9-N7a2 (review of #405): what is not ASCII is refused, never a panic: a Cyrillic letter
+    /// that looks like a piece's, an emoji, wide digits, and characters cut by the commands' squares.
+    /// A figurine is a piece in every language ([`San::read`]), so `♘f3` is a move and `♘f4` is not.
+    #[test]
+    fn what_is_not_ascii_is_refused_without_a_panic() {
+        assert_eq!(typed(START, "Сf3"), (Err("Сf3 is not a move.".into()), String::new()));
+        assert_eq!(typed(START, "🐴f3"), (Err("🐴f3 is not a move.".into()), String::new()));
+        assert_eq!(typed(START, "♘f3"), (Ok(String::new()), "Nf3".into()));
+        assert_eq!(typed(START, "♘f4"), (Err("Illegal move: ♘f4 can't be played here.".into()), String::new()));
+        for line in ["😀", "e2é4", "ｅ２ｅ４", "f ｅ", "r ９", "arrow 😀😀", "arrow é2e4", "circle 😀", "e7e8😀"] {
+            let (said, shown) = typed(START, line);
+            assert!(said.is_err() && shown.is_empty(), "{line}: {said:?} {shown}");
+        }
     }
 
     /// The field's width in the navigation row (plan A9-N7a): never under its narrowest nor over

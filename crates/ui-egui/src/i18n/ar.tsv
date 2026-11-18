@@ -3934,6 +3934,8 @@ progress bar	Progress	التقدم
 	Illegal move: {move} can't be played here.	نقلة غير قانونية: لا يمكن لعب {move} هنا.
 	{move} is not a move.	{move} ليست نقلة.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	سهم من {from}: انقر مع Alt على المربع الذي يذهب إليه، أو على هذا مرة أخرى لرسم دائرة.
+	Illegal move: {move} is ambiguous, it could be {moves}.	نقلة غير قانونية: {move} ملتبسة، قد تكون {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	نقلة غير قانونية: {move} تحتاج إلى القطعة التي يصبحها البيدق، مثل {example}.
 	exercises	تمارين
 	Exercise sheet (PDF)	ورقة تمارين (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	مخططات الكتاب المرقّمة في ملف PDF جديد للطباعة، 4 أو 6 أو 9 في الصفحة، مع حلولها في النهاية.

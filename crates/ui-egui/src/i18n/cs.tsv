@@ -3735,6 +3735,8 @@ progress bar	Progress	Průběh
 	Illegal move: {move} can't be played here.	Nepřípustný tah: {move} zde nelze zahrát.
 	{move} is not a move.	{move} není tah.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Šipka z {from}: Alt+klikněte na cílové pole, nebo znovu na toto pro kruh.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nepřípustný tah: {move} je nejednoznačný, může to být {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nepřípustný tah: {move} potřebuje kámen, v který se pěšec promění, například {example}.
 	exercises	cvičení
 	Exercise sheet (PDF)	List cvičení (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Číslované diagramy knihy v novém PDF k tisku, 4, 6 nebo 9 na stránku, s řešeními na konci.

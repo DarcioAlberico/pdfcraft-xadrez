@@ -3673,3 +3673,6 @@ the move's comment	Move comment	Σχόλιο της κίνησης
 	{why} (chess OCR needs the chess-glyphs model)	{why} (το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs)
 	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	Το «{name}» είναι κρυπτογραφημένο. Η εφαρμογή φυλάσσει τις διορθώσεις διαγραμμάτων, το PGN του βιβλίου και τις παρτίδες σκακιού κάθε εγγράφου χωρίς κρυπτογράφηση σε αυτόν τον υπολογιστή, ώστε να επιστρέφουν όταν ανοίγετε ξανά το έγγραφο· τα δείγματα χαρακτήρων πηγαίνουν στον φάκελο που επιλέχθηκε για αυτά.
 progress bar	Progress	Πρόοδος
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	Αντικανονική κίνηση: το {move} είναι διφορούμενο, μπορεί να είναι {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Αντικανονική κίνηση: το {move} χρειάζεται το κομμάτι στο οποίο προάγεται το πιόνι, όπως στο {example}.

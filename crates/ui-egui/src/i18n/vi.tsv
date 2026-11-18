@@ -3911,6 +3911,8 @@ progress bar	Progress	Tiến độ
 	Illegal move: {move} can't be played here.	Nước đi không hợp lệ: không thể đi {move} ở đây.
 	{move} is not a move.	{move} không phải là nước đi.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Mũi tên từ {from}: Alt+nhấp ô đích, hoặc nhấp lại ô này để khoanh tròn.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nước đi không hợp lệ: {move} chưa rõ ràng, có thể là {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nước đi không hợp lệ: {move} cần quân mà tốt phong thành, ví dụ {example}.
 	exercises	bài tập
 	Exercise sheet (PDF)	Tờ bài tập (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Các sơ đồ được đánh số của sách trong một PDF mới để in, 4, 6 hoặc 9 mỗi trang, kèm lời giải ở cuối.

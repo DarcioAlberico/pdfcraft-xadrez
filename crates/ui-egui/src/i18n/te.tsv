@@ -3579,3 +3579,6 @@ the move's comment	Move comment	ఎత్తు వ్యాఖ్య
 	{why} (chess OCR needs the chess-glyphs model)	{why} (చదరంగం OCRకు chess-glyphs మోడల్ అవసరం)
 	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	“{name}” ఎన్‌క్రిప్ట్ చేయబడింది. పత్రాన్ని మళ్లీ తెరిచినప్పుడు తిరిగి రావడానికి, యాప్ ప్రతి పత్రం రేఖాచిత్ర సవరణలు, పుస్తకం PGN, చదరంగం ఆటలను ఈ కంప్యూటర్‌లో ఎన్‌క్రిప్ట్ చేయకుండా ఉంచుతుంది; అక్షరాల నమూనాలు వాటి కోసం ఎంచుకున్న ఫోల్డర్‌కు వెళ్తాయి.
 progress bar	Progress	పురోగతి
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	చెల్లని ఎత్తు: {move} అస్పష్టం, అది {moves} కావచ్చు.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	చెల్లని ఎత్తు: {move}కు బంటు ఏ పావుగా మారుతుందో చెప్పాలి, ఉదాహరణకు {example}.

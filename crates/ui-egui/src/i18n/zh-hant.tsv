@@ -3620,3 +3620,6 @@ the move's comment	Move comment	此著法的評論
 	{why} (chess OCR needs the chess-glyphs model)	{why}（西洋棋 OCR 需要 chess-glyphs 模型）
 	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	「{name}」已加密。應用程式會將每份文件的棋圖更正、本書的 PGN 與西洋棋對局以未加密形式保存在這台電腦上，以便再次開啟文件時能找回；字元樣本則存放到為其選擇的資料夾。
 progress bar	Progress	進度
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	非法著法：{move} 有歧義，可能是 {moves}。
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	非法著法：{move} 需指定兵升變成的棋子，例如 {example}。
