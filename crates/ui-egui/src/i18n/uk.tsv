@@ -2522,6 +2522,7 @@ animation effects	Off	Вимкнено
 	Black knight	Чорний кінь
 	Black pawn	Чорний пішак
 	White	Білі
+chess side	Black	Чорні
 	Board: {fen}	Дошка: {fen}
 	Board, {state}, move {n}	Дошка, {state}, хід {n}
 	Board, {state}	Дошка, {state}

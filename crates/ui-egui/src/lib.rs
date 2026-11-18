@@ -3358,6 +3358,9 @@ impl eframe::App for PdfCraftApp {
                 self.fonts_cjk = cjk;
             }
         }
+        // The fonts egui lays out with this pass, looked at every pass so a change undone while the
+        // Text tab was hidden still counts (plan A9-I9c).
+        theme::fonts_generation(ctx);
         self.sync_theme(ctx);
         let native = ctx.native_pixels_per_point().unwrap_or(1.0);
         ui_scale::sync(ctx, ui_scale::zoom(self.ui_scale, self.system_text_scale, native), &mut self.ui_scale_applied);

@@ -2474,6 +2474,7 @@ animation effects	Off	Wyłączone
 	Black knight	Czarny skoczek
 	Black pawn	Czarny pion
 	White	Białe
+chess side	Black	Czarne
 	Board: {fen}	Szachownica: {fen}
 	Board, {state}, move {n}	Szachownica, {state}, ruch {n}
 	Board, {state}	Szachownica, {state}

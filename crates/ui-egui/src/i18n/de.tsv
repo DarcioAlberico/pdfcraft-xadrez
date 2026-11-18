@@ -2501,6 +2501,7 @@ animation effects	Off	Aus
 	Black knight	Schwarzer Springer
 	Black pawn	Schwarzer Bauer
 	White	Weiß
+chess side	Black	Schwarz
 	Board: {fen}	Brett: {fen}
 	Board, {state}, move {n}	Brett, {state}, Zug {n}
 	Board, {state}	Brett, {state}
