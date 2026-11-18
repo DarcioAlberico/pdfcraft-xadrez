@@ -338,6 +338,13 @@ impl PlacementKey {
     pub fn words(self) -> [u64; 4] {
         self.0
     }
+
+    /// The key whose bits are `words` ([`Self::words`]): a key kept on disk read back (plan
+    /// A9-N15a, the Library's index). Any words make a key; one that no placement gives (a nibble
+    /// that is no piece) is equal to no placement's key, so it matches nothing.
+    pub fn from_words(words: [u64; 4]) -> PlacementKey {
+        PlacementKey(words)
+    }
 }
 
 /// A piece as four bits, never 0 (an empty square): 1–6 White's, 9–14 Black's.

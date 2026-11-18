@@ -4877,3 +4877,59 @@ fn chess_engine_review_lists_where_the_book_and_the_computation_disagree() {
     assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N15a: `chess_library_build` indexes the books of a folder inside the root (the same
+/// content under two names is one book with both paths), a second call reads none again,
+/// `chess_library_status` lists them and `chess_library_clear` takes out one or all; every folder
+/// is confined to the root, and the app's Library outside it is said and never made.
+#[test]
+fn the_library_is_built_listed_and_cleared_inside_the_root() {
+    let (base, root) = workdir("library");
+    let books = root.join("books");
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chess_pdf()).unwrap();
+    std::fs::write(books.join("b.pdf"), chess_pdf_with(&MERIDA_START, Some("1.e4 e5 2.Nf3 Nc6"))).unwrap();
+    std::fs::write(books.join("copy.pdf"), chess_pdf()).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let args = json!({ "dirs": ["books"], "library": "lib", "models_dir": "models", "workers": 1 });
+    let built = ok(&mut a, "chess_library_build", args.clone());
+    let listed = built["books"].as_array().unwrap();
+    assert_eq!(listed.len(), 2, "{built:#}");
+    assert_eq!(built["read"], 2);
+    assert!(listed.iter().all(|b| b["state"] == "indexed" && b["run"]["current"] == false), "{built:#}");
+    let paths: Vec<Vec<String>> =
+        listed.iter().map(|b| b["paths"].as_array().unwrap().iter().map(|p| p.as_str().unwrap().replace('\\', "/")).collect()).collect();
+    assert_eq!(paths, [vec!["books/a.pdf".to_owned(), "books/copy.pdf".to_owned()], vec!["books/b.pdf".to_owned()]]);
+    assert_eq!(built["library"], "lib");
+    assert!(listed[1]["counts"]["moves"].as_u64().unwrap() >= 4, "{built:#}");
+    // Again: nothing read.
+    let again = ok(&mut a, "chess_library_build", args.clone());
+    assert_eq!((again["read"].as_u64(), again["pages"]["scanned"].as_u64()), (Some(0), Some(0)), "{again:#}");
+    let status = ok(&mut a, "chess_library_status", json!({ "library": "lib" }));
+    assert_eq!((status["indexes"].as_u64(), status["states"]["indexed"].as_u64()), (Some(2), Some(2)), "{status:#}");
+    assert!(status["books"].as_array().unwrap().iter().all(|b| b["index"] == true));
+    // Confined: a folder, the Library or the models outside the root are refused.
+    let outside = base.join("outside").to_string_lossy().into_owned();
+    for (key, value) in [("dirs", json!([outside.clone()])), ("library", json!(outside.clone())), ("models_dir", json!(outside.clone()))] {
+        let mut args = args.clone();
+        args[key] = value;
+        assert!(a.call("chess_library_build", &args).is_err(), "{key} outside the root accepted");
+    }
+    assert!(a.call("chess_library_clear", &json!({ "library": outside })).is_err());
+    // One book cleared by its path: read again by the next build.
+    let one = ok(&mut a, "chess_library_clear", json!({ "library": "lib", "book": "books/b.pdf" }));
+    assert_eq!(one["indexes"], 1, "{one:#}");
+    assert_eq!(ok(&mut a, "chess_library_build", args.clone())["read"], 1);
+    let all = ok(&mut a, "chess_library_clear", json!({ "library": "lib" }));
+    assert_eq!(all["indexes"], 2, "{all:#}");
+    assert_eq!(ok(&mut a, "chess_library_status", json!({ "library": "lib" }))["indexes"], 0);
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    // The app's Library outside the root: said, never made, building and clearing refused.
+    let app = base.join("app-data");
+    let mut confined = Automation::new().with_chess_data(Some(app.clone()), None).with_root(&root).unwrap();
+    assert_eq!(ok(&mut confined, "chess_library_status", json!({}))["outside_root"], true);
+    assert!(confined.call("chess_library_build", &json!({ "dirs": ["books"], "models_dir": "models" })).is_err());
+    assert!(confined.call("chess_library_clear", &json!({})).is_err());
+    assert!(!app.exists(), "the app's folder was not made");
+    let _ = std::fs::remove_dir_all(base);
+}
