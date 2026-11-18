@@ -254,6 +254,8 @@ struct DocCache {
     by_key: std::collections::HashMap<page_key::PageKey, std::collections::BTreeSet<usize>>,
     /// Results held, at most [`MAX_CACHED_PAGES`].
     len: usize,
+    /// Moves each time a result it did not hold comes in ([`Session::chess_cache_revision`]).
+    revision: u64,
 }
 
 impl DocCache {
@@ -457,6 +459,8 @@ impl ChessCache {
         }
         let tick = self.tick();
         let d = self.docs.entry(doc).or_default();
+        // A result the page holds already, kept again as made in this state, is nothing new.
+        let held = d.pages.get(&page).is_some_and(|list| list.iter().any(|e| Arc::ptr_eq(&e.result, &result)));
         // What this replaces: the page's scan in this state, or its scan of the same content in
         // another state. (Pages that draw the same, blank ones say, keep an entry each.)
         d.remove_where(page, |e| {
@@ -464,6 +468,9 @@ impl ChessCache {
             e.params.same_state(&params) || (same_scan && key.is_some() && e.key == key)
         });
         d.insert(CacheEntry { page, key, params, result }, tick);
+        if !held {
+            d.revision = d.revision.wrapping_add(1);
+        }
         d.evict(page);
     }
 
@@ -1723,6 +1730,16 @@ impl Session {
     /// a job read anew, for tests and measurements.
     pub fn chess_scanned(&self) -> usize {
         self.chess.scanned
+    }
+
+    /// A count that moves each time this session's cache takes a result for document `id` that it
+    /// did not hold: a scan's, or one a job's session read and gave back
+    /// ([`Self::prime_chess_cache`]). Answering from the cache, or keeping what it holds as made in
+    /// another state, leaves it. What was read of the document may have grown when it moved: the
+    /// app lists the diagrams read once per count (plan A9-N3, the Board's In the book). 0 for a
+    /// document the cache holds nothing of.
+    pub fn chess_cache_revision(&self, id: DocId) -> u64 {
+        self.chess.docs.get(&id).map_or(0, |d| d.revision)
     }
 
     /// The content keys of `pages` of document `id` in its current state (`None` for a page

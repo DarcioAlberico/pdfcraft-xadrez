@@ -3696,3 +3696,28 @@ progress bar	Progress	進行状況
 	Fantasy	ファンタジー
 	Spatial	立体
 	Celtic	ケルト
+# A9-N3: the Board tab's In the book (n)
+	In the book	本の中
+	In the book ({n})	本の中 ({n})
+	Where the position shown is in the book, and what the book plays from it	表示中の局面が本のどこにあり、本がそこから何を指すか
+	Looking for the position in the book…	本の中で局面を探しています…
+	Read the book (Detect diagrams or Text) to search.	検索するには本を読み取ってください（局面図を検出 または テキスト）。
+	This position does not appear in the book as read.	この局面は読み取った本には出てきません。
+	The book's PGN	本の PGN
+	Pages read: {r} of {p}	読み取ったページ: {r} / {p}
+	Found: {n}	見つかった数: {n}
+	transpositions: {n}	トランスポジション: {n}
+	The book plays here	本がここで指す手
+	Variation	変化
+	Games: {n}	対局: {n}
+	from p. {page}	{page} ページから
+	Play {move} on the board	盤上で {move} を指す
+	Castling isn't allowed on this board.	この盤ではキャスリングできません。
+	En passant isn't possible on this board.	この盤ではアンパッサンできません。
+	Not legal on this board.	この盤では指せない手です。
+	Counted in the first {n} games that reach it.	この局面に至る最初の {n} 局で数えました。
+	Where in the book	本のどこに
+	transposition	トランスポジション
+	Open game {n} on the board at {move}	対局 {n} を {move} の局面で盤に開く
+	Only the pieces were compared: the side to move isn't printed.	駒の配置だけを比べました：手番は印刷されていません。
+	The first {n} are listed.	最初の {n} 件を表示しています。

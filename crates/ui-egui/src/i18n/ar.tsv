@@ -3967,3 +3967,28 @@ progress bar	Progress	التقدم
 	Fantasy	خيال
 	Spatial	مجسّم
 	Celtic	سلتي
+# A9-N3: the Board tab's In the book (n)
+	In the book	في الكتاب
+	In the book ({n})	في الكتاب ({n})
+	Where the position shown is in the book, and what the book plays from it	أين يرد الوضع المعروض في الكتاب، وماذا يلعب الكتاب منه
+	Looking for the position in the book…	جارٍ البحث عن الوضع في الكتاب…
+	Read the book (Detect diagrams or Text) to search.	اقرأ الكتاب (اكتشاف المخططات أو النص) للبحث.
+	This position does not appear in the book as read.	هذا الوضع لا يرد فيما قُرئ من الكتاب.
+	The book's PGN	PGN الكتاب
+	Pages read: {r} of {p}	الصفحات المقروءة: {r} من {p}
+	Found: {n}	وُجد: {n}
+	transpositions: {n}	تحويلات: {n}
+	The book plays here	يلعب الكتاب هنا
+	Variation	تفرع
+	Games: {n}	المباريات: {n}
+	from p. {page}	من ص. {page}
+	Play {move} on the board	العب {move} على الرقعة
+	Castling isn't allowed on this board.	التبييت غير مسموح على هذه الرقعة.
+	En passant isn't possible on this board.	الأخذ بالتجاوز غير ممكن على هذه الرقعة.
+	Not legal on this board.	غير قانونية على هذه الرقعة.
+	Counted in the first {n} games that reach it.	حُسب في أول {n} مباراة تصل إليه.
+	Where in the book	أين في الكتاب
+	transposition	تحويل
+	Open game {n} on the board at {move}	افتح المباراة {n} على الرقعة عند {move}
+	Only the pieces were compared: the side to move isn't printed.	قورنت القطع وحدها: الطرف الذي عليه الدور غير مطبوع.
+	The first {n} are listed.	أول {n} مدرجة.

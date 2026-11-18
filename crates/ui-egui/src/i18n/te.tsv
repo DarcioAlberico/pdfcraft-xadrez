@@ -3593,3 +3593,28 @@ progress bar	Progress	పురోగతి
 # A9-N7a2: the Move field's refusals
 	Illegal move: {move} is ambiguous, it could be {moves}.	చెల్లని ఎత్తు: {move} అస్పష్టం, అది {moves} కావచ్చు.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	చెల్లని ఎత్తు: {move}కు బంటు ఏ పావుగా మారుతుందో చెప్పాలి, ఉదాహరణకు {example}.
+# A9-N3: the Board tab's In the book (n)
+	In the book	పుస్తకంలో
+	In the book ({n})	పుస్తకంలో ({n})
+	Where the position shown is in the book, and what the book plays from it	చూపిన స్థితి పుస్తకంలో ఎక్కడ ఉంది, దాని నుంచి పుస్తకం ఏమి ఆడుతుంది
+	Looking for the position in the book…	పుస్తకంలో స్థితి కోసం వెతుకుతోంది…
+	Read the book (Detect diagrams or Text) to search.	వెతకడానికి పుస్తకాన్ని చదవండి (చిత్రాలను గుర్తించు లేదా టెక్స్ట్).
+	This position does not appear in the book as read.	చదివిన పుస్తకంలో ఈ స్థితి కనిపించదు.
+	The book's PGN	పుస్తకం PGN
+	Pages read: {r} of {p}	చదివిన పేజీలు: {p} లో {r}
+	Found: {n}	కనుగొన్నవి: {n}
+	transpositions: {n}	క్రమ మార్పులు: {n}
+	The book plays here	పుస్తకం ఇక్కడ ఆడేది
+	Variation	ఉపవరుస
+	Games: {n}	ఆటలు: {n}
+	from p. {page}	పే. {page} నుంచి
+	Play {move} on the board	బోర్డుపై {move} ఆడండి
+	Castling isn't allowed on this board.	ఈ బోర్డుపై క్యాస్లింగ్ అనుమతించబడదు.
+	En passant isn't possible on this board.	ఈ బోర్డుపై ఆన్ పసాంట్ సాధ్యం కాదు.
+	Not legal on this board.	ఈ బోర్డుపై చెల్లదు.
+	Counted in the first {n} games that reach it.	దీనిని చేరే మొదటి {n} ఆటల్లో లెక్కించబడింది.
+	Where in the book	పుస్తకంలో ఎక్కడ
+	transposition	క్రమ మార్పు
+	Open game {n} on the board at {move}	ఆట {n} ని బోర్డుపై {move} వద్ద తెరవండి
+	Only the pieces were compared: the side to move isn't printed.	పావులను మాత్రమే పోల్చారు: ఎవరి వంతో ముద్రించలేదు.
+	The first {n} are listed.	మొదటి {n} జాబితాలో ఉన్నాయి.

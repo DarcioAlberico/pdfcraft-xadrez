@@ -1,5 +1,6 @@
 //! `chess_position_find`: "this position in the book" without the interface (plan A9-N3, finding
-//! A8-07; §2.9). The engine half: the Board's "In the book (n)" item and its list are lane B's.
+//! A8-07; §2.9). The engine half; the app's is the Board tab's "In the book (n)" (`ui-egui`,
+//! `chess_in_book`).
 //!
 //! A position (a FEN, or moves from the start or from the FEN) is looked for in what is already
 //! read of the book, and nowhere else:
