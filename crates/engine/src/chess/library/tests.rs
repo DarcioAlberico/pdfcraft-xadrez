@@ -1,4 +1,4 @@
-//! The Library on synthetic books (plan A9-N15a): folders of PDFs built here, read without a piece
+//! The Library on synthetic books (plans A9-N15a and N15b, the search): folders of PDFs built here, read without a piece
 //! model (diagram fonts are read exactly), each rule of the walk and of the build with a test of
 //! its own.
 
@@ -563,10 +563,10 @@ fn a_position_two_books_reach_is_found_in_both_with_its_page() {
         assert_eq!((hit.label.as_deref(), hit.number, hit.black, hit.san.as_deref()), (Some(page), 3, false, Some("Bb5")), "{b:#?}");
         assert!(matches!(hit.place, Place::Move { .. }));
     }
-    // The game of the second book's hit, with its players.
+    // The game of the second book's hit, with its players (as the header reads them).
     let two = &found.books[1];
     let game = two.hits[0].game.and_then(|g| two.games.iter().find(|(i, _)| *i == g)).map(|(_, g)| g.white.clone());
-    assert_eq!(game.as_deref(), Some("Capablanca,Jose"), "{two:#?}");
+    assert_eq!(game.as_deref(), Some("Capablanca, Jose"), "{two:#?}");
     // The other side to move is another position, unless any side is asked.
     let other = key("r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 3 3");
     assert_eq!(lib.find(&FindQuery { position: Some(other), ..FindQuery::default() }, 100).total, 0);
@@ -591,7 +591,7 @@ fn a_san_finds_every_move_and_a_player_the_games() {
     let games = lib.find(&FindQuery { player: Some("capablanca".into()), ..FindQuery::default() }, 100);
     assert_eq!((games.total, games.books.len()), (1, 1), "{games:#?}");
     let (_, g) = &games.books[0].games[0];
-    assert_eq!((g.white.as_str(), g.black.as_str(), g.eco.as_deref(), g.page), ("Capablanca,Jose", "Lasker,Emanuel", Some("C60"), Some(1)));
+    assert_eq!((g.white.as_str(), g.black.as_str(), g.eco.as_deref(), g.page), ("Capablanca, Jose", "Lasker, Emanuel", Some("C60"), Some(1)));
     assert!(games.books[0].hits.is_empty());
     assert_eq!(lib.find(&FindQuery { eco: Some("C6".into()), ..FindQuery::default() }, 100).total, 1);
     assert_eq!(lib.find(&FindQuery { eco: Some("B".into()), ..FindQuery::default() }, 100).total, 0);
@@ -625,7 +625,11 @@ fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
     for hash in lib.indexes().0.iter().map(|(h, _)| h.clone()) {
         index::read(&lib.index_path(&hash), None, &mut |_, p| every.push(*p)).unwrap();
     }
-    let queries = [doubled(None), doubled(Some(Color::White)), Query { pawns: PawnQuery { isolated: true, passed: true, ..PawnQuery::default() }, ..Query::default() }];
+    let queries = [
+        doubled(None),
+        doubled(Some(Color::White)),
+        Query { pawns: PawnQuery { isolated: true, passed: true, ..PawnQuery::default() }, ..Query::default() },
+    ];
     for p in &every {
         let placement = placement_of(p.placement);
         for query in &queries {
@@ -698,12 +702,17 @@ fn synthetic_index(n: usize, planted: usize) -> BookIndex {
         }
         let from = squares[(seed % 64) as usize];
         let to = squares[((seed >> 8) % 64) as usize];
-        if let Some(piece) = placement.get(from) && from != to && placement.get(to).is_none_or(|p| p.kind != pdfcraft_chess::placement::PieceKind::King) && piece.kind != pdfcraft_chess::placement::PieceKind::King {
+        if let Some(piece) = placement.get(from)
+            && from != to
+            && placement.get(to).is_none_or(|p| p.kind != pdfcraft_chess::placement::PieceKind::King)
+            && piece.kind != pdfcraft_chess::placement::PieceKind::King
+        {
             placement.set(from, None);
             placement.set(to, Some(piece));
         }
         let planted_here = every > 0 && i % every == every / 2 && i / every < planted;
-        let (p, side) = if planted_here { (*target.placement(), Color::Black) } else { (placement, if i % 2 == 0 { Color::White } else { Color::Black }) };
+        let (p, side) =
+            if planted_here { (*target.placement(), Color::Black) } else { (placement, if i % 2 == 0 { Color::White } else { Color::Black }) };
         positions.push(IndexedPosition {
             placement: pdfcraft_chess::fen::PlacementKey::of(&p),
             side,
@@ -724,7 +733,9 @@ fn synthetic_index(n: usize, planted: usize) -> BookIndex {
         title: "A million positions".into(),
         pages: u32::try_from(n / 40 + 1).unwrap(),
         sans: (0..50).map(|i| format!("Nf{}", i % 8 + 1)).collect(),
-        games: (0..n / 80 + 1).map(|_| index::IndexedGame { white: "Synthetic".into(), black: "Book".into(), event: "?".into(), ..Default::default() }).collect(),
+        games: (0..n / 80 + 1)
+            .map(|_| index::IndexedGame { white: "Synthetic".into(), black: "Book".into(), event: "?".into(), ..Default::default() })
+            .collect(),
         ..IndexMeta::default()
     };
     BookIndex { meta, positions }
