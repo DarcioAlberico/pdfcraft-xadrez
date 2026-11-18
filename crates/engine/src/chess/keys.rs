@@ -79,11 +79,11 @@ pub fn fold_id(bytes: &[u8]) -> Option<[u8; 16]> {
     if let Ok(id) = <[u8; 16]>::try_from(bytes) {
         return Some(id);
     }
-    let fnv = |it: &mut dyn Iterator<Item = &u8>| it.fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3));
+    use pdfcraft_chess::hash::fnv64_of;
     let mut out = [0u8; 16];
     let (front, back) = out.split_at_mut(8);
-    front.copy_from_slice(&fnv(&mut bytes.iter()).to_be_bytes());
-    back.copy_from_slice(&fnv(&mut bytes.iter().rev()).to_be_bytes());
+    front.copy_from_slice(&fnv64_of(bytes.iter().copied()).to_be_bytes());
+    back.copy_from_slice(&fnv64_of(bytes.iter().rev().copied()).to_be_bytes());
     Some(out)
 }
 

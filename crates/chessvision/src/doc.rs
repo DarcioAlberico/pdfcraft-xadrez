@@ -36,6 +36,7 @@
 //! relicensed MIT/Apache, `docs/chess/provenance.md`); the code is written here.
 
 pub mod anki;
+mod at_point;
 pub mod bookmarks;
 mod build;
 pub mod errata;
@@ -64,6 +65,7 @@ use crate::chess_text::{ChessPageText, TextQuality};
 use crate::cipher::{WordEdit, WordFlag};
 use crate::coords::{PageGeometry, PageRect, ViewRect, pixels_to_view};
 
+pub use at_point::move_at;
 pub use games::{Game, GameOrigin, GameResult, GameScore, Node, NodeRef, Roster, Tag, WalkRules};
 
 /// The version of the JSON shape. Bumped when a field changes meaning or is removed.
