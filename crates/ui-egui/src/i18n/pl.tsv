@@ -3747,6 +3747,12 @@ progress bar	Progress	Postęp
 	Nothing in the book as read has this material and these pawns.	Nic w przeczytanej książce nie ma tego materiału i tych pionów.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Pozycje: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Powiedz bierki
+	Say a rank's pieces	Powiedz bierki rzędu
+	Say a file's pieces	Powiedz bierki linii
+	{piece} on {square} picked up	Podniesiono: {piece} z {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Strzałki wybierają pole; Enter lub spacja podnosi bierkę albo wykonuje nią ruch na to pole.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Nie udało się przeszukać książki: {e}
 	The diagrams read couldn't be looked at: {e}	Nie udało się przejrzeć przeczytanych diagramów: {e}

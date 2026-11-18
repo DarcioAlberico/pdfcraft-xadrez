@@ -3681,6 +3681,12 @@ progress bar	Progress	పురోగతి
 	Nothing in the book as read has this material and these pawns.	చదివిన పుస్తకంలో ఈ మెటీరియల్, ఈ బంటులు ఉన్నది ఏదీ లేదు.
 	{first} to {last}	{first} నుంచి {last}
 	Positions: {n}	స్థితులు: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	పావులను చెప్పు
+	Say a rank's pieces	అడ్డు వరుస పావులను చెప్పు
+	Say a file's pieces	నిలువు వరుస పావులను చెప్పు
+	{piece} on {square} picked up	{square} పై {piece} ఎత్తబడింది
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	బాణం కీలు ఒక గడిని ఎంచుకుంటాయి; Enter లేదా Space పావును ఎత్తుతుంది లేదా దాన్ని అక్కడ ఆడుతుంది.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	పుస్తకంలో వెతకలేకపోయాం: {e}
 	The diagrams read couldn't be looked at: {e}	చదివిన చిత్రాలను పరిశీలించలేకపోయాం: {e}

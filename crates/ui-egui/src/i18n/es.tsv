@@ -3923,6 +3923,12 @@ progress bar	Progress	Progreso
 	Nothing in the book as read has this material and these pawns.	Nada en el libro leído tiene este material y estos peones.
 	{first} to {last}	{first} a {last}
 	Positions: {n}	Posiciones: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Decir las piezas
+	Say a rank's pieces	Decir las piezas de una fila
+	Say a file's pieces	Decir las piezas de una columna
+	{piece} on {square} picked up	Pieza levantada: {piece} en {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Las flechas eligen una casilla; Intro o Espacio levanta una pieza o la juega ahí.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	No se pudo buscar en el libro: {e}
 	The diagrams read couldn't be looked at: {e}	No se pudieron revisar los diagramas leídos: {e}
