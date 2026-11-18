@@ -9,7 +9,9 @@
 //!
 //! **Memory.** Only the diagrams that match are kept, a [`DiagramFound`] of 8 bytes each; the
 //! position looked for is one [`BookKey`], compared with each reading's as it is met. A page kept
-//! on disk is read and dropped one at a time.
+//! on disk is read and dropped one at a time. [`Session::chess_diagram_keys`] keeps every diagram
+//! read with its key, 48 bytes each, for the app to look for one position after another without
+//! reading the disk again.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -48,6 +50,18 @@ pub struct DiagramsFound {
     pub from_disk: usize,
 }
 
+/// What [`Session::chess_diagram_keys`] found.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DiagramKeys {
+    /// Every diagram read, page by page, and the key of the position it was read as: 48 bytes a
+    /// diagram.
+    pub diagrams: Vec<(DiagramFound, BookKey)>,
+    /// The pages whose diagrams were looked at: read in this session or kept on disk.
+    pub pages_read: usize,
+    /// Of those, the pages taken from the disk.
+    pub from_disk: usize,
+}
+
 impl Session {
     /// The diagrams of document `id` already read whose position is the one keyed `key`: the
     /// same pieces, and the same side to move unless `any_side` or the reading assumed it
@@ -79,6 +93,41 @@ impl Session {
         disk: Option<(&ReadingStore, &ChessScanSettings)>,
         max: usize,
     ) -> Result<DiagramsFound, String> {
+        let pages = self.chess_pages_read(id, disk)?;
+        Ok(find_in_pages(wanted, pages.iter().map(|(p, (r, d))| (*p, &**r, *d)), max))
+    }
+
+    /// Every diagram of document `id` already read, with its position's key, from where
+    /// [`Session::chess_matching_diagrams`] looks and in its order (plan A9-N3's interface: the
+    /// Board's In the book lists them once, then looks for each position the board shows among
+    /// them). Nothing is scanned. Fails as [`Session::chess_matching_diagrams`] does.
+    pub fn chess_diagram_keys(&mut self, id: DocId, disk: Option<(&ReadingStore, &ChessScanSettings)>) -> Result<DiagramKeys, String> {
+        let pages = self.chess_pages_read(id, disk)?;
+        let mut out = DiagramKeys::default();
+        for (&page, (read, from_disk)) in &pages {
+            let Some(readings) = read.readings.as_ref() else { continue };
+            out.pages_read = out.pages_read.saturating_add(1);
+            out.from_disk = out.from_disk.saturating_add(usize::from(*from_disk));
+            for (index, reading) in readings.iter().enumerate() {
+                let (Some(position), Ok(page), Ok(index)) = (reading.position(), u32::try_from(page), u16::try_from(index)) else { continue };
+                let Ok(fen) = Fen::parse(&position.fen) else { continue };
+                let side_assumed = position.side.is_assumed();
+                out.diagrams.push((DiagramFound { page, index, side_assumed, from_disk: *from_disk }, fen.book_key()));
+            }
+        }
+        Ok(out)
+    }
+
+    /// The pages of document `id` already read, each with its reading and whether it came from the
+    /// disk: this session's scans (any settings or model; a page with several readings counts
+    /// once, with its first) and, for the pages it has not read, the readings `disk` keeps for its
+    /// settings and the piece model they name ([`reading::scan_key`]). Nothing is scanned. Fails
+    /// as [`Session::chess_scan`] would: no such document, or one that does not allow copying.
+    fn chess_pages_read(
+        &mut self,
+        id: DocId,
+        disk: Option<(&ReadingStore, &ChessScanSettings)>,
+    ) -> Result<BTreeMap<usize, (Arc<ChessPage>, bool)>, String> {
         let doc = self.get(id).ok_or("no such document")?;
         doc.check_copying().map_err(|e| e.to_string())?;
         let (count, keys) = (doc.info.pages.len(), doc.doc_keys());
@@ -102,7 +151,7 @@ impl Session {
                 }
             }
         }
-        Ok(find_in_pages(wanted, pages.iter().map(|(p, (r, d))| (*p, &**r, *d)), max))
+        Ok(pages)
     }
 }
 
@@ -139,9 +188,11 @@ fn find_in_pages<'a>(
 mod tests {
     use super::*;
 
-    /// What a found diagram is kept as stays within the plan's 64 bytes a position.
+    /// What a found diagram is kept as stays within the plan's 64 bytes a position, with its key
+    /// too (the app's list of the diagrams read, [`Session::chess_diagram_keys`]).
     #[test]
     fn a_diagram_found_is_small() {
         assert!(size_of::<DiagramFound>() <= 64, "{}", size_of::<DiagramFound>());
+        assert!(size_of::<(DiagramFound, BookKey)>() <= 64, "{}", size_of::<(DiagramFound, BookKey)>());
     }
 }

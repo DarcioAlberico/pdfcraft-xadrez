@@ -57,6 +57,7 @@ mod chess_export_ui;
 mod chess_figurines;
 mod chess_fixes;
 mod chess_history;
+mod chess_in_book;
 mod chess_job;
 mod chess_keep;
 mod chess_keymap;
