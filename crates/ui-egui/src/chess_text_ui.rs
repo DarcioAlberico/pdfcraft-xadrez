@@ -456,18 +456,6 @@ fn origin_label(o: BookOrigin) -> &'static str {
     }
 }
 
-pub(crate) fn status_label(s: MoveStatus) -> &'static str {
-    match s {
-        MoveStatus::Valid => tl!("Valid move"),
-        MoveStatus::Illegal => tl!("Illegal move"),
-        MoveStatus::Ambiguous => tl!("Ambiguous move"),
-        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
-        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
-        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
-        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
-    }
-}
-
 /// A move of the Text tab as it is drawn, said and acted on (plan A9-I9).
 struct MoveView {
     at: MoveAt,
@@ -487,7 +475,7 @@ struct MoveView {
 /// [`MoveView`] of move `m`, at `at`, with the choices made on its page (`chosen`); `caption`:
 /// the font has the caption's shape (▸), else a plain one stands in.
 fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::reference_store::OnPage, t: &Tokens, caption: bool) -> MoveView {
-    let mut tip = status_label(m.status).to_string();
+    let mut tip = crate::chess_text_para::move_status_words(m.status).to_string();
     let linked = reference_note(m);
     // A conflict the user decided says what they chose (R6e).
     let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);

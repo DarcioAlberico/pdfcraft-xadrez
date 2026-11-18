@@ -411,20 +411,11 @@ enum Reading {
     None,
 }
 
-fn legal_moves(board: &Board) -> Vec<Move> {
-    let mut v = Vec::new();
-    board.generate_moves(|moves| {
-        v.extend(moves);
-        false
-    });
-    v
-}
-
 /// The legal moves `san` could mean, its disambiguation and promotion allowed to be missing.
 fn fitting(board: &Board, san: &San) -> Vec<Move> {
     let SanBody::Move { piece, from_file, from_rank, to, promotion, .. } = san.body else { return Vec::new() };
     let want = piece.map(PieceKind::letter);
-    legal_moves(board)
+    crate::legal_moves(board)
         .into_iter()
         .filter(|&mv| {
             // Cheap checks first: naming a move generates the moves again.
@@ -844,7 +835,7 @@ fn distance(a: &str, b: &str) -> usize {
 
 fn near_misses(board: &Board, core: &str, lang: Lang) -> Vec<San> {
     let read = San::read(core, lang).map(|s| s.to_english()).unwrap_or_else(|_| core.to_owned());
-    let mut scored: Vec<(usize, String, San)> = legal_moves(board)
+    let mut scored: Vec<(usize, String, San)> = crate::legal_moves(board)
         .into_iter()
         .filter_map(|mv| san_of(board, mv))
         .map(|s| {
