@@ -1468,6 +1468,88 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan A9-I7b (findings A6-02, A6-03): the PGN beside the PDF is looked for in a job, from the
+/// folder's listing alone. "📚Livro.pdf" beside "Livro.pgn" is offered it; a PDF whose folder
+/// holds one PGN of another name is offered that one; a folder named `x.pgn` is not a PGN; and a
+/// folder of more entries than the 4,096 read offers nothing as the only one (it may hold another
+/// PGN past them) and does not hang.
+#[test]
+fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    let offer = |name: &str| format!("{name} sits beside this PDF. Use it as the book's PGN?");
+    // (case, the PDF's name, the PGNs beside it, how many other files, the PGN offered)
+    type Case = (&'static str, &'static str, &'static [&'static str], usize, Option<&'static str>);
+    let cases: [Case; 4] = [
+        ("emoji", "📚Livro.pdf", &["Livro.pgn"], 0, Some("Livro.pgn")),
+        ("only", "book.pdf", &["games.pgn"], 0, Some("games.pgn")),
+        ("folder", "book.pdf", &[], 0, None),
+        ("crowded", "book.pdf", &["games.pgn"], 4_100, None),
+    ];
+    for (case, pdf_name, pgns, crowd, offered) in cases {
+        let dir = corrections_dir(&format!("pgn-beside-{case}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pdf = dir.join(pdf_name);
+        std::fs::write(&pdf, &bytes).unwrap();
+        for pgn in pgns {
+            std::fs::write(dir.join(pgn), RUY_PGN).unwrap();
+        }
+        if case == "folder" {
+            std::fs::create_dir_all(dir.join("x.pgn")).unwrap();
+        }
+        for i in 0..crowd {
+            std::fs::write(dir.join(format!("note-{i:05}.txt")), b"").unwrap();
+        }
+        let started = std::time::Instant::now();
+        let mut h = book_pgn_harness(pdf_name, Some(pdf.to_string_lossy().into_owned()), bytes.clone(), dir.join("reference"));
+        h.run_steps(2);
+        // A label's text is its node's value.
+        let shown: Vec<String> = h
+            .query_all_by(|n| n.value().is_some_and(|l| l.ends_with("sits beside this PDF. Use it as the book's PGN?")))
+            .filter_map(|n| n.accesskit_node().value())
+            .collect();
+        assert_eq!(shown, offered.map(offer).into_iter().collect::<Vec<_>>(), "{case}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(30), "{case}: {:?}", started.elapsed());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
+
+/// Plan A9-I7b: with the jobs on workers, as in the app, the folder beside the PDF is looked
+/// through on one, and its offer comes in a frame after the search ends — it is waited for, not
+/// the clock (plan A9-Q4b) — with nothing more done by the user.
+#[test]
+fn the_pgn_beside_the_pdf_is_looked_for_on_a_worker_and_offered_when_found() {
+    let dir = corrections_dir("pgn-beside-worker");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join("games.pgn"), RUY_PGN).unwrap();
+    for i in 0..1_000 {
+        std::fs::write(dir.join(format!("note-{i:04}.txt")), b"").unwrap();
+    }
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe({
+        let (path, store) = (pdf.to_string_lossy().into_owned(), dir.join("reference"));
+        move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.chess.book_pgns.use_folder(store);
+            app.open_bytes("book.pdf", Some(path), bytes).unwrap();
+            app.run_inline = false;
+            app
+        }
+    });
+    h.run_steps(2);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    let id = h.state().views[0].id;
+    assert!(h.state().wait_sibling_pgn_looks(NET), "the search ended");
+    h.run_steps(2);
+    assert!(!h.state().sibling_pgn_looking(id), "taken by a frame");
+    h.get_by_label("games.pgn sits beside this PDF. Use it as the book's PGN?");
+    h.get_by_label("Not now: don't use games.pgn as the book's PGN");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Plan "Carregar PGN do livro", R6f: a PDF opened with a PGN of its name beside it gets the
 /// offer in the Chess panel. Not now is remembered with the settings, so the document opened
 /// again is not asked (the Text tab still offers it); Use keeps it as the book's PGN.
@@ -1555,13 +1637,16 @@ fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
         h.run_steps(3);
         let offered = format!("{name} sits beside this PDF. Use it as the book's PGN?");
         h.get_by_label(&offered);
-        // The panel ends where the rail beside the window's right edge begins.
+        // The panel ends where the rail beside the window's right edge begins, and opens 330 pt
+        // wide (plan A9-I7b): the offer's buttons stay between its edges.
         let edge = size.x - 48.0;
+        let start = h.get_by_role_and_label(egui::accesskit::Role::Tab, "Diagrams").rect().min.x;
+        assert!((edge - start - 330.0).abs() <= 24.0, "{theme}: the panel is {} pt wide", edge - start);
         let not_now = format!("Not now: don't use {name} as the book's PGN");
         let use_it = format!("Use {name} as the book's PGN");
         for label in [&not_now, &use_it] {
             let r = h.get_by_label(label).rect();
-            assert!(r.max.x <= edge, "{theme}: {label} at {r:?}, the panel ends at {edge}");
+            assert!(r.min.x >= start - 12.0 && r.max.x <= edge, "{theme}: {label} at {r:?}, the panel is {start}..{edge}");
         }
         shot(&mut h, &format!("pgn-offer-1366-{theme}.png"));
         // The Text tab's own Use, in its menu (plan A9-I9), is on screen.
@@ -4983,6 +5068,240 @@ fn every_focusable_control_has_a_name() {
     // Its menu (plan A9-I9): the book's origin is there (a submenu: its name ends in its arrow).
     text_menu(&mut h);
     h.get_by_label_contains("Book origin");
+}
+
+// ─── Plan A9-I11b: the Chess column's tabs, master-detail and focus ─────────────────────────
+
+/// The focus rings the last frame painted (plan A9-I11b): each rectangle stroked 2 pt or more in
+/// the accent colour (whose contrast `theme`'s tests hold at 3:1 on every surface), with the clip
+/// it was painted in.
+fn focus_rings(h: &Harness<'static, PdfCraftApp>) -> Vec<(egui::Rect, egui::Rect)> {
+    fn walk(shape: &egui::Shape, clip: egui::Rect, accent: egui::Color32, out: &mut Vec<(egui::Rect, egui::Rect)>) {
+        match shape {
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| walk(s, clip, accent, out)),
+            egui::Shape::Rect(r) if r.stroke.width >= 2.0 && r.stroke.color == accent => out.push((r.rect, clip)),
+            _ => {}
+        }
+    }
+    let accent = pdfcraft_ui_egui::theme::Tokens::get(&h.ctx).accent;
+    let mut out = Vec::new();
+    for c in &h.output().shapes {
+        walk(&c.shape, c.clip_rect, accent, &mut out);
+    }
+    out
+}
+
+/// Plan A9-I11b: Tab from the first control of the Chess column through every control in it
+/// (above its foot or below it, scrolled out of sight), until the keyboard leaves it or comes back
+/// to a control it reached. What is wrong at a stop (no name, WCAG 4.1.2; no ring of 2 pt in the
+/// accent colour around it, 2.4.7; not wholly in sight, in the column and inside the ring's clip,
+/// 2.4.11), and the names of the stops, in order. On a grid the keyboard is on its cursor's square
+/// (its active descendant), and the ring is that square's.
+fn tab_through(h: &mut Harness<'static, PdfCraftApp>, what: &str) -> (Vec<String>, Vec<String>) {
+    use egui::accesskit::Action;
+    let region = chess_column(h);
+    // The column and what scrolls under its foot.
+    let band = egui::Rect::from_x_y_ranges(region.x_range(), egui::Rangef::new(region.min.y, f32::INFINITY));
+    let first = h
+        .query_all_by(|n| n.data().supports_action(Action::Focus))
+        .filter(|n| region.contains(n.rect().center()))
+        .min_by(|a, b| (a.rect().min.y, a.rect().min.x).partial_cmp(&(b.rect().min.y, b.rect().min.x)).unwrap_or(std::cmp::Ordering::Equal))
+        .unwrap_or_else(|| panic!("{what}: a control in {region:?}"));
+    first.focus();
+    h.run_steps(2);
+    let (mut seen, mut names, mut wrong) = (Vec::new(), Vec::new(), Vec::new());
+    for _ in 0..400 {
+        let Some(node) = h.query_by(|n| n.is_focused()) else {
+            wrong.push(format!("{what}: the keyboard went nowhere after {:?}", names.last()));
+            break;
+        };
+        let (id, rect, role) = (node.accesskit_node().id(), node.rect(), node.accesskit_node().role());
+        if !band.contains(rect.center()) || seen.contains(&id) {
+            break;
+        }
+        seen.push(id);
+        let name = node
+            .accesskit_node()
+            .label()
+            .filter(|l| !l.trim().is_empty())
+            .or_else(|| node.accesskit_node().value().filter(|v| !v.trim().is_empty()))
+            .unwrap_or_default();
+        if name.is_empty() {
+            wrong.push(format!("{what}: a {role:?} at {rect:?} has no name"));
+        }
+        let around = |ring: &egui::Rect| ring.expand(1.0).contains_rect(rect.shrink(1.0)) && rect.expand(8.0).contains_rect(*ring);
+        let rings = focus_rings(h);
+        if !rings.iter().any(|(ring, _)| around(ring)) {
+            wrong.push(format!("{what}: {name:?} ({role:?} at {rect:?}) has no focus ring"));
+        } else if !region.contains_rect(rect.shrink(1.0)) || !rings.iter().any(|(ring, clip)| around(ring) && clip.contains_rect(rect.shrink(1.0))) {
+            wrong.push(format!("{what}: {name:?} ({role:?} at {rect:?}) is not wholly in sight"));
+        }
+        names.push(name);
+        h.key_press(egui::Key::Tab);
+        h.run_steps(2);
+    }
+    (names, wrong)
+}
+
+/// The harness on [`chapter_with`]`(moves)` at `size`, its Chess column open (plan A9-I11b).
+fn chapter_column(moves: &str, size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+    no_piece_model();
+    let bytes = chapter_with(moves);
+    let mut h = Harness::builder().with_size(size).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("chapter.pdf", None, bytes).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    h
+}
+
+/// Plan A9-I11b (§2.8.1, WCAG 2.4.3, 2.4.7, 4.1.2; finding A6-20): at 1366 × 768, with the window
+/// in use, Tab goes through every control of the Chess column on each of its tabs and through a
+/// diagram's editor in the list's place: each has a name and a ring of 2 pt in the accent colour,
+/// in sight. Before, a stock button, field or list took the keyboard with egui's 1 pt outline only.
+#[test]
+fn tab_goes_through_the_chess_column_with_a_ring_on_every_control() {
+    let mut h = chapter_column("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6", egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    to_list(&mut h);
+    let mut wrong = Vec::new();
+    let (diagrams, w) = tab_through(&mut h, "Diagrams");
+    wrong.extend(w);
+    for name in ["Diagrams", "Text", "Board", "Detect diagrams"] {
+        if !diagrams.iter().any(|n| n == name) {
+            wrong.push(format!("Tab reaches {name}: {diagrams:?}"));
+        }
+    }
+    assert!(diagrams.iter().any(|n| n.starts_with("Diagram 1 · ")), "and the list's row: {diagrams:?}");
+    // A diagram's editor in the list's place.
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(4);
+    assert!(h.state().chess_diagram_shown());
+    let (editor, w) = tab_through(&mut h, "the diagram's editor");
+    wrong.extend(w);
+    // The board takes the keyboard on its cursor's square (the grid's active descendant).
+    assert!(editor.iter().any(|n| n == "Back to Diagrams") && editor.iter().any(|n| n.starts_with("a8, ")), "{editor:?}");
+    // With PDFCRAFT_CHESS_SHOTS set, a picture of the ring on a stock button, at 1366 × 768.
+    h.get_by_label("Details").focus();
+    h.run_steps(2);
+    shot(&mut h, "i11b-editor-ring.png");
+    h.get_by_label("Back to Diagrams").click();
+    h.run_steps(3);
+    for tab in ["Text", "Board"] {
+        column_tab(&mut h, tab);
+        h.run_steps(4);
+        let (names, w) = tab_through(&mut h, tab);
+        wrong.extend(w);
+        assert!(names.len() > 3, "{tab}: {names:?}");
+    }
+    assert_eq!(wrong, Vec::<String>::new());
+}
+
+/// Plan A9-I11b (WCAG 2.4.11, focus not obscured): a move of the Text tab below the fold, reached
+/// with Tab, scrolls into sight. Before, egui moved the keyboard there and left the tab where it
+/// was, the move and its ring out of sight under the column's foot.
+#[test]
+fn tab_brings_a_move_below_the_fold_into_sight() {
+    let moves: Vec<String> = (1..=150).map(|n| if n % 2 == 1 { format!("{n}.Nf3 Nf6") } else { format!("{n}.Ng1 Ng8") }).collect();
+    let mut h = chapter_column(&moves.join(" "), egui::vec2(1366.0, 768.0));
+    column_tab(&mut h, "Text");
+    h.run_steps(4);
+    let column = chess_column(&h);
+    let below = h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus)).filter(|n| n.rect().min.y > column.max.y).count();
+    let ys: Vec<(String, f32)> = h
+        .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
+        .filter(|n| column.x_range().contains(n.rect().center().x))
+        .map(|n| (n.accesskit_node().label().unwrap_or_default(), n.rect().max.y))
+        .collect();
+    assert!(below > 10, "the text runs past the column's foot: {below} moves below it; {column:?} {ys:?}");
+    let (names, wrong) = tab_through(&mut h, "Text");
+    assert!(names.len() >= 300, "every move: {}", names.len());
+    assert_eq!(wrong, Vec::<String>::new());
+}
+
+/// Plan A9-I11b (§2.8.1, WCAG 1.3.1 and 4.1.2): the Chess column's tabs are a tab list named
+/// Chess, each tab with its place among the three and the chosen one selected, over the panel of
+/// the tab shown, which they name. Before, the three tabs had no list and the panel no role.
+#[test]
+fn the_chess_columns_tabs_are_a_tab_list_over_their_panel() {
+    use egui::accesskit::Role;
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    let names = ["Diagrams", "Text", "Board"];
+    for (i, name) in names.iter().enumerate() {
+        let tab = h.get_by(|n| n.role() == Role::Tab && n.label().is_some_and(|l| l == *name));
+        let node = tab.accesskit_node();
+        let list = node.parent().expect("the tab has a parent");
+        assert_eq!((list.role(), list.label().as_deref()), (Role::TabList, Some("Chess")), "{name}'s parent");
+        assert_eq!((node.data().position_in_set(), node.data().size_of_set()), (Some(i + 1), Some(3)), "{name}");
+        assert_eq!(node.is_selected(), Some(i == 0), "{name}");
+    }
+    let panel = h.get_by_role(Role::TabPanel);
+    assert_eq!(panel.accesskit_node().label().as_deref(), Some("Diagrams"), "named by the tab shown");
+    panel.get_by_label("Detect diagrams");
+    column_tab(&mut h, "Text");
+    h.run_steps(3);
+    let panel = h.get_by_role(Role::TabPanel);
+    assert_eq!(panel.accesskit_node().label().as_deref(), Some("Text"));
+    panel.get_by_label("Read with OCR");
+    column_tab(&mut h, "Board");
+    h.run_steps(3);
+    assert_eq!(h.get_by_role(Role::TabPanel).accesskit_node().label().as_deref(), Some("Board"));
+}
+
+/// Plan A9-I11b (§2.8.1, master-detail): with the keyboard only, Enter on a row of the list opens
+/// the diagram's editor with the keyboard on its board; Esc goes back to the list, the keyboard on
+/// the row it came from.
+#[test]
+fn the_keyboard_opens_a_diagram_on_its_board_and_comes_back_to_its_row() {
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_by_label_contains("Diagram 2 · ").focus();
+    h.run_steps(2);
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert!(h.state().chess_diagram_shown(), "Enter opens the editor in the list's place");
+    // On the board's cursor square, the grid's active descendant: the grid is above it.
+    let focused = h.query_by(|n| n.is_focused()).expect("the keyboard is somewhere");
+    let grid = std::iter::successors(focused.accesskit_node().parent(), |n| n.parent()).take(4).find(|n| n.role() == egui::accesskit::Role::Grid);
+    let on = grid.and_then(|g| g.label());
+    assert!(on.as_deref().is_some_and(|l| l.starts_with("Diagram board, page 1, diagram 2")), "the keyboard on its board: {on:?}");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert!(!h.state().chess_diagram_shown(), "Esc: the list again");
+    assert!(h.get_by_label_contains("Diagram 2 · ").is_focused(), "the keyboard on the row it came from");
+}
+
+/// Plan A9-I11b (§2.8.1): the Tools panel collapsed for the Chess column, at 1366 × 768, never
+/// leaves the keyboard on a control that is gone: from the Tools it goes to the column's tab
+/// shown. Before, egui dropped it, and Tab started again from the window's top.
+#[test]
+fn collapsing_the_tools_takes_the_keyboard_to_the_chess_column() {
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+    assert!(h.state().left_open, "the Tools panel shows");
+    // Left of the page, under the window's top bar: the lowest control there is in the panel's
+    // body (its docking tab is at its top).
+    let page = h.state().views[0].viewport_rect();
+    let tools = egui::Rect::from_min_max(egui::pos2(0.0, page.min.y), egui::pos2(page.min.x, page.max.y));
+    h.query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus))
+        .filter(|n| tools.contains_rect(n.rect()))
+        .max_by(|a, b| a.rect().min.y.total_cmp(&b.rect().min.y))
+        .expect("a control in the Tools panel")
+        .focus();
+    h.run_steps(2);
+    assert!(h.query_by(|n| n.is_focused()).is_some_and(|n| tools.contains_rect(n.rect())), "the keyboard in the Tools");
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(4);
+    assert!(!h.state().left_open, "the Tools panel collapsed");
+    let focused = h.query_by(|n| n.is_focused()).map(|n| (n.accesskit_node().role(), n.accesskit_node().label()));
+    assert_eq!(focused, Some((egui::accesskit::Role::Tab, Some("Diagrams".to_owned()))), "the keyboard on the column's tab shown");
 }
 
 /// Plan A9-G2b (R3-06, R8-04): the marks are the engine's one rule, the rule the exports apply,

@@ -1,6 +1,6 @@
 # D26 — roteiro do NVDA para o painel de xadrez
 
-**Status:** rascunho do passo A9-I11a (2026-11-12) · roda pela primeira vez no fim do X3 (onda 3), com o NVDA instalado (D26) · o I11b acrescenta a coluna Xadrez (abas, mestre-detalhe, foco) e o X3 completa a parte do EPUB.
+**Status:** rascunho do passo A9-I11a (2026-11-12) · roda pela primeira vez no fim do X3 (onda 3), com o NVDA instalado (D26) · a coluna Xadrez (abas, mestre-detalhe, foco) acrescentada pelo A9-I11b (2026-11-15, §4) · o X3 completa a parte do EPUB.
 
 Cada passo diz o que fazer só com o teclado e o que o NVDA deve dizer (o texto esperado, em pt-BR, com o app em português). Um passo que o NVDA diz de outro jeito vira um achado com o texto ouvido; um que não diz nada é falha de 4.1.2 ou 4.1.3. As frases entre aspas são as do app; o NVDA acrescenta o papel ("botão", "caixa de diálogo", "item de menu") na língua dele.
 
@@ -40,12 +40,29 @@ Cada passo diz o que fazer só com o teclado e o que o NVDA deve dizer (o texto 
 | 3.4 | Tabuleiro, Partida, campo do 1º lance | o rótulo do campo e o número |
 | 3.5 | Prévia da captura | "Inserir em, caixa de combinação …"; "Letras das peças, caixa de combinação …" |
 
-## 4. O que só o NVDA confere
+## 4. A coluna Xadrez: abas, mestre-detalhe e foco (A9-I11b)
+
+Janela de 1366 × 768: abrir a coluna recolhe o painel Ferramentas (uma vez por sessão).
+
+| # | Tecla | O NVDA diz |
+|---|---|---|
+| 4.1 | Com o teclado num controle do painel Ferramentas, abrir a coluna sem tirá-lo de lá (o comando **Painel de xadrez** por um atalho) | "Painel Ferramentas recolhido"; o foco vai à aba mostrada: "Diagramas, aba, selecionado, 1 de 3" (nunca a um controle que sumiu) |
+| 4.2 | → (ou Tab) | "Texto, aba, 2 de 3"; → "Tabuleiro, aba, 3 de 3"; ← volta. Enter ou Espaço numa aba a mostra |
+| 4.3 | Na aba Diagramas, Tab | "Diagramas, painel de abas" ao entrar no conteúdo; depois "Detectar diagramas, botão", "Onde detectar, botão" … e as linhas da lista: "Diagrama 2 · A revisar" |
+| 4.4 | Enter na linha "Diagrama 2" | o editor toma o lugar da lista; o foco vai ao tabuleiro: "Tabuleiro do diagrama, pág. 1, diagrama 2, grade" e a casa do cursor |
+| 4.5 | Tab pelo editor até o fim | cada controle com nome, nenhum fora da tela; "Voltar para Diagramas, botão" está entre eles |
+| 4.6 | Esc (com o foco no tabuleiro) | a lista volta; o foco vai à linha de onde o editor saiu: "Diagrama 2 · A revisar" |
+| 4.7 | Aba Texto, Tab pelos lances até depois da dobra | cada lance dito em palavras ("3. bispo b5"); a aba rola para mostrar o lance com o foco |
+| 4.8 | Aba Tabuleiro, Tab pelos controles | cada um com nome; nenhum fica escondido sob o pé da coluna |
+
+A Lupa do Windows, com "seguir o foco do teclado", mostra em cada passo o anel de 2 pt na cor de destaque em volta do controle (a casa do cursor, no tabuleiro do editor).
+
+## 5. O que só o NVDA confere
 
 - Com o diálogo aberto, a navegação do modo de navegação (NVDA+Espaço) não alcança os 131 botões do fundo (o nó do diálogo é `modal`).
 - O anel de foco aparece em cada controle alcançado por Tab, com a janela em uso (A6-20); a Lupa do Windows, com "seguir o foco do teclado", o acompanha.
 - Os menus fechados por Enter não deixam o NVDA num item que sumiu.
 
-## 5. EPUB exportado (o X3 completa)
+## 6. EPUB exportado (o X3 completa)
 
 Abrir o EPUB exportado no Thorium com o NVDA: título do livro, a navegação por títulos (H), cada diagrama com a descrição ("Diagrama 1: brancas jogam; …"), os sinais lidos pelo nome (`aria-label`), o idioma do texto. O X3 escreve o texto esperado por passo.

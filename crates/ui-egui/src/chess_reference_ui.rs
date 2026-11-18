@@ -351,9 +351,11 @@ impl PdfCraftApp {
             Err(ReferenceStoreError::NoKeys) => {}
             Err(e) => self.post_error(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
         }
-        // The folder is looked through only when there is something to offer.
-        let sibling = if kept.is_none() { find_sibling_pgn(&keys) } else { None };
-        self.chess.doc_mut(id).pgn_sibling = sibling;
+        // The folder is looked through only when there is something to offer, off the
+        // interface thread (plan A9-I7b), once for the document as it is open.
+        if kept.is_none() {
+            self.look_for_sibling_pgn(id, false);
+        }
         // The session holds it once it is indexed, off the interface thread (plan A9-I3b).
         self.session.set_chess_book_pgn(id, None);
         self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held: false });
@@ -806,13 +808,13 @@ impl PdfCraftApp {
             Ok(cleared) => {
                 let held = self.chess.book_pgns.doc(id).is_some_and(|d| d.held);
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
-                let sibling = find_sibling_pgn(&keys);
                 self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, held });
                 self.session.set_chess_book_pgn(id, None);
                 let view = self.chess.doc_mut(id);
-                view.pgn_sibling = sibling;
                 view.book_link = None;
                 view.text = None;
+                // What is beside it now is offered again (plan A9-I7b: looked for off the thread).
+                self.look_for_sibling_pgn(id, true);
                 self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.inform(said.to_string());
@@ -889,6 +891,7 @@ impl PdfCraftApp {
     /// tab can offer the PGN's suggestion ([`suggestion`]).
     pub(crate) fn book_pgn_tick(&mut self) {
         self.poll_book_pgn_indexing();
+        self.poll_sibling_pgns();
         let Some((vi, id)) = self.active_ids() else { return };
         // The PGN beside a document opened is offered (R6f): looked for once per document, and
         // said once per session.
@@ -914,41 +917,9 @@ impl PdfCraftApp {
     }
 }
 
-/// Most entries of the PDF's folder looked at for its PGN: the folder may be Downloads (plan
-/// A9-I7a). The PGN named exactly as the PDF is found whatever the folder holds.
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_FOLDER_ENTRIES: usize = 4096;
-
-/// The PGN beside the PDF at `keys`' path that goes with it ([`sibling_pgn`]: `book.pdf` →
-/// `book.pgn`, and `📚Book.pdf` → `Book.pgn`), when there is one. Never on the web, which has no
-/// paths.
-pub(crate) fn find_sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let pdf = std::path::Path::new(keys.path.as_deref()?);
-        if let Some(same) = ["pgn", "PGN"].iter().map(|ext| pdf.with_extension(ext)).find(|p| p.is_file()) {
-            return Some(same);
-        }
-        let dir = pdf.parent()?;
-        let names: Vec<String> = std::fs::read_dir(dir)
-            .ok()?
-            .take(MAX_FOLDER_ENTRIES)
-            .filter_map(|e| e.ok()?.file_name().into_string().ok())
-            .filter(|n| is_pgn_name(n) && dir.join(n).is_file())
-            .collect();
-        let name = sibling_pgn(pdf.file_name()?.to_str()?, names.iter().map(String::as_str))?;
-        Some(dir.join(name))
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        let _ = keys;
-        None
-    }
-}
-
 /// Whether `name` is a PGN's file name (`.pgn`, in any case).
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-fn is_pgn_name(name: &str) -> bool {
+pub(crate) fn is_pgn_name(name: &str) -> bool {
     std::path::Path::new(name).extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("pgn"))
 }
 
@@ -978,7 +949,7 @@ fn name_key(stem: &str) -> String {
 /// once symbols, emoji, spaces and case are set aside ([`name_key`]). A PDF whose name has no
 /// letter or digit has none. Only an offer: the user says whether to use it.
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-fn sibling_pgn<'a>(pdf: &str, names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+pub(crate) fn sibling_pgn<'a>(pdf: &str, names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
     fn stem(name: &str) -> Option<&str> {
         std::path::Path::new(name).file_stem().and_then(|s| s.to_str())
     }

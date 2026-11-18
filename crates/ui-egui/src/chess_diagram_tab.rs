@@ -351,6 +351,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             if let Some(s) = &suggestion {
                 suggestion_row(ui, &t, ed, s);
             }
+            crate::widgets::follow_focus(ui);
         });
     });
 
