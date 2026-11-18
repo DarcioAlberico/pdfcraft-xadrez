@@ -1103,6 +1103,86 @@ fn measure_the_text_tab_on_a_300_move_page() {
     println!("TEXT TAB FRAME, {count} moves: {best:?}");
 }
 
+/// The galley the Text tab drew [`chapter`]'s paragraph of moves with on the last pass: the one
+/// text shape holding its first and last moves.
+#[track_caller]
+fn drawn_paragraph(h: &Harness<'static, PdfCraftApp>) -> Arc<egui::Galley> {
+    fn find(shape: &egui::Shape, out: &mut Vec<Arc<egui::Galley>>) {
+        match shape {
+            egui::Shape::Text(t) if t.galley.text().contains("e4") && t.galley.text().contains("a6") => out.push(Arc::clone(&t.galley)),
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| find(s, out)),
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for clipped in &h.output().shapes {
+        find(&clipped.shape, &mut found);
+    }
+    assert_eq!(found.len(), 1, "one paragraph of moves drawn");
+    found.remove(0)
+}
+
+/// Each glyph of `galley` (its character, its place and its spot in the font atlas) is where the
+/// fonts egui has now put it: the galley was laid out with the fonts it is drawn with.
+#[track_caller]
+fn assert_laid_out_with_the_fonts_drawn(h: &Harness<'static, PdfCraftApp>, galley: &egui::Galley, when: &str) {
+    let fresh = h.ctx.fonts_mut(|f| f.layout_job((*galley.job).clone()));
+    // The glyph's spot in the atlas: its corners in texels.
+    let glyphs = |g: &egui::Galley| -> Vec<(char, Pos2, [[u16; 2]; 2])> {
+        g.rows.iter().flat_map(|r| r.row.glyphs.iter().map(move |gl| (gl.chr, r.pos + gl.pos.to_vec2(), [gl.uv_rect.min, gl.uv_rect.max]))).collect()
+    };
+    let (drawn, now) = (glyphs(galley), glyphs(&fresh));
+    assert!(!drawn.is_empty() && drawn.len() == now.len(), "{when}: {} glyphs drawn, {} laid out now", drawn.len(), now.len());
+    let wrong = drawn.iter().zip(&now).filter(|(a, b)| a != b).count();
+    assert_eq!(wrong, 0, "{when}: {wrong} of the {} glyphs drawn are not where the fonts in use have them", drawn.len());
+}
+
+/// Plan A9-I9c: the Text tab keeps each paragraph's layout from pass to pass (A9-I9b) and lays it
+/// out again when the fonts egui draws with change. A change of language installs other fonts
+/// (Chinese puts its faces first), which egui uses from the next pass: the paragraph laid out on
+/// the pass of the change, with the old fonts, was kept, and drawn with glyphs from an atlas that
+/// no longer existed (the moves came out scrambled). The theme's text options make egui build its
+/// fonts anew as well.
+#[test]
+fn the_text_tab_lays_its_paragraphs_out_again_when_the_fonts_change() {
+    let mut h = harness_sized(chapter(), egui::vec2(1366.0, 768.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "in English");
+    h.state_mut().set_option("language", "zh-hant").unwrap();
+    h.run_steps(4);
+    shot(&mut h, "i9c-text-tab-zh-hant.png");
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "after the switch to Chinese");
+    h.state_mut().set_option("theme", "dark").unwrap();
+    h.run_steps(4);
+    shot(&mut h, "i9c-text-tab-zh-hant-dark.png");
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "after the switch to the dark theme");
+}
+
+/// Plan A9-I9c: fonts changed and changed back while the Text tab is hidden (the dark theme and
+/// the light one again: egui builds its fonts anew each time) still lay its paragraph out again
+/// when it shows, though the theme, the language and the faces are the ones it was laid out with.
+#[test]
+fn fonts_changed_and_changed_back_behind_the_text_tab_still_count() {
+    let mut h = harness_on(chapter(), 0.25);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "in the light theme");
+    h.get_by_label("Diagrams").click();
+    h.run_steps(2);
+    h.state_mut().set_option("theme", "dark").unwrap();
+    h.run_steps(3);
+    h.state_mut().set_option("theme", "light").unwrap();
+    h.run_steps(3);
+    h.get_by_label("Text").click();
+    h.run_steps(2);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "back in the light theme");
+}
+
 /// The book's PGN of [`chapter`]'s line, the Ruy Lopez to 3...a6.
 const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
 
