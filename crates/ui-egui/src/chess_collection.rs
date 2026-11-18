@@ -2325,15 +2325,28 @@ pub(crate) fn games_list(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) 
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
         }
         // The list's header: every game, in this order, to one PGN file, or made a book (plan
-        // A9-N9).
+        // A9-N9), at the right. Measured before it is drawn (plan A9 §2.8.1): a right-to-left row
+        // too wide for the column ran off to its left, taking the list with it (lane B, A9-E1: 59
+        // points in Portuguese at 1366 × 768). The two wrap to a row each where they have no room
+        // together, and a label longer than the row is cut with "…", whole in its tooltip and name.
+        let room = ui.available_width() - 2.0 * ui.spacing().button_padding.x;
+        // A small button's words are a button's; the book's menu says its own in small type.
+        let (button, small) = (egui::TextStyle::Button.resolve(ui.style()), egui::TextStyle::Small.resolve(ui.style()));
+        let fit = |text: &str, font: &egui::FontId| crate::widgets::fit_line(text, room, |s| crate::widgets::text_width(ui, s, font));
+        let (save_all, as_book) = (tl!("Save all games as PGN…"), tl!("Export as book"));
+        let (save_shown, book_shown) = (fit(save_all, &button), fit(as_book, &small));
         ui.horizontal(|ui| {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let r = ui.small_button(tl!("Save all games as PGN…"));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center).with_main_wrap(true), |ui| {
+                let mut r = ui.small_button(save_shown.as_str());
+                if save_shown != save_all {
+                    r = r.on_hover_text(save_all);
+                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, save_all));
+                }
                 list.see(&r);
                 if r.clicked() {
                     action = Some(GamesAction::SaveAll);
                 }
-                let book = egui::containers::menu::MenuButton::new(egui::RichText::new(tl!("Export as book")).small());
+                let book = egui::containers::menu::MenuButton::new(egui::RichText::new(book_shown.as_str()).small());
                 let (r, picked) = book.ui(ui, |ui| {
                     use pdfcraft_engine::chess::export::ChessFormat;
                     let mut pick = None;
@@ -2345,8 +2358,9 @@ pub(crate) fn games_list(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) 
                     pick
                 });
                 list.see(&r);
-                let r = r.on_hover_text(tl!("The games of the list as a book, a page each, with their diagrams."));
-                r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Export as book")));
+                let what = tl!("The games of the list as a book, a page each, with their diagrams.");
+                let r = r.on_hover_text(if book_shown == as_book { what.to_owned() } else { format!("{as_book}\n{what}") });
+                r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, as_book));
                 if let Some(format) = picked.and_then(|p| p.inner) {
                     action = Some(GamesAction::ExportBook(format));
                 }

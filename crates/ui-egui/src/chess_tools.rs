@@ -8,9 +8,11 @@
 //! pressed again, `chess_source`). A group shows one of its members, the last
 //! used, with a small triangle in its corner; a long press (at least [`LONG_PRESS`]), a right
 //! click, or Enter or Down arrow while it has the keyboard focus opens the others, and Shift with
-//! the group's letter switches the member shown. Later steps add tools by adding entries: the
-//! rail, the keys the scope takes, the key hints in the names and the move list's context menu
-//! all follow from the list. The annotation tools (T6) are there too: the three glyph groups,
+//! the group's letter switches the member shown. The rail is measured before it is drawn: the
+//! entries a short window has no room for go, in order, under a ⋯ at its foot (More board tools),
+//! a group's tools under its name; their keys work as before. Later steps add tools by adding
+//! entries: the rail, the keys the scope takes, the key hints in the names and the move list's
+//! context menu all follow from the list. The annotation tools (T6) are there too: the three glyph groups,
 //! whose buttons show their glyph as text and are named for it (while a text field the palette
 //! types into had the keyboard, a glyph with a sign goes there instead, as from the palette), the
 //! comment editor and the glyph palette (`chess_annotate`). T15 adds the glyph brush (a mode: a click on a move in the
@@ -1169,9 +1171,49 @@ fn wait_for_signs(ui: &egui::Ui, chess: &mut ChessState, now: f64) {
     }
 }
 
+/// The gap under each of the rail's entries, and a separator's height, in points.
+const GAP: f32 = 2.0;
+const SEPARATOR: f32 = 9.0;
+
+/// How many of the rail's entries (`sections`: how many each section has, in order) show in
+/// `height` points: all of them when they fit, else as many as fit, in order, with a separator and
+/// the ⋯ that holds the others under them (plan A9 §2.8.1, measured before drawn, as the window's
+/// rail does). Never more than there are; with no room, none.
+fn rail_fit(height: f32, sections: &[usize]) -> usize {
+    let total = sections.iter().fold(0usize, |n, s| n.saturating_add(*s));
+    if !height.is_finite() {
+        return total;
+    }
+    // The height the first `n` entries take: each its button and the gap under it, a separator
+    // before each section after the first.
+    let taken = |n: usize| {
+        let mut left = n;
+        let mut h = 0.0f32;
+        for (i, count) in sections.iter().enumerate() {
+            if left == 0 {
+                break;
+            }
+            if i > 0 {
+                h += SEPARATOR + GAP;
+            }
+            let k = (*count).min(left);
+            h += k as f32 * (BUTTON + GAP);
+            left -= k;
+        }
+        h
+    };
+    if taken(total) - GAP <= height {
+        return total;
+    }
+    let more = SEPARATOR + GAP + BUTTON;
+    (0..total).take_while(|n| taken(n.saturating_add(1)) + more <= height).count()
+}
+
 /// Draw the rail. Returns the popup id of the group whose button has the keyboard focus, if any.
+/// The entries it has no room for are under its ⋯ (lane B, A9-E1: at 1366 × 768 its last button,
+/// the chess window's, was drawn under the window's bottom edge).
 fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::Id> {
-    ui.spacing_mut().item_spacing.y = 2.0;
+    ui.spacing_mut().item_spacing.y = GAP;
     ui.add_space(6.0);
     let mut focused = None;
     let mut any_focus = false;
@@ -1180,12 +1222,25 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
         Entry::Tool(tool) => (tool.visible)(&ctx),
         Entry::Group(_) => true,
     };
-    for (i, section) in RAIL.iter().filter(|section| section.iter().any(visible)).enumerate() {
-        if i > 0 {
-            let (r, _) = ui.allocate_exact_size(vec2(20.0, 9.0), Sense::hover());
-            ui.painter().hline(r.x_range(), r.center().y, Stroke::new(1.0, t.divider));
-        }
-        for entry in section.iter().filter(|entry| visible(entry)) {
+    let sections: Vec<Vec<&'static Entry>> =
+        RAIL.iter().map(|section| section.iter().filter(|entry| visible(entry)).collect::<Vec<_>>()).filter(|s| !s.is_empty()).collect();
+    let fit = rail_fit(ui.available_height(), &sections.iter().map(Vec::len).collect::<Vec<_>>());
+    let separator = |ui: &mut egui::Ui| {
+        let (r, _) = ui.allocate_exact_size(vec2(20.0, SEPARATOR), Sense::hover());
+        ui.painter().hline(r.x_range(), r.center().y, Stroke::new(1.0, t.divider));
+    };
+    let mut drawn = 0usize;
+    let mut hidden: Vec<&'static Entry> = Vec::new();
+    for (i, section) in sections.iter().enumerate() {
+        for (k, entry) in section.iter().copied().enumerate() {
+            if drawn >= fit {
+                hidden.push(entry);
+                continue;
+            }
+            drawn += 1;
+            if i > 0 && k == 0 {
+                separator(ui);
+            }
             match entry {
                 Entry::Tool(tool) => {
                     let name = name(ui.ctx(), tool, chess);
@@ -1215,6 +1270,10 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
                 }
             }
         }
+    }
+    if !hidden.is_empty() {
+        separator(ui);
+        any_focus |= more_tools(ui, t, chess, &hidden).has_focus();
     }
     // The keyboard in the rail puts Undo on the game, as a click in the panel does (D12).
     if any_focus {
@@ -1292,55 +1351,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
         .gap(4.0)
         .show(|ui| {
             ui.set_min_width(200.0);
-            ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
-            for (i, tool) in group.members.iter().enumerate() {
-                let mut glyph_icon = None;
-                let label = tool_label(tool, chess);
-                let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
-                let button = match tool.kind {
-                    // A glyph: its sign, then its name; ticked while the move shown has it.
-                    Kind::Glyph(code) => {
-                        // A painted sign is drawn over the room its text would take.
-                        let face = match chess_annotate::seen(code, |s| chess_annotate::drawable(&ctx, s)) {
-                            chess_annotate::Seen::Text(face) => face,
-                            chess_annotate::Seen::Icon(icon) => {
-                                glyph_icon = Some(icon);
-                                String::new()
-                            }
-                            chess_annotate::Seen::Name(_) => chess_annotate::face(code, |_| true),
-                        };
-                        let mark = if is_on(tool, chess) { "✓" } else { "" };
-                        egui::Button::new(egui::RichText::new(format!("{face:<4} {label}"))).shortcut_text(mark)
-                    }
-                    _ => egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key),
-                };
-                let b = ui.add_enabled(can_act(tool, chess), button);
-                if let Some(icon) = glyph_icon.take() {
-                    let at = b.rect.left_center() + egui::vec2(ui.spacing().button_padding.x + 7.0, 0.0);
-                    let color = ui.style().interact(&b).fg_stroke.color;
-                    chess_annotate::paint_icon(ui.painter(), egui::Rect::from_center_size(at, egui::vec2(13.0, 13.0)), color, icon);
-                }
-                b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), i == shown, &label));
-                if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
-                    b.request_focus();
-                }
-                if b.clicked() {
-                    chosen = Some((i, Target::Current));
-                    ui.close();
-                }
-                // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
-                let game = chess.board().game();
-                if can_act(tool, chess)
-                    && let Some(head) = head_choices(ui, t, game, tool, &label, game.current())
-                {
-                    chosen = Some((i, Target::Head(head)));
-                    ui.close();
-                }
-            }
-            // The Capture tool's settings under its tools (plan A9-I0b).
-            if group.id == crate::chess_capture::CAPTURE.id {
-                crate::chess_capture::popup_settings(ui, chess);
-            }
+            chosen = group_entries(ui, t, chess, group, shown);
         });
     if let Some((i, target)) = chosen
         && let Some(tool) = group.members.get(i)
@@ -1349,6 +1360,121 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
         activate(chess, tool, target);
     }
     (r, popup)
+}
+
+/// A group's tools in a menu (its own popup, or the rail's ⋯): the group's name, each member
+/// ([`menu_tool`], the one the group shows marked; the first takes the keyboard when Enter or ↓
+/// opened the popup), and the Capture tool's settings under its tools (plan A9-I0b). The member
+/// chosen, and what it acts on.
+fn group_entries(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &Group, shown: usize) -> Option<(usize, Target)> {
+    ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
+    let mut chosen = None;
+    for (i, tool) in group.members.iter().enumerate() {
+        let (b, target) = menu_tool(ui, t, chess, tool, i == shown);
+        if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
+            b.request_focus();
+        }
+        if let Some(target) = target {
+            chosen = Some((i, target));
+        }
+    }
+    if group.id == crate::chess_capture::CAPTURE.id {
+        crate::chess_capture::popup_settings(ui, chess);
+    }
+    chosen
+}
+
+/// A tool's entry in a menu: its icon and name with its key, or for a glyph its sign and name,
+/// ticked while the move shown has it; `marked` for assistive technology; on when it can act.
+/// Under it, the variations it could act on when there are several. What was chosen (the tool,
+/// or one of those variations), which closes the menu.
+fn menu_tool(ui: &mut egui::Ui, t: &Tokens, chess: &ChessState, tool: &Tool, marked: bool) -> (egui::Response, Option<Target>) {
+    let ctx = ui.ctx().clone();
+    let mut glyph_icon = None;
+    let label = tool_label(tool, chess);
+    let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
+    let button = match tool.kind {
+        Kind::Glyph(code) => {
+            // A painted sign is drawn over the room its text would take.
+            let face = match chess_annotate::seen(code, |s| chess_annotate::drawable(&ctx, s)) {
+                chess_annotate::Seen::Text(face) => face,
+                chess_annotate::Seen::Icon(icon) => {
+                    glyph_icon = Some(icon);
+                    String::new()
+                }
+                chess_annotate::Seen::Name(_) => chess_annotate::face(code, |_| true),
+            };
+            let mark = if is_on(tool, chess) { "✓" } else { "" };
+            egui::Button::new(egui::RichText::new(format!("{face:<4} {label}"))).shortcut_text(mark)
+        }
+        _ => egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key),
+    };
+    let b = ui.add_enabled(can_act(tool, chess), button);
+    if let Some(icon) = glyph_icon.take() {
+        let at = b.rect.left_center() + egui::vec2(ui.spacing().button_padding.x + 7.0, 0.0);
+        let color = ui.style().interact(&b).fg_stroke.color;
+        chess_annotate::paint_icon(ui.painter(), egui::Rect::from_center_size(at, egui::vec2(13.0, 13.0)), color, icon);
+    }
+    b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), marked, &label));
+    let mut chosen = None;
+    if b.clicked() {
+        chosen = Some(Target::Current);
+        ui.close();
+    }
+    // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
+    let game = chess.board().game();
+    if can_act(tool, chess)
+        && let Some(head) = head_choices(ui, t, game, tool, &label, game.current())
+    {
+        chosen = Some(Target::Head(head));
+        ui.close();
+    }
+    (b, chosen)
+}
+
+/// The rail's ⋯, under its last entry: the entries it has no room for (`hidden`, in the rail's
+/// order) in a menu, a group's tools under the group's name as its own popup has them; shown on
+/// while one of them is. Named More board tools.
+fn more_tools(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, hidden: &[&'static Entry]) -> egui::Response {
+    let shown_of = |chess: &ChessState, group: &Group| chess.tools.shown(group.id).min(group.members.len().saturating_sub(1));
+    let on = hidden.iter().copied().any(|entry| match entry {
+        Entry::Tool(tool) => is_on(tool, chess),
+        Entry::Group(group) => group.members.get(shown_of(chess, group)).is_some_and(|tool| is_on(tool, chess)),
+    });
+    let more = icons::button(ui, "ellipsis", BUTTON, on, tl!("More board tools"));
+    // The glyph palette opens beside the ⋯ that holds its button.
+    if hidden.iter().copied().any(|entry| matches!(entry, Entry::Tool(tool) if tool.id == PALETTE.id)) {
+        chess.tools.palette_anchor = Some(more.rect.right_top() + vec2(8.0, 0.0));
+    }
+    let mut chosen: Option<(&'static Tool, Target)> = None;
+    egui::Popup::menu(&more).align(egui::RectAlign::RIGHT_END).gap(4.0).show(|ui| {
+        ui.set_min_width(200.0);
+        for (k, entry) in hidden.iter().copied().enumerate() {
+            match entry {
+                Entry::Tool(tool) => {
+                    if let (_, Some(target)) = menu_tool(ui, t, chess, tool, is_on(tool, chess)) {
+                        chosen = Some((tool, target));
+                    }
+                }
+                Entry::Group(group) => {
+                    if k > 0 {
+                        ui.separator();
+                    }
+                    let shown = shown_of(chess, group);
+                    if let Some((i, target)) = group_entries(ui, t, chess, group, shown)
+                        && let Some(tool) = group.members.get(i)
+                    {
+                        chess.tools.show(group.id, i);
+                        chosen = Some((tool, target));
+                    }
+                }
+            }
+        }
+    });
+    if let Some((tool, target)) = chosen {
+        activate(chess, tool, target);
+    }
+    more
 }
 
 /// Under a tool's entry in a group's popup or a move's menu: when the tool could act on several
@@ -1785,6 +1911,47 @@ mod tests {
     }
 
     const FORKS: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *";
+
+    /// Lane B (A9-E1): the rail shows every entry where they fit, else the most that fit with the
+    /// ⋯ under them, never more than there are, in any height (none in none; a NaN or an infinite
+    /// height is a scroll area's, where the rail is as tall as it needs).
+    #[test]
+    fn the_rail_shows_what_fits_and_keeps_room_for_its_more_button() {
+        let sections = [2, 1, 3];
+        // 6 buttons, 2 separators: 6 × 30 + 2 × 11 − 2.
+        let all = 6.0 * (BUTTON + GAP) + 2.0 * (SEPARATOR + GAP) - GAP;
+        assert_eq!(rail_fit(all, &sections), 6);
+        assert_eq!(rail_fit(all + 100.0, &sections), 6);
+        assert_eq!(rail_fit(f32::INFINITY, &sections), 6);
+        assert_eq!(rail_fit(f32::NAN, &sections), 6);
+        // A point short: the ⋯ takes a separator and a button under the last entry shown.
+        let fit = rail_fit(all - 1.0, &sections);
+        assert!(fit < 6, "{fit}");
+        let used = |n: usize| {
+            let mut left = n;
+            let mut h = 0.0;
+            for (i, c) in sections.iter().enumerate() {
+                if left == 0 {
+                    break;
+                }
+                if i > 0 {
+                    h += SEPARATOR + GAP;
+                }
+                let k = (*c).min(left);
+                h += k as f32 * (BUTTON + GAP);
+                left -= k;
+            }
+            h + SEPARATOR + GAP + BUTTON
+        };
+        for height in [0.0, 10.0, 39.0, 41.0, 80.0, 120.0, all - 1.0, -5.0] {
+            let fit = rail_fit(height, &sections);
+            assert!(fit < 6, "{height}: {fit}");
+            assert!(fit == 0 || used(fit) <= height, "{height}: {fit} take {}", used(fit));
+            assert!(used(fit + 1) > height, "{height}: one more would fit");
+        }
+        assert_eq!(rail_fit(100.0, &[]), 0);
+        assert_eq!(rail_fit(0.0, &[usize::MAX, 1]), 0, "no overflow in the count");
+    }
 
     /// The rail's Move comment opens the move's comment: a noun ("Comentário do lance"), never
     /// the undo step of moving a PDF comment, which keeps the verb ("Mover comentário").

@@ -4039,3 +4039,7 @@ progress bar	Progress	Eiga
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Knygoje ieškoti nepavyko: {e}
 	The diagrams read couldn't be looked at: {e}	Perskaitytų diagramų peržiūrėti nepavyko: {e}
+# fix: pawn structure words
+pawn structure	Passed	Laisvi
+# fix: the board rail's More button
+	More board tools	Daugiau lentos įrankių

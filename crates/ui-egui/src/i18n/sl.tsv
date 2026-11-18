@@ -3796,3 +3796,7 @@ progress bar	Progress	Napredek
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	V knjigi ni bilo mogoče iskati: {e}
 	The diagrams read couldn't be looked at: {e}	Prebranih diagramov ni bilo mogoče pregledati: {e}
+# fix: pawn structure words
+pawn structure	Passed	Prosti
+# fix: the board rail's More button
+	More board tools	Več orodij šahovnice
