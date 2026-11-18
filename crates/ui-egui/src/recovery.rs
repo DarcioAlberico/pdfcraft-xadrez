@@ -457,6 +457,10 @@ impl PdfCraftApp {
 
     /// Clean shutdown: documents were saved or discarded, so nothing needs recovering.
     pub fn shutdown_recovery(&mut self) {
+        // The engine's batch stops first, so what it found is written with the rest (plan
+        // A9-N17b).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.quit_engine_review();
         // The chess games are kept whatever happens to the documents: written, and waited for at
         // most `SETTLE` (plan A9-I3b), since the window closes next.
         self.flush_chess_games();

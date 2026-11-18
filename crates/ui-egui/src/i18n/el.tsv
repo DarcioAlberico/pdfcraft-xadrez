@@ -3712,6 +3712,52 @@ progress bar	Progress	Πρόοδος
 	Open game {n} on the board at {move}	Άνοιγμα της παρτίδας {n} στη σκακιέρα στην κίνηση {move}
 	Only the pieces were compared: the side to move isn't printed.	Συγκρίθηκαν μόνο τα κομμάτια: δεν είναι τυπωμένο ποιος παίζει.
 	The first {n} are listed.	Εμφανίζονται οι πρώτες {n}.
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Έλεγχος με τη μηχανή…
+	Check with the engine	Έλεγχος με τη μηχανή
+	Count the positions	Μέτρηση των θέσεων
+	Reading the pages: page {done} of {of}	Ανάγνωση σελίδων: σελίδα {done} από {of}
+	Positions to check: {n} ({time})	Θέσεις για έλεγχο: {n} ({time})
+	Checked before at this depth, left out: {n}	Ήδη ελεγμένες σε αυτό το βάθος, παραλείπονται: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Τίποτα για έλεγχο: οι αξιολογήσεις περιέχουν κάθε θέση σε αυτό το βάθος.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Οι σελίδες έχουν περισσότερες θέσεις από τις {max} που κρατούν οι αξιολογήσεις για κάθε έγγραφο: ελέγχονται μόνο οι πρώτες {max} και οι παλαιότερες αξιολογήσεις κάνουν χώρο.
+	Search each position	Ανάλυση κάθε θέσης
+	To depth	Έως βάθος
+	Seconds each	Δευτερόλεπτα ανά θέση
+	Start the check	Έναρξη ελέγχου
+	Continue the check ({n} left)	Συνέχεια ελέγχου (απομένουν {n})
+	≈ {m} min	≈ {m} λεπ.
+	≈ {h} h	≈ {h} ώρ.
+	≈ {h} h {m} min	≈ {h} ώρ. {m} λεπ.
+	Checking with the engine: position {done} of {of} ({time} left)	Έλεγχος με τη μηχανή: θέση {done} από {of} (απομένουν {time})
+	A check with the engine is already running: stop it first.	Ήδη εκτελείται έλεγχος με τη μηχανή: σταματήστε τον πρώτα.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Ο έλεγχος ολοκληρώθηκε. Θέσεις που ελέγχθηκαν: {n}. Αποκλίσεις: {d}.
+	Positions the engine gave no answer for: {n}	Θέσεις χωρίς απάντηση της μηχανής: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Ο έλεγχος σταμάτησε: ελέγχθηκαν {done} από {of} θέσεις. Ό,τι βρέθηκε διατηρείται.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Ό,τι βρήκε η μηχανή διατηρείται: η Συνέχεια ελέγχου συνεχίζει από εκεί.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Η μηχανή δεν απάντησε για {n} συνεχόμενες θέσεις, οπότε ο έλεγχος σταμάτησε. Ό,τι βρήκε διατηρείται.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Ο έλεγχος του {name} σταμάτησε: το έγγραφο έκλεισε. Ό,τι βρήκε η μηχανή διατηρείται.
+	The engine's evaluations could not be kept: {why}	Δεν ήταν δυνατή η διατήρηση των αξιολογήσεων της μηχανής: {why}
+	Divergences ({n})	Αποκλίσεις ({n})
+	‹ Text	‹ Κείμενο
+	Back to the page's text (Esc)	Πίσω στο κείμενο της σελίδας (Esc)
+	No divergence in what was checked.	Καμία απόκλιση σε ό,τι ελέγχθηκε.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Χωρίς κρίση: {none} χωρίς αξιολόγηση, {shallow} με πολύ ρηχή αναζήτηση.
+	The book says: {what}	Το βιβλίο λέει: {what}
+	The calculation says: {what}	Ο υπολογισμός λέει: {what}
+	Engine	Μηχανή
+	Solver	Επιλυτής
+	{value}: lets a mate go	{value}: αφήνει να χαθεί ένα ματ
+	{value}: loses {pawns} pawns to {best}	{value}: χάνει {pawns} πιόνια έναντι του {best}
+	{value}: loses {pawns} pawns	{value}: χάνει {pawns} πιόνια
+	{value}: loses only {pawns} pawns	{value}: χάνει μόνο {pawns} πιόνια
+	{value}: the engine's best move	{value}: η καλύτερη κίνηση της μηχανής
+	another solution: {move} {value}	άλλη λύση: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Ρωτά μια μηχανή για κάθε κίνηση με σημείο και κάθε διάγραμμα των σελίδων που επιλέγετε και απαριθμεί πού διαφωνούν το βιβλίο και ο υπολογισμός.
+	Engine: {value} (depth {d})	Μηχανή: {value} (βάθος {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Με αναζήτηση για ορισμένο χρόνο, μια θέση μπορεί να μείνει πιο ρηχή από βάθος {d}, που η αναφορά δεν κρίνει· ένας έλεγχος έως βάθος {d} τη ζητά ξανά.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Η ανάλυση της σκακιέρας είναι επίσης ενεργή: όσο η μηχανή της ψάχνει, οι δύο μηχανές μοιράζονται τον επεξεργαστή.
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	Εύρεση στο βιβλίο κατά υλικό…
 	Look for	Αναζήτηση

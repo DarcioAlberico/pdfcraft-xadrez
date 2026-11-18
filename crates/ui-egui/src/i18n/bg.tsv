@@ -3683,6 +3683,52 @@ progress bar	Progress	Напредък
 	Open game {n} on the board at {move}	Отваряне на партия {n} на дъската при {move}
 	Only the pieces were compared: the side to move isn't printed.	Сравнени са само фигурите: кой е на ход, не е отпечатано.
 	The first {n} are listed.	Изброени са първите {n}.
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Проверка с двигателя…
+	Check with the engine	Проверка с двигателя
+	Count the positions	Преброяване на позициите
+	Reading the pages: page {done} of {of}	Четене на страниците: страница {done} от {of}
+	Positions to check: {n} ({time})	Позиции за проверка: {n} ({time})
+	Checked before at this depth, left out: {n}	Вече проверени на тази дълбочина, пропуснати: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Няма какво да се проверява: оценките съдържат всяка позиция на тази дълбочина.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Страниците съдържат повече позиции от {max}, колкото оценките пазят за документ: проверяват се само първите {max}, а по-старите оценки освобождават място.
+	Search each position	Анализ на всяка позиция
+	To depth	До дълбочина
+	Seconds each	Секунди на позиция
+	Start the check	Начало на проверката
+	Continue the check ({n} left)	Продължаване на проверката (остават {n})
+	≈ {m} min	≈ {m} мин
+	≈ {h} h	≈ {h} ч
+	≈ {h} h {m} min	≈ {h} ч {m} мин
+	Checking with the engine: position {done} of {of} ({time} left)	Проверка с двигателя: позиция {done} от {of} (остават {time})
+	A check with the engine is already running: stop it first.	Вече тече проверка с двигателя: първо я спрете.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Проверката завърши. Проверени позиции: {n}. Разминавания: {d}.
+	Positions the engine gave no answer for: {n}	Позиции без отговор от двигателя: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Проверката беше спряна: проверени {done} от {of} позиции. Намереното се пази.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Намереното от двигателя се пази: „Продължаване на проверката“ продължава оттам.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Двигателят не отговори за {n} поредни позиции, затова проверката спря. Намереното от него се пази.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Проверката на {name} спря: документът беше затворен. Намереното от двигателя се пази.
+	The engine's evaluations could not be kept: {why}	Оценките на двигателя не можаха да бъдат запазени: {why}
+	Divergences ({n})	Разминавания ({n})
+	‹ Text	‹ Текст
+	Back to the page's text (Esc)	Обратно към текста на страницата (Esc)
+	No divergence in what was checked.	Няма разминаване в провереното.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Неоценени: {none} без оценка, {shallow} с твърде плитко търсене.
+	The book says: {what}	Книгата казва: {what}
+	The calculation says: {what}	Изчислението казва: {what}
+	Engine	Двигател
+	Solver	Решаваща програма
+	{value}: lets a mate go	{value}: изпуска мат
+	{value}: loses {pawns} pawns to {best}	{value}: губи {pawns} пешки спрямо {best}
+	{value}: loses {pawns} pawns	{value}: губи {pawns} пешки
+	{value}: loses only {pawns} pawns	{value}: губи само {pawns} пешки
+	{value}: the engine's best move	{value}: най-добрият ход на двигателя
+	another solution: {move} {value}	друго решение: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Пита двигателя за всеки ход със знак и всяка диаграма от избраните страници и изброява къде книгата и изчислението се разминават.
+	Engine: {value} (depth {d})	Двигател: {value} (дълбочина {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	При търсене за определено време една позиция може да остане по-плитка от дълбочина {d}, която докладът не оценява; проверка до дълбочина {d} я изисква отново.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Анализът на дъската също е включен: докато неговият двигател търси, двата двигателя си делят процесора.
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	Търсене в книгата по материал…
 	Look for	Търсене на

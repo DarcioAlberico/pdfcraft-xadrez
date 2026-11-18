@@ -3633,6 +3633,52 @@ progress bar	Progress	Ход выполнения
 	Open game {n} on the board at {move}	Открыть партию {n} на доске на ходе {move}
 	Only the pieces were compared: the side to move isn't printed.	Сравнивались только фигуры: очерёдность хода не напечатана.
 	The first {n} are listed.	Показаны первые {n}.
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Проверить движком…
+	Check with the engine	Проверить движком
+	Count the positions	Подсчитать позиции
+	Reading the pages: page {done} of {of}	Чтение страниц: страница {done} из {of}
+	Positions to check: {n} ({time})	Позиций для проверки: {n} ({time})
+	Checked before at this depth, left out: {n}	Уже проверено на этой глубине, пропущено: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Нечего проверять: в оценках есть все позиции на этой глубине.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	На страницах больше позиций, чем {max}, которые оценки хранят для документа: проверяются только первые {max}, а более старые оценки освобождают место.
+	Search each position	Анализировать каждую позицию
+	To depth	До глубины
+	Seconds each	Секунд на позицию
+	Start the check	Начать проверку
+	Continue the check ({n} left)	Продолжить проверку (осталось {n})
+	≈ {m} min	≈ {m} мин
+	≈ {h} h	≈ {h} ч
+	≈ {h} h {m} min	≈ {h} ч {m} мин
+	Checking with the engine: position {done} of {of} ({time} left)	Проверка движком: позиция {done} из {of} (осталось {time})
+	A check with the engine is already running: stop it first.	Проверка движком уже идёт: сначала остановите её.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Проверка завершена. Проверено позиций: {n}. Расхождений: {d}.
+	Positions the engine gave no answer for: {n}	Позиций без ответа движка: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Проверка остановлена: проверено {done} из {of} позиций. Найденное сохранено.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Найденное движком сохранено: «Продолжить проверку» продолжит с этого места.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Движок не ответил на {n} позиций подряд, поэтому проверка остановлена. Найденное им сохранено.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Проверка документа {name} остановлена: документ закрыт. Найденное движком сохранено.
+	The engine's evaluations could not be kept: {why}	Не удалось сохранить оценки движка: {why}
+	Divergences ({n})	Расхождения ({n})
+	‹ Text	‹ Текст
+	Back to the page's text (Esc)	Вернуться к тексту страницы (Esc)
+	No divergence in what was checked.	В проверенном нет расхождений.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Не оценено: {none} без оценки, {shallow} с слишком мелким поиском.
+	The book says: {what}	Книга говорит: {what}
+	The calculation says: {what}	Расчёт говорит: {what}
+	Engine	Движок
+	Solver	Решатель
+	{value}: lets a mate go	{value}: упускает мат
+	{value}: loses {pawns} pawns to {best}	{value}: теряет {pawns} пешки по сравнению с {best}
+	{value}: loses {pawns} pawns	{value}: теряет {pawns} пешки
+	{value}: loses only {pawns} pawns	{value}: теряет лишь {pawns} пешки
+	{value}: the engine's best move	{value}: лучший ход движка
+	another solution: {move} {value}	другое решение: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Спрашивает движок о каждом ходе со знаком и каждой диаграмме выбранных страниц и перечисляет места, где книга и расчёт расходятся.
+	Engine: {value} (depth {d})	Движок: {value} (глубина {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	При поиске по времени позиция может остаться мельче глубины {d}, которую отчёт не оценивает; проверка до глубины {d} запросит её снова.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Анализ на доске тоже включён: пока его движок ищет, два движка делят процессор.
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	Найти в книге по материалу…
 	Look for	Искать
