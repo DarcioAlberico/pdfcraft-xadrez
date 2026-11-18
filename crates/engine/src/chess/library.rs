@@ -30,6 +30,7 @@
 //! ([`crate::Session::set_chess_peek`]): a book read in the app is not read again, and nothing the
 //! person opens is pushed out of the 512 MiB of D21.
 
+pub mod find;
 pub mod index;
 pub mod walk;
 
@@ -117,6 +118,16 @@ pub enum Skip {
     Unreadable,
     /// Its reading failed, or its index can't be written (the error says why).
     Failed,
+    /// When it was about to be opened, it was in the cloud, though the walk found it here
+    /// (plan A9-N15a2): never opened.
+    InCloud,
+    /// When it was about to be opened, it was a link: never followed.
+    Link,
+    /// When it was about to be opened, it was no longer a file there.
+    Gone,
+    /// Its index could not be read now (another program holding it): the book was left as it is
+    /// this time, neither read again nor its index set aside.
+    IndexUnreadable,
 }
 
 impl Skip {
@@ -128,6 +139,10 @@ impl Skip {
             Skip::TooLarge => "too_large",
             Skip::Unreadable => "unreadable",
             Skip::Failed => "failed",
+            Skip::InCloud => "in_cloud",
+            Skip::Link => "link",
+            Skip::Gone => "gone",
+            Skip::IndexUnreadable => "index_unreadable",
         }
     }
 }
@@ -211,6 +226,10 @@ pub struct BuildOptions {
     pub app_reading: Option<PathBuf>,
     /// The encrypted books the person said yes to, by hash (D31 A).
     pub allowed: Vec<String>,
+    /// Largest PDF read (`None`: [`MAX_BOOK_BYTES`]) and most bytes the Library keeps in all
+    /// (`None`: [`MAX_BYTES`]); smaller ones for tests.
+    pub max_book_bytes: Option<u64>,
+    pub max_bytes: Option<u64>,
 }
 
 /// Where a build is, for its progress.
@@ -264,16 +283,57 @@ pub struct Built {
     pub stopped: bool,
     /// Books left to read: a call with `max_books` stopped before them, or a stop.
     pub left: usize,
-    /// Bytes of indexes in the Library.
+    /// Bytes the Library's files take: its indexes, those set aside and the staging files of
+    /// writes under way (plan A9-N15a2: all of them count toward the cap).
     pub bytes: u64,
+    /// The indexes no book of the catalog names any more (a book left the folders, or changed
+    /// and was read again under its new hash), taken out with those set aside for them: their
+    /// hashes, and the bytes freed.
+    pub orphans: Vec<String>,
+    pub orphan_bytes: u64,
+    /// The Library's folder held more files than are listed ([`MAX_LISTED_FILES`]): what was
+    /// past them was neither counted nor taken out.
+    pub listing_truncated: bool,
 }
 
 /// What [`Library::clear`] removed.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Cleared {
     pub indexes: usize,
     pub files: usize,
     pub bytes: u64,
+    /// The catalog could not be written again after one book was cleared, and why.
+    pub catalog_error: Option<String>,
+    /// The folder held more files than are listed ([`MAX_LISTED_FILES`]): those past them stay.
+    pub listing_truncated: bool,
+}
+
+/// Most files of the Library's folder listed at once.
+pub const MAX_LISTED_FILES: usize = walk::MAX_BOOKS * 8;
+
+/// A staging file older than this was left by a write that stopped (plan A9-N15a2).
+const STALE_STAGING: std::time::Duration = std::time::Duration::from_secs(3600);
+
+/// The Library's own files in its folder ([`Library::files`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Files {
+    /// The indexes, by hash, with their bytes.
+    pub indexes: Vec<(String, u64)>,
+    /// The indexes set aside (`<hash>.lib.bad`), by hash, with their bytes.
+    pub set_aside: Vec<(String, u64)>,
+    /// The staging files of writes under way (or left by one that stopped), with their bytes and
+    /// age.
+    pub staging: Vec<(PathBuf, u64, std::time::Duration)>,
+    /// More files than [`MAX_LISTED_FILES`] were there: the rest were not looked at.
+    pub truncated: bool,
+}
+
+impl Files {
+    /// Every byte they take.
+    pub fn bytes(&self) -> u64 {
+        let sum = |v: &[(String, u64)]| v.iter().fold(0u64, |n, (_, b)| n.saturating_add(*b));
+        sum(&self.indexes).saturating_add(sum(&self.set_aside)).saturating_add(self.staging.iter().fold(0u64, |n, (_, b, _)| n.saturating_add(*b)))
+    }
 }
 
 /// The Library in a folder.
@@ -384,26 +444,72 @@ impl Library {
         reading::write_whole(&self.dir.join(CATALOG), &json)
     }
 
-    /// The indexes in the folder: (hash, bytes), and how many are set aside.
-    pub fn indexes(&self) -> (Vec<(String, u64)>, usize) {
-        let mut out = Vec::new();
-        let mut aside = 0usize;
-        let Ok(list) = std::fs::read_dir(&self.dir) else { return (out, 0) };
-        for e in list.flatten().take(walk::MAX_BOOKS.saturating_mul(4)) {
-            let Some(name) = e.file_name().to_str().map(str::to_owned) else { continue };
-            if let Some(hash) = name.strip_suffix(LIB).filter(|h| is_hash(h)) {
-                out.push((hash.to_owned(), e.metadata().map_or(0, |m| m.len())));
-            } else if name.strip_suffix(SET_ASIDE).is_some_and(is_hash) {
-                aside = aside.saturating_add(1);
-            }
-        }
-        out.sort();
-        (out, aside)
+    /// The Library's own files in its folder: the indexes, those set aside and the staging files,
+    /// each with its bytes; at most [`MAX_LISTED_FILES`] files looked at, and said when there were
+    /// more.
+    pub fn files(&self) -> Files {
+        self.files_within(MAX_LISTED_FILES)
     }
 
-    /// Bytes of the indexes, all of them but `but`'s.
+    fn files_within(&self, limit: usize) -> Files {
+        let mut out = Files::default();
+        let Ok(list) = std::fs::read_dir(&self.dir) else { return out };
+        let mut seen = 0usize;
+        for e in list.flatten() {
+            if seen >= limit {
+                out.truncated = true;
+                break;
+            }
+            seen = seen.saturating_add(1);
+            let Some(name) = e.file_name().to_str().map(str::to_owned) else { continue };
+            let meta = e.metadata().ok();
+            let bytes = meta.as_ref().map_or(0, std::fs::Metadata::len);
+            if let Some(hash) = name.strip_suffix(LIB).filter(|h| is_hash(h)) {
+                out.indexes.push((hash.to_ascii_lowercase(), bytes));
+            } else if let Some(hash) = name.strip_suffix(SET_ASIDE).filter(|h| is_hash(h)) {
+                out.set_aside.push((hash.to_ascii_lowercase(), bytes));
+            } else if own_file(&name) && name != CATALOG {
+                let age = meta.and_then(|m| m.modified().ok()).and_then(|t| t.elapsed().ok()).unwrap_or_default();
+                out.staging.push((e.path(), bytes, age));
+            }
+        }
+        out.indexes.sort();
+        out.set_aside.sort();
+        out
+    }
+
+    /// Bytes of the Library's files, all of them but `but`'s index.
     fn bytes_but(&self, but: Option<&str>) -> u64 {
-        self.indexes().0.iter().filter(|(h, _)| Some(h.as_str()) != but).fold(0u64, |n, (_, b)| n.saturating_add(*b))
+        let files = self.files();
+        let theirs = files.indexes.iter().filter(|(h, _)| Some(h.as_str()) == but).fold(0u64, |n, (_, b)| n.saturating_add(*b));
+        files.bytes().saturating_sub(theirs)
+    }
+
+    /// Take out the indexes no book of `catalog` names, with those set aside for them, and the
+    /// staging files a write that stopped left (more than an hour old): the hashes taken out, the
+    /// bytes freed, and whether the listing was cut short.
+    fn sweep(&self, catalog: &Catalog) -> (Vec<String>, u64, bool) {
+        let named: std::collections::HashSet<String> =
+            catalog.books.iter().filter_map(|b| b.hash.as_deref()).filter(|h| is_hash(h)).map(str::to_ascii_lowercase).collect();
+        let files = self.files();
+        let (mut gone, mut bytes) = (Vec::new(), 0u64);
+        for (hash, size) in &files.indexes {
+            if !named.contains(hash) && std::fs::remove_file(self.index_path(hash)).is_ok() {
+                gone.push(hash.clone());
+                bytes = bytes.saturating_add(*size);
+            }
+        }
+        for (hash, size) in &files.set_aside {
+            if !named.contains(hash) && std::fs::remove_file(self.dir.join(format!("{hash}{SET_ASIDE}"))).is_ok() {
+                bytes = bytes.saturating_add(*size);
+            }
+        }
+        for (path, size, age) in &files.staging {
+            if *age > STALE_STAGING && std::fs::remove_file(path).is_ok() {
+                bytes = bytes.saturating_add(*size);
+            }
+        }
+        (gone, bytes, files.truncated)
     }
 
     /// Walk `dirs` and index every book there whose index is not current (see the module
@@ -424,17 +530,29 @@ impl Library {
         .sanitized();
         let general = super::text_ocr::general_ocr_digest();
         let shown = |p: &Path| p.to_string_lossy().into_owned();
+        // The folders of the earlier builds stay chosen, and their books in the catalog (plan
+        // A9-N15a2): a build of one folder does not forget another's.
+        let mut chosen = before.dirs.clone();
+        for d in dirs.iter().map(|d| shown(d)) {
+            if !chosen.contains(&d) {
+                chosen.push(d);
+            }
+        }
         let mut catalog = Catalog {
-            dirs: dirs.iter().map(|d| shown(d)).collect(),
+            dirs: chosen,
             walk: WalkNote {
                 entries: walked.entries,
                 capped: walked.capped.clone(),
                 links: walked.links.iter().map(|p| shown(p)).collect(),
-                cloud_folders: Vec::new(),
+                cloud_folders: walked.cloud_folders.iter().map(|p| shown(p)).collect(),
                 unlisted: walked.unlisted.iter().map(|(p, e)| (shown(p), e.clone())).collect(),
             },
             ..Catalog::default()
         };
+        // Whether the walk saw every PDF of its folders: only then is a book of theirs it did not
+        // find gone.
+        let whole = !walked.stopped && walked.capped.is_empty() && walked.unlisted.is_empty();
+        let max_book_bytes = opts.max_book_bytes.unwrap_or(u64::try_from(MAX_BOOK_BYTES).unwrap_or(u64::MAX));
         let mut reports: Vec<BookReport> = Vec::new();
         let mut by_hash: HashMap<String, usize> = HashMap::new();
         let (mut read, mut stopped) = (0usize, false);
@@ -451,8 +569,15 @@ impl Library {
                 continue;
             }
             let started = std::time::Instant::now();
-            let bytes = match super::corrections::read_capped(&pdf.path, MAX_BOOK_BYTES) {
-                Ok(b) if b.len() > MAX_BOOK_BYTES => {
+            // What the walk saw may be hours old: the entry is looked at again just before it is
+            // opened (plan A9-N15a2), and its size is held to the cap before a byte is read.
+            if let Err(why) = still_a_book(&pdf.path, max_book_bytes) {
+                reports.push(BookReport { book: skipped(pdf, &path, why, None), run: Some(BookRun::default()) });
+                continue;
+            }
+            let cap = usize::try_from(max_book_bytes).unwrap_or(usize::MAX).min(MAX_BOOK_BYTES);
+            let bytes = match super::corrections::read_capped(&pdf.path, cap) {
+                Ok(b) if b.len() > cap => {
                     reports.push(BookReport { book: skipped(pdf, &path, Skip::TooLarge, None), run: Some(BookRun::default()) });
                     continue;
                 }
@@ -483,26 +608,25 @@ impl Library {
             if outcome == Outcome::Stopped {
                 stopped = true;
             }
-            catalog.books = reports.iter().map(|r| r.book.clone()).collect();
+            catalog.books = merged(&before, dirs, &reports, false);
             // Kept after every book: a stop, or a crash, keeps what was done.
             if let Err(e) = self.write_catalog(&mut catalog) {
                 return Err(format!("the Library's catalog can't be written: {e}"));
             }
         }
+        // The PDFs in the cloud (a folder in the cloud is no book, whatever its name).
         for c in &walked.cloud {
-            let is_pdf = c.extension().is_some_and(|x| x.eq_ignore_ascii_case("pdf"));
-            if is_pdf {
-                let book = CatalogBook { paths: vec![shown(c)], state: State::Cloud, ..CatalogBook::default() };
-                reports.push(BookReport { book, run: None });
-            } else {
-                catalog.walk.cloud_folders.push(shown(c));
-            }
+            let book = CatalogBook { paths: vec![shown(c)], state: State::Cloud, ..CatalogBook::default() };
+            reports.push(BookReport { book, run: None });
         }
-        catalog.books = reports.iter().map(|r| r.book.clone()).collect();
+        catalog.books = merged(&before, dirs, &reports, whole);
         self.write_catalog(&mut catalog).map_err(|e| format!("the Library's catalog can't be written: {e}"))?;
+        // The indexes no book names any more go (plan A9-N15a2).
+        let (orphans, orphan_bytes, listing_truncated) = self.sweep(&catalog);
         let left = reports.iter().filter(|r| matches!(r.book.state, State::Pending | State::Partial)).count();
         let cloud = reports.iter().filter(|r| r.book.state == State::Cloud).count();
-        Ok(Built { books: reports, walk: catalog.walk, cloud, read, stopped, left, bytes: self.bytes_but(None) })
+        let bytes = self.bytes_but(None);
+        Ok(Built { books: reports, walk: catalog.walk, cloud, read, stopped, left, bytes, orphans, orphan_bytes, listing_truncated })
     }
 
     /// Read book `book` (its bytes `bytes`) and index it, unless its index is current: what the
@@ -576,7 +700,7 @@ impl Library {
         let key = index_key(book.content, wants.settings, &digests);
         let lib = self.index_path(book.hash);
         entry.no_piece_model = wants.models.pieces.loaded().is_none();
-        match index::read(&lib, Some(&key), &mut |_| {}) {
+        match index::read(&lib, Some(&key), &mut |_, _| {}) {
             Ok(meta) => {
                 run.current = true;
                 entry.state = State::Indexed;
@@ -590,6 +714,9 @@ impl Library {
                 run.index_set_aside = true;
             }
             Err(ReadError::Missing | ReadError::Stale) => {}
+            // Not a check that failed: the file could not be read now. The book is left as it is
+            // this time, and said (plan A9-N15a2).
+            Err(ReadError::Unreadable(why)) => return (skip(entry, Skip::IndexUnreadable, Some(why)), run, Outcome::Skipped),
         }
         session.set_chess_peek(wants.opts.app_reading.as_deref());
         session.set_chess_disk_budget(Some(MAX_PAGE_BYTES));
@@ -635,7 +762,7 @@ impl Library {
             return (skip(entry, Skip::Failed, Some("its index is larger than an index may be".into())), run, Outcome::Read);
         };
         let size = u64::try_from(file.len()).unwrap_or(u64::MAX);
-        if self.bytes_but(Some(book.hash)).saturating_add(size) > MAX_BYTES {
+        if self.bytes_but(Some(book.hash)).saturating_add(size) > wants.opts.max_bytes.unwrap_or(MAX_BYTES) {
             entry.state = State::Full;
             return (entry, run, Outcome::Read);
         }
@@ -672,15 +799,25 @@ impl Library {
                 b.state = State::Pending;
                 b.counts = None;
                 b.index_bytes = 0;
-                let _ = self.write_catalog(&mut catalog);
+                // Said, never dropped (plan A9-N15a2): the next build finds the book's index gone.
+                if let Err(e) = self.write_catalog(&mut catalog) {
+                    cleared.catalog_error = Some(e.to_string());
+                }
             }
             return cleared;
         }
         if book.is_some() {
             return cleared;
         }
+        let mut truncated = false;
         if let Ok(list) = std::fs::read_dir(&self.dir) {
-            for e in list.flatten().take(walk::MAX_BOOKS.saturating_mul(8)) {
+            let mut seen = 0usize;
+            for e in list.flatten() {
+                if seen >= MAX_LISTED_FILES {
+                    truncated = true;
+                    break;
+                }
+                seen = seen.saturating_add(1);
                 let Some(name) = e.file_name().to_str().map(str::to_owned) else { continue };
                 let index = name.strip_suffix(LIB).is_some_and(is_hash);
                 if index || own_file(&name) {
@@ -688,6 +825,7 @@ impl Library {
                 }
             }
         }
+        cleared.listing_truncated = truncated;
         let pages = reading::store_within(&self.pages_dir(), MAX_PAGE_BYTES).clear(None);
         cleared.files = cleared.files.saturating_add(pages.files);
         cleared.bytes = cleared.bytes.saturating_add(pages.bytes);
@@ -744,12 +882,66 @@ enum Outcome {
 fn carried(before: &Catalog, pdf: &walk::Pdf, path: &str, library: &Library) -> CatalogBook {
     let same = before.books.iter().find(|b| b.paths.iter().any(|p| p == path) && b.size == pdf.size && b.modified == pdf.modified);
     if let Some(b) = same {
-        let indexed = b.state == State::Indexed && b.hash.as_deref().is_some_and(|h| library.index_path(h).is_file());
-        if indexed || b.state == State::Skipped || b.state == State::Partial {
+        // The catalog is untrusted input: a hash that is not one names no file (plan A9-N15a2).
+        let hash = b.hash.as_deref().filter(|h| is_hash(h));
+        let indexed = b.state == State::Indexed && hash.is_some_and(|h| library.index_path(h).is_file());
+        if b.hash.is_none() == hash.is_none() && (indexed || b.state == State::Skipped || b.state == State::Partial) {
             return CatalogBook { paths: vec![path.to_owned()], ..b.clone() };
         }
     }
     CatalogBook { paths: vec![path.to_owned()], size: pdf.size, modified: pdf.modified, state: State::Pending, ..CatalogBook::default() }
+}
+
+/// The catalog after a build of `dirs` whose books are `reports` (plan A9-N15a2): those books,
+/// and the books of the catalog `before` the build did not meet, kept as they were — another
+/// folder's, or one of these folders' the walk did not reach. A book of these folders the walk
+/// did not find is gone and dropped, but only when the walk was `whole` (no cap reached, no
+/// folder unlisted). A book kept with the content of a book of this build is that book, with
+/// both paths; one whose hash is not one is kept without it, pending.
+fn merged(before: &Catalog, dirs: &[PathBuf], reports: &[BookReport], whole: bool) -> Vec<CatalogBook> {
+    let mut out: Vec<CatalogBook> = reports.iter().map(|r| r.book.clone()).collect();
+    let met: std::collections::HashSet<String> = out.iter().flat_map(|b| b.paths.iter().cloned()).collect();
+    let here = |p: &str| dirs.iter().any(|d| Path::new(p).starts_with(d));
+    for b in &before.books {
+        let rest: Vec<String> = b.paths.iter().filter(|p| !met.contains(p.as_str()) && !(whole && here(p))).cloned().collect();
+        if rest.is_empty() {
+            continue;
+        }
+        let hash = b.hash.as_deref().filter(|h| is_hash(h));
+        if let Some(h) = hash
+            && let Some(same) = out.iter_mut().find(|c| c.hash.as_deref() == Some(h))
+        {
+            same.paths.extend(rest);
+            continue;
+        }
+        let kept = match hash {
+            Some(_) => CatalogBook { paths: rest, ..b.clone() },
+            None if b.hash.is_none() => CatalogBook { paths: rest, ..b.clone() },
+            None => CatalogBook { paths: rest, size: b.size, modified: b.modified, state: State::Pending, ..CatalogBook::default() },
+        };
+        out.push(kept);
+    }
+    out
+}
+
+/// Whether the PDF at `path` is still one to open (plan A9-N15a2): what the walk saw may be hours
+/// old, so the entry is looked at again, without following a link — a link now, in the cloud
+/// now, no longer a file or larger than `max` bytes is not opened, and why.
+fn still_a_book(path: &Path, max: u64) -> Result<(), Skip> {
+    let meta = std::fs::symlink_metadata(path).map_err(|_| Skip::Gone)?;
+    if meta.file_type().is_symlink() {
+        return Err(Skip::Link);
+    }
+    if walk::cloud_only(walk::attributes_of(Some(&meta))) {
+        return Err(Skip::InCloud);
+    }
+    if !meta.is_file() {
+        return Err(Skip::Gone);
+    }
+    if meta.len() > max {
+        return Err(Skip::TooLarge);
+    }
+    Ok(())
 }
 
 /// A book not read, and why.

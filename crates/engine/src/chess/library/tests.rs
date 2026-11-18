@@ -1,11 +1,14 @@
-//! The Library on synthetic books (plan A9-N15a): folders of PDFs built here, read without a piece
+//! The Library on synthetic books (plans A9-N15a and N15b, the search): folders of PDFs built here, read without a piece
 //! model (diagram fonts are read exactly), each rule of the walk and of the build with a test of
 //! its own.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::index::{IndexedPosition, Place};
+use pdfcraft_chess::placement::Color;
+
+use super::find::FindQuery;
+use super::index::{BookIndex, IndexMeta, IndexedPosition, Place};
 use super::walk::{Cap, Caps, walk};
 use super::*;
 use crate::chess::tests::{book_of_boards, no_model};
@@ -105,7 +108,7 @@ fn book<'a>(built: &'a Built, name: &str) -> &'a BookReport {
 /// The positions of book `hash`'s index.
 fn positions(library: &Library, hash: &str) -> (index::IndexMeta, Vec<IndexedPosition>) {
     let mut found = Vec::new();
-    let meta = index::read(&library.index_path(hash), None, &mut |p| found.push(*p)).unwrap();
+    let meta = index::read(&library.index_path(hash), None, &mut |_, p| found.push(*p)).unwrap();
     (meta, found)
 }
 
@@ -410,7 +413,7 @@ fn a_book_never_kept_or_not_yet_allowed_is_skipped_and_said() {
     assert_eq!(said("ask.pdf"), (State::Skipped, Some(Skip::Ask)));
     assert_eq!(said("broken.pdf"), (State::Skipped, Some(Skip::DoesNotOpen)));
     assert!(book(&built, "broken.pdf").book.error.is_some());
-    assert_eq!((built.read, lib.indexes().0.len()), (0, 0), "nothing read, no index");
+    assert_eq!((built.read, lib.files().indexes.len()), (0, 0), "nothing read, no index");
     // Yes to the encrypted one: it is read and indexed; the other is never.
     let hash = book(&built, "ask.pdf").book.hash.clone().unwrap();
     let yes = build(&lib, std::slice::from_ref(&books), &BuildOptions { allowed: vec![hash], ..options() });
@@ -440,7 +443,7 @@ fn a_damaged_index_is_set_aside_and_made_again() {
     assert_eq!(run.scanned, 1, "read again");
     assert_eq!(std::fs::read(lib.dir().join(format!("{hash}.lib.bad"))).unwrap(), bad, "set aside as it was");
     assert_eq!(std::fs::read(&path).unwrap(), good, "made again the same");
-    assert_eq!(lib.indexes().1, 1);
+    assert_eq!(lib.files().set_aside.len(), 1);
     let _ = std::fs::remove_dir_all(&base);
 }
 
@@ -508,12 +511,490 @@ fn clearing_takes_out_only_what_the_library_made() {
     std::fs::write(lib.dir().join("mine.txt"), b"the person's").unwrap();
     let one = lib.clear(Some(&a));
     assert_eq!(one.indexes, 1);
-    assert_eq!(lib.indexes().0.len(), 1);
+    assert_eq!(lib.files().indexes.len(), 1);
     assert_eq!(lib.catalog().books.iter().find(|b| b.hash.as_deref() == Some(a.as_str())).map(|b| b.state), Some(State::Pending));
     assert_eq!(build(&lib, std::slice::from_ref(&books), &options()).read, 1, "the cleared one is read again");
     let all = lib.clear(None);
     assert_eq!(all.indexes, 2);
-    assert!(lib.indexes().0.is_empty() && !lib.dir().join("catalog.json").exists());
+    assert!(lib.files().indexes.is_empty() && !lib.dir().join("catalog.json").exists());
     assert!(lib.dir().join("mine.txt").exists(), "another file stays");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The position after the Spanish opening's third move, 3.Bb5.
+const AFTER_BB5: &str = "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+
+/// A two-page book: prose on the first page, the Spanish opening on the second, under a game's
+/// header whose players are `white` and `black`.
+fn game_on_page_two(white: &str, black: &str) -> Vec<u8> {
+    let first = helv(60.0, 11.0, "An introduction without moves.");
+    let mut second = helv(60.0, 11.0, &format!("\\(1\\) {white} - {black} [C60]"));
+    second.push_str(&helv(90.0, 11.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.Bxc6 dxc6"));
+    two_font_book(&[first, second])
+}
+
+/// A library of two books built in `base`: `one.pdf` (the chapter) and `two.pdf`.
+fn two_books(base: &Path) -> Library {
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("one.pdf"), chapter("One")).unwrap();
+    std::fs::write(books.join("two.pdf"), game_on_page_two("Capablanca,Jose", "Lasker,Emanuel")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    assert_eq!(built.read, 2, "{:#?}", built.books);
+    lib
+}
+
+fn key(fen: &str) -> pdfcraft_chess::fen::BookKey {
+    pdfcraft_chess::fen::Fen::parse(fen).unwrap().book_key()
+}
+
+/// Plan A9-N15b: two books that reach the same position give a hit each, with the book, the page
+/// as it numbers it, the move as numbered and its game; each index is read once.
+#[test]
+fn a_position_two_books_reach_is_found_in_both_with_its_page() {
+    let base = fresh("find-two");
+    let lib = two_books(&base);
+    let found = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 100);
+    assert_eq!((found.total, found.listed, found.indexes_read), (2, 2, 2), "{found:#?}");
+    let titles: Vec<&str> = found.books.iter().map(|b| b.title.as_str()).collect();
+    assert_eq!(titles, ["one", "two"]);
+    for (b, page) in found.books.iter().zip(["1", "2"]) {
+        let hit = &b.hits[0];
+        assert_eq!((hit.label.as_deref(), hit.number, hit.black, hit.san.as_deref()), (Some(page), 3, false, Some("Bb5")), "{b:#?}");
+        assert!(matches!(hit.place, Place::Move { .. }));
+    }
+    // The game of the second book's hit, with its players (as the header reads them).
+    let two = &found.books[1];
+    let game = two.hits[0].game.and_then(|g| two.games.iter().find(|(i, _)| *i == g)).map(|(_, g)| g.white.clone());
+    assert_eq!(game.as_deref(), Some("Capablanca, Jose"), "{two:#?}");
+    // The other side to move is another position, unless any side is asked.
+    let other = key("r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 3 3");
+    assert_eq!(lib.find(&FindQuery { position: Some(other), ..FindQuery::default() }, 100).total, 0);
+    assert_eq!(lib.find(&FindQuery { position: Some(other), any_side: true, ..FindQuery::default() }, 100).total, 2);
+    // `max` lists that many and counts all.
+    let one = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 1);
+    assert_eq!((one.total, one.listed, one.indexes_read), (2, 1, 2));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b: a SAN finds every move written so (marks held to when given), a player the games,
+/// an event or an opening's code too, and a position within a player's games only those.
+#[test]
+fn a_san_finds_every_move_and_a_player_the_games() {
+    let base = fresh("find-san");
+    let lib = two_books(&base);
+    let bb5 = lib.find(&FindQuery { san: Some("Bb5".into()), ..FindQuery::default() }, 100);
+    assert_eq!((bb5.total, bb5.books.len()), (2, 2));
+    assert_eq!(lib.find(&FindQuery { san: Some("Bxc6".into()), ..FindQuery::default() }, 100).total, 1);
+    assert_eq!(lib.find(&FindQuery { san: Some("Bb5+".into()), ..FindQuery::default() }, 100).total, 0, "a check asked for");
+    assert_eq!(lib.find(&FindQuery { san: Some("Bb5!".into()), ..FindQuery::default() }, 100).total, 2, "signs left out");
+    let games = lib.find(&FindQuery { player: Some("capablanca".into()), ..FindQuery::default() }, 100);
+    assert_eq!((games.total, games.books.len()), (1, 1), "{games:#?}");
+    let (_, g) = &games.books[0].games[0];
+    assert_eq!((g.white.as_str(), g.black.as_str(), g.eco.as_deref(), g.page), ("Capablanca, Jose", "Lasker, Emanuel", Some("C60"), Some(1)));
+    assert!(games.books[0].hits.is_empty());
+    assert_eq!(lib.find(&FindQuery { eco: Some("C6".into()), ..FindQuery::default() }, 100).total, 1);
+    assert_eq!(lib.find(&FindQuery { eco: Some("B".into()), ..FindQuery::default() }, 100).total, 0);
+    assert_eq!(lib.find(&FindQuery { player: Some("Tal".into()), ..FindQuery::default() }, 100).total, 0);
+    // The position within Capablanca's games: the second book's only.
+    let within = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), player: Some("Capablanca".into()), ..FindQuery::default() }, 100);
+    assert_eq!((within.total, within.books[0].title.as_str()), (1, "two"));
+    // Nothing asked finds nothing, and reads nothing.
+    let none = lib.find(&FindQuery::default(), 100);
+    assert_eq!((none.total, none.indexes_read), (0, 0));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b with A9-N16a: the material and the pawns, as `Query::matches` has them.
+#[test]
+fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
+    use pdfcraft_chess::pattern::{Material, PawnQuery, Query};
+    let base = fresh("find-pattern");
+    let lib = two_books(&base);
+    // After 5...dxc6: White has given its light bishop for a knight, Black's c-pawns are doubled.
+    let q = |pattern: Query| lib.find(&FindQuery { pattern, ..FindQuery::default() }, 100).total;
+    let doubled = |side| Query { pawns: PawnQuery { doubled: true, side, ..PawnQuery::default() }, ..Query::default() };
+    assert_eq!(q(doubled(Some(Color::Black))), 1);
+    assert_eq!(q(doubled(Some(Color::White))), 0);
+    let material = Material::parse("KQRRBNNPPPPPPPP-KQRRBBNPPPPPPPP").unwrap();
+    assert_eq!(q(Query { material: Some(material), ..Query::default() }), 1, "after 5...dxc6");
+    assert_eq!(q(Query { material: Some(material.mirrored()), ..Query::default() }), 0);
+    assert_eq!(q(Query { material: Some(material.mirrored()), either_side: true, ..Query::default() }), 1);
+    // The marks the index keeps answer as the query does on the placement, over the book's positions.
+    let mut every = Vec::new();
+    for hash in lib.files().indexes.iter().map(|(h, _)| h.clone()) {
+        index::read(&lib.index_path(&hash), None, &mut |_, p| every.push(*p)).unwrap();
+    }
+    let queries = [
+        doubled(None),
+        doubled(Some(Color::White)),
+        Query { pawns: PawnQuery { isolated: true, passed: true, ..PawnQuery::default() }, ..Query::default() },
+    ];
+    for p in &every {
+        let placement = placement_of(p.placement);
+        for query in &queries {
+            let f = FindQuery { pattern: *query, ..FindQuery::default() };
+            assert_eq!(f.pattern_matches(p), query.matches(&placement), "{query:?}");
+        }
+    }
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b: an index that does not check out is not served: the search says it and goes on
+/// with the other books.
+#[test]
+fn a_damaged_index_is_said_and_not_served() {
+    let base = fresh("find-damaged");
+    let lib = two_books(&base);
+    let indexes = lib.files().indexes;
+    let path = lib.index_path(&indexes[0].0);
+    let mut b = std::fs::read(&path).unwrap();
+    let at = b.len() - 2;
+    b[at] ^= 0x77;
+    std::fs::write(&path, b).unwrap();
+    let found = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 100);
+    assert_eq!((found.total, found.unread.len(), found.indexes_read), (1, 1, 2), "{found:#?}");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The placement a key holds (four bits a square from a1: 1–6 White's P N B R Q K, 9–14 Black's).
+fn placement_of(key: pdfcraft_chess::fen::PlacementKey) -> pdfcraft_chess::placement::Placement {
+    use pdfcraft_chess::placement::{Piece, PieceKind, Placement, Square};
+    let mut out = Placement::empty();
+    for (w, word) in key.words().into_iter().enumerate() {
+        for i in 0..16 {
+            let code = (word >> (i * 4)) & 15;
+            let kind = match code & 7 {
+                1 => PieceKind::Pawn,
+                2 => PieceKind::Knight,
+                3 => PieceKind::Bishop,
+                4 => PieceKind::Rook,
+                5 => PieceKind::Queen,
+                6 => PieceKind::King,
+                _ => continue,
+            };
+            let color = if code & 8 != 0 { Color::Black } else { Color::White };
+            out.set(Square::from_index(w * 16 + i).unwrap(), Some(Piece::new(color, kind)));
+        }
+    }
+    out
+}
+
+/// A synthetic book's index of `n` positions: placements walked a piece at a time from the start
+/// position, as a book's games walk them (so they deflate as a book's do), each with a SAN of a
+/// small table and a game; `planted` of them, spread out, are the position after 3.Bb5.
+fn synthetic_index(n: usize, planted: usize) -> BookIndex {
+    use pdfcraft_chess::fen::Fen;
+    let start = *Fen::parse(START).unwrap().placement();
+    let target = Fen::parse(AFTER_BB5).unwrap();
+    let mut placement = start;
+    let mut seed = 0x2545_f491_4f6c_dd1du64;
+    let squares: Vec<pdfcraft_chess::placement::Square> = (0..64).filter_map(pdfcraft_chess::placement::Square::from_index).collect();
+    let mut positions = Vec::with_capacity(n);
+    let every = n / planted.max(1);
+    for i in 0..n {
+        // A piece moves to another square, now and then the game starts again.
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        if i % 80 == 0 {
+            placement = start;
+        }
+        let from = squares[(seed % 64) as usize];
+        let to = squares[((seed >> 8) % 64) as usize];
+        if let Some(piece) = placement.get(from)
+            && from != to
+            && placement.get(to).is_none_or(|p| p.kind != pdfcraft_chess::placement::PieceKind::King)
+            && piece.kind != pdfcraft_chess::placement::PieceKind::King
+        {
+            placement.set(from, None);
+            placement.set(to, Some(piece));
+        }
+        let planted_here = every > 0 && i % every == every / 2 && i / every < planted;
+        let (p, side) =
+            if planted_here { (*target.placement(), Color::Black) } else { (placement, if i % 2 == 0 { Color::White } else { Color::Black }) };
+        positions.push(IndexedPosition {
+            placement: pdfcraft_chess::fen::PlacementKey::of(&p),
+            side,
+            side_assumed: false,
+            page: Some(u32::try_from(i / 40).unwrap()),
+            place: Place::Move { block: u32::try_from(i % 40).unwrap(), inline: 0 },
+            number: u16::try_from(i % 80 / 2 + 1).unwrap(),
+            black: i % 2 == 1,
+            san: Some(u32::try_from(i % 50).unwrap()),
+            game: Some(u32::try_from(i / 80).unwrap()),
+            main_line: true,
+            accepted: true,
+            material: index::material_of(&p),
+            pawns: index::pawn_marks(&p),
+        });
+    }
+    let meta = IndexMeta {
+        title: "A million positions".into(),
+        pages: u32::try_from(n / 40 + 1).unwrap(),
+        sans: (0..50).map(|i| format!("Nf{}", i % 8 + 1)).collect(),
+        games: (0..n / 80 + 1)
+            .map(|_| index::IndexedGame { white: "Synthetic".into(), black: "Book".into(), event: "?".into(), ..Default::default() })
+            .collect(),
+        ..IndexMeta::default()
+    };
+    BookIndex { meta, positions }
+}
+
+/// Plan A9-N15b's budget (R8): a synthetic index of a million positions is looked through in at
+/// most a second, in release, read once (the count is deterministic: one index, every planted
+/// position found).
+/// `cargo test --release -p pdfcraft-engine --lib perf_library_find_a_million_positions -- --ignored --nocapture`.
+#[test]
+#[ignore = "a timing, in release"]
+fn perf_library_find_a_million_positions() {
+    let base = fresh("find-perf");
+    let lib = Library::new(base.join("library"));
+    std::fs::create_dir_all(lib.dir()).unwrap();
+    let index = synthetic_index(1_000_000, 7);
+    let hash = "ab".repeat(32);
+    let file = index::encode(&index, &IndexKey([3; 32])).unwrap();
+    std::fs::write(lib.index_path(&hash), &file).unwrap();
+    let book = CatalogBook { hash: Some(hash), paths: vec!["synthetic.pdf".into()], state: State::Indexed, ..CatalogBook::default() };
+    let mut catalog = Catalog { books: vec![book], ..Catalog::default() };
+    lib.write_catalog(&mut catalog).unwrap();
+    let query = FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() };
+    let t = std::time::Instant::now();
+    let found = lib.find(&query, 100);
+    let ms = t.elapsed().as_secs_f64() * 1000.0;
+    println!("PERF library_find_a_million_positions {ms:.1} ms ({} bytes, {} positions)", file.len(), index.positions.len());
+    assert_eq!((found.indexes_read, found.total), (1, 7), "{found:?}");
+    assert!(ms <= 1000.0, "{ms:.0} ms");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The hash of book `name` in a build.
+fn hash_of(built: &Built, name: &str) -> String {
+    book(built, name).book.hash.clone().unwrap_or_else(|| panic!("{name} has no hash: {:#?}", built.books))
+}
+
+/// Plan A9-N15a2 (1): a build of another folder keeps the first folder's books in the catalog;
+/// a book that changed is read again under its new hash and its old index goes, said; a book taken
+/// out of its folder is dropped on the next build of that folder, and its index goes too.
+#[test]
+fn the_catalog_keeps_other_folders_and_orphan_indexes_go() {
+    let base = fresh("orphans");
+    let (a, b, lib) = (base.join("a"), base.join("b"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&a).unwrap();
+    std::fs::create_dir_all(&b).unwrap();
+    std::fs::write(a.join("1.pdf"), chapter("One")).unwrap();
+    std::fs::write(b.join("2.pdf"), chapter("Two")).unwrap();
+    let first = build(&lib, std::slice::from_ref(&a), &options());
+    let one = hash_of(&first, "1.pdf");
+    let second = build(&lib, std::slice::from_ref(&b), &options());
+    let two = hash_of(&second, "2.pdf");
+    let hashes = |c: &Catalog| c.books.iter().filter_map(|b| b.hash.clone()).collect::<Vec<_>>();
+    assert_eq!(hashes(&lib.catalog()), [two.clone(), one.clone()], "the first folder's book kept");
+    assert_eq!(lib.catalog().dirs.len(), 2);
+    assert!(second.orphans.is_empty());
+    assert_eq!(lib.files().indexes.len(), 2);
+    // Changed: read again under its new hash, the old index taken out.
+    std::fs::write(a.join("1.pdf"), chapter("One, again")).unwrap();
+    let changed = build(&lib, std::slice::from_ref(&a), &options());
+    let again = hash_of(&changed, "1.pdf");
+    assert_ne!(again, one);
+    assert_eq!(changed.orphans, std::slice::from_ref(&one));
+    assert!(changed.orphan_bytes > 0);
+    let mut left: Vec<String> = lib.files().indexes.into_iter().map(|(h, _)| h).collect();
+    left.sort();
+    let mut wanted = vec![again.clone(), two.clone()];
+    wanted.sort();
+    assert_eq!(left, wanted);
+    // Taken out of its folder: dropped on the next build of that folder, its index with it.
+    std::fs::remove_file(a.join("1.pdf")).unwrap();
+    let gone = build(&lib, std::slice::from_ref(&a), &options());
+    assert_eq!(gone.orphans, [again]);
+    assert_eq!(hashes(&lib.catalog()), [two]);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (2): a PDF larger than the cap is said too large from its size, never read: one
+/// another program holds open without sharing is too large, not unreadable.
+#[cfg(windows)]
+#[test]
+fn a_book_over_the_cap_is_never_read() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let base = fresh("too-large");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(books.join("a.pdf")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_book_bytes: Some(100), ..options() });
+    let a = &book(&built, "a.pdf").book;
+    assert_eq!((a.state, a.reason, a.error.as_deref()), (State::Skipped, Some(Skip::TooLarge), None), "{a:#?}");
+    drop(held);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (3): what the walk saw is looked at again just before a book is opened: a book
+/// that went to the cloud since (marked offline, as a OneDrive file freed) is not opened, and one
+/// taken away is said gone.
+#[cfg(windows)]
+#[test]
+fn a_book_that_went_to_the_cloud_or_away_since_the_walk_is_not_opened() {
+    let base = fresh("stale");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    for (name, title) in [("1.pdf", "One"), ("2.pdf", "Two"), ("3.pdf", "Three")] {
+        std::fs::write(books.join(name), chapter(title)).unwrap();
+    }
+    let away = books.join("2.pdf");
+    let built = lib
+        .build(std::slice::from_ref(&books), &options(), &mut |p| {
+            // Between the walk and the book's opening.
+            if p.pages == 0 && p.path.ends_with("2.pdf") {
+                let out = std::process::Command::new("attrib").arg("+O").arg(p.path).output().unwrap();
+                assert!(out.status.success());
+            }
+            if p.pages == 0 && p.path.ends_with("3.pdf") {
+                std::fs::remove_file(p.path).unwrap();
+            }
+            true
+        })
+        .unwrap();
+    let said = |name: &str| {
+        let b = &book(&built, name).book;
+        (b.state, b.reason, b.hash.is_some())
+    };
+    assert_eq!(said("1.pdf"), (State::Indexed, None, true));
+    assert_eq!(said("2.pdf"), (State::Skipped, Some(Skip::InCloud), false), "never opened");
+    assert_eq!(said("3.pdf"), (State::Skipped, Some(Skip::Gone), false));
+    assert_eq!(built.read, 1);
+    let _ = std::process::Command::new("attrib").arg("-O").arg(&away).output();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (4): the catalog is untrusted: a hash in it that is not one names no file, even
+/// when a file is there under that name.
+#[test]
+fn a_catalog_hash_that_is_no_hash_names_no_file() {
+    let base = fresh("bad-hash");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::create_dir_all(lib.dir()).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    // `library/../evil.lib`.
+    std::fs::write(base.join("evil.lib"), b"not an index").unwrap();
+    let walked = walk(std::slice::from_ref(&books), Caps::default(), &|| false);
+    let pdf = &walked.pdfs[0];
+    let mut catalog = Catalog {
+        books: vec![CatalogBook {
+            hash: Some("../evil".into()),
+            paths: vec![pdf.path.to_string_lossy().into_owned()],
+            size: pdf.size,
+            modified: pdf.modified,
+            state: State::Indexed,
+            ..CatalogBook::default()
+        }],
+        ..Catalog::default()
+    };
+    lib.write_catalog(&mut catalog).unwrap();
+    // Nothing read in this call: the book is as the catalog had it, when it can be trusted.
+    let built = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_books: Some(0), ..options() });
+    let a = &book(&built, "a.pdf").book;
+    assert_eq!((a.state, a.hash.as_deref()), (State::Pending, None), "{a:#?}");
+    assert!(base.join("evil.lib").exists(), "the file it named left alone");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (5): an index another program holds (an antivirus, say) is not damaged: the book
+/// is skipped this time and said, nothing set aside and nothing read; once let go, it is current.
+#[cfg(windows)]
+#[test]
+fn an_index_that_cannot_be_read_now_is_left_as_it_is() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let base = fresh("index-held");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let first = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&first, "a.pdf");
+    let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(lib.index_path(&hash)).unwrap();
+    let again = build(&lib, std::slice::from_ref(&books), &options());
+    let a = book(&again, "a.pdf");
+    assert_eq!((a.book.state, a.book.reason), (State::Skipped, Some(Skip::IndexUnreadable)), "{a:#?}");
+    assert!(a.book.error.is_some());
+    assert_eq!(a.run.map(|r| (r.scanned, r.index_set_aside)), Some((0, false)));
+    assert!(lib.files().set_aside.is_empty(), "nothing set aside");
+    drop(held);
+    let third = build(&lib, std::slice::from_ref(&books), &options());
+    assert!(book(&third, "a.pdf").run.is_some_and(|r| r.current));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (6): a folder in the cloud named as a PDF is a folder, no book.
+#[cfg(windows)]
+#[test]
+fn a_cloud_folder_named_as_a_pdf_is_no_book() {
+    let base = fresh("cloud-folder");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    let folder = books.join("x.pdf");
+    std::fs::create_dir_all(&folder).unwrap();
+    let out = std::process::Command::new("attrib").arg("+O").arg("/D").arg(&folder).output().unwrap();
+    assert!(out.status.success(), "attrib +O /D: {}", String::from_utf8_lossy(&out.stderr));
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    assert!(built.books.is_empty(), "{:#?}", built.books);
+    assert_eq!(built.cloud, 0);
+    assert_eq!(built.walk.cloud_folders, [folder.to_string_lossy().into_owned()]);
+    let _ = std::process::Command::new("attrib").arg("-O").arg("/D").arg(&folder).output();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (7): when clearing one book cannot write the catalog again, it says so.
+#[cfg(windows)]
+#[test]
+fn clearing_says_when_the_catalog_cannot_be_written() {
+    let base = fresh("clear-readonly");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&built, "a.pdf");
+    let catalog = lib.dir().join("catalog.json");
+    let mut perms = std::fs::metadata(&catalog).unwrap().permissions();
+    perms.set_readonly(true);
+    std::fs::set_permissions(&catalog, perms.clone()).unwrap();
+    let cleared = lib.clear(Some(&hash));
+    assert_eq!(cleared.indexes, 1);
+    assert!(cleared.catalog_error.is_some(), "{cleared:?}");
+    #[allow(clippy::permissions_set_readonly_false)]
+    perms.set_readonly(false);
+    std::fs::set_permissions(&catalog, perms).unwrap();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (8): the indexes set aside and the staging files count toward the cap, a staging
+/// file left by a write that stopped (over an hour old) is taken out, and a listing cut short says
+/// so.
+#[test]
+fn every_file_of_the_library_counts_toward_its_cap() {
+    let base = fresh("cap");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&built, "a.pdf");
+    let index = std::fs::metadata(lib.index_path(&hash)).unwrap().len();
+    // Cleared, then made again under a cap the index alone fits, but not with an index set aside
+    // for it once and a write that stopped two hours ago.
+    assert_eq!(lib.clear(Some(&hash)).indexes, 1);
+    std::fs::write(lib.dir().join(format!("{hash}.lib.bad")), vec![0u8; 4096]).unwrap();
+    let stale = lib.dir().join(format!("{hash}.lib.tmp1-1"));
+    std::fs::write(&stale, vec![0u8; 1024]).unwrap();
+    let two_hours = std::time::SystemTime::now() - std::time::Duration::from_secs(7200);
+    std::fs::File::options().write(true).open(&stale).unwrap().set_modified(two_hours).unwrap();
+    assert_eq!(lib.files().bytes(), 4096 + 1024);
+    let full = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_bytes: Some(index + 2048), ..options() });
+    assert_eq!(book(&full, "a.pdf").book.state, State::Full);
+    assert!(!stale.exists(), "the stale staging file taken out");
+    assert_eq!(full.bytes, 4096);
+    // A listing cut short says so.
+    assert!(lib.files_within(1).truncated);
+    assert!(!lib.files_within(100).truncated);
     let _ = std::fs::remove_dir_all(&base);
 }

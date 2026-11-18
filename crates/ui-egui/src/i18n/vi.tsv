@@ -4032,6 +4032,12 @@ progress bar	Progress	Tiến độ
 	Nothing in the book as read has this material and these pawns.	Không có gì trong phần sách đã đọc có lực lượng và các tốt này.
 	{first} to {last}	{first} đến {last}
 	Positions: {n}	Thế cờ: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Đọc các quân
+	Say a rank's pieces	Đọc các quân trên một hàng
+	Say a file's pieces	Đọc các quân trên một cột
+	{piece} on {square} picked up	Đã nhấc {piece} ở {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Phím mũi tên chọn ô; Enter hoặc Space nhấc một quân lên hoặc đi quân đó tới ô.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
 	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}
