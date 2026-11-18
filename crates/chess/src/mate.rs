@@ -123,7 +123,7 @@ pub fn solve_side(fen: &Fen, side: Color, n: u8, budget: u64) -> Result<MateRepo
     let mut search = Search { nodes: 0, budget };
     let mut report =
         MateReport { n, side, keys: Vec::new(), shortest: None, nodes: 0, exhausted: false, best_try: None, refutation: None, castles: false };
-    for mv in moves(&board) {
+    for mv in crate::legal_moves(&board) {
         let Some(after) = search.play(&board, mv) else {
             report.exhausted = true;
             break;
@@ -218,7 +218,7 @@ impl Search {
     /// Whether the side to move on `board` mates in at most `n` moves (n ≥ 1); `None` when the
     /// budget ran out first.
     fn mates(&mut self, board: &Board, n: u8) -> Option<bool> {
-        for mv in moves(board) {
+        for mv in crate::legal_moves(board) {
             if n == 1 && !gives_check(board, mv) {
                 continue;
             }
@@ -241,7 +241,7 @@ impl Search {
         if left == 0 {
             return Some(false);
         }
-        for reply in moves(board) {
+        for reply in crate::legal_moves(board) {
             let after = self.play(board, reply)?;
             if !self.mates(&after, left)? {
                 return Some(false);
@@ -254,14 +254,14 @@ impl Search {
     /// try) and its first refutation; `Some(None)` when there is no try; `None` out of budget.
     fn best_try(&mut self, board: &Board, n: u8) -> Option<Option<(Move, Move)>> {
         let mut best: Option<(usize, Move, Move)> = None;
-        for mv in moves(board) {
+        for mv in crate::legal_moves(board) {
             let after = self.play(board, mv)?;
             if after.status() != GameStatus::Ongoing {
                 continue;
             }
             let mut refuting = 0usize;
             let mut first = None;
-            for reply in moves(&after) {
+            for reply in crate::legal_moves(&after) {
                 let next = self.play(&after, reply)?;
                 let holds = n == 1 || !self.mates(&next, n - 1)?;
                 if holds {
@@ -280,16 +280,6 @@ impl Search {
         }
         Some(best.map(|(_, mv, refutation)| (mv, refutation)))
     }
-}
-
-/// The legal moves on `board`.
-fn moves(board: &Board) -> Vec<Move> {
-    let mut out = Vec::new();
-    board.generate_moves(|list| {
-        out.extend(list);
-        false
-    });
-    out
 }
 
 /// `board` after the legal move `mv`.

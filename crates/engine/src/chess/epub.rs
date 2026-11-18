@@ -85,14 +85,10 @@ pub struct EpubEntry {
 }
 
 /// A stable identifier for a book made from these PDF bytes: the same file gives the same id,
-/// so a reader recognises a re-export as the same book. FNV-1a, not a security hash.
+/// so a reader recognises a re-export as the same book. FNV-1a ([`pdfcraft_chess::hash::fnv64`]),
+/// not a security hash.
 pub fn identifier(pdf: &[u8]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in pdf {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    format!("urn:pdfcraft:chess:{h:016x}")
+    format!("urn:pdfcraft:chess:{:016x}", pdfcraft_chess::hash::fnv64(pdf))
 }
 
 /// A stable identifier from the PDF's first file identifier (`/ID[0]`, as
@@ -126,10 +122,7 @@ pub fn identifier_for_pages(base: String, pages: &[usize], count: usize) -> Stri
         }
     }
     if runs.len() > MAX_ID_RUNS {
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for byte in pages.iter().flat_map(|p| u64::try_from(*p).unwrap_or(u64::MAX).to_be_bytes()) {
-            h = (h ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
-        }
+        let h = pdfcraft_chess::hash::fnv64_of(pages.iter().flat_map(|p| u64::try_from(*p).unwrap_or(u64::MAX).to_be_bytes()));
         return format!("{base}:pages:h{h:016x}");
     }
     let one = |p: usize| p.saturating_add(1);

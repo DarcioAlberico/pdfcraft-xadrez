@@ -39,6 +39,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::{PgnStyle, Variations};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
 
+use crate::chess_board_frame::BoardFrame;
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
 use crate::theme::{self, Tokens};
 use pdfcraft_engine::chess::collection::OpenKey;
@@ -684,22 +685,10 @@ impl BoardState {
         self.illegal.as_ref().map_or_else(|| self.game.placement(), |(p, _)| *p)
     }
 
-    /// The square at `(x, y)` in the board's own units (0..1 from its top left), as shown.
-    pub(crate) fn square_at(&self, x: f32, y: f32) -> Option<Square> {
-        if !(x.is_finite() && y.is_finite() && (0.0..1.0).contains(&x) && (0.0..1.0).contains(&y)) {
-            return None;
-        }
-        // In 0..8 after the checks above, so the casts cannot wrap.
-        let (col, row) = ((x * 8.0) as u8, (y * 8.0) as u8);
-        if self.flipped { Square::new(7 - col, row) } else { Square::new(col, 7 - row) }
-    }
-
-    /// The rectangle of `square` on a board drawn in `board`.
-    pub(crate) fn square_rect(&self, board: Rect, square: Square) -> Rect {
-        let (file, rank) = (f32::from(square.file()), f32::from(square.rank()));
-        let (col, row) = if self.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
-        let cell = board.width() / 8.0;
-        Rect::from_min_size(board.min + vec2(col * cell, row * cell), vec2(cell, cell))
+    /// The board drawn in `board`, from the side it is shown from: where each square is (plan
+    /// A9-I6, [`BoardFrame`]).
+    pub(crate) fn frame(&self, board: Rect) -> BoardFrame {
+        BoardFrame { rect: board, flipped: self.flipped }
     }
 
     /// A click (or a drop) on `square`: pick a piece of the side to move up, or move the piece
@@ -1144,7 +1133,8 @@ fn paint_mark(
     theme: &pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme,
     look: crate::chess_theme::BoardLook,
 ) {
-    let (a, b) = (state.square_rect(board, mark.from), state.square_rect(board, mark.to));
+    let frame = state.frame(board);
+    let (a, b) = (frame.square_rect(mark.from), frame.square_rect(mark.to));
     let cell = a.width();
     let base = mark.color.color32();
     // The hand-made drawings take the theme's opacity; the engine's arrow stays lighter.
@@ -1209,7 +1199,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     // The pieces in words, in the interface's letters (plan A9-I15; never the FEN).
     let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&state.placement(), crate::chess_figurines::interface_lang());
     ui.ctx().accesskit_node_builder(response.id, |node| node.set_description(in_words));
-    let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
+    let at = |state: &BoardState, p: Pos2| state.frame(rect).square_at(p);
     // Alt with the left button draws, a click at a time (plan A9-N7a): no piece is picked up. A
     // start left on a board that has changed since is forgotten as soon as it is drawn (plan
     // A9-N7a2), so that going back to that board does not bring it back.
@@ -1258,15 +1248,16 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     let painter = ui.painter_at(rect);
     let palette = crate::chess_theme::current(ui.ctx());
     let (picked, target) = (crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
+    let grid = state.frame(rect);
     if state.illegal.is_none() {
         // The marks on squares go under the pieces: the board's picture has them drawn already,
         // so the pieces on the marked squares are drawn again over the marks.
-        let last_move = state.game.last_move().map(|(from, to)| (state.square_rect(rect, from), state.square_rect(rect, to)));
+        let last_move = state.game.last_move().map(|(from, to)| (grid.square_rect(from), grid.square_rect(to)));
         if let Some((from, to)) = last_move {
             crate::chess_theme::paint_last_move(&painter, palette, look, from, to);
         }
         if let Some(from) = state.selected.or(state.arrow_start()) {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
+            painter.rect_filled(grid.square_rect(from), 0.0, picked);
         }
         let marked: Vec<Square> = state.game.last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();
         if !marked.is_empty()
@@ -1274,7 +1265,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         {
             for sq in marked {
                 if let Some(piece) = state.game.piece_on(sq) {
-                    painter.image(sprites.id(), state.square_rect(rect, sq), sprite_uv(piece), Color32::WHITE);
+                    painter.image(sprites.id(), grid.square_rect(sq), sprite_uv(piece), Color32::WHITE);
                 }
             }
         }
@@ -1284,12 +1275,12 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         if state.game.in_check()
             && let Some(king) = state.game.placement().king(state.game.side_to_move())
         {
-            let r = state.square_rect(rect, king);
+            let r = grid.square_rect(king);
             painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, crate::chess_theme::rgb(palette.check)));
         }
         if let Some(from) = state.selected {
             for to in state.game.targets(from) {
-                let r = state.square_rect(rect, to);
+                let r = grid.square_rect(to);
                 if state.game.piece_on(to).is_some() {
                     painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, target));
                 } else {
@@ -1304,10 +1295,10 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
             && let Some(pointer) = response.interact_pointer_pos()
         {
             if let Some(sq) = at(state, pointer) {
-                painter.rect_stroke(state.square_rect(rect, sq), 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Inside);
+                painter.rect_stroke(grid.square_rect(sq), 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Inside);
             }
             if let (Some(piece), Some(sprites)) = (state.game.piece_on(from), state.sprites(ui.ctx(), pieces)) {
-                let cell = state.square_rect(rect, from);
+                let cell = grid.square_rect(from);
                 painter.rect_filled(cell, 0.0, crate::chess_theme::rgb(palette.square(from.is_light())));
                 let ghost = Rect::from_center_size(pointer, cell.size() * 1.1);
                 ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("chess-board-drag"))).image(
@@ -1328,15 +1319,15 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     if look.coordinates == crate::chess_theme::Coordinates::Outside {
         let outside = ui.painter_at(outer);
         for i in 0u8..8 {
-            let (file_sq, rank_sq) =
-                if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
+            // The bottom row's squares for the files, the right column's for the ranks.
+            let (file_sq, rank_sq) = (grid.square_of(i, 7), grid.square_of(7, i));
             if let Some(sq) = file_sq {
-                let r = state.square_rect(rect, sq);
+                let r = grid.square_rect(sq);
                 let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
                 outside.text(egui::pos2(r.center().x, outer.bottom()), egui::Align2::CENTER_BOTTOM, letter, font.clone(), t.text_muted);
             }
             if let Some(sq) = rank_sq {
-                let r = state.square_rect(rect, sq);
+                let r = grid.square_rect(sq);
                 outside.text(
                     egui::pos2(outer.left(), r.center().y),
                     egui::Align2::LEFT_CENTER,
@@ -1348,16 +1339,15 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         }
     }
     for i in (0u8..8).filter(|_| look.coordinates == crate::chess_theme::Coordinates::Inside) {
-        let (file_sq, rank_sq) =
-            if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
+        let (file_sq, rank_sq) = (grid.square_of(i, 7), grid.square_of(7, i));
         let ink = |sq: Square| crate::chess_theme::rgb(palette.coordinate_ink(sq.is_light()));
         if let Some(sq) = file_sq {
-            let r = state.square_rect(rect, sq);
+            let r = grid.square_rect(sq);
             let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
             painter.text(r.left_bottom() + vec2(2.0, -1.0), egui::Align2::LEFT_BOTTOM, letter, font.clone(), ink(sq));
         }
         if let Some(sq) = rank_sq {
-            let r = state.square_rect(rect, sq);
+            let r = grid.square_rect(sq);
             painter.text(r.right_top() + vec2(-2.0, 1.0), egui::Align2::RIGHT_TOP, (sq.rank() + 1).to_string(), font.clone(), ink(sq));
         }
     }
@@ -2034,13 +2024,14 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
         if let Some((from, to)) = state.game.move_at(node) {
             // Marked as the board marks it, the piece drawn again over the mark.
             let (palette, look, painter) = (crate::chess_theme::current(ui.ctx()), crate::chess_theme::look(ui.ctx()), ui.painter());
-            let (a, b) = (state.square_rect(resp.rect, from), state.square_rect(resp.rect, to));
+            let frame = state.frame(resp.rect);
+            let (a, b) = (frame.square_rect(from), frame.square_rect(to));
             crate::chess_theme::paint_last_move(painter, palette, look, a, b);
             let placement = state.game.fen_at(node).map(|fen| *fen.placement());
             if let (Some(placement), Some(sprites)) = (placement, state.sprites_cut()) {
                 for sq in [from, to] {
                     if let Some(piece) = placement.get(sq) {
-                        painter.image(sprites.id(), state.square_rect(resp.rect, sq), sprite_uv(piece), Color32::WHITE);
+                        painter.image(sprites.id(), frame.square_rect(sq), sprite_uv(piece), Color32::WHITE);
                     }
                 }
             }
@@ -3064,13 +3055,13 @@ mod tests {
     #[test]
     fn squares_follow_the_view() {
         let mut s = BoardState::default();
-        assert_eq!(s.square_at(0.01, 0.99), Some(sq("a1")));
+        let board = Rect::from_min_size(Pos2::ZERO, vec2(80.0, 80.0));
+        assert_eq!(s.frame(board).square_at(Pos2::new(0.8, 79.2)), Some(sq("a1")));
         s.flipped = true;
-        assert_eq!(s.square_at(0.01, 0.99), Some(sq("h8")));
-        assert_eq!(s.square_at(1.0, 0.5), None);
-        assert_eq!(s.square_at(f32::NAN, 0.5), None);
-        let r = s.square_rect(Rect::from_min_size(Pos2::ZERO, vec2(80.0, 80.0)), sq("h8"));
-        assert_eq!(r.min, Pos2::new(0.0, 70.0));
+        assert_eq!(s.frame(board).square_at(Pos2::new(0.8, 79.2)), Some(sq("h8")));
+        assert_eq!(s.frame(board).square_at(Pos2::new(80.0, 40.0)), None);
+        assert_eq!(s.frame(board).square_at(Pos2::new(f32::NAN, 40.0)), None);
+        assert_eq!(s.frame(board).square_rect(sq("h8")).min, Pos2::new(0.0, 70.0));
     }
 
     /// Several games in the field: the first goes on the board, the others come back as texts

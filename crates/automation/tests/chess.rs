@@ -3447,6 +3447,8 @@ fn reading_args(tool: &pdfcraft_automation::ToolDef, doc: u64) -> Value {
             "page" => json!(1),
             "pages" => json!([1]),
             "index" => json!(1),
+            // A point of the page (chess_move_at).
+            "x" | "y" => json!(100.0),
             "out" => json!(format!("made/{}.out", tool.name)),
             other => panic!("{}: give reading_args a value for {other}", tool.name),
         };
@@ -4694,6 +4696,121 @@ fn chess_position_find_looks_only_in_what_is_read() {
     // A move that cannot be played; and no position given is the start position.
     assert!(again.call("chess_position_find", &json!({ "doc": doc, "moves": ["e4", "e4"] })).unwrap_err().to_string().contains("move 2"));
     assert_eq!(ok(&mut again, "chess_position_find", json!({ "doc": doc }))["fen"], start);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── Plan A9, N1: the printed move under a point ────────────────────────────────────────────
+
+/// 600 × 800 pt pages of Helvetica text, `(content, rotate)` each: a page turned by `/Rotate`.
+fn text_pages(pages: &[(&str, u32)]) -> Vec<u8> {
+    let kids: Vec<String> = (0..pages.len()).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
+    let mut objs = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        format!("<< /Type /Pages /Kids [{}] /Count {} /MediaBox [0 0 600 800] >>", kids.join(" "), pages.len()),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
+    ];
+    for (i, (content, rotate)) in pages.iter().enumerate() {
+        objs.push(format!("<< /Type /Page /Parent 2 0 R /Rotate {rotate} /Contents {} 0 R /Resources << /Font << /F1 3 0 R >> >> >>", 5 + 2 * i));
+        objs.push(format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()));
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// The box of the first `word` the text layer has on `page` (from 1), from `text_find`: points
+/// from the top-left of the displayed page, the same space `chess_move_at` takes its point in.
+fn word_box(a: &mut Automation, doc: u64, page: u64, word: &str) -> [f64; 4] {
+    let found = ok(a, "text_find", json!({ "doc": doc, "query": word }));
+    let m = found["matches"].as_array().unwrap().iter().find(|m| m["page"] == page).unwrap_or_else(|| panic!("{word} on page {page}: {found:#}"));
+    let r: Vec<f64> = m["rects"][0].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect();
+    [r[0], r[1], r[2], r[3]]
+}
+
+/// Plan A9-N1: `chess_move_at` finds the printed move under a point given as page_render and
+/// text_find give points (from the top-left of the displayed page), through the page's crop box
+/// and rotation, with the position after it; prose, the gap between two moves and a point off the
+/// page find nothing; a page turned by /Rotate maps the same.
+#[test]
+fn chess_move_at_finds_the_printed_move_under_a_point() {
+    const GAME: &str = "BT /F1 11 Tf 60 730 Td (1.e4 e5 2.Nf3 Nc6) Tj ET\nBT /F1 11 Tf 60 700 Td (A quiet line of prose.) Tj ET\n";
+    let (base, root) = workdir("move-at");
+    std::fs::write(root.join("game.pdf"), text_pages(&[(GAME, 0), (GAME, 90), ("", 0)])).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "game.pdf" }))["doc"].as_u64().unwrap();
+    let centre = |r: [f64; 4]| [(r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0];
+    for page in [1u64, 2] {
+        let e5 = word_box(&mut a, doc, page, "e5");
+        let [x, y] = centre(e5);
+        let found = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": page, "x": x, "y": y }));
+        assert_eq!((found["found"].as_bool(), found["on_page"].as_bool()), (Some(true), Some(true)), "page {page}: {found:#}");
+        let m = &found["move"];
+        assert_eq!(
+            (m["text"].as_str(), m["san"].as_str(), m["status"].as_str(), m["opens"].as_bool()),
+            (Some("e5"), Some("e5"), Some("valid"), Some(true)),
+            "{found:#}"
+        );
+        assert!(m["fen"].as_str().unwrap().starts_with("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w "), "{found:#}");
+        assert_eq!(m["game"], 1);
+        // The point in user space is inside the move's box there.
+        let u: Vec<f64> = found["user"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect();
+        let r: Vec<f64> = m["rect"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect();
+        assert!(r[0] <= u[0] && u[0] <= r[2] && r[1] <= u[1] && u[1] <= r[3], "page {page}: {u:?} in {r:?}");
+        // The move number printed before it is in its box: `1.` finds 1.e4.
+        let one = word_box(&mut a, doc, page, "1.e4");
+        let [x, y] = centre([one[0], one[1], one[0] + 2.0, one[3]]);
+        let first = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": page, "x": x, "y": y }));
+        assert_eq!((first["move"]["text"].as_str(), first["move"]["number"].as_str()), (Some("e4"), Some("1.")), "{first:#}");
+        // Prose and the gap between e4 and e5.
+        let [x, y] = centre(word_box(&mut a, doc, page, "quiet"));
+        let prose = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": page, "x": x, "y": y }));
+        assert_eq!((prose["found"].as_bool(), prose["move"].is_null()), (Some(false), true), "{prose:#}");
+        assert!(prose["read"]["moves"].as_u64().unwrap() >= 4, "{prose:#}");
+        let gap = if page == 1 { [e5[0] - 1.5, (e5[1] + e5[3]) / 2.0] } else { [(e5[0] + e5[2]) / 2.0, e5[1] - 1.5] };
+        let between = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": page, "x": gap[0], "y": gap[1] }));
+        assert_eq!(between["found"], false, "page {page}, between e4 and e5: {between:#}");
+    }
+    // Off the page (negative points), and a page with nothing read on it: nothing, no error.
+    let off = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": 1, "x": -5.0, "y": -5.0 }));
+    assert_eq!((off["found"].as_bool(), off["on_page"].as_bool()), (Some(false), Some(false)), "{off:#}");
+    let blank = ok(&mut a, "chess_move_at", json!({ "doc": doc, "page": 3, "x": 100.0, "y": 100.0 }));
+    assert_eq!((blank["found"].as_bool(), blank["read"]["moves"].as_u64()), (Some(false), Some(0)), "{blank:#}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-N1: what `chess_move_at` refuses, with what is allowed, and never a panic: a page out
+/// of range, a point that is not a finite number (JSON has no NaN or infinity; past `f32` it is
+/// one), a coordinate of another type, an unknown document, an `ocr` it does not know.
+#[test]
+fn chess_move_at_refuses_what_is_not_a_point_of_a_page() {
+    let (base, root) = workdir("move-at-refused");
+    let (mut a, doc) = opened(&root);
+    let refused = |a: &mut Automation, args: Value| match a.call("chess_move_at", &args) {
+        Err(ToolError::InvalidArgs(m)) => m,
+        other => panic!("{args} accepted: {other:?}"),
+    };
+    assert!(refused(&mut a, json!({ "doc": doc, "page": 0, "x": 1.0, "y": 1.0 })).contains("out of range"));
+    assert!(refused(&mut a, json!({ "doc": doc, "page": 2, "x": 1.0, "y": 1.0 })).contains("out of range"));
+    assert!(refused(&mut a, json!({ "doc": doc, "page": i64::MIN, "x": 1.0, "y": 1.0 })).contains("out of range"));
+    for (x, y) in
+        [(json!(1e300), json!(1.0)), (json!(1.0), json!(-1e39)), (json!("12"), json!(1.0)), (json!(1.0), json!([1.0])), (Value::Null, json!(1.0))]
+    {
+        let m = refused(&mut a, json!({ "doc": doc, "page": 1, "x": x, "y": y }));
+        assert!(m.starts_with("x ") || m.starts_with("y ") || m.contains("missing argument"), "{x}, {y}: {m}");
+    }
+    assert!(refused(&mut a, json!({ "doc": doc, "page": 1, "x": 1.0, "y": 1.0, "ocr": "maybe" })).contains("\"auto\", \"off\" or \"all\""));
+    assert!(a.call("chess_move_at", &json!({ "doc": 999, "page": 1, "x": 1.0, "y": 1.0 })).is_err(), "an unknown document");
     let _ = std::fs::remove_dir_all(base);
 }
 
