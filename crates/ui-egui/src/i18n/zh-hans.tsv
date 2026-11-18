@@ -2400,8 +2400,7 @@ animation effects	Off	关
 	Page properties	页面属性
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	查找国际象棋棋图
-	Chess diagrams panel	国际象棋棋图面板
+	Chess panel	国际象棋面板
 	Chess	国际象棋
 	Diagrams	棋图
 	Chess diagrams	国际象棋棋图
@@ -2409,10 +2408,10 @@ animation effects	Off	关
 	Scan all pages	查找所有页面
 	Scanning for diagrams… page {d} of {t}	正在查找棋图…第{d}页，共{t}页
 	Scan this page or all pages to find the chess diagrams in this document.	查找此页或所有页面，以找到此文档中的国际象棋棋图。
-	The document changed since the scan. Scan again to update the diagrams.	查找之后文档已更改。请重新查找以更新棋图。
+	The document changed since its diagrams were detected. Detect them again to update them.	检测局面图后文档已更改。请重新检测以更新它们。
 	The piece model couldn't be loaded: {e}	无法加载棋子模型：{e}
 	No diagrams found.	未找到棋图。
-	This page couldn't be scanned: {e}	无法查找此页：{e}
+	The diagrams on this page couldn't be detected: {e}	无法检测此页面上的局面图：{e}
 	Only the first {n} diagrams on this page are listed.	仅列出此页的前 {n} 个棋图。
 	Diagram {n}	棋图 {n}
 	Position read	已读取局面
@@ -2486,7 +2485,7 @@ animation effects	Off	关
 	{n} to review	待复核 {n} 个
 	◀ Previous to review	◀ 上一个待复核
 	Open in lichess	在 lichess 中打开
-	Diagrams are already being scanned	已在查找棋图
+	Diagrams are already being detected	正在检测局面图
 	Diagrams found: {n}	找到的棋图：{n}
 	FEN copied	已复制 FEN
 # Chess ▸ Board: the analysis board panel.
@@ -2558,7 +2557,7 @@ animation effects	Off	关
 	That side can't be to move: the other king is in check.	该方不能走棋：对方的王正被将军。
 	The FEN couldn't be read: {e}	无法读取 FEN：{e}
 	The PGN couldn't be read: {e}	无法读取 PGN：{e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	此图表尚未读取：请先扫描其所在页面，或在编辑器中设置局面。
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	此局面图尚未读取：请先检测其所在页面的局面图，或在编辑器中设置局面。
 	White to move	白方走棋
 	White to move, in check	白方走棋，被将军
 # Chess ▸ Board: variations, annotations and game details.
@@ -3136,7 +3135,7 @@ chess undo step	Clear drawings	清除标记
 	{n} arrows	{n} 个箭头
 	1 ring	1 个圆环
 	{n} rings	{n} 个圆环
-	The comment on the move shown, large under the board	在棋盘下方大字显示当前着法的注释
+	Show the move's comment in large type under the board	在棋盘下方以大字显示着法注释
 	Running text	连续文本
 	Columns	分栏
 	Text size	文字大小
@@ -3145,7 +3144,7 @@ chess undo step	Clear drawings	清除标记
 	Large	大
 	Previous variation (Page Up)	上一个变着 (Page Up)
 	Next variation (Page Down)	下一个变着 (Page Down)
-	A move the pointer rests on shows its position	指针停留的着法显示其局面
+	Show a move's position when the pointer rests on it	指针停在着法上时显示其局面
 	Position after {move}	{move} 之后的局面
 	To review	待复核
 	With an error	有错误
@@ -3370,7 +3369,6 @@ castling	long	长
 	{name} (no page discusses it)	{name}（没有页面讨论它）
 	Go to its page and put the game on the board.	转到其页面并将对局放到棋盘上。
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本书已与其 PGN 关联：{moves} 步中 {linked} 步（从 PGN 读取 {recovered} 步），冲突 {conflict} 步。
-	Link the whole book to its PGN	将整本书与其 PGN 关联
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	本书的 PGN 从另一局面走出这步棋：请核对，然后使用 PGN 的着法或保留书中的着法。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	此页的本书 PGN：已确认 {confirmed}，从 PGN 读取 {recovered}，冲突 {conflict}（待复核 {open}）。
 	You kept the book's move.	你保留了书中的着法。
@@ -3391,7 +3389,7 @@ castling	long	长
 	Corners	四角
 	Start outlined, end filled	起点描边，终点填充
 	Border and light fill	边框加浅色填充
-	Last move	上一步
+	Highlight the last move	突出显示上一步
 	Strength	强度
 	Import fonts…	导入字体…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	将国际象棋字体复制到程序旁边的字体文件夹：每种棋图字体都是一套棋子，棋子符号字体则用于写出导出内容中的着法。
@@ -3647,3 +3645,16 @@ progress bar	Progress	进度
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	解答附在最后，按编号排列。未读取到解答的棋图会注明。
 	The exercise sheet can't be written over a PDF that is open: choose another name.	练习题单不能写入到已打开的 PDF 上：请换一个名称。
 	No exercise sheet was written	未写入练习题单
+	Filled squares	填充格子
+	Classic	经典
+	Tokens	筹码
+	Pixel Art	像素画
+	Facets	刻面
+	Stained Glass	彩色玻璃
+	Chubby	圆胖
+	Gothic	哥特
+	Sketch	素描
+	Shapes	形状
+	Fantasy	奇幻
+	Spatial	立体
+	Celtic	凯尔特

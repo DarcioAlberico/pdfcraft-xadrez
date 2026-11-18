@@ -2410,8 +2410,7 @@ animation effects	Off	Wyłączone
 	Page properties	Właściwości strony
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Znajdź diagramy szachowe
-	Chess diagrams panel	Panel diagramów szachowych
+	Chess panel	Panel szachowy
 	Chess	Szachy
 	Diagrams	Diagramy
 	Chess diagrams	Diagramy szachowe
@@ -2419,10 +2418,10 @@ animation effects	Off	Wyłączone
 	Scan all pages	Szukaj na wszystkich stronach
 	Scanning for diagrams… page {d} of {t}	Wyszukiwanie diagramów… strona {d} z {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Przeszukaj tę stronę lub wszystkie strony, aby znaleźć diagramy szachowe w tym dokumencie.
-	The document changed since the scan. Scan again to update the diagrams.	Dokument zmienił się od wyszukiwania. Wyszukaj ponownie, aby zaktualizować diagramy.
+	The document changed since its diagrams were detected. Detect them again to update them.	Dokument zmienił się od wykrycia diagramów. Wykryj je ponownie, aby je zaktualizować.
 	The piece model couldn't be loaded: {e}	Nie udało się wczytać modelu bierek: {e}
 	No diagrams found.	Nie znaleziono diagramów.
-	This page couldn't be scanned: {e}	Nie udało się przeszukać tej strony: {e}
+	The diagrams on this page couldn't be detected: {e}	Nie udało się wykryć diagramów na tej stronie: {e}
 	Only the first {n} diagrams on this page are listed.	Wyświetlono tylko pierwsze diagramy z tej strony: {n}.
 	Diagram {n}	Diagram {n}
 	Position read	Pozycja odczytana
@@ -2496,7 +2495,7 @@ animation effects	Off	Wyłączone
 	{n} to review	Do sprawdzenia: {n}
 	◀ Previous to review	◀ Poprzedni do sprawdzenia
 	Open in lichess	Otwórz w lichess
-	Diagrams are already being scanned	Diagramy są już wyszukiwane
+	Diagrams are already being detected	Diagramy są już wykrywane
 	Diagrams found: {n}	Znalezione diagramy: {n}
 	FEN copied	Skopiowano FEN
 # Chess ▸ Board: the analysis board panel.
@@ -2534,7 +2533,7 @@ animation effects	Off	Wyłączone
 	That side can't be to move: the other king is in check.	Ta strona nie może mieć ruchu: drugi król jest szachowany.
 	The FEN couldn't be read: {e}	Nie można odczytać FEN: {e}
 	The PGN couldn't be read: {e}	Nie można odczytać PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ten diagram nie został odczytany: najpierw zeskanuj jego stronę lub ustaw pozycję w edytorze.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Ten diagram nie został odczytany: najpierw wykryj diagramy na jego stronie albo ustaw pozycję w edytorze.
 	White to move	Ruch białych
 	White to move, in check	Ruch białych, szach
 # Chess ▸ Board: variations, annotations and game details.
@@ -3100,7 +3099,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	{n} arrows	{n} strzałki
 	1 ring	1 pierścień
 	{n} rings	{n} pierścienie
-	The comment on the move shown, large under the board	Komentarz do pokazanego ruchu, duży pod szachownicą
+	Show the move's comment in large type under the board	Pokazuj komentarz do ruchu dużą czcionką pod szachownicą
 	Running text	Tekst ciągły
 	Columns	Kolumny
 	Text size	Rozmiar tekstu
@@ -3109,7 +3108,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Large	Duży
 	Previous variation (Page Up)	Poprzedni wariant (Page Up)
 	Next variation (Page Down)	Następny wariant (Page Down)
-	A move the pointer rests on shows its position	Ruch, na którym zatrzyma się wskaźnik, pokazuje swoją pozycję
+	Show a move's position when the pointer rests on it	Pokazuj pozycję ruchu, gdy wskaźnik się na nim zatrzyma
 	Position after {move}	Pozycja po {move}
 	To review	Do sprawdzenia
 	With an error	Z błędem
@@ -3333,7 +3332,6 @@ castling	long	długa
 	{name} (no page discusses it)	{name} (żadna strona jej nie omawia)
 	Go to its page and put the game on the board.	Przejdź do jej strony i postaw partię na szachownicy.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Książka jest powiązana z PGN: {linked} z {moves} posunięć (odczytane z PGN: {recovered}), w konflikcie: {conflict}.
-	Link the whole book to its PGN	Powiąż całą książkę z jej PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN książki gra to posunięcie z innej pozycji: sprawdź je, a potem użyj posunięcia z PGN albo zachowaj posunięcie z książki.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN książki na tej stronie: potwierdzone: {confirmed}, odczytane z PGN: {recovered}, w konflikcie: {conflict} (do sprawdzenia: {open}).
 	You kept the book's move.	Zachowano posunięcie z książki.
@@ -3354,7 +3352,7 @@ castling	long	długa
 	Corners	Narożniki
 	Start outlined, end filled	Pole startowe obrysowane, docelowe wypełnione
 	Border and light fill	Obramowanie i lekkie wypełnienie
-	Last move	Ostatni ruch
+	Highlight the last move	Wyróżnij ostatni ruch
 	Strength	Intensywność
 	Import fonts…	Importuj czcionki…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopiuje czcionki szachowe do folderu czcionek obok programu: każda czcionka diagramów to zestaw bierek, a czcionka figurek zapisuje ruchy w eksportach.
@@ -3369,6 +3367,19 @@ the move's comment	Move comment	Komentarz do ruchu
 	Indexing the book's PGN…	Indeksowanie PGN książki…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN książki jest większy, niż PdfCraft indeksuje: z książką powiązano tylko pierwsze {moves} posunięć.
 	Importing…	Importowanie…
+	Filled squares	Wypełnione pola
+	Classic	Klasyczny
+	Tokens	Żetony
+	Pixel Art	Pixel art
+	Facets	Fasety
+	Stained Glass	Witraż
+	Chubby	Pulchny
+	Gothic	Gotycki
+	Sketch	Szkic
+	Shapes	Kształty
+	Fantasy	Fantastyczny
+	Spatial	Przestrzenny
+	Celtic	Celtycki
 
 # A9-I14b: chess texts
 	A correction ({id}) was not used: {e}	Poprawka ({id}) nie została użyta: {e}

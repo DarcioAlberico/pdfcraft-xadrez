@@ -314,7 +314,7 @@ fn the_books_pgn_is_indexed_on_a_worker_and_kept_once_indexed() {
     let summary = h.state_mut().book_pgn_summary(id).expect("kept once indexed");
     assert_eq!((summary.games, summary.moves), (600, 6000));
     let said = h.state().said().unwrap_or_default().to_owned();
-    assert!(said.starts_with("Book's PGN book.pgn: 600 games, 6000 moves."), "{said}");
+    assert!(said.starts_with("Book's PGN book.pgn: 600 games, 6,000 moves."), "{said}");
     // The page is read again, linked to it, on its own worker: waited for too.
     assert!(h.state().chess.reading.as_ref().is_none_or(|job| job.wait(std::time::Duration::from_secs(60))), "the page is read");
     h.run_steps(2);

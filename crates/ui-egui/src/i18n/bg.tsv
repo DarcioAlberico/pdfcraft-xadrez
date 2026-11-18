@@ -2399,8 +2399,7 @@ animation effects	Off	Изключени
 	Page properties	Свойства на страницата
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Търсене на шахматни диаграми
-	Chess diagrams panel	Панел с шахматни диаграми
+	Chess panel	Шахматен панел
 	Chess	Шахмат
 	Diagrams	Диаграми
 	Chess diagrams	Шахматни диаграми
@@ -2408,10 +2407,10 @@ animation effects	Off	Изключени
 	Scan all pages	Търсене във всички страници
 	Scanning for diagrams… page {d} of {t}	Търсене на диаграми… страница {d} от {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Потърсете в тази страница или във всички страници, за да намерите шахматните диаграми в документа.
-	The document changed since the scan. Scan again to update the diagrams.	Документът е променен след търсенето. Потърсете отново, за да обновите диаграмите.
+	The document changed since its diagrams were detected. Detect them again to update them.	Документът се промени, откакто диаграмите му бяха открити. Открийте ги отново, за да ги обновите.
 	The piece model couldn't be loaded: {e}	Моделът на фигурите не можа да се зареди: {e}
 	No diagrams found.	Не са намерени диаграми.
-	This page couldn't be scanned: {e}	Тази страница не можа да се провери: {e}
+	The diagrams on this page couldn't be detected: {e}	Диаграмите на тази страница не можаха да бъдат открити: {e}
 	Only the first {n} diagrams on this page are listed.	Показани са само първите {n} диаграми от тази страница.
 	Diagram {n}	Диаграма {n}
 	Position read	Позицията е прочетена
@@ -2485,7 +2484,7 @@ animation effects	Off	Изключени
 	{n} to review	За проверка: {n}
 	◀ Previous to review	◀ Предишна за проверка
 	Open in lichess	Отваряне в lichess
-	Diagrams are already being scanned	Диаграмите вече се търсят
+	Diagrams are already being detected	Диаграмите вече се откриват
 	Diagrams found: {n}	Намерени диаграми: {n}
 	FEN copied	FEN е копиран
 # Chess ▸ Board: the analysis board panel.
@@ -2557,7 +2556,7 @@ animation effects	Off	Изключени
 	That side can't be to move: the other king is in check.	Тази страна не може да е на ход: другият цар е в шах.
 	The FEN couldn't be read: {e}	FEN не можа да се прочете: {e}
 	The PGN couldn't be read: {e}	PGN не можа да се прочете: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Тази диаграма не е прочетена: първо сканирайте страницата ѝ или задайте позицията в редактора.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Тази диаграма не е прочетена: първо открийте диаграмите на страницата ѝ или задайте позицията ѝ в редактора.
 	White to move	На ход са белите
 	White to move, in check	На ход са белите, шах
 # Chess ▸ Board: variations, annotations and game details.
@@ -3135,7 +3134,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	{n} arrows	{n} стрелки
 	1 ring	1 кръг
 	{n} rings	{n} кръга
-	The comment on the move shown, large under the board	Коментарът към показания ход, едър под дъската
+	Show the move's comment in large type under the board	Показване на коментара на хода с едър шрифт под дъската
 	Running text	Непрекъснат текст
 	Columns	Колони
 	Text size	Размер на текста
@@ -3144,7 +3143,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Large	Голям
 	Previous variation (Page Up)	Предишен вариант (Page Up)
 	Next variation (Page Down)	Следващ вариант (Page Down)
-	A move the pointer rests on shows its position	Ход, върху който спре показалецът, показва позицията си
+	Show a move's position when the pointer rests on it	Показване на позицията на хода, когато показалецът спре върху него
 	Position after {move}	Позиция след {move}
 	To review	За преглед
 	With an error	С грешка
@@ -3369,7 +3368,6 @@ castling	long	дълга
 	{name} (no page discusses it)	{name} (никоя страница не я разглежда)
 	Go to its page and put the game on the board.	Отиване на нейната страница и поставяне на партията на дъската.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Книгата е свързана с нейния PGN: ходове – {linked} от {moves} (взети от PGN – {recovered}), в конфликт – {conflict}.
-	Link the whole book to its PGN	Свързване на цялата книга с нейния PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN на книгата играе този ход от друга позиция: проверете го, после използвайте хода от PGN или запазете хода от книгата.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN на книгата на тази страница: потвърдени – {confirmed}, взети от PGN – {recovered}, в конфликт – {conflict} (за проверка – {open}).
 	You kept the book's move.	Запазихте хода от книгата.
@@ -3390,7 +3388,7 @@ castling	long	дълга
 	Corners	Ъгли
 	Start outlined, end filled	Начало с рамка, край запълнен
 	Border and light fill	Рамка и лек фон
-	Last move	Последен ход
+	Highlight the last move	Открояване на последния ход
 	Strength	Сила
 	Import fonts…	Импортиране на шрифтове…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Копира шахматни шрифтове в папката с шрифтове до програмата: всеки шрифт за диаграми е комплект фигури, а шрифт с фигурини изписва ходовете в експортите.
@@ -3646,3 +3644,16 @@ progress bar	Progress	Напредък
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Решенията накрая, по реда на номерата. Диаграма, чието решение не е прочетено, го казва.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Листът с упражнения не може да се запише върху отворен PDF: изберете друго име.
 	No exercise sheet was written	Не беше записан лист с упражнения
+	Filled squares	Оцветени полета
+	Classic	Класически
+	Tokens	Жетони
+	Pixel Art	Пикселно изкуство
+	Facets	Фасети
+	Stained Glass	Витраж
+	Chubby	Пухкави
+	Gothic	Готически
+	Sketch	Скица
+	Shapes	Форми
+	Fantasy	Фентъзи
+	Spatial	Пространствени
+	Celtic	Келтски

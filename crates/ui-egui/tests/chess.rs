@@ -281,7 +281,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     assert!(list_is_current(&h));
     assert!(!Arc::ptr_eq(&h.state().chess.results().unwrap().pages[0], &first), "the page changed is read again");
     assert_eq!(diagrams(&h), 2);
-    assert!(h.query_by_label("The document changed since the scan. Scan again to update the diagrams.").is_none());
+    assert!(h.query_by_label("The document changed since its diagrams were detected. Detect them again to update them.").is_none());
     // The boxes are there: clicking one picks it.
     let at = on_page(&h, 140.0, 660.0);
     h.hover_at(at);
@@ -1440,16 +1440,16 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
     std::fs::create_dir_all(&dir).unwrap();
     let store = dir.join("reference");
     let pgn: String = (1..=4097).map(|n| format!("[Event \"Game {n}\"]\n\n1. e4 *\n\n")).collect();
-    let cut = "The book's PGN is larger than PdfCraft indexes: only its first 4096 moves are linked to the book.";
+    let cut = "The book's PGN is larger than PdfCraft indexes: only its first 4,096 moves are linked to the book.";
     {
         let mut h = book_pgn_harness("chapter.pdf", None, chapter(), store.clone());
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "big.pgn", pgn.as_bytes());
         h.run_steps(2);
         let said = h.state().said().unwrap_or_default().to_owned();
-        assert!(said.starts_with("Book's PGN big.pgn: 4096 games, 4096 moves."), "{said}");
+        assert!(said.starts_with("Book's PGN big.pgn: 4,096 games, 4,096 moves."), "{said}");
         assert!(said.contains(cut), "{said}");
-        h.get_by_label("Book's PGN: big.pgn (4096 games)");
+        h.get_by_label("Book's PGN: big.pgn (4,096 games)");
     }
     // Opened again (the Chess panel not shown, whose opening may put up a notice of its own).
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {

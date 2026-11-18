@@ -2437,8 +2437,7 @@ animation effects	Off	Aus
 	Page properties	Seiteneigenschaften
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Schachdiagramme suchen
-	Chess diagrams panel	Schachdiagramm-Bereich
+	Chess panel	Schach-Bereich
 	Chess	Schach
 	Diagrams	Diagramme
 	Chess diagrams	Schachdiagramme
@@ -2446,10 +2445,10 @@ animation effects	Off	Aus
 	Scan all pages	Alle Seiten durchsuchen
 	Scanning for diagrams… page {d} of {t}	Diagramme werden gesucht… Seite {d} von {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Durchsuche diese Seite oder alle Seiten, um die Schachdiagramme in diesem Dokument zu finden.
-	The document changed since the scan. Scan again to update the diagrams.	Das Dokument wurde seit der Suche geändert. Suche erneut, um die Diagramme zu aktualisieren.
+	The document changed since its diagrams were detected. Detect them again to update them.	Das Dokument hat sich geändert, seit seine Diagramme erkannt wurden. Erkennen Sie sie erneut, um sie zu aktualisieren.
 	The piece model couldn't be loaded: {e}	Das Figurenmodell konnte nicht geladen werden: {e}
 	No diagrams found.	Keine Diagramme gefunden.
-	This page couldn't be scanned: {e}	Diese Seite konnte nicht durchsucht werden: {e}
+	The diagrams on this page couldn't be detected: {e}	Die Diagramme dieser Seite konnten nicht erkannt werden: {e}
 	Only the first {n} diagrams on this page are listed.	Nur die ersten {n} Diagramme dieser Seite werden aufgeführt.
 	Diagram {n}	Diagramm {n}
 	Position read	Stellung gelesen
@@ -2523,7 +2522,7 @@ animation effects	Off	Aus
 	{n} to review	{n} zu prüfen
 	◀ Previous to review	◀ Vorheriges zu prüfen
 	Open in lichess	In lichess öffnen
-	Diagrams are already being scanned	Diagramme werden bereits gesucht
+	Diagrams are already being detected	Die Diagramme werden bereits erkannt
 	Diagrams found: {n}	Gefundene Diagramme: {n}
 	FEN copied	FEN kopiert
 # Chess ▸ Board: the analysis board panel.
@@ -2595,7 +2594,7 @@ animation effects	Off	Aus
 	That side can't be to move: the other king is in check.	Diese Seite kann nicht am Zug sein: der andere König steht im Schach.
 	The FEN couldn't be read: {e}	Die FEN konnte nicht gelesen werden: {e}
 	The PGN couldn't be read: {e}	Die PGN konnte nicht gelesen werden: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Dieses Diagramm wurde nicht gelesen: zuerst seine Seite scannen oder die Stellung im Editor setzen.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Dieses Diagramm wurde nicht gelesen: Erkennen Sie zuerst die Diagramme seiner Seite oder legen Sie seine Stellung im Editor fest.
 	White to move	Weiß am Zug
 	White to move, in check	Weiß am Zug, im Schach
 # Chess ▸ Board: variations, annotations and game details.
@@ -3173,7 +3172,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	{n} arrows	{n} Pfeile
 	1 ring	1 Ring
 	{n} rings	{n} Ringe
-	The comment on the move shown, large under the board	Der Kommentar zum gezeigten Zug groß unter dem Brett
+	Show the move's comment in large type under the board	Den Kommentar zum Zug in großer Schrift unter dem Brett zeigen
 	Running text	Fließtext
 	Columns	Spalten
 	Text size	Textgröße
@@ -3182,7 +3181,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Large	Groß
 	Previous variation (Page Up)	Vorherige Variante (Bild auf)
 	Next variation (Page Down)	Nächste Variante (Bild ab)
-	A move the pointer rests on shows its position	Ein Zug, auf dem der Zeiger ruht, zeigt seine Stellung
+	Show a move's position when the pointer rests on it	Die Stellung eines Zuges zeigen, wenn der Zeiger darauf ruht
 	Position after {move}	Stellung nach {move}
 	To review	Zu prüfen
 	With an error	Mit Fehler
@@ -3407,7 +3406,6 @@ castling	long	lang
 	{name} (no page discusses it)	{name} (keine Seite behandelt sie)
 	Go to its page and put the game on the board.	Zu ihrer Seite gehen und die Partie aufs Brett setzen.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Das Buch ist mit seiner PGN verknüpft: {linked} von {moves} Zügen ({recovered} aus der PGN gelesen), {conflict} im Konflikt.
-	Link the whole book to its PGN	Das ganze Buch mit seiner PGN verknüpfen
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Die PGN des Buchs spielt diesen Zug aus einer anderen Stellung: prüfen und dann den Zug der PGN übernehmen oder den des Buchs behalten.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN des Buchs auf dieser Seite: {confirmed} bestätigt, {recovered} aus der PGN gelesen, {conflict} im Konflikt ({open} zu prüfen).
 	You kept the book's move.	Sie haben den Zug des Buchs behalten.
@@ -3428,7 +3426,7 @@ castling	long	lang
 	Corners	Ecken
 	Start outlined, end filled	Start umrandet, Ziel gefüllt
 	Border and light fill	Rahmen und leichte Füllung
-	Last move	Letzter Zug
+	Highlight the last move	Letzten Zug hervorheben
 	Strength	Stärke
 	Import fonts…	Schriften importieren…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopiert Schachschriften in den Schriftenordner neben dem Programm: Jede Diagrammschrift ist ein Figurensatz, und eine Figurinenschrift schreibt die Züge der Exporte.
@@ -3683,3 +3681,16 @@ progress bar	Progress	Fortschritt
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Die Lösungen am Ende, in der Reihenfolge der Nummern. Ein Diagramm, dessen Lösung nicht gelesen wurde, sagt das.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Das Aufgabenblatt kann nicht über ein geöffnetes PDF geschrieben werden: Wählen Sie einen anderen Namen.
 	No exercise sheet was written	Es wurde kein Aufgabenblatt geschrieben
+	Filled squares	Gefüllte Felder
+	Classic	Klassisch
+	Tokens	Spielmarken
+	Pixel Art	Pixelkunst
+	Facets	Facetten
+	Stained Glass	Buntglas
+	Chubby	Pummelig
+	Gothic	Gotisch
+	Sketch	Skizze
+	Shapes	Formen
+	Fantasy	Fantasie
+	Spatial	Räumlich
+	Celtic	Keltisch

@@ -2648,8 +2648,7 @@ certificate	SHA-1 digest	Impronta SHA-1
 certificate	SHA-256 digest	Impronta SHA-256
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Cerca diagrammi di scacchi
-	Chess diagrams panel	Pannello diagrammi di scacchi
+	Chess panel	Pannello scacchi
 	Chess	Scacchi
 	Diagrams	Diagrammi
 	Chess diagrams	Diagrammi di scacchi
@@ -2657,10 +2656,10 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Scan all pages	Cerca in tutte le pagine
 	Scanning for diagrams… page {d} of {t}	Ricerca dei diagrammi… pagina {d} di {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Cerca in questa pagina o in tutte per trovare i diagrammi di scacchi di questo documento.
-	The document changed since the scan. Scan again to update the diagrams.	Il documento è cambiato dopo la ricerca. Ripeti la ricerca per aggiornare i diagrammi.
+	The document changed since its diagrams were detected. Detect them again to update them.	Il documento è cambiato da quando ne sono stati rilevati i diagrammi. Rilevali di nuovo per aggiornarli.
 	The piece model couldn't be loaded: {e}	Impossibile caricare il modello dei pezzi: {e}
 	No diagrams found.	Nessun diagramma trovato.
-	This page couldn't be scanned: {e}	Impossibile esaminare questa pagina: {e}
+	The diagrams on this page couldn't be detected: {e}	Non è stato possibile rilevare i diagrammi di questa pagina: {e}
 	Only the first {n} diagrams on this page are listed.	Sono elencati solo i primi {n} diagrammi di questa pagina.
 	Diagram {n}	Diagramma {n}
 	Position read	Posizione letta
@@ -2734,7 +2733,7 @@ certificate	SHA-256 digest	Impronta SHA-256
 	{n} to review	{n} da rivedere
 	◀ Previous to review	◀ Precedente da rivedere
 	Open in lichess	Apri in lichess
-	Diagrams are already being scanned	La ricerca dei diagrammi è già in corso
+	Diagrams are already being detected	I diagrammi sono già in fase di rilevamento
 	Diagrams found: {n}	Diagrammi trovati: {n}
 	FEN copied	FEN copiata
 # Chess ▸ Board: the analysis board panel.
@@ -2806,7 +2805,7 @@ certificate	SHA-256 digest	Impronta SHA-256
 	That side can't be to move: the other king is in check.	Quel lato non può avere il tratto: l'altro re è sotto scacco.
 	The FEN couldn't be read: {e}	Impossibile leggere la FEN: {e}
 	The PGN couldn't be read: {e}	Impossibile leggere il PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Questo diagramma non è stato letto: analizza prima la sua pagina o imposta la posizione nell'editor.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Questo diagramma non è stato letto: rileva prima i diagrammi della sua pagina o imposta la posizione nell'editor.
 	White to move	Muove il Bianco
 	White to move, in check	Muove il Bianco, sotto scacco
 # Chess ▸ Board: variations, annotations and game details.
@@ -3384,7 +3383,7 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	{n} arrows	{n} frecce
 	1 ring	1 anello
 	{n} rings	{n} anelli
-	The comment on the move shown, large under the board	Il commento della mossa mostrata, grande sotto la scacchiera
+	Show the move's comment in large type under the board	Mostra il commento della mossa a caratteri grandi sotto la scacchiera
 	Running text	Testo continuo
 	Columns	Colonne
 	Text size	Dimensione del testo
@@ -3393,7 +3392,7 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Large	Grande
 	Previous variation (Page Up)	Variante precedente (Pag Su)
 	Next variation (Page Down)	Variante successiva (Pag Giù)
-	A move the pointer rests on shows its position	Una mossa su cui si ferma il puntatore mostra la sua posizione
+	Show a move's position when the pointer rests on it	Mostra la posizione di una mossa quando il puntatore vi si ferma
 	Position after {move}	Posizione dopo {move}
 	To review	Da rivedere
 	With an error	Con errore
@@ -3618,7 +3617,6 @@ castling	long	lungo
 	{name} (no page discusses it)	{name} (nessuna pagina la tratta)
 	Go to its page and put the game on the board.	Va alla sua pagina e mette la partita sulla scacchiera.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Il libro è collegato al suo PGN: {linked} di {moves} mosse ({recovered} lette dal PGN), {conflict} in conflitto.
-	Link the whole book to its PGN	Collega l'intero libro al suo PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Il PGN del libro gioca questa mossa da un'altra posizione: verificala, poi usa la mossa del PGN o tieni quella del libro.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN del libro in questa pagina: {confirmed} confermate, {recovered} lette dal PGN, {conflict} in conflitto ({open} da verificare).
 	You kept the book's move.	Hai tenuto la mossa del libro.
@@ -3639,7 +3637,7 @@ castling	long	lungo
 	Corners	Angoli
 	Start outlined, end filled	Partenza contornata, arrivo pieno
 	Border and light fill	Bordo e riempimento leggero
-	Last move	Ultima mossa
+	Highlight the last move	Evidenzia l'ultima mossa
 	Strength	Intensità
 	Import fonts…	Importa caratteri…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia i caratteri di scacchi nella cartella dei caratteri accanto al programma: ogni carattere per diagrammi è un set di pezzi, e un carattere di figurine scrive le mosse delle esportazioni.
@@ -3894,3 +3892,16 @@ progress bar	Progress	Avanzamento
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Le soluzioni alla fine, nell'ordine dei numeri. Un diagramma la cui soluzione non è stata letta lo dice.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Il foglio di esercizi non può essere scritto sopra un PDF aperto: scegli un altro nome.
 	No exercise sheet was written	Nessun foglio di esercizi è stato scritto
+	Filled squares	Case piene
+	Classic	Classico
+	Tokens	Gettoni
+	Pixel Art	Pixel art
+	Facets	Sfaccettature
+	Stained Glass	Vetrata
+	Chubby	Paffuto
+	Gothic	Gotico
+	Sketch	Schizzo
+	Shapes	Forme
+	Fantasy	Fantasia
+	Spatial	Spaziale
+	Celtic	Celtico

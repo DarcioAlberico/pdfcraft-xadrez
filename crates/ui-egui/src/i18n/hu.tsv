@@ -2435,8 +2435,7 @@ animation effects	Off	Ki
 	Page properties	Oldaltulajdonságok
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Sakkdiagramok keresése
-	Chess diagrams panel	Sakkdiagramok panel
+	Chess panel	Sakkpanel
 	Chess	Sakk
 	Diagrams	Diagramok
 	Chess diagrams	Sakkdiagramok
@@ -2444,10 +2443,10 @@ animation effects	Off	Ki
 	Scan all pages	Keresés minden oldalon
 	Scanning for diagrams… page {d} of {t}	Diagramok keresése… {d}. oldal / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Keress ezen az oldalon vagy minden oldalon, hogy megtaláld a dokumentum sakkdiagramjait.
-	The document changed since the scan. Scan again to update the diagrams.	A dokumentum a keresés óta megváltozott. Keress újra a diagramok frissítéséhez.
+	The document changed since its diagrams were detected. Detect them again to update them.	A dokumentum megváltozott a diagramok felismerése óta. Ismertesse fel őket újra a frissítésükhöz.
 	The piece model couldn't be loaded: {e}	A bábumodell nem tölthető be: {e}
 	No diagrams found.	Nem található diagram.
-	This page couldn't be scanned: {e}	Ez az oldal nem vizsgálható át: {e}
+	The diagrams on this page couldn't be detected: {e}	Az oldal diagramjait nem sikerült felismerni: {e}
 	Only the first {n} diagrams on this page are listed.	Csak az oldal első {n} diagramja látható a listában.
 	Diagram {n}	{n}. diagram
 	Position read	Állás beolvasva
@@ -2521,7 +2520,7 @@ animation effects	Off	Ki
 	{n} to review	Ellenőrizendő: {n}
 	◀ Previous to review	◀ Előző ellenőrizendő
 	Open in lichess	Megnyitás a lichessben
-	Diagrams are already being scanned	A diagramok keresése már folyamatban van
+	Diagrams are already being detected	A diagramok felismerése már folyamatban van
 	Diagrams found: {n}	Talált diagramok: {n}
 	FEN copied	FEN másolva
 # Chess ▸ Board: the analysis board panel.
@@ -2593,7 +2592,7 @@ animation effects	Off	Ki
 	That side can't be to move: the other king is in check.	Ez a fél nem lehet lépésen: a másik király sakkban áll.
 	The FEN couldn't be read: {e}	A FEN nem olvasható: {e}
 	The PGN couldn't be read: {e}	A PGN nem olvasható: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ez a diagram nincs beolvasva: előbb szkennelje be az oldalát, vagy állítsa be az állást a szerkesztőben.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Ezt a diagramot nem olvasta be: előbb ismertesse fel az oldala diagramjait, vagy állítsa be az állását a szerkesztőben.
 	White to move	Világos lép
 	White to move, in check	Világos lép, sakkban
 # Chess ▸ Board: variations, annotations and game details.
@@ -3171,7 +3170,7 @@ chess undo step	Clear drawings	rajzok törlése
 	{n} arrows	{n} nyíl
 	1 ring	1 gyűrű
 	{n} rings	{n} gyűrű
-	The comment on the move shown, large under the board	A mutatott lépés megjegyzése nagyban a tábla alatt
+	Show the move's comment in large type under the board	A lépés megjegyzésének megjelenítése nagy betűvel a tábla alatt
 	Running text	Folyó szöveg
 	Columns	Oszlopok
 	Text size	Szövegméret
@@ -3180,7 +3179,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Large	Nagy
 	Previous variation (Page Up)	Előző változat (Page Up)
 	Next variation (Page Down)	Következő változat (Page Down)
-	A move the pointer rests on shows its position	Az a lépés, amelyen a mutató megáll, megmutatja az állását
+	Show a move's position when the pointer rests on it	A lépés állásának megjelenítése, ha a mutató rajta időzik
 	Position after {move}	Állás {move} után
 	To review	Ellenőrizendő
 	With an error	Hibás
@@ -3405,7 +3404,6 @@ castling	long	hosszú
 	{name} (no page discusses it)	{name} (egyik oldal sem tárgyalja)
 	Go to its page and put the game on the board.	Ugrás az oldalára és a játszma a táblára.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	A könyv a PGN-jéhez kapcsolódik: {moves} lépésből {linked} ({recovered} a PGN-ből olvasva), {conflict} ütközik.
-	Link the whole book to its PGN	Az egész könyv összekapcsolása a PGN-jével
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	A könyv PGN-je ezt a lépést más állásból teszi meg: ellenőrizze, majd használja a PGN lépését, vagy tartsa meg a könyvét.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	A könyv PGN-je ezen az oldalon: {confirmed} megerősítve, {recovered} a PGN-ből olvasva, {conflict} ütközik ({open} ellenőrizendő).
 	You kept the book's move.	Megtartotta a könyv lépését.
@@ -3426,7 +3424,7 @@ castling	long	hosszú
 	Corners	Sarkok
 	Start outlined, end filled	Kiinduló mező keretezve, cél kitöltve
 	Border and light fill	Keret és halvány kitöltés
-	Last move	Utolsó lépés
+	Highlight the last move	Az utolsó lépés kiemelése
 	Strength	Erősség
 	Import fonts…	Betűtípusok importálása…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Sakkbetűtípusokat másol a program melletti betűtípusmappába: minden diagram-betűtípus egy bábukészlet, a figurás betűtípus pedig az exportok lépéseit írja.
@@ -3681,3 +3679,16 @@ progress bar	Progress	Előrehaladás
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	A megoldások a végén, a számok sorrendjében. Az a diagram, amelynek megoldását nem olvasta be, ezt jelzi.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	A feladatlap nem írható egy megnyitott PDF fölé: válasszon másik nevet.
 	No exercise sheet was written	Nem készült feladatlap
+	Filled squares	Kitöltött mezők
+	Classic	Klasszikus
+	Tokens	Zsetonok
+	Pixel Art	Pixelgrafika
+	Facets	Fazetták
+	Stained Glass	Ólomüveg
+	Chubby	Pufók
+	Gothic	Gótikus
+	Sketch	Vázlat
+	Shapes	Formák
+	Fantasy	Fantázia
+	Spatial	Térbeli
+	Celtic	Kelta
