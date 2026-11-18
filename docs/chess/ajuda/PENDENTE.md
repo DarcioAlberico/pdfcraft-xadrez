@@ -6,3 +6,4 @@ Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige 
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| A9-N15c | (ainda não no `main`) | 20 — Automação pela linha de comando (a biblioteca); provavelmente um capítulo novo | O diálogo da Biblioteca no app (a busca do N15b numa janela) não tinha entrado quando a ajuda foi refeita: a ajuda só cita as ferramentas `chess_library_build`, `_find`, `_status` e `_clear` e diz que o app ainda não tem o painel. |

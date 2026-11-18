@@ -3784,3 +3784,7 @@ progress bar	Progress	Πρόοδος
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Δεν ήταν δυνατή η αναζήτηση στο βιβλίο: {e}
 	The diagrams read couldn't be looked at: {e}	Δεν ήταν δυνατός ο έλεγχος των διαγραμμάτων που διαβάστηκαν: {e}
+# fix: pawn structure words
+pawn structure	Passed	Περαστά
+# fix: the board rail's More button
+	More board tools	Περισσότερα εργαλεία σκακιέρας

@@ -2323,6 +2323,20 @@ mod tests {
         assert_eq!(in_sentence("Image"), "image");
     }
 
+    /// The In the book filter's pawns (plan A9-N16b) are in their own context: the plain "Passed"
+    /// is a check's result ("Aprovado" in Brazilian Portuguese), a passed pawn is "Passados"
+    /// (lane B, A9-E1). In every catalogue the pawn's word is another than the check's.
+    #[test]
+    fn a_passed_pawn_is_not_a_passed_check() {
+        let pt = Lang::from_code("pt-br").expect("pt-br registered");
+        assert_eq!(tr_ctx(pt, "pawn structure", "Passed"), "Passados");
+        assert_eq!(tr(pt, "Passed"), "Aprovado");
+        assert_eq!(tr_ctx(Lang::EN, "pawn structure", "Passed"), "Passed");
+        for lang in Lang::all().filter(|l| l.code() != "en") {
+            assert_ne!(tr_ctx(lang, "pawn structure", "Passed"), tr(lang, "Passed"), "{}", lang.code());
+        }
+    }
+
     #[test]
     fn german_certificate_subject_has_a_distinct_context() {
         let de = Lang::from_code("de").expect("de registered");

@@ -3690,3 +3690,7 @@ progress bar	Progress	పురోగతి
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	పుస్తకంలో వెతకలేకపోయాం: {e}
 	The diagrams read couldn't be looked at: {e}	చదివిన చిత్రాలను పరిశీలించలేకపోయాం: {e}
+# fix: pawn structure words
+pawn structure	Passed	అడ్డులేని
+# fix: the board rail's More button
+	More board tools	మరిన్ని బోర్డు సాధనాలు

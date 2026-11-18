@@ -3,7 +3,8 @@
 //! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export book…
 //! (`file-output`, the dialog of `chess_export_ui`), Board (`grid-3x3` and its word) and ⋯ (Chess models…, Make the
 //! book's bookmarks…, plan A9-N6, then Export the book's review… and Import a book's review…, plan
-//! A9-G5b). While a scan runs, a
+//! A9-G5b). The row is measured before it is drawn and is never wider than the column: where it
+//! has no room, Board loses its word, then Detect diagrams' label is cut with "…". While a scan runs, a
 //! progress bar (`widgets::progress`) and "Detecting… page 75 of 703" (its width kept for the
 //! longest number, so the text does not jump) with Stop, the diagrams found so far staying. When a scan has
 //! found diagrams, "548 diagrams · 40 to review" with Review now; before any, what detecting does.
@@ -24,8 +25,24 @@ pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, busy: bool, pages: usize, ru
     let mut action = None;
     ui.horizontal(|ui| {
         ui.set_min_height(HEAD);
+        // Measured before it is drawn (plan A9 §2.8.1): the row is never wider than the column,
+        // whose content egui would widen to it, putting ⋯ and every row's state under the
+        // window's rail (lane B, A9-E1: "Detectar diagramas" and "Tabuleiro" at 1366 × 768). What
+        // does not fit gives way: first the board's word (its icon stays, named Chess board), then
+        // Detect diagrams' label, cut with "…" (whole in its tooltip and its name).
+        let gap = ui.spacing().item_spacing.x;
+        let room = ui.available_width();
+        // The board's button is the one with words beside its icon (plan A9-I8, finding R4-07:
+        // its icon was the rail's Set up a position's).
+        let board_label = tl!("Board");
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let board_width =
+            BUTTON.max(14.0 + ui.spacing().icon_spacing + widgets::text_width(ui, board_label, &font) + 2.0 * ui.spacing().button_padding.x);
+        let detect = tl!("Detect diagrams");
+        let worded = widgets::split_pill_width(ui, detect) + gap + 2.0 * BUTTON + board_width + 2.0 * gap <= room;
+        let right = if worded { 2.0 * BUTTON + board_width + 2.0 * gap } else { 3.0 * BUTTON + 2.0 * gap };
         ui.add_enabled_ui(!busy, |ui| {
-            let (main, more) = widgets::split_pill(ui, "scan", tl!("Detect diagrams"), tl!("Where to detect"));
+            let (main, more) = widgets::split_pill_within(ui, "scan", detect, tl!("Where to detect"), room - gap - right);
             if main.on_hover_text(tl!("Find the diagrams of the whole book and read their positions.")).clicked() {
                 action = Some(PanelAction::ScanAll);
             }
@@ -43,24 +60,20 @@ pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, busy: bool, pages: usize, ru
         });
         // The icon buttons at the right edge, made left to right so Tab meets them in the order
         // they are seen.
-        let gap = ui.spacing().item_spacing.x;
-        // The board's button is the one with words beside its icon (plan A9-I8, finding R4-07:
-        // its icon was the rail's Set up a position's).
-        let board_label = tl!("Board");
-        let font = egui::TextStyle::Button.resolve(ui.style());
-        let board_width =
-            BUTTON.max(14.0 + ui.spacing().icon_spacing + widgets::text_width(ui, board_label, &font) + 2.0 * ui.spacing().button_padding.x);
-        let room = ui.available_width() - 2.0 * BUTTON - board_width - 2.0 * gap;
-        if room > 0.0 {
-            ui.add_space(room);
+        let space = ui.available_width() - right;
+        if space > 0.0 {
+            ui.add_space(space);
         }
         // The export dialog (plan A9-X2, R4-04), in place of a menu of formats and choices.
         if icons::button(ui, "file-output", BUTTON, false, tl!("Export book…")).clicked() {
             action = Some(PanelAction::Text(crate::chess_text_ui::TextAction::OpenExport));
         }
-        let board = ui
-            .add(egui::Button::image_and_text(icons::image("grid-3x3", 14.0, t.icon), board_label).min_size(vec2(board_width, BUTTON)))
-            .on_hover_text(tl!("Chess board"));
+        let board = if worded {
+            ui.add(egui::Button::image_and_text(icons::image("grid-3x3", 14.0, t.icon), board_label).min_size(vec2(board_width, BUTTON)))
+                .on_hover_text(tl!("Chess board"))
+        } else {
+            icons::button(ui, "grid-3x3", BUTTON, false, tl!("Chess board"))
+        };
         board.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Chess board")));
         if board.clicked() {
             action = Some(PanelAction::ShowBoard);

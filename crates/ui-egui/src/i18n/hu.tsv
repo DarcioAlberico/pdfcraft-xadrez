@@ -3790,3 +3790,7 @@ progress bar	Progress	Előrehaladás
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
 	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}
+# fix: pawn structure words
+pawn structure	Passed	Szabad
+# fix: the board rail's More button
+	More board tools	További táblaeszközök

@@ -3756,3 +3756,7 @@ progress bar	Progress	进度
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	无法在书中查找：{e}
 	The diagrams read couldn't be looked at: {e}	无法查看已读取的局面图：{e}
+# fix: pawn structure words
+pawn structure	Passed	通路兵
+# fix: the board rail's More button
+	More board tools	更多棋盘工具
