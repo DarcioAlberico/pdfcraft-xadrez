@@ -492,7 +492,10 @@ impl PdfCraftApp {
     }
 
     /// Take a count that ended: what it read is this session's too, and what it found of the
-    /// document is the Text tab's (the evaluations beside the moves, the divergences known).
+    /// document is the Text tab's (the evaluations beside the moves, the divergences known). A
+    /// count of a state of the document that is gone (it was edited meanwhile) is dropped: the
+    /// dialog offers to count again. While a batch of the document runs, its check is left as it
+    /// is (the dialog is modal and refuses to open then, so this is a guard).
     fn take_count(&mut self, d: &mut Dialog) {
         let Some(out) = d.counting.as_mut().and_then(|(_, job)| job.poll()) else {
             if d.counting.is_some()
@@ -505,26 +508,33 @@ impl PdfCraftApp {
         let Some((key, _)) = d.counting.take() else { return };
         match out {
             Ok(p) => {
-                if key.stamp.is_some() && self.session.chess_stamp(d.doc) == key.stamp {
-                    self.session.prime_chess_cache(d.doc, p.cached.clone());
+                if key.stamp.is_none() || self.session.chess_stamp(d.doc) != key.stamp {
+                    return;
                 }
+                self.session.prime_chess_cache(d.doc, p.cached.clone());
                 self.keep_chess_cipher(d.doc, p.cipher.clone());
-                let labels = labels_of(self, d.doc);
-                let generation = self.chess.engine_review.docs.get(&d.doc).map_or(0, |c| c.generation).wrapping_add(1);
-                let list = self.chess.engine_review.docs.get(&d.doc).is_some_and(|c| c.list);
-                self.chess.engine_review.docs.insert(
-                    d.doc,
-                    Checked {
-                        doc: Arc::new(p.doc.clone()),
-                        refs: p.refs.clone(),
-                        evals: Arc::new(p.evals.clone()),
-                        generation,
-                        review: p.review.clone(),
-                        labels,
-                        stopped: None,
-                        list,
-                    },
-                );
+                let running = self.chess.engine_review.running.as_ref().is_some_and(|r| r.doc == d.doc);
+                if !running {
+                    let labels = labels_of(self, d.doc);
+                    // A batch that stopped stays, for Continue.
+                    let (generation, list, stopped) = match self.chess.engine_review.docs.remove(&d.doc) {
+                        Some(c) => (c.generation.wrapping_add(1), c.list, c.stopped),
+                        None => (1, false, None),
+                    };
+                    self.chess.engine_review.docs.insert(
+                        d.doc,
+                        Checked {
+                            doc: Arc::new(p.doc.clone()),
+                            refs: p.refs.clone(),
+                            evals: Arc::new(p.evals.clone()),
+                            generation,
+                            review: p.review.clone(),
+                            labels,
+                            stopped,
+                            list,
+                        },
+                    );
+                }
                 d.counted = Some((key, Box::new(p)));
             }
             // Stopped (the dialog closed): nothing to say.

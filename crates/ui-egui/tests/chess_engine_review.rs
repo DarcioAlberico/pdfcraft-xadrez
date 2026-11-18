@@ -567,6 +567,25 @@ fn a_stop_cut_short_asks_again_only_the_position_it_cut() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): a count of a document that changed while it was counted is
+/// dropped: no check of a state that is gone, and the dialog offers to count again.
+#[test]
+fn a_count_of_a_document_changed_meanwhile_is_dropped() {
+    let data = temp_dir("changed");
+    let mut h = harness(book(&[MOVES]), &data);
+    let id = h.state().views[0].id;
+    text_menu_item(&mut h, "Check with the engine…");
+    // The count is made in this frame (its job inline here) and taken at the next one's start.
+    h.get_by_label("Count the positions").click();
+    h.run_steps(1);
+    h.state_mut().session.apply(id, pdfcraft_engine::Edit::InsertBlankPage { at: 1, width: 600.0, height: 800.0 }).unwrap();
+    h.run_steps(3);
+    assert!(h.state().chess.engine_review.divergences(id).is_none(), "no check of the state that is gone");
+    assert!(h.query_by_label_contains("Positions to check: ").is_none());
+    assert!(h.query_by_label("Count the positions").is_some(), "to count again");
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.
