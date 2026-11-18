@@ -583,11 +583,15 @@ struct PlacedMove {
 }
 
 /// What a paragraph's layout depends on beyond the paragraph, the same for every paragraph of a
-/// frame: the theme, the interface's language, the figurines and the caption's shape.
-fn frame_key(t: &Tokens, figurines: Figurines, caption: bool) -> u64 {
+/// frame: the theme, the interface's language, the figurines, the caption's shape, and the fonts
+/// egui lays out with and at what scale (plan A9-I9c: a galley kept across a change of fonts
+/// draws its glyphs from an atlas that no longer exists).
+fn frame_key(ctx: &egui::Context, figurines: Figurines, caption: bool) -> u64 {
     use std::hash::{Hash, Hasher};
+    let t = Tokens::get(ctx);
+    let fonts = (theme::fonts_generation(ctx), ctx.pixels_per_point().to_bits());
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    (t.dark(), t.text.to_array(), crate::i18n::current().code(), format!("{figurines:?}"), caption).hash(&mut h);
+    (t.dark(), t.text.to_array(), crate::i18n::current().code(), format!("{figurines:?}"), caption, fonts).hash(&mut h);
     h.finish()
 }
 
@@ -817,7 +821,7 @@ pub fn text_tab(
     }
     // The caption's shape, when the font has it (plan A9-I9).
     let caption = ui.ctx().fonts_mut(|f| f.has_glyphs(&egui::TextStyle::Body.resolve(ui.style()), "▸"));
-    let frame = frame_key(&Tokens::get(ui.ctx()), figurines, caption);
+    let frame = frame_key(ui.ctx(), figurines, caption);
     for (bi, block) in page_doc.blocks.iter().enumerate() {
         ui.push_id(bi, |ui| match block {
             Block::Heading { inlines, source_rect, .. } => {

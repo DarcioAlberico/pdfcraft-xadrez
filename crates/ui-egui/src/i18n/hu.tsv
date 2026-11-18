@@ -2499,6 +2499,7 @@ animation effects	Off	Ki
 	Black knight	Sötét huszár
 	Black pawn	Sötét gyalog
 	White	Világos
+chess side	Black	Sötét
 	Board: {fen}	Tábla: {fen}
 	Board, {state}, move {n}	Tábla, {state}, {n}. lépés
 	Board, {state}	Tábla, {state}
