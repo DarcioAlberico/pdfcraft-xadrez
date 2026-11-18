@@ -692,7 +692,7 @@ mod tests {
     /// PGN, never "ligado" by the action; Back to the main window, never "Encaixar".
     #[test]
     fn the_chess_texts_keep_the_glossary() {
-        let mut shown = chess_literals();
+        let mut shown: std::collections::BTreeSet<String> = chess_texts().into_iter().map(|(_, source)| source).collect();
         shown.extend(pdfcraft_engine::commands::COMMANDS.iter().filter(|c| c.id.starts_with("chess.")).map(|c| c.label.to_owned()));
         let mut breaches = Vec::new();
         for text in &shown {
