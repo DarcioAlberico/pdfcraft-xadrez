@@ -26,9 +26,9 @@ use std::path::PathBuf;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
-use egui::{Color32, TextureHandle, vec2};
 #[cfg(not(target_arch = "wasm32"))]
-use egui::{Rect, Stroke};
+use egui::{Color32, Stroke};
+use egui::{Rect, TextureHandle, vec2};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_engine::chess::pdfcraft_chess::fen::Position;
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
@@ -438,7 +438,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
         let name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &setup.fen())]);
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
         let r = response.rect;
-        let at = |p: egui::Pos2| board.square_at((p.x - r.min.x) / r.width().max(1.0), (p.y - r.min.y) / r.height().max(1.0));
+        let at = |p: egui::Pos2| board.frame(r).square_at(p);
         if response.clicked()
             && let Some(sq) = response.interact_pointer_pos().and_then(at)
         {
@@ -876,6 +876,8 @@ pub(crate) fn board_at(
     square: Rect,
     bar: Option<Rect>,
 ) {
+    // The engine's best move, off the web (no engine there): filled below.
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut best = Vec::new();
     #[cfg(not(target_arch = "wasm32"))]
     if study.analysis {

@@ -7,6 +7,7 @@ use pdfcraft_chess::rules::check_position;
 use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
+mod at_point;
 mod board;
 mod compat;
 mod errata;

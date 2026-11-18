@@ -417,6 +417,8 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
     // Identifier and date.
     assert_eq!(identifier(b"a"), identifier(b"a"));
     assert_ne!(identifier(b"a"), identifier(b"b"));
+    // Plan A9-I6: an EPUB exported before keeps its identifier (a reader knows it as the same book).
+    assert_eq!(identifier(b"%PDF-1.7 synthetic"), "urn:pdfcraft:chess:2243931de0aaf5a0");
     assert_eq!(modified("D:2026"), "1970-01-01T00:00:00Z");
     assert_eq!(modified("garbage"), "1970-01-01T00:00:00Z");
     assert_eq!(modified_at(1_700_000_000), "2023-11-14T22:13:20Z");
