@@ -3986,3 +3986,6 @@ progress bar	Progress	Tiến độ
 	Nothing in the book as read has this material and these pawns.	Không có gì trong phần sách đã đọc có lực lượng và các tốt này.
 	{first} to {last}	{first} đến {last}
 	Positions: {n}	Thế cờ: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
+	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}

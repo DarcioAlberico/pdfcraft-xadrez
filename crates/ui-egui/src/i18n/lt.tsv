@@ -3984,3 +3984,6 @@ progress bar	Progress	Eiga
 	Nothing in the book as read has this material and these pawns.	Perskaitytoje knygoje nieko nėra su šia medžiaga ir šiais pėstininkais.
 	{first} to {last}	{first}–{last}
 	Positions: {n}	Pozicijų: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Knygoje ieškoti nepavyko: {e}
+	The diagrams read couldn't be looked at: {e}	Perskaitytų diagramų peržiūrėti nepavyko: {e}

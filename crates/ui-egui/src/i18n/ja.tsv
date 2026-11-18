@@ -3738,3 +3738,6 @@ progress bar	Progress	進行状況
 	Nothing in the book as read has this material and these pawns.	読み取った本には、この材料とこれらのポーンを持つ局面はありません。
 	{first} to {last}	{first} から {last}
 	Positions: {n}	局面: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	本を検索できませんでした: {e}
+	The diagrams read couldn't be looked at: {e}	読み取った局面図を調べられませんでした: {e}

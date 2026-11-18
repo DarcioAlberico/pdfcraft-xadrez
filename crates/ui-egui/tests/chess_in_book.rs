@@ -160,6 +160,14 @@ fn a_position_two_move_orders_reach_is_found_twice_and_the_books_reply_is_played
     h.run_steps(1);
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Tab);
     assert!(focused(&h).starts_with("Play 3. bishop b5"), "{}", focused(&h));
+    // ↑ and ↓ go from row to row (plan A9-N3b), not through the game.
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::ArrowDown);
+    assert!(focused(&h).starts_with("Play 3. bishop c4"), "{}", focused(&h));
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::ArrowDown);
+    assert!(focused(&h).starts_with("Game 1 · Open"), "{}", focused(&h));
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Home);
+    assert!(focused(&h).starts_with("Play 3. bishop b5"), "{}", focused(&h));
+    assert_eq!(shown(&h), "Nc6", "the game did not move");
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     assert_eq!(shown(&h), "Bb5", "played on the board");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3 Nc6 3. Bb5");
@@ -294,4 +302,27 @@ fn by_material_the_rook_endings_are_listed_and_opened_from_the_keyboard() {
     h.get_by_label("Material").type_text("Q");
     h.run_steps(2);
     h.get_by_label("Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.");
+}
+
+/// Plan A9-N3b: while the next answer is looked for (on a worker), the list keeps the last one,
+/// dimmed: the keyboard stays on its row, so a reply played from the keyboard leaves it on the
+/// list, on the new position's first reply (it used to show "Looking…" alone for a frame, which
+/// dropped the focused row).
+#[test]
+fn the_list_keeps_the_keyboard_while_it_looks_again() {
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", BOOK_PGN.as_bytes());
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 2. Nf3 Nc6 *");
+    h.get_by_label("In the book (2)").click();
+    h.run_steps(3);
+    h.state_mut().run_inline = false;
+    h.get_by_label("Play 3. bishop b5 on the board, Good move, Main line, Games: 2").focus();
+    h.run_steps(1);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
+    assert!(h.state_mut().wait_in_book(std::time::Duration::from_secs(60)), "the search ended");
+    h.run_steps(3);
+    assert_eq!(shown(&h), "Bb5");
+    assert!(focused(&h).starts_with("Play 3… a6"), "the keyboard on the list: {:?}", focused(&h));
 }
