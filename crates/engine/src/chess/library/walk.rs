@@ -10,7 +10,8 @@
 //!   (OneDrive's synced folders) can't loop, and is followed.
 //! - **Nothing in the cloud is touched**: a PDF or a folder whose attributes say its data is not on
 //!   this computer (`FILE_ATTRIBUTE_OFFLINE`, `RECALL_ON_OPEN`, `RECALL_ON_DATA_ACCESS`, read from
-//!   the listing's own record on Windows) is said ([`Walked::cloud`]) and neither opened nor
+//!   the listing's own record on Windows) is said ([`Walked::cloud`], [`Walked::cloud_folders`])
+//!   and neither opened nor
 //!   listed: opening a OneDrive placeholder downloads it, and listing a folder of them can.
 //! - **Caps**, each said once when reached ([`Walked::capped`]): folders deeper than
 //!   [`MAX_DEPTH`] below a chosen folder are not listed, at most [`MAX_ENTRIES`] entries are
@@ -83,6 +84,9 @@ pub struct Walked {
     pub pdfs: Vec<Pdf>,
     /// PDFs and folders whose data is not on this computer: never opened or listed.
     pub cloud: Vec<PathBuf>,
+    /// Folders whose data is in the cloud: not listed (a folder named `x.pdf` among them is no
+    /// book).
+    pub cloud_folders: Vec<PathBuf>,
     /// Links (symbolic links, junctions, mount points): never followed.
     pub links: Vec<PathBuf>,
     /// Folders that could not be listed, and why (a chosen folder that is not one among them).
@@ -112,8 +116,10 @@ pub(crate) enum Entry {
     Pdf,
     /// A link, a junction or a mount point: not followed.
     Link,
-    /// A PDF or a folder whose data is in the cloud: not opened, not listed.
+    /// A PDF whose data is in the cloud: not opened.
     Cloud,
+    /// A folder whose data is in the cloud: not listed.
+    CloudFolder,
     /// Anything else: passed over.
     Other,
 }
@@ -125,7 +131,7 @@ pub(crate) fn classify(link: bool, dir: bool, file: bool, attributes: u32, name:
         return Entry::Link;
     }
     if dir {
-        return if cloud_only(attributes) { Entry::Cloud } else { Entry::Folder };
+        return if cloud_only(attributes) { Entry::CloudFolder } else { Entry::Folder };
     }
     if file && is_pdf_name(name) {
         return if cloud_only(attributes) { Entry::Cloud } else { Entry::Pdf };
@@ -151,13 +157,13 @@ fn is_pdf_name(name: &str) -> bool {
 /// The attributes of a listing's entry (Windows: from the listing's own record, which opens
 /// nothing); 0 elsewhere, where a listing gives none.
 #[cfg(windows)]
-fn attributes_of(meta: Option<&std::fs::Metadata>) -> u32 {
+pub(crate) fn attributes_of(meta: Option<&std::fs::Metadata>) -> u32 {
     use std::os::windows::fs::MetadataExt;
     meta.map_or(0, MetadataExt::file_attributes)
 }
 
 #[cfg(not(windows))]
-fn attributes_of(_meta: Option<&std::fs::Metadata>) -> u32 {
+pub(crate) fn attributes_of(_meta: Option<&std::fs::Metadata>) -> u32 {
     0
 }
 
@@ -183,7 +189,7 @@ pub fn walk(dirs: &[PathBuf], caps: Caps, stop: &dyn Fn() -> bool) -> Walked {
         if chosen.contains(&dir) && depth == 0 {
             match std::fs::symlink_metadata(&dir) {
                 Ok(meta) if cloud_only(attributes_of(Some(&meta))) => {
-                    out.cloud.push(dir);
+                    out.cloud_folders.push(dir);
                     continue;
                 }
                 Err(e) => {
@@ -244,6 +250,7 @@ pub fn walk(dirs: &[PathBuf], caps: Caps, stop: &dyn Fn() -> bool) -> Walked {
                 }
                 Entry::Link => out.links.push(path),
                 Entry::Cloud => out.cloud.push(path),
+                Entry::CloudFolder => out.cloud_folders.push(path),
                 Entry::Other => {}
             }
         }
@@ -294,7 +301,8 @@ mod tests {
         assert_eq!(classify(false, true, false, 0, "Books"), Entry::Folder);
         assert_eq!(classify(false, true, false, REPARSE_POINT, "OneDrive"), Entry::Folder);
         for bit in [0x1000, 0x4_0000, 0x40_0000] {
-            assert_eq!(classify(false, true, false, bit | REPARSE_POINT, "Books"), Entry::Cloud, "{bit:#x}");
+            assert_eq!(classify(false, true, false, bit | REPARSE_POINT, "Books"), Entry::CloudFolder, "{bit:#x}");
+            assert_eq!(classify(false, true, false, bit, "x.pdf"), Entry::CloudFolder, "a folder named as a PDF is a folder");
         }
     }
 

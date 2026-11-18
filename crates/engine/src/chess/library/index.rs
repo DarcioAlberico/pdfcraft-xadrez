@@ -608,8 +608,11 @@ pub enum ReadError {
     Missing,
     /// Made by another version of the format, or under another key: out of date, not damaged.
     Stale,
-    /// It can't be trusted, and why.
+    /// It can't be trusted, and why: a check failed.
     Damaged(String),
+    /// The file could not be read now (another program holding it, say), and why: nothing is
+    /// known of it, so it is neither trusted nor set aside.
+    Unreadable(String),
 }
 
 impl std::fmt::Display for ReadError {
@@ -618,6 +621,7 @@ impl std::fmt::Display for ReadError {
             ReadError::Missing => f.write_str("there is no index"),
             ReadError::Stale => f.write_str("the index is out of date"),
             ReadError::Damaged(why) => write!(f, "the index is damaged: {why}"),
+            ReadError::Unreadable(why) => write!(f, "the index can't be read now: {why}"),
         }
     }
 }
@@ -639,7 +643,7 @@ pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPo
     let bytes = match super::super::corrections::read_capped(path, MAX_FILE_BYTES) {
         Ok(b) => b,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(ReadError::Missing),
-        Err(e) => return Err(ReadError::Damaged(format!("it can't be read: {e}"))),
+        Err(e) => return Err(ReadError::Unreadable(e.to_string())),
     };
     if bytes.len() > MAX_FILE_BYTES {
         return Err(ReadError::Damaged(format!("larger than {} MB", MAX_FILE_BYTES >> 20)));
