@@ -338,6 +338,34 @@ impl PlacementKey {
     pub fn words(self) -> [u64; 4] {
         self.0
     }
+
+    /// The pieces it keys, back: what [`PlacementKey::of`] was given (plan A9-N16b: the app keeps
+    /// each diagram read by its key, 32 bytes, and holds it to a search by material and pawns).
+    pub fn placement(self) -> Placement {
+        let mut out = Placement::empty();
+        for index in 0..64usize {
+            let code = self.0.get(index / 16).map_or(0, |word| (word >> ((index % 16) * 4)) & 0xF);
+            if let (Some(piece), Some(sq)) = (piece_of(code), Square::from_index(index)) {
+                out.set(sq, Some(piece));
+            }
+        }
+        out
+    }
+}
+
+/// The piece four bits stand for ([`piece_code`]); `None` for an empty square, or bits no piece
+/// writes.
+fn piece_of(code: u64) -> Option<Piece> {
+    let kind = match code & 7 {
+        1 => PieceKind::Pawn,
+        2 => PieceKind::Knight,
+        3 => PieceKind::Bishop,
+        4 => PieceKind::Rook,
+        5 => PieceKind::Queen,
+        6 => PieceKind::King,
+        _ => return None,
+    };
+    Some(Piece { color: if code & 8 == 0 { Color::White } else { Color::Black }, kind })
 }
 
 /// A piece as four bits, never 0 (an empty square): 1–6 White's, 9–14 Black's.
@@ -715,6 +743,8 @@ mod tests {
             let text = format_placement(&placement);
             prop_assert_eq!(parse_placement(&text).unwrap(), placement);
             prop_assert_eq!(placement.reading_order(), arr);
+            // Plan A9-N16b: its key gives it back.
+            prop_assert_eq!(PlacementKey::of(&placement).placement(), placement);
         }
 
         #[test]

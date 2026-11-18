@@ -3659,3 +3659,20 @@ progress bar	Progress	進度
 	Open game {n} on the board at {move}	在棋盤上開啟對局 {n}，停在 {move}
 	Only the pieces were compared: the side to move isn't printed.	只比較了棋子：未印出輪到哪方走。
 	The first {n} are listed.	已列出前 {n} 項。
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	依子力在書中尋找…
+	Look for	尋找
+	This position	此局面
+	By material	依子力
+	Material	子力
+	Either side	任一方
+	The material with the colours swapped is found too.	顏色互換的子力也會找到。
+	Pawns:	兵：
+	Doubled	疊兵
+	Isolated	孤兵
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	不是子力寫法：每方的棋子依 K Q R B N P 的順序，白方在前，如 KRP-KR。
+	Write a material, such as KRP-KR, or choose a kind of pawn.	請寫一個子力，如 KRP-KR，或選擇一種兵型。
+	Looking in the book…	正在書中尋找…
+	Nothing in the book as read has this material and these pawns.	已讀取的書中沒有具有此子力和這些兵的局面。
+	{first} to {last}	{first} 至 {last}
+	Positions: {n}	局面：{n}
