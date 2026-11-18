@@ -285,7 +285,7 @@ pub(crate) fn list(
             }
             Item::Error(pi) => {
                 let e = results.pages.get(pi).and_then(|p| p.error.as_deref()).unwrap_or_default();
-                note(ui, t, r, &crate::i18n::fmt(tl!("This page couldn't be scanned: {e}"), &[("e", e)]));
+                note(ui, t, r, &crate::i18n::fmt(tl!("The diagrams on this page couldn't be detected: {e}"), &[("e", e)]));
             }
             Item::Truncated(pi) => {
                 let n = results.pages.get(pi).map_or(0, |p| p.diagrams.len());

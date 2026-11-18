@@ -2434,8 +2434,7 @@ animation effects	Off	Өшірулі
 	Page properties	Бет қасиеттері
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Шахмат диаграммаларын табу
-	Chess diagrams panel	Шахмат диаграммалары панелі
+	Chess panel	Шахмат панелі
 	Chess	Шахмат
 	Diagrams	Диаграммалар
 	Chess diagrams	Шахмат диаграммалары
@@ -2443,10 +2442,10 @@ animation effects	Off	Өшірулі
 	Scan all pages	Барлық беттерден іздеу
 	Scanning for diagrams… page {d} of {t}	Диаграммалар ізделуде… бет {d}/{t}
 	Scan this page or all pages to find the chess diagrams in this document.	Құжаттағы шахмат диаграммаларын табу үшін осы беттен немесе барлық беттерден іздеңіз.
-	The document changed since the scan. Scan again to update the diagrams.	Іздеуден кейін құжат өзгерді. Диаграммаларды жаңарту үшін қайта іздеңіз.
+	The document changed since its diagrams were detected. Detect them again to update them.	Диаграммалар анықталғаннан бері құжат өзгерді. Оларды жаңарту үшін қайта анықтаңыз.
 	The piece model couldn't be loaded: {e}	Фигуралар моделін жүктеу мүмкін болмады: {e}
 	No diagrams found.	Диаграмма табылмады.
-	This page couldn't be scanned: {e}	Бұл бетті тексеру мүмкін болмады: {e}
+	The diagrams on this page couldn't be detected: {e}	Бұл беттегі диаграммаларды анықтау мүмкін болмады: {e}
 	Only the first {n} diagrams on this page are listed.	Осы беттегі алғашқы {n} диаграмма ғана көрсетілген.
 	Diagram {n}	Диаграмма {n}
 	Position read	Позиция оқылды
@@ -2521,7 +2520,7 @@ chess side	Black	Қаралар
 	{n} to review	Тексерілетін: {n}
 	◀ Previous to review	◀ Алдыңғы тексерілетін
 	Open in lichess	lichess-те ашу
-	Diagrams are already being scanned	Диаграммалар қазір ізделуде
+	Diagrams are already being detected	Диаграммалар қазір анықталып жатыр
 	Diagrams found: {n}	Табылған диаграммалар: {n}
 	FEN copied	FEN көшірілді
 # Chess ▸ Board: the analysis board panel.
@@ -2593,7 +2592,7 @@ chess side	Black	Қаралар
 	That side can't be to move: the other king is in check.	Бұл жақтың жүрісі бола алмайды: екінші патшаға шах.
 	The FEN couldn't be read: {e}	FEN оқылмады: {e}
 	The PGN couldn't be read: {e}	PGN оқылмады: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Бұл диаграмма оқылмаған: алдымен оның бетін сканерлеңіз немесе позицияны редакторда орнатыңыз.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Бұл диаграмма оқылмаған: алдымен оның бетіндегі диаграммаларды анықтаңыз немесе позициясын редакторда орнатыңыз.
 	White to move	Ақтардың жүрісі
 	White to move, in check	Ақтардың жүрісі, шах
 # Chess ▸ Board: variations, annotations and game details.
@@ -3171,7 +3170,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	{n} arrows	{n} нұсқар
 	1 ring	1 сақина
 	{n} rings	{n} сақина
-	The comment on the move shown, large under the board	Көрсетілген жүрістің түсініктемесі тақтаның астында ірі
+	Show the move's comment in large type under the board	Жүріс түсініктемесін тақтаның астында ірі әріппен көрсету
 	Running text	Тұтас мәтін
 	Columns	Бағандар
 	Text size	Мәтін өлшемі
@@ -3180,7 +3179,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Large	Үлкен
 	Previous variation (Page Up)	Алдыңғы нұсқа (Page Up)
 	Next variation (Page Down)	Келесі нұсқа (Page Down)
-	A move the pointer rests on shows its position	Меңзер тоқтаған жүріс өз позициясын көрсетеді
+	Show a move's position when the pointer rests on it	Меңзер жүрістің үстінде тоқтағанда оның позициясын көрсету
 	Position after {move}	{move} кейінгі позиция
 	To review	Тексеру керек
 	With an error	Қатесі бар
@@ -3405,7 +3404,6 @@ castling	long	ұзын
 	{name} (no page discusses it)	{name} (оны бірде-бір бет қарастырмайды)
 	Go to its page and put the game on the board.	Оның бетіне өтіп, ойынды тақтаға қою.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Кітап PGN файлымен байланыстырылды: {moves} жүрістің {linked} ({recovered} PGN-нен алынды), {conflict} қайшылықта.
-	Link the whole book to its PGN	Бүкіл кітапты PGN файлымен байланыстыру
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Кітаптың PGN файлы бұл жүрісті басқа позициядан жасайды: тексеріп, PGN жүрісін қолданыңыз немесе кітап жүрісін қалдырыңыз.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	Осы беттегі кітаптың PGN файлы: расталды — {confirmed}, PGN-нен алынды — {recovered}, қайшылықта — {conflict} (тексеруге — {open}).
 	You kept the book's move.	Кітаптың жүрісін қалдырдыңыз.
@@ -3426,7 +3424,7 @@ castling	long	ұзын
 	Corners	Бұрыштар
 	Start outlined, end filled	Бастауы жиекті, соңы толтырылған
 	Border and light fill	Жиек және ашық толтыру
-	Last move	Соңғы жүріс
+	Highlight the last move	Соңғы жүрісті ерекшелеу
 	Strength	Қарқындылық
 	Import fonts…	Қаріптерді импорттау…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Шахмат қаріптерін бағдарламаның жанындағы қаріптер бумасына көшіреді: әр диаграмма қарпі фигуралар жиынтығы болады, ал фигурин қарпі экспорттардағы жүрістерді жазады.
@@ -3681,3 +3679,16 @@ progress bar	Progress	Орындалу барысы
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Шешімдер соңында, нөмірлер ретімен. Шешімі оқылмаған диаграмма мұны айтады.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Жаттығулар парағын ашық PDF үстіне жазу мүмкін емес: басқа атау таңдаңыз.
 	No exercise sheet was written	Жаттығулар парағы жазылмады
+	Filled squares	Боялған шаршылар
+	Classic	Классикалық
+	Tokens	Жетондар
+	Pixel Art	Пиксель өнері
+	Facets	Қырлар
+	Stained Glass	Витраж
+	Chubby	Томпақ
+	Gothic	Готикалық
+	Sketch	Нобай
+	Shapes	Пішіндер
+	Fantasy	Қиял
+	Spatial	Кеңістіктік
+	Celtic	Кельт

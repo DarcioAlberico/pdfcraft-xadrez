@@ -93,7 +93,7 @@ impl LastMove {
     /// Its name as the interface says it.
     fn label(self) -> &'static str {
         match self {
-            LastMove::Fill => tl!("Filled"),
+            LastMove::Fill => tl!("Filled squares"),
             LastMove::Border => tl!("Border"),
             LastMove::Corners => tl!("Corners"),
             LastMove::FromBorder => tl!("Start outlined, end filled"),
@@ -352,6 +352,28 @@ pub(crate) fn name(theme: &BoardTheme) -> &'static str {
 const TILE: f32 = 72.0;
 const SQUARE: f32 = 22.0;
 
+/// The height of a line of a theme's name under its squares.
+const NAME_LINE: f32 = 13.0;
+
+/// `name` in one line `max_width` wide, else broken at the last space that lets the first line
+/// fit, the second shortened with "…" if it must be; one shortened line when no space does.
+fn two_lines(name: &str, max_width: f32, mut width_of: impl FnMut(&str) -> f32) -> (String, Option<String>) {
+    if width_of(name) <= max_width {
+        return (name.to_owned(), None);
+    }
+    // Split at a space: both halves start and end on a character boundary.
+    let split = name
+        .char_indices()
+        .filter(|(_, c)| *c == ' ')
+        .filter_map(|(i, _)| Some((name.get(..i)?, name.get(i..)?)))
+        .filter(|(first, _)| width_of(first) <= max_width)
+        .last();
+    match split {
+        Some((first, rest)) => (first.to_owned(), Some(crate::widgets::fit_line(rest.trim_start(), max_width, width_of))),
+        None => (crate::widgets::fit_line(name, max_width, width_of), None),
+    }
+}
+
 /// Preferences ▸ Board theme: a tile per theme, two squares of each colour with a move between
 /// two of them marked as the look says; a click picks it.
 pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) {
@@ -388,9 +410,9 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::Letters, tl!("Letters in your language"));
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::English, tl!("English letters"));
     });
-    ui.add(crate::widgets::checkbox(&mut app.chess.comment_focus, tl!("The comment on the move shown, large under the board")));
+    ui.add(crate::widgets::checkbox(&mut app.chess.comment_focus, tl!("Show the move's comment in large type under the board")));
     let mut preview = !app.chess.no_move_preview;
-    if ui.add(crate::widgets::checkbox(&mut preview, tl!("A move the pointer rests on shows its position"))).changed() {
+    if ui.add(crate::widgets::checkbox(&mut preview, tl!("Show a move's position when the pointer rests on it"))).changed() {
         app.chess.no_move_preview = !preview;
     }
     // Variations (plan A8 V3).
@@ -468,7 +490,7 @@ fn look_options(ui: &mut egui::Ui, look: &mut BoardLook) {
             crate::widgets::radio_value(ui, &mut look.squares, SquareMarks::Fill, tl!("Filled"));
         });
         ui.end_row();
-        let label = ui.label(tl!("Last move"));
+        let label = ui.label(tl!("Highlight the last move"));
         ui.horizontal(|ui| {
             let marks = |ui: &mut egui::Ui, look: &mut BoardLook| {
                 for mark in LastMove::ALL {
@@ -575,7 +597,8 @@ pub(crate) fn paint_last_move_arrow(painter: &egui::Painter, theme: &BoardTheme,
 }
 
 fn tile(ui: &mut egui::Ui, t: &Tokens, theme: &BoardTheme, look: BoardLook, selected: bool) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(TILE, TILE), egui::Sense::click());
+    // Room for a name of two lines under the squares (plan A9-I14, finding A6-22: "Madeira cl…").
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(TILE, TILE + NAME_LINE), egui::Sense::click());
     let painter = ui.painter_at(rect);
     let fill = if response.hovered() { t.hover } else { t.card };
     painter.rect_filled(rect, f32::from(t.radius), fill);
@@ -591,8 +614,17 @@ fn tile(ui: &mut egui::Ui, t: &Tokens, theme: &BoardTheme, look: BoardLook, sele
     paint_last_move_arrow(&painter, theme, look, cell(1, 0), cell(1, 1));
     let name = name(theme);
     let font = egui::FontId::proportional(11.0);
-    let line = crate::widgets::fit_line(name, TILE - 6.0, |s| crate::widgets::text_width(ui, s, &font));
-    painter.text(rect.center_bottom() - egui::vec2(0.0, 6.0), egui::Align2::CENTER_BOTTOM, line, font, t.text);
+    let (first, second) = two_lines(name, TILE - 6.0, |s| crate::widgets::text_width(ui, s, &font));
+    let bottom = rect.center_bottom() - egui::vec2(0.0, 6.0);
+    match second {
+        Some(second) => {
+            painter.text(bottom - egui::vec2(0.0, NAME_LINE), egui::Align2::CENTER_BOTTOM, first, font.clone(), t.text);
+            painter.text(bottom, egui::Align2::CENTER_BOTTOM, second, font, t.text);
+        }
+        None => {
+            painter.text(bottom, egui::Align2::CENTER_BOTTOM, first, font, t.text);
+        }
+    }
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, true, selected, name));
     response
 }
@@ -626,6 +658,18 @@ pub(crate) fn menu_items(ui: &mut egui::Ui) -> Option<MenuPick> {
 
 #[cfg(test)]
 mod tests {
+    /// Plan A9-I14 (finding A6-22): a theme's name takes two lines before it is shortened.
+    #[test]
+    fn a_long_theme_name_takes_two_lines() {
+        let width = |s: &str| s.chars().count() as f32 * 6.0;
+        assert_eq!(two_lines("Wood", 66.0, width), ("Wood".to_owned(), None));
+        assert_eq!(two_lines("Madeira clássica", 66.0, width), ("Madeira".to_owned(), Some("clássica".to_owned())));
+        assert_eq!(two_lines("Alto contraste suave", 90.0, width), ("Alto contraste".to_owned(), Some("suave".to_owned())));
+        let (first, second) = two_lines("Impressãomuitolonga", 66.0, width);
+        assert!(second.is_none() && first.ends_with('\u{2026}'), "{first}");
+        assert_eq!(two_lines("", 66.0, width), (String::new(), None));
+    }
+
     use super::*;
 
     #[test]

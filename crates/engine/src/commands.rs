@@ -377,8 +377,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("a11y.alt_text", "Add alternate text…", None, None, Modification, "image"),
     c("a11y.autotag_fields", "Tag form fields", None, None, Modification, "tag"),
     c("a11y.tags", "Tags panel", None, None, Document, "tag"),
-    c("chess.scan", "Scan chess diagrams", CHESS, None, Copying, "grid-3x3"),
-    c("chess.panel", "Chess diagrams panel", CHESS, None, Document, "grid-3x3"),
+    c("chess.scan", "Detect diagrams", CHESS, None, Copying, "grid-3x3"),
+    c("chess.panel", "Chess panel", CHESS, None, Document, "grid-3x3"),
     // The diagrams of the page shown read with confidence, kept as checked (plan A8, P2b).
     c("chess.verify_page", "Mark the page as checked", None, None, Document, "badge-check"),
     // Where the chess models come from (U4): a folder on the desktop, files on the web.
@@ -392,7 +392,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.reference.load", "Load the book's PGN…", CHESS, None, Document, "book-open"),
     c("chess.reference.clear", "Remove the book's PGN", None, None, Document, "file-x"),
     // Every page read and linked to it: the summary and its games' pages (R6d).
-    c("chess.reference.link", "Link the whole book to its PGN", None, None, Copying, "link"),
+    c("chess.reference.link", "Align the book to the PGN", None, None, Copying, "link"),
     // A book's review to and from another machine (plan A9-G5b): its corrections, its choices on
     // the book's PGN and its games, in one file.
     c("chess.review.export", "Export the book's review…", CHESS, None, Copying, "file-output"),
