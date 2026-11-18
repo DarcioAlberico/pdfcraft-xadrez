@@ -486,6 +486,42 @@ fn a_document_whose_chess_is_not_kept_has_nothing_written_even_closed_mid_batch(
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): an engine that can't start loses no batch. Continue keeps
+/// the stopped batch, and the dialog's Start keeps its count and stays open, the reason said.
+#[test]
+fn an_engine_that_cannot_start_loses_no_batch() {
+    let data = temp_dir("no-start");
+    let mut h = harness(book(&[MOVES]), &data);
+    let (analyser, engine) = engine(Answers::Gated { wait: NET }, 100);
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    count(&mut h);
+    h.get_by_label("Start the check").click();
+    engine.answer(2);
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 3 of 5").is_some()), "two answered");
+    h.get_by_label("Stop").click();
+    engine.answer(1);
+    assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped");
+    let id = h.state().views[0].id;
+    assert_eq!(h.state().chess.engine_review.left(id), Some(2));
+    // No engine given: the program the board would use, which does not exist.
+    h.state_mut().chess.study.engine_path = Some(data.join("no-such-engine.exe"));
+    text_menu_item(&mut h, "Continue the check (2 left)");
+    assert!(wait_for(&mut h, |h| shown(h, "The engine couldn't be started")), "said");
+    assert!(!h.state().chess.engine_review.running());
+    assert_eq!(h.state().chess.engine_review.left(id), Some(2), "Continue kept its batch");
+    // The dialog's Start: the count stays, and so does the dialog.
+    text_menu_item(&mut h, "Check with the engine…");
+    h.get_by_label("Count the positions").click();
+    h.run_steps(3);
+    assert!(said(&h, "Positions to check: ").starts_with("Positions to check: 2 "), "{}", said(&h, "Positions to check: "));
+    h.get_by_label("Start the check").click();
+    h.run_steps(3);
+    assert!(!h.state().chess.engine_review.running());
+    assert!(said(&h, "Positions to check: ").starts_with("Positions to check: 2 "), "the count is still there");
+    assert!(h.query_by_label("Start the check").is_some(), "the dialog stays, to start again");
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.

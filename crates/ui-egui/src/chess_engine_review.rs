@@ -527,12 +527,16 @@ impl PdfCraftApp {
         }
     }
 
-    /// Start the batch the dialog counted, or (`stopped`) the one of document `id` that stopped.
-    fn start_check(&mut self, id: DocId, batch: Batch, limit: Limit, all: usize, before: usize) {
+    /// Start `batch` (the dialog counted it, or it is document `id`'s that stopped). When it can't
+    /// start (a batch runs already, the document's check is gone, no engine, or the engine does
+    /// not start), why is said and the batch comes back, for the caller to keep: Start and
+    /// Continue lose nothing (plan A9-N17b, the review of #420).
+    fn start_check(&mut self, id: DocId, batch: Batch, limit: Limit, all: usize, before: usize) -> Result<(), Batch> {
         if self.chess.engine_review.running.is_some() {
-            return self.inform(tl!("A check with the engine is already running: stop it first.").to_owned());
+            self.inform(tl!("A check with the engine is already running: stop it first.").to_owned());
+            return Err(batch);
         }
-        let Some(checked) = self.chess.engine_review.docs.get(&id) else { return };
+        let Some(checked) = self.chess.engine_review.docs.get(&id) else { return Err(batch) };
         let (doc, refs, evals) = (Arc::clone(&checked.doc), checked.refs.clone(), (*checked.evals).clone());
         let analyser = match self.chess.engine_review.engine.take() {
             Some(a) => a,
@@ -541,12 +545,15 @@ impl PdfCraftApp {
                 let Some(path) = self.chess.study.engine_path.clone().or_else(|| pdfcraft_engine::chess::analysis::find_engine(install)) else {
                     // The board's assistant says where to get one and lets it be chosen.
                     self.chess.study.assistant = true;
-                    return;
+                    return Err(batch);
                 };
                 let options = AnalysisOptions { lines: 1, depth: limit.budget().depth };
                 match Analyser::start(&path, options, Arc::new(|| {})) {
                     Ok(a) => a,
-                    Err(e) => return self.post_error(engine_error(&e)),
+                    Err(e) => {
+                        self.post_error(engine_error(&e));
+                        return Err(batch);
+                    }
                 }
             }
         };
@@ -592,12 +599,19 @@ impl PdfCraftApp {
         self.chess.engine_review.last = Some(limit);
         self.chess.engine_review.running =
             Some(Running { doc: id, name, job, found, limit, all, before, started: Instant::now(), halt, stop_asked: None, closed: false });
+        Ok(())
     }
 
-    /// Continue document `id`'s stopped batch: only the positions it had not asked.
+    /// Continue document `id`'s stopped batch: only the positions it had not asked. When it can't
+    /// start, the batch stays, and Continue with it.
     pub(crate) fn continue_check(&mut self, id: DocId) {
         let Some(s) = self.chess.engine_review.docs.get_mut(&id).and_then(|c| c.stopped.take()) else { return };
-        self.start_check(id, s.batch, s.limit, s.all, s.asked);
+        let Stopped { batch, limit, all, asked } = s;
+        if let Err(batch) = self.start_check(id, batch, limit, all, asked)
+            && let Some(c) = self.chess.engine_review.docs.get_mut(&id)
+        {
+            c.stopped = Some(Stopped { batch, limit, all, asked });
+        }
     }
 
     /// Stop the batch running: it ends once the position being searched is finished, kept (at
@@ -1158,11 +1172,17 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         // Closed: a count running is dropped, which stops it.
         Some(Answer::Cancel) => {}
         Some(Answer::Continue) => app.continue_check(doc),
+        // When it can't start, the dialog stays with its count, to start again.
         Some(Answer::Start) => {
             let limit = d.limit();
-            if let Some((_, p)) = d.counted.take() {
-                let all = p.batch.len();
-                app.start_check(doc, p.batch, limit, all, 0);
+            if let Some((key, mut p)) = d.counted.take() {
+                let batch = std::mem::take(&mut p.batch);
+                let all = batch.len();
+                if let Err(batch) = app.start_check(doc, batch, limit, all, 0) {
+                    p.batch = batch;
+                    d.counted = Some((key, p));
+                    app.chess.engine_review.dialog = Some(d);
+                }
             }
         }
     }
