@@ -33,7 +33,7 @@ use pdfcraft_engine::chess::export::ChessExportOptions;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, ReviewFlag, UserRect};
 use pdfcraft_engine::chess::reference_store::Choice;
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
@@ -456,18 +456,6 @@ fn origin_label(o: BookOrigin) -> &'static str {
     }
 }
 
-pub(crate) fn status_label(s: MoveStatus) -> &'static str {
-    match s {
-        MoveStatus::Valid => tl!("Valid move"),
-        MoveStatus::Illegal => tl!("Illegal move"),
-        MoveStatus::Ambiguous => tl!("Ambiguous move"),
-        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
-        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
-        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
-        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
-    }
-}
-
 /// A move of the Text tab as it is drawn, said and acted on (plan A9-I9).
 struct MoveView {
     at: MoveAt,
@@ -487,7 +475,7 @@ struct MoveView {
 /// [`MoveView`] of move `m`, at `at`, with the choices made on its page (`chosen`); `caption`:
 /// the font has the caption's shape (▸), else a plain one stands in.
 fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::reference_store::OnPage, t: &Tokens, caption: bool) -> MoveView {
-    let mut tip = status_label(m.status).to_string();
+    let mut tip = crate::chess_text_para::move_status_words(m.status).to_string();
     let linked = reference_note(m);
     // A conflict the user decided says what they chose (R6e).
     let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
@@ -504,9 +492,9 @@ fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::refere
         tip = format!("{tip}\n{fen}");
     }
     // A move with no position on its page alone may go on from the page before: its game is
-    // looked for there.
-    let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
-    let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
+    // looked for there. The page's double-click goes by the same rule (plan A9-N1).
+    let opens = m.opens_game();
+    let in_pgn = crate::chess_page_moves::in_pgn(m);
     if in_pgn.is_some() {
         tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
     } else if opens {
