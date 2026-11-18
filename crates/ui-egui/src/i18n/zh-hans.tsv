@@ -3625,3 +3625,5 @@ progress bar	Progress	进度
 	Illegal move: {move} can't be played here.	不合规则的着法：这里不能走 {move}。
 	{move} is not a move.	{move} 不是着法。
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	从 {from} 出发的箭头：按住 Alt 点击目标格，或再次点击此格画圆圈。
+	Illegal move: {move} is ambiguous, it could be {moves}.	不合规则的着法：{move} 有歧义，可能是 {moves}。
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	不合规则的着法：{move} 需要指明兵升变成的棋子，例如 {example}。

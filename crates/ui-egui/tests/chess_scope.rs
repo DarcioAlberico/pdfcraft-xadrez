@@ -418,35 +418,86 @@ fn a_move_typed_is_played_and_questions_are_answered() {
 fn alt_click_draws_an_arrow_without_a_drag() {
     let mut h = harness();
     let board = h.state().chess.board().game.clone();
-    let rect = h.get_all_by_label_contains("Board, ").next().expect("the board").rect();
-    let square = |name: &str| {
-        let b = name.as_bytes();
-        let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
-        let side = rect.width() / 8.0;
-        rect.min + egui::vec2((file + 0.5) * side, (7.0 - rank + 0.5) * side)
-    };
-    let alt_click = |h: &mut Harness<'static, PdfCraftApp>, at: Pos2| {
-        h.hover_at(at);
-        h.run_steps(1);
-        for pressed in [true, false] {
-            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::ALT });
-        }
-        h.run_steps(2);
-    };
-    h.event(egui::Event::ModifiersChanged(Modifiers::ALT));
-    alt_click(&mut h, square("d2"));
+    alt_click(&mut h, "d2");
     said(&h, "Arrow from d2");
-    alt_click(&mut h, square("d4"));
+    alt_click(&mut h, "d4");
     said(&h, "Arrow d2 to d4, green");
-    alt_click(&mut h, square("g8"));
-    alt_click(&mut h, square("g8"));
+    alt_click(&mut h, "g8");
+    alt_click(&mut h, "g8");
     said(&h, "Circle on g8, green");
-    h.event(egui::Event::ModifiersChanged(Modifiers::NONE));
-    h.run_steps(1);
     let game = &h.state().chess.board().game;
     assert_eq!(game.current(), board.current(), "no move was played");
     let pgn = game.pgn();
     assert!(pgn.contains("%cal Gd2d4") && pgn.contains("%csl Gg8"), "{pgn}");
+}
+
+/// Where square `name` is drawn on the Board tab's board with White at the bottom.
+fn square_at(h: &Harness<'static, PdfCraftApp>, name: &str) -> Pos2 {
+    let rect = h.get_all_by_label_contains("Board, ").next().expect("the board").rect();
+    let b = name.as_bytes();
+    let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
+    let side = rect.width() / 8.0;
+    rect.min + egui::vec2((file + 0.5) * side, (7.0 - rank + 0.5) * side)
+}
+
+/// A click on square `name` with Alt held (plan A9-N7a, WCAG 2.5.7).
+fn alt_click(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    let at = square_at(h, name);
+    h.event(egui::Event::ModifiersChanged(Modifiers::ALT));
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::ALT });
+    }
+    h.run_steps(2);
+    h.event(egui::Event::ModifiersChanged(Modifiers::NONE));
+    h.run_steps(1);
+}
+
+/// Plan A9-N7a2 (review of #405): an Alt+click arrow's start is forgotten on Esc, when another move
+/// is shown and when the board is turned over: the next Alt+click starts an arrow again. Before,
+/// it ended one from a square of a board no longer shown.
+#[test]
+fn an_alt_click_start_is_forgotten_when_the_board_changes() {
+    let mut h = harness();
+    alt_click(&mut h, "d2");
+    said(&h, "Arrow from d2");
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    alt_click(&mut h, "d4");
+    said(&h, "Arrow from d4");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowLeft);
+    assert_eq!(shown(&h), "e4", "another move shown");
+    alt_click(&mut h, "c2");
+    said(&h, "Arrow from c2");
+    h.get_by_label("Flip board").click();
+    h.run_steps(2);
+    // Turned over, the square drawn where c4 was is f5.
+    alt_click(&mut h, "c4");
+    said(&h, "Arrow from f5");
+    let pgn = h.state().chess.board().game.pgn();
+    assert!(!pgn.contains("%cal"), "no arrow was drawn: {pgn}");
+}
+
+/// Plan A9-N7a2 (review of #405): M while the Move field is not shown (a pawn waits for its piece
+/// in the navigation row) leaves no request behind: when the field is back, the keyboard is not
+/// sent there. Before, the field took it on the first frame it was drawn again.
+#[test]
+fn m_while_the_move_field_is_not_shown_leaves_nothing_behind() {
+    let mut h = harness();
+    h.state_mut().chess.board_mut().load_fen("k7/4P3/8/8/8/8/8/4K3 w - - 0 1", false, None);
+    h.run_steps(2);
+    let at = square_at(&h, "e7");
+    click_at(&mut h, at);
+    let at = square_at(&h, "e8");
+    click_at(&mut h, at);
+    assert!(h.query_by_role_and_label(Role::TextInput, "Move").is_none(), "the pawn's pieces have the row");
+    host_key(&mut h, Modifiers::NONE, Key::M);
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    h.run_steps(2);
+    assert!(!h.get_by_role_and_label(Role::TextInput, "Move").is_focused(), "M was pressed while the field was not there");
+    // M with the field shown still brings the keyboard there.
+    host_key(&mut h, Modifiers::NONE, Key::M);
+    assert!(h.get_by_role_and_label(Role::TextInput, "Move").is_focused());
 }
 
 /// Plan A9-N7a: at 1366 × 768 the navigation row holds « ‹ › » ⇅ and the Move field side by side,

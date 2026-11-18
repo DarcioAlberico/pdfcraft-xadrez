@@ -173,6 +173,10 @@ pub struct Source {
     pub index: usize,
 }
 
+/// The board an Alt+click arrow started on (plan A9-N7a2): the move shown, the game's revision and
+/// whether the board is turned over.
+type ArrowBoard = (NodeId, u64, bool);
+
 /// The board panel's state.
 pub struct BoardState {
     pub game: Game,
@@ -230,8 +234,9 @@ pub struct BoardState {
     revealed: Option<(NodeId, u64)>,
     /// The move shown when it was last said to screen readers (plan A9-I17).
     announced: Option<NodeId>,
-    /// The square an Alt+click started an arrow from (plan A9-N7a).
-    pub(crate) arrow_from: Option<Square>,
+    /// The square an Alt+click started an arrow from (plan A9-N7a), and the board it was clicked
+    /// on ([`BoardState::arrow_start`]).
+    arrow_from: Option<(Square, ArrowBoard)>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
     /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
@@ -775,9 +780,11 @@ impl BoardState {
     /// square starts an arrow, the second ends it (the same square again circles it), in green.
     /// What to say.
     pub(crate) fn alt_click(&mut self, square: Square) -> String {
-        match self.arrow_from.take() {
+        let start = self.arrow_start();
+        self.arrow_from = None;
+        match start {
             None => {
-                self.arrow_from = Some(square);
+                self.arrow_from = Some((square, self.arrow_board()));
                 crate::i18n::fmt(
                     tl!("Arrow from {from}: Alt+click the square it goes to, or this one again to circle it."),
                     &[("from", &square.to_string())],
@@ -785,6 +792,29 @@ impl BoardState {
             }
             Some(from) => crate::chess_move_field::draw(self, Mark { from, to: square, color: MarkColor::Green }),
         }
+    }
+
+    /// The board an Alt+click arrow starts on: the move shown, the game's revision and which way up.
+    fn arrow_board(&self) -> ArrowBoard {
+        (self.game.current(), self.game.revision(), self.flipped)
+    }
+
+    /// Where an Alt+click arrow starts, while it still does: a start clicked before the game changed,
+    /// another move was shown or the board was turned over is forgotten (plan A9-N7a2), so the
+    /// next Alt+click starts an arrow instead of ending one on a board the user no longer sees.
+    pub(crate) fn arrow_start(&mut self) -> Option<Square> {
+        match self.arrow_from {
+            Some((square, on)) if on == self.arrow_board() => Some(square),
+            _ => {
+                self.arrow_from = None;
+                None
+            }
+        }
+    }
+
+    /// Forget where an Alt+click arrow starts (a plain click, Esc).
+    pub(crate) fn forget_arrow(&mut self) {
+        self.arrow_from = None;
     }
 
     /// Play the move from `from` to `to` (a pawn becoming `promotion`) typed in the Move field
@@ -1180,8 +1210,11 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&state.placement(), crate::chess_figurines::interface_lang());
     ui.ctx().accesskit_node_builder(response.id, |node| node.set_description(in_words));
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
-    // Alt with the left button draws, a click at a time (plan A9-N7a): no piece is picked up.
+    // Alt with the left button draws, a click at a time (plan A9-N7a): no piece is picked up. A
+    // start left on a board that has changed since is forgotten as soon as it is drawn (plan
+    // A9-N7a2), so that going back to that board does not bring it back.
     let alt = ui.input(|i| i.modifiers.alt);
+    let _ = state.arrow_start();
     if !alt
         && response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
@@ -1204,7 +1237,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
             let said = state.alt_click(sq);
             crate::notice::announce(ui.ctx(), crate::notice::Level::Info, said);
         } else {
-            state.arrow_from = None;
+            state.forget_arrow();
             state.click(sq);
         }
     }
@@ -1232,7 +1265,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         if let Some((from, to)) = last_move {
             crate::chess_theme::paint_last_move(&painter, palette, look, from, to);
         }
-        if let Some(from) = state.selected.or(state.arrow_from) {
+        if let Some(from) = state.selected.or(state.arrow_start()) {
             painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
         }
         let marked: Vec<Square> = state.game.last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();

@@ -3911,3 +3911,5 @@ progress bar	Progress	Tiến độ
 	Illegal move: {move} can't be played here.	Nước đi không hợp lệ: không thể đi {move} ở đây.
 	{move} is not a move.	{move} không phải là nước đi.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Mũi tên từ {from}: Alt+nhấp ô đích, hoặc nhấp lại ô này để khoanh tròn.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nước đi không hợp lệ: {move} chưa rõ ràng, có thể là {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nước đi không hợp lệ: {move} cần quân mà tốt phong thành, ví dụ {example}.

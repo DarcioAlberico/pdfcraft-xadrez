@@ -3662,3 +3662,5 @@ progress bar	Progress	進行状況
 	Illegal move: {move} can't be played here.	不正な手: {move} はここでは指せません。
 	{move} is not a move.	{move} は指し手ではありません。
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} からの矢印: 行き先のマスを Alt+クリック、円にするにはもう一度このマスを。
+	Illegal move: {move} is ambiguous, it could be {moves}.	不正な手: {move} はあいまいです。{moves} のどれかです。
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	不正な手: {move} にはポーンが成る駒が必要です（例: {example}）。

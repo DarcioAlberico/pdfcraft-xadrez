@@ -3933,3 +3933,5 @@ progress bar	Progress	التقدم
 	Illegal move: {move} can't be played here.	نقلة غير قانونية: لا يمكن لعب {move} هنا.
 	{move} is not a move.	{move} ليست نقلة.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	سهم من {from}: انقر مع Alt على المربع الذي يذهب إليه، أو على هذا مرة أخرى لرسم دائرة.
+	Illegal move: {move} is ambiguous, it could be {moves}.	نقلة غير قانونية: {move} ملتبسة، قد تكون {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	نقلة غير قانونية: {move} تحتاج إلى القطعة التي يصبحها البيدق، مثل {example}.

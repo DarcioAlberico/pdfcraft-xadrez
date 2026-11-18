@@ -3682,3 +3682,5 @@ progress bar	Progress	Хід виконання
 	Illegal move: {move} can't be played here.	Неприпустимий хід: {move} тут зіграти не можна.
 	{move} is not a move.	{move} — не хід.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрілка з {from}: Alt+клацніть поле, куди вона веде, або знову це, щоб обвести його.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Неприпустимий хід: {move} неоднозначний, це може бути {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Неприпустимий хід: для {move} потрібна фігура, на яку перетворюється пішак, наприклад {example}.

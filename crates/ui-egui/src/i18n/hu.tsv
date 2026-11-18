@@ -3659,3 +3659,5 @@ progress bar	Progress	Előrehaladás
 	Illegal move: {move} can't be played here.	Szabálytalan lépés: {move} itt nem játszható.
 	{move} is not a move.	{move} nem lépés.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Nyíl innen: {from}. Alt+kattintson a célmezőre, vagy ismét erre egy körhöz.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Szabálytalan lépés: {move} nem egyértelmű, lehet {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Szabálytalan lépés: {move} esetén meg kell adni, mivé alakul a gyalog, például {example}.

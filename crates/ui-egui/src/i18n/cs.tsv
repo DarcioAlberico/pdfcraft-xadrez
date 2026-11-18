@@ -3734,3 +3734,5 @@ progress bar	Progress	Průběh
 	Illegal move: {move} can't be played here.	Nepřípustný tah: {move} zde nelze zahrát.
 	{move} is not a move.	{move} není tah.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Šipka z {from}: Alt+klikněte na cílové pole, nebo znovu na toto pro kruh.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nepřípustný tah: {move} je nejednoznačný, může to být {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nepřípustný tah: {move} potřebuje kámen, v který se pěšec promění, například {example}.

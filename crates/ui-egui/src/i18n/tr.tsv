@@ -3656,3 +3656,5 @@ progress bar	Progress	İlerleme
 	Illegal move: {move} can't be played here.	Kurala aykırı hamle: {move} burada oynanamaz.
 	{move} is not a move.	{move} bir hamle değil.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} karesinden ok: gideceği kareye Alt+tıklayın ya da daire için bu kareye yeniden tıklayın.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Kurala aykırı hamle: {move} belirsiz, {moves} olabilir.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Kurala aykırı hamle: {move} için piyonun dönüşeceği taş gerekir, örneğin {example}.

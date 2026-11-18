@@ -3624,3 +3624,5 @@ progress bar	Progress	Напредък
 	Illegal move: {move} can't be played here.	Непозволен ход: {move} не може да се изиграе тук.
 	{move} is not a move.	{move} не е ход.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрелка от {from}: Alt+щракнете полето, към което сочи, или пак това, за да го оградите.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Непозволен ход: {move} е двусмислен, може да е {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Непозволен ход: {move} изисква фигурата, в която се превръща пешката, например {example}.

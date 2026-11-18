@@ -3677,3 +3677,5 @@ progress bar	Progress	Progresso
 	Illegal move: {move} can't be played here.	Lance ilegal: {move} não pode ser jogado aqui.
 	{move} is not a move.	{move} não é um lance.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Seta a partir de {from}: Alt+clique na casa de destino, ou de novo nesta para um círculo.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Lance ilegal: {move} é ambíguo, pode ser {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Lance ilegal: {move} precisa da peça em que o peão se transforma, como em {example}.

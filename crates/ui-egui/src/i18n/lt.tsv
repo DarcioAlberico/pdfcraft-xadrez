@@ -3909,3 +3909,5 @@ progress bar	Progress	Eiga
 	Illegal move: {move} can't be played here.	Neleistinas ėjimas: {move} čia negalima atlikti.
 	{move} is not a move.	{move} nėra ėjimas.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Rodyklė iš {from}: Alt+spustelėkite tikslo langelį arba šį dar kartą apskritimui.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Neleistinas ėjimas: {move} yra dviprasmiškas, tai gali būti {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Neleistinas ėjimas: {move} reikia nurodyti figūrą, kuria virsta pėstininkas, pvz., {example}.

@@ -3872,3 +3872,5 @@ progress bar	Progress	Avanzamento
 	Illegal move: {move} can't be played here.	Mossa illegale: {move} non si può giocare qui.
 	{move} is not a move.	{move} non è una mossa.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Freccia da {from}: Alt+clic sulla casa di arrivo, o di nuovo su questa per cerchiarla.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Mossa illegale: {move} è ambigua, potrebbe essere {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Mossa illegale: {move} richiede il pezzo in cui si promuove il pedone, come in {example}.
