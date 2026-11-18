@@ -3634,3 +3634,28 @@ progress bar	Progress	進度
 # A9-N7a2: the Move field's refusals
 	Illegal move: {move} is ambiguous, it could be {moves}.	非法著法：{move} 有歧義，可能是 {moves}。
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	非法著法：{move} 需指定兵升變成的棋子，例如 {example}。
+# A9-N3: the Board tab's In the book (n)
+	In the book	書中
+	In the book ({n})	書中 ({n})
+	Where the position shown is in the book, and what the book plays from it	目前局面在書中的位置，以及書中從這裡怎麼走
+	Looking for the position in the book…	正在書中尋找該局面…
+	Read the book (Detect diagrams or Text) to search.	請先讀取本書（偵測局面圖 或 文字）再尋找。
+	This position does not appear in the book as read.	已讀取的書中沒有這個局面。
+	The book's PGN	本書的 PGN
+	Pages read: {r} of {p}	已讀取頁數：{r} / {p}
+	Found: {n}	找到：{n}
+	transpositions: {n}	著法換序：{n}
+	The book plays here	書中在此的著法
+	Variation	變化
+	Games: {n}	對局：{n}
+	from p. {page}	自第 {page} 頁
+	Play {move} on the board	在棋盤上走 {move}
+	Castling isn't allowed on this board.	此棋盤上不能易位。
+	En passant isn't possible on this board.	此棋盤上不能吃過路兵。
+	Not legal on this board.	在此棋盤上不合規則。
+	Counted in the first {n} games that reach it.	按到達此局面的前 {n} 局統計。
+	Where in the book	書中何處
+	transposition	著法換序
+	Open game {n} on the board at {move}	在棋盤上開啟對局 {n}，停在 {move}
+	Only the pieces were compared: the side to move isn't printed.	只比較了棋子：未印出輪到哪方走。
+	The first {n} are listed.	已列出前 {n} 項。

@@ -460,6 +460,57 @@ fn a_jobs_session_reads_nothing_the_session_read_and_gives_back_what_it_read() {
     assert!(s.chess_cached(DocId(999), &[]).is_empty(), "no such document");
 }
 
+/// Plan A9-N3 (the Board's In the book, which lists the diagrams read once per revision): the
+/// cache's revision moves when a result it did not hold comes in, a scan's or one a job's session
+/// read and gave back; not when the cache answers, not for what it gave a job and got back, and
+/// not for another document.
+#[test]
+fn the_cache_revision_moves_only_when_a_result_comes_in() {
+    let (mut s, id) = open(book(6));
+    assert_eq!(s.chess_cache_revision(id), 0, "nothing held yet");
+    s.chess_scan(id, &[4], &quick(), true).unwrap();
+    let read = s.chess_cache_revision(id);
+    assert_ne!(read, 0, "a scan's result");
+    s.chess_scan(id, &[4], &quick(), true).unwrap();
+    s.chess_scan(id, &[4], &quick(), false).unwrap();
+    assert_eq!(s.chess_cache_revision(id), read, "answered from the cache");
+    let cached = s.chess_cached(id, &[]);
+    assert_eq!(s.prime_chess_cache(id, cached), 1);
+    assert_eq!(s.chess_cache_revision(id), read, "its own results given back");
+    // A job's session given what the session read, which reads another page and gives it back.
+    let (mut job, jid) = open(s.get(id).unwrap().bytes.to_vec());
+    job.prime_chess_cache(jid, s.chess_cached(id, &[]));
+    job.chess_scan(jid, &[1], &quick(), true).unwrap();
+    s.prime_chess_cache(id, job.chess_cached(jid, &[]));
+    let given = s.chess_cache_revision(id);
+    assert_ne!(given, read, "a page a job read");
+    // Another document: its own count.
+    let other = s.open("other.pdf", None, Arc::new(book(6)), None).unwrap();
+    assert_eq!(s.chess_cache_revision(other), 0);
+    s.chess_scan(other, &[4], &quick(), true).unwrap();
+    assert_eq!(s.chess_cache_revision(id), given, "another document's scan");
+}
+
+/// Plan A9-N3: every diagram read is listed once with its position's key, from where the search
+/// for one position looks and in its order (the session's readings here), scanning nothing; the
+/// search for the start position finds the same diagrams.
+#[test]
+fn the_diagrams_read_are_listed_with_their_keys() {
+    let (mut s, id) = open(book(48));
+    assert_eq!(s.chess_diagram_keys(id, None).unwrap(), position_find::DiagramKeys::default(), "nothing read");
+    s.chess_scan(id, &[40, 4, 7], &quick(), true).unwrap();
+    let scanned = s.chess_scanned();
+    let keys = s.chess_diagram_keys(id, None).unwrap();
+    assert_eq!((keys.pages_read, keys.from_disk), (3, 0), "{keys:?}");
+    let start = pdfcraft_chess::fen::Fen::parse(&format!("{START} w - - 0 1")).unwrap().book_key();
+    let listed: Vec<(u32, u16, bool)> = keys.diagrams.iter().map(|(d, k)| (d.page, d.index, k.placement == start.placement)).collect();
+    assert_eq!(listed, [(4, 0, true), (40, 0, true)], "page by page, each with its key");
+    let found = s.chess_position_diagrams(id, start, false, None, 100).unwrap();
+    assert_eq!(found.found, keys.diagrams.iter().map(|(d, _)| *d).collect::<Vec<_>>());
+    assert_eq!(s.chess_scanned(), scanned, "nothing scanned for it");
+    assert!(s.chess_diagram_keys(DocId(999), None).is_err(), "no such document");
+}
+
 /// A9-G11: each document keeps its own [`MAX_CACHED_PAGES`] results, its least recently used
 /// page going first: a second long book read in the same session never puts the first one's
 /// pages out (they were one list of 2,048 for every document).

@@ -3693,3 +3693,28 @@ progress bar	Progress	Előrehaladás
 	Fantasy	Fantázia
 	Spatial	Térbeli
 	Celtic	Kelta
+# A9-N3: the Board tab's In the book (n)
+	In the book	A könyvben
+	In the book ({n})	A könyvben ({n})
+	Where the position shown is in the book, and what the book plays from it	Hol szerepel a könyvben a mutatott állás, és mit játszik belőle a könyv
+	Looking for the position in the book…	Az állás keresése a könyvben…
+	Read the book (Detect diagrams or Text) to search.	A kereséshez olvassa be a könyvet (Diagramok felismerése vagy Szöveg).
+	This position does not appear in the book as read.	Ez az állás nem szerepel a beolvasott könyvben.
+	The book's PGN	A könyv PGN-je
+	Pages read: {r} of {p}	Beolvasott oldalak: {r} / {p}
+	Found: {n}	Találatok: {n}
+	transpositions: {n}	transzpozíciók: {n}
+	The book plays here	A könyv itt ezt játssza
+	Variation	Változat
+	Games: {n}	Játszmák: {n}
+	from p. {page}	kezdőoldal: {page}
+	Play {move} on the board	{move} megjátszása a táblán
+	Castling isn't allowed on this board.	Ezen a táblán a sánc nem engedélyezett.
+	En passant isn't possible on this board.	Ezen a táblán nem lehetséges az en passant ütés.
+	Not legal on this board.	Ezen a táblán nem szabályos.
+	Counted in the first {n} games that reach it.	Az első {n} olyan játszmában számolva, amely eléri.
+	Where in the book	Hol a könyvben
+	transposition	transzpozíció
+	Open game {n} on the board at {move}	A(z) {n}. játszma megnyitása a táblán ennél: {move}
+	Only the pieces were compared: the side to move isn't printed.	Csak a bábok lettek összehasonlítva: nincs nyomtatva, ki lép.
+	The first {n} are listed.	Az első {n} látható.

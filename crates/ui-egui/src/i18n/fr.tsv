@@ -3694,3 +3694,28 @@ progress bar	Progress	Progression
 	Fantasy	Fantaisie
 	Spatial	En volume
 	Celtic	Celtique
+# A9-N3: the Board tab's In the book (n)
+	In the book	Dans le livre
+	In the book ({n})	Dans le livre ({n})
+	Where the position shown is in the book, and what the book plays from it	Où la position affichée se trouve dans le livre, et ce que le livre joue à partir d'elle
+	Looking for the position in the book…	Recherche de la position dans le livre…
+	Read the book (Detect diagrams or Text) to search.	Lisez le livre (Détecter les diagrammes ou Texte) pour chercher.
+	This position does not appear in the book as read.	Cette position n'apparaît pas dans le livre tel qu'il a été lu.
+	The book's PGN	Le PGN du livre
+	Pages read: {r} of {p}	Pages lues : {r} sur {p}
+	Found: {n}	Occurrences : {n}
+	transpositions: {n}	interversions : {n}
+	The book plays here	Le livre joue ici
+	Variation	Variante
+	Games: {n}	Parties : {n}
+	from p. {page}	dès la p. {page}
+	Play {move} on the board	Jouer {move} sur l'échiquier
+	Castling isn't allowed on this board.	Le roque n'est pas permis sur cet échiquier.
+	En passant isn't possible on this board.	La prise en passant n'est pas possible sur cet échiquier.
+	Not legal on this board.	Pas légal sur cet échiquier.
+	Counted in the first {n} games that reach it.	Compté dans les {n} premières parties qui y arrivent.
+	Where in the book	Où dans le livre
+	transposition	interversion
+	Open game {n} on the board at {move}	Ouvrir la partie {n} sur l'échiquier au coup {move}
+	Only the pieces were compared: the side to move isn't printed.	Seules les pièces ont été comparées : le trait n'est pas imprimé.
+	The first {n} are listed.	Les {n} premières sont listées.
