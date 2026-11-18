@@ -245,6 +245,12 @@ struct Running {
     /// The flag [`review::run`] stops at: set between two positions once Stop was asked (the
     /// position being searched is finished and kept, never asked again), or at once when it takes
     /// longer than [`STOP_WAIT`], the document was closed or the app quits.
+    ///
+    /// "Between two positions" is the run's progress, which comes after a position that gave an
+    /// evaluation: a position given up on (no line within its budget, or only a bound) gives
+    /// none, so Stop is seen at the next evaluated position or, past [`STOP_WAIT`], cuts the
+    /// search short. A position cut short was not written; it stays in the batch, and the next
+    /// run asks it again. A position written is never asked again.
     halt: Arc<AtomicBool>,
     /// When Stop was asked.
     stop_asked: Option<Instant>,

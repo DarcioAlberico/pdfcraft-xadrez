@@ -109,6 +109,8 @@ enum Answers {
 /// `told`.
 struct Engine {
     told: Arc<Mutex<Vec<String>>>,
+    /// The `position` commands it answered (gave a line and its `bestmove` for).
+    answered: Arc<Mutex<Vec<String>>>,
     leave: Sender<()>,
 }
 
@@ -136,9 +138,12 @@ fn engine_logging(answers: Answers, cp: i32, told: Arc<Mutex<Vec<String>>>) -> (
     let (engine_in, our_out) = std::io::pipe().unwrap();
     let (our_in, mut out) = std::io::pipe().unwrap();
     let log = Arc::clone(&told);
+    let answered: Arc<Mutex<Vec<String>>> = Arc::default();
+    let gave = Arc::clone(&answered);
     let (leave, gate): (Sender<()>, Receiver<()>) = channel();
     std::thread::spawn(move || {
         let mut game: Option<Game> = None;
+        let mut asked = String::new();
         let mut gos = 0usize;
         for line in BufReader::new(engine_in).lines() {
             let Ok(line) = line else { break };
@@ -149,6 +154,7 @@ fn engine_logging(answers: Answers, cp: i32, told: Arc<Mutex<Vec<String>>>) -> (
                 }
                 Some("position") => {
                     log.lock().unwrap().push(line.clone());
+                    asked = line.clone();
                     let rest: Vec<&str> = words.skip(1).collect();
                     let (fen, moves) = match rest.iter().position(|w| *w == "moves") {
                         Some(at) => (rest[..at].join(" "), rest[at + 1..].to_vec()),
@@ -164,9 +170,8 @@ fn engine_logging(answers: Answers, cp: i32, told: Arc<Mutex<Vec<String>>>) -> (
                     gos += 1;
                     match answers {
                         Answers::DiesAt(n) if gos >= n => return,
-                        Answers::Gated { wait } => {
-                            let _ = gate.recv_timeout(wait);
-                        }
+                        // The test is over (its end of the gate dropped): no answer.
+                        Answers::Gated { wait } if gate.recv_timeout(wait) == Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return,
                         _ => {}
                     }
                     let depth: u32 = line.split_whitespace().last().and_then(|d| d.parse().ok()).unwrap_or(1).min(30);
@@ -183,13 +188,14 @@ fn engine_logging(answers: Answers, cp: i32, told: Arc<Mutex<Vec<String>>>) -> (
                         .find(|uci| uci != "g1f3")
                         .unwrap();
                     let _ = writeln!(out, "info depth {depth} multipv 1 score cp {cp} nodes 10 pv {uci}\nbestmove {uci}");
+                    gave.lock().unwrap().push(asked.clone());
                 }
                 Some("quit") => break,
                 _ => {}
             }
         }
     });
-    (Analyser::with_streams(our_in, our_out, AnalysisOptions::default(), Arc::new(|| {})), Engine { told, leave })
+    (Analyser::with_streams(our_in, our_out, AnalysisOptions::default(), Arc::new(|| {})), Engine { told, answered, leave })
 }
 
 /// Run frames until `done` holds, a frame every 10 ms, [`NET`] at most.
@@ -519,6 +525,45 @@ fn an_engine_that_cannot_start_loses_no_batch() {
     assert!(!h.state().chess.engine_review.running());
     assert!(said(&h, "Positions to check: ").starts_with("Positions to check: 2 "), "the count is still there");
     assert!(h.query_by_label("Start the check").is_some(), "the dialog stays, to start again");
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// Plan A9-N17b (the review of #420): Stop's hard path. The engine never finishes the position it
+/// is on, so past the two seconds Stop waits the search is cut short: that position was not
+/// written and stays in the batch; Continue asks it again, and no position written is asked twice.
+#[test]
+fn a_stop_cut_short_asks_again_only_the_position_it_cut() {
+    let data = temp_dir("hard-stop");
+    let mut h = harness(book(&[MOVES]), &data);
+    let (analyser, first) = engine(Answers::Gated { wait: NET }, 100);
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    count(&mut h);
+    h.get_by_label("Start the check").click();
+    first.answer(2);
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 3 of 5").is_some()), "two answered");
+    h.get_by_label("Stop").click();
+    // No answer: Stop cuts the third position short.
+    assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped");
+    h.run_steps(2);
+    assert!(shown(&h, "The check was stopped: 2 of 5 positions checked."), "said");
+    let id = h.state().views[0].id;
+    assert_eq!(h.state().chess.engine_review.left(id), Some(3), "the position cut short stays in the batch");
+    let cut = first.positions().last().cloned().expect("the third position was asked");
+    let (analyser, second) = engine_logging(Answers::Now, 100, Arc::clone(&first.told));
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    text_menu_item(&mut h, "Continue the check (3 left)");
+    assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "done");
+    let asked = first.positions();
+    assert_eq!(asked.len(), 6, "the five, and the one cut short twice: {asked:?}");
+    assert_eq!(asked.iter().filter(|p| **p == cut).count(), 2, "{asked:?}");
+    let mut answered: Vec<String> = first.answered.lock().unwrap().iter().chain(second.answered.lock().unwrap().iter()).cloned().collect();
+    assert_eq!(answered.len(), 5, "{answered:?}");
+    answered.sort();
+    answered.dedup();
+    assert_eq!(answered.len(), 5, "no position answered (and written) twice");
+    h.state_mut().settle_chess_games();
+    let (keys, pages) = keys(&h);
+    assert_eq!(DirStore::new(data.join("evals")).load(&keys, pages).unwrap().file.evals.len(), 5);
     let _ = std::fs::remove_dir_all(data);
 }
 
