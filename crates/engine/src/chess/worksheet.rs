@@ -871,7 +871,10 @@ mod tests {
         // The first page, read, has no page before: nothing to look at.
         s.chess_scan(id, &[0], &o.scan, true).unwrap();
         o.pages = vec![0];
-        assert_eq!(s.chess_worksheet_count(id, &o, &layout).unwrap(), SheetCount { exercises: 1, pages_counted: 1, before_looked_at: true, ..SheetCount::default() });
+        assert_eq!(
+            s.chess_worksheet_count(id, &o, &layout).unwrap(),
+            SheetCount { exercises: 1, pages_counted: 1, before_looked_at: true, ..SheetCount::default() }
+        );
     }
 
     #[test]
