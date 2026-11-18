@@ -33,7 +33,7 @@ use pdfcraft_engine::chess::export::ChessExportOptions;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, ReviewFlag, UserRect};
 use pdfcraft_engine::chess::reference_store::Choice;
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
@@ -492,9 +492,9 @@ fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::refere
         tip = format!("{tip}\n{fen}");
     }
     // A move with no position on its page alone may go on from the page before: its game is
-    // looked for there.
-    let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
-    let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
+    // looked for there. The page's double-click goes by the same rule (plan A9-N1).
+    let opens = m.opens_game();
+    let in_pgn = crate::chess_page_moves::in_pgn(m);
     if in_pgn.is_some() {
         tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
     } else if opens {

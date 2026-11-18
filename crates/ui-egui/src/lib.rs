@@ -66,6 +66,7 @@ mod chess_models;
 mod chess_move_field;
 mod chess_moves_tree;
 mod chess_ocr_area;
+mod chess_page_moves;
 mod chess_panel_head;
 mod chess_pieces_ui;
 mod chess_reasons;
