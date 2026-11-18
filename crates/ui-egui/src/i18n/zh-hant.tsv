@@ -3347,3 +3347,275 @@ the move's comment	Move comment	此著法的評論
 	Analyze the position	分析局面
 	Export chess book…	匯出西洋棋書…
 	Chess shortcuts	西洋棋快速鍵
+
+# A9-I14b: chess texts
+	A correction ({id}) was not used: {e}	一項更正（{id}）未被使用：{e}
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	某張棋圖提供 {offered} dpi；最多以 {max} dpi 讀取（max_read_dpi）。
+	A new game from the standard position; the game on the board keeps its moves.	從標準初始局面開始新對局；棋盤上的對局保留其著法。
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	可匯入 Anki 的文字檔，每道習題一張卡片，棋圖的圖片放在旁邊的資料夾中。
+	Add the bookmarks	加入書籤
+	Aligning was stopped: the book's link is as it was.	對齊已中止：本書的連結維持原狀。
+	Alt+O switches between the board as read and the page's own picture.	Alt+O 可在讀取出的棋盤與頁面本身的圖片之間切換。
+	Anki — cards	Anki — 卡片
+	Another book's review	另一本書的審閱
+	Another file dialog is still open. Finish with it first.	另一個檔案對話框仍在開啟中。請先完成它。
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	從 {from} 出發的箭頭：Alt+按一下目標格子，或再按一下此格以畫圓。
+	Arrow {from} to {to} taken off	已移除 {from} 到 {to} 的箭頭
+	Arrow {from} to {to}, {color}	{from} 到 {to} 的箭頭，{color}
+	As the book says ({lang})	依書中所述（{lang}）
+	As the book's text says	依書中文字所述
+	Back to Diagrams	返回棋圖
+	Back to the moves	返回著法
+	Back to the moves (Esc)	返回著法 (Esc)
+	Black has more extra pieces than missing pawns to promote	黑方的額外棋子多於缺少的兵所能升變的數量
+	Black has more than 16 pieces	黑方超過 16 個棋子
+	Black has more than 8 pawns	黑方超過 8 個兵
+	Black has more than one king	黑方有不只一個王
+	Black is in check, but it is White's turn	黑方被將軍，但輪到白方走棋
+	Black may castle, but its king or rook has left its square	黑方可以王車易位，但其王或車已離開原位
+	Black's king is in a double check no move could give	黑王處於任何著法都無法造成的雙將中
+	Black's king is in check from more than two pieces	黑王同時被超過兩個棋子將軍
+	Black's king is missing	缺少黑王
+	Board, move list and Chess panel	棋盤、著法列表與西洋棋面板
+	Book's language	本書語言
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	已在「{title}」下加入書籤：{n}。復原可將其移除。
+	Chapters	章節
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	章節：{chapters} · 對局：{games} · 習題：{exercises}
+	Chess OCR failed: {e}	西洋棋 OCR 失敗：{e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	已要求西洋棋 OCR，但它需要 chess-glyphs 模型。
+	Chess engine	西洋棋引擎
+	Chess games not saved	未儲存的西洋棋對局
+	Choices made on this page not found in its reading (kept): {n}	在此頁做出、但在其讀取結果中找不到的選擇（已保留）：{n}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	衝突著法上指向此 PGN 所沒有之著法的選擇：{n}。它們會保留給具有該著法的 PGN。
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	等待本書 PGN 的選擇：{n}（請載入 PGN，然後再次匯入審閱）。
+	Circle on {from} taken off	已移除 {from} 上的圓圈
+	Circle on {from}, {color}	{from} 上的圓圈，{color}
+	Close without saving	關閉而不儲存
+	Comment	註解
+	Content streams that couldn't be decoded and were skipped: {n}	無法解碼而略過的內容串流：{n}
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	此文件沒有之頁面的更正：{n}（已保留，不屬於任何棋圖）。
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	不支援描述記譜法（{examples}）；其著法未被讀取。
+	Detecting in another book… page {d} of {t}	正在另一本書中偵測… 第 {d} 頁，共 {t} 頁
+	Diagram descriptions	棋圖描述
+	Diagram shown	顯示的棋圖
+	Diagram tab	棋圖分頁
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	棋圖 {d}：雙方皆可 {n} 步將死，因此由誰走棋仍屬假設。
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	棋圖 {d}：更正後讀取結果已變更（目前為 {fen}）；更正予以保留。
+	Diagram {n} wasn't found on page {p}.	在第 {p} 頁找不到棋圖 {n}。
+	Diagram {n}, open	棋圖 {n}，開啟
+	Diagram {n}, page {p}: correction forgotten	棋圖 {n}，第 {p} 頁：已放棄更正
+	Diagrams a page: {n} ({grid})	每頁棋圖數：{n}（{grid}）
+	Diagrams: not detected yet	棋圖：尚未偵測
+	Diagrams: {n}	棋圖：{n}
+	Don't keep	不保留
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	每一項只有在引擎接受時才會傳給引擎。開始分析即可看到此引擎接受哪些項目。
+	Edit the FEN and the PGN	編輯 FEN 與 PGN
+	End of the line	線路結尾
+	End of the main line	主線結尾
+	Endgame tables (Syzygy)	殘局庫（Syzygy）
+	Engine's default	引擎預設值
+	Engine: {name}, in {folder}	引擎：{name}，位於 {folder}
+	Entries that couldn't be read and were left out: {n}.	無法讀取而略去的項目：{n}。
+	Exercise	習題
+	Exercise sheet (PDF)	習題單（PDF）
+	Exercises	習題
+	Exercises: counted when exported	習題：匯出時計算
+	Exercises: counting…	習題：計算中…
+	Exercises: {n}	習題：{n}
+	Export as book	匯出為書
+	Exporting the chess document: page {done} of {of}	正在匯出西洋棋文件：第 {done} 頁，共 {of} 頁
+	Forget the correction?	要放棄更正嗎？
+	Game	對局
+	Games	對局
+	Games from the book's PGN: {n}	來自本書 PGN 的對局：{n}
+	Games left out (an illegal position has no game): {n}	略去的對局（不合法局面沒有對局）：{n}
+	Games of “{name}” that autosave doesn't keep: {n}	「{name}」中自動儲存不會保留的對局：{n}
+	Games read only up to an impossible move: {n}	只讀到不可能著法為止的對局：{n}
+	Games with no document open that autosave doesn't keep: {n}	沒有開啟文件、自動儲存不會保留的對局：{n}
+	Games: read from the text	對局：從文字讀取
+	Games: read from the text, linked to the book's PGN	對局：從文字讀取，並連結到本書的 PGN
+	Hash table	雜湊表
+	How a screen reader says each diagram's pieces.	螢幕閱讀器如何唸出每張棋圖的棋子。
+	Illegal move: {move} can't be played here.	非法著法：{move} 無法在此下出。
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	因頁面影像像素超出掃描預算而未裁切的影像：{n}
+	Import anyway	仍要匯入
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	在瀏覽器中，超過 {n} 頁的書目前還無法匯出或與其 PGN 對齊：分頁會在完成前停止回應。桌面版應用程式會在背景處理。
+	Its moves are deleted (Undo brings them back).	其著法會被刪除（復原可將其還原）。
+	Keep them	保留
+	Keep your chess work on this protected document?	要在此受保護的文件上保留你的西洋棋工作嗎？
+	Language: {lang}	語言：{lang}
+	Leave the chess panel	離開西洋棋面板
+	Left out: {n} ({why})	略去：{n}（{why}）
+	Letters (Kg1)	字母（Kg1）
+	Load	載入
+	Load the PGN above on the board, with its variations and comments.	將上方的 PGN 連同變化與註解載入棋盤。
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} 步將死：雙方皆可將死，因此由誰走棋仍屬假設
+	Mate in {n}: no key found within the search budget	{n} 步將死：在搜尋預算內未找到關鍵著
+	Mate in {n}: none found	{n} 步將死：未找到
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} 步將死：未找到；最佳嘗試 {best}，被 {reply} 駁倒
+	Mate in {n}: {keys} ({k} keys)	{n} 步將死：{keys}（{k} 個關鍵著）
+	Mate in {n}: {key}! (not proved the only key)	{n} 步將死：{key}!（未證明是唯一關鍵著）
+	Mate in {n}: {key}! (unique)	{n} 步將死：{key}!（唯一）
+	More Text tab actions	更多文字分頁動作
+	More board actions	更多棋盤動作
+	More continuations: {moves}	更多後續著法：{moves}
+	Move	著法
+	Move back	後退一步
+	Move forward	前進一步
+	New game with this position	以此局面開新對局
+	Next diagram	下一張棋圖
+	Next tool of {group}	{group}的下一個工具
+	Next variation	下一個變化
+	No chapter, game or exercise was found in the book.	書中找不到任何章節、對局或習題。
+	No exercise sheet was written	未寫出習題單
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	沒有可放上習題單的習題：所選頁面中有編號的棋圖沒有可開始的局面（{n}）。
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	沒有可放上習題單的習題：所選頁面沒有編號的棋圖。
+	No move yet: the start of the game.	尚無著法：對局開始。
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	不合法的局面（{reason}）：請在棋圖編輯器中更正後再於其上走棋。
+	Not a legal position: {reason}	不合法的局面：{reason}
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	未加入：{n}。一份文件最多保留 {max} 盤對局：請將部分儲存為 PGN 並刪除以騰出空間。
+	Not confirmed	未確認
+	Not kept, they last only until the document is closed.	不保留的話，它們只會保留到文件關閉為止。
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	無法理解。請輸入著法（Nf3、e2e4），或 p、u、s、f e、r 4、箭頭 e2e4 紅色、圓形 d5。
+	Nothing to export: an illegal position has no game.	沒有可匯出的內容：不合法的局面沒有對局。
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDF 中沒有繪製任何內容：無法保留更正（{e}）。
+	Only the first {n} of the page's {total} images were looked at.	只檢查了此頁 {total} 張影像中的前 {n} 張。
+	Original diagram, page {p}, diagram {n}	原始棋圖，第 {p} 頁，棋圖 {n}
+	PGN edited	已編輯 PGN
+	PGN — exercises	PGN — 習題
+	Pages not read yet: {n} (counted when exported)	尚未讀取的頁面：{n}（匯出時計算）
+	Pages: {n}	頁數：{n}
+	Per page	每頁
+	Previous diagram	上一張棋圖
+	Previous variation	上一個變化
+	Quit without saving	結束而不儲存
+	Rank {rank}: empty	第 {rank} 橫線：空
+	Rank {rank}: {pieces}	第 {rank} 橫線：{pieces}
+	Read with OCR	以 OCR 讀取
+	Reading the book for its bookmarks: page {done} of {of}	正在讀取本書以建立書籤：第 {done} 頁，共 {of} 頁
+	Reading the book for its bookmarks…	正在讀取本書以建立書籤…
+	Reading was stopped: no bookmark was added.	讀取已中止：未加入任何書籤。
+	Redraw in the PDF?	要在 PDF 中重新繪製嗎？
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	審閱已匯出到 {path}（更正：{corrections}，選擇：{decisions}，對局：{games}）。對局的註解可能包含本書內容：請將檔案留作個人使用。
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	已從 {name} 匯入審閱（更正：{corrections}，選擇：{decisions}，對局：{games}）。
+	Save them as they are	照原樣儲存
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	無法讀取已儲存的書籍 PGN（{why}）。下次儲存時會將其另行保存，此後的新 PGN 會正常保留。
+	Saved by a newer PdfCraft: these games are only read here.	由較新版的 PdfCraft 儲存：這些對局在此僅供讀取。
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	無法讀取已儲存的棋圖更正（{why}）。下次儲存時會將其另行保存，此後的新更正會正常保留。
+	Search threads	搜尋執行緒
+	Show the game on the board again.	再次顯示棋盤上的對局。
+	Show the page (F6)	顯示頁面 (F6)
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	部分已儲存的棋圖更正無法讀取（{why}）；其餘照常使用，而 {name} 會保留，絕不刪除。
+	Start again from the standard position.	從標準初始局面重新開始。
+	Start of the game	對局開始
+	Stop	停止
+	The board is empty.	棋盤是空的。
+	The board is in the column beside.	棋盤在旁邊的欄中。
+	The board shows a position that is not legal: correct it in the diagram editor first.	棋盤顯示的是不合法的局面：請先在棋圖編輯器中更正。
+	The book's PGN couldn't be saved: {e}	無法儲存本書的 PGN：{e}
+	The book's alignment was undone.	已復原本書的對齊。
+	The book's bookmarks	本書的書籤
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	將本書有編號的棋圖製成可列印的新 PDF，每頁 4、6 或 9 張，解答放在最後。
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	本書有編號的棋圖連同解答，製成標準的排局 PGN。
+	The changes not confirmed yet are discarded too. The PDF is not changed.	尚未確認的變更也會一併捨棄。PDF 不會變更。
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	依你的設定，不保留此加密文件的西洋棋資料：無法從中匯出審閱，也無法將審閱匯入其中。
+	The comments of the move shown, under the moves	顯示中著法的註解，位於著法下方
+	The document can't be read for editing, so its images and paths were not looked at.	無法以編輯模式讀取此文件，因此未檢查其影像與路徑。
+	The document changed since it was read: make its bookmarks again.	文件在讀取後已變更：請重新建立其書籤。
+	The document holds {n} games, the most it keeps: from here on, no game starts.	此文件已有 {n} 盤對局，已達保留上限：從這裡開始不會再開始新對局。
+	The exercise sheet can't be written over a PDF that is open: choose another name.	無法將習題單寫到已開啟的 PDF 上：請選擇其他名稱。
+	The export was stopped: nothing was written.	匯出已中止：未寫出任何內容。
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	字型 {font} 看似西洋棋字型，但不在目錄中；其文字依擷取結果保留。
+	The frames around text were not looked for: {e}	未尋找文字周圍的框線：{e}
+	The game on the board has moves. Put this position:	棋盤上的對局已有著法。放置此局面：
+	The game on the board keeps its moves.	棋盤上的對局保留其著法。
+	The game starts at move:	對局從此著法開始：
+	The games of the list as a book, a page each, with their diagrams.	將清單中的對局製成一本書，每局一頁，附上其棋圖。
+	The general OCR failed ({e}); the glyph reader read the prose too.	一般 OCR 失敗（{e}）；字形辨識器也讀取了內文。
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	匯出所使用、並用來描述其棋圖的語言。若本書被讀成其他語言，請更正。
+	The lines set bolder were not looked for: {e}	未尋找以較粗字體排印的行：{e}
+	The original or the position read	原始圖片或讀取出的局面
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	無法以 {wanted} dpi 呈現頁面以供讀取（{e}）；改以 {read} dpi 讀取。
+	The page couldn't be rendered for chess OCR: {e}	無法呈現頁面以供西洋棋 OCR：{e}
+	The page draws more paths than are looked at; the rest were skipped.	頁面繪製的路徑多於檢查上限；其餘已略過。
+	The page has no visible area; it is left out.	頁面沒有可見區域；已略去。
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	頁面太大，無法以 {wanted} dpi 呈現；其棋圖以 {read} dpi 讀取。
+	The page's diagrams couldn't be read; they are left out.	無法讀取頁面的棋圖；已略去。
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	無法讀取頁面的段落（{e}）；其文字行依間距分組。
+	The page's paths couldn't be read: {e}	無法讀取頁面的路徑：{e}
+	The page's picture of this diagram shows once its page is drawn.	頁面繪製後即會顯示此棋圖在頁面上的圖片。
+	The page's text couldn't be read: {e}	無法讀取頁面的文字：{e}
+	The rest of each is written as a comment at the move where its reading stopped.	每局剩餘部分會寫成註解，放在讀取停止處的著法上。
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	解答放在最後，依編號排序。解答未被讀取的棋圖會註明。
+	The variation above	上方的變化
+	The variation below	下方的變化
+	The words set in bold were not looked for: {e}	未尋找粗體排印的文字：{e}
+	The work stopped on an internal error.	工作因內部錯誤而停止。
+	The work stopped on an internal error: {why}	工作因內部錯誤而停止：{why}
+	There is nothing to export yet: this document keeps no correction, choice or game.	目前沒有可匯出的內容：此文件沒有保留任何更正、選擇或對局。
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	這些西洋棋對局是由較新版的 PdfCraft（格式 {v}）儲存的：此版本只會讀取，不會自動儲存在此所做的變更。請用「將所有對局儲存為 PGN…」儲存，以免遺失任何內容。
+	This engine does not take: {names}	此引擎不接受：{names}
+	This page couldn't be read: {e}	無法讀取此頁：{e}
+	Title of the bookmark	書籤標題
+	Tools panel collapsed	工具面板已收合
+	Type a move	輸入著法
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	輸入著法（Nf3、e4、e2e4）後按 Enter，或：p 棋子、u 上一步、s 輪到誰走、f e 某一直線、r 4 某一橫線、箭頭 e2e4 紅色、圓形 d5。按 M 回到這裡。
+	White has more extra pieces than missing pawns to promote	白方的額外棋子多於缺少的兵所能升變的數量
+	White has more than 16 pieces	白方超過 16 個棋子
+	White has more than 8 pawns	白方超過 8 個兵
+	White has more than one king	白方有不只一個王
+	White is in check, but it is Black's turn	白方被將軍，但輪到黑方走棋
+	White may castle, but its king or rook has left its square	白方可以王車易位，但其王或車已離開原位
+	White's king is in a double check no move could give	白王處於任何著法都無法造成的雙將中
+	White's king is in check from more than two pieces	白王同時被超過兩個棋子將軍
+	White's king is missing	缺少白王
+	With the solutions	附解答
+	Words (king g1)	文字（王 g1）
+	Your games, linked first: {n}	你的對局，優先連結：{n}
+	a pawn stands on the first or the eighth rank	有兵位於第一或第八橫線
+	ambiguous	有歧義
+	caption	圖說
+	chess-font glyphs that couldn't be resolved: {n}	無法解析的西洋棋字型字形：{n}
+	exercises	習題
+	from the book's text	來自本書文字
+	illegal	不合法
+	mates in {m}	{m} 步將死
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	棋子位置只剩零散符號的著法（先前的 OCR 文字層遺失了棋子符號）：{n}
+	no piece model is loaded	未載入棋子模型
+	no position to start from	沒有可開始的局面
+	no solution read	未讀取到解答
+	not checked	未檢查
+	not checked: {n}	未檢查：{n}
+	not reached	未到達
+	out of sequence	順序不符
+	past the sheet's {max}	超出習題單的 {max} 張
+	solution not read: {n}	解答未讀取：{n}
+	supposes castling is allowed	假設可以王車易位
+	the board is empty	棋盤是空的
+	the diagram lies outside the page raster	棋圖位於頁面點陣範圍之外
+	the diagram's box or corners are not finite numbers on this page	此頁中棋圖的方框或角點不是有限數值
+	the diagram's corners do not form a quadrilateral	棋圖的四個角點無法構成四邊形
+	the document is closed	文件已關閉
+	the en-passant square does not fit the pawns	吃過路兵的格子與兵的位置不符
+	the kings stand next to each other	兩王相鄰
+	the page has more diagrams than are read on one page	頁面的棋圖多於單頁可讀取的數量
+	the page has no text layer	頁面沒有文字層
+	the page raster's resolution is not a positive number	頁面點陣的解析度不是正數
+	the piece model failed: {e}	棋子模型失敗：{e}
+	the piece model's output is not a probability matrix: {e}	棋子模型的輸出不是機率矩陣：{e}
+	the text layer extracts as replacement characters	文字層擷取出的是替代字元
+	the text layer has two-byte codes with no Unicode text	文字層有雙位元組代碼，卻沒有 Unicode 文字
+	the text layer is invisible text over an image of the page: another program's OCR	文字層是覆蓋在頁面影像上的隱形文字：其他程式的 OCR
+	the text layer's Unicode map is dead	文字層的 Unicode 對照表已失效
+	variation {n}	變化 {n}
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	先前儲存的內容無法讀取，會先另行保存；請稍後再試
+	with comment	有註解
+	{file} file: empty	{file} 直線：空
+	{file} file: {pieces}	{file} 直線：{pieces}
+	{move} is not a move.	{move} 不是著法。
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} 是另一本書的審閱（{pages} 頁；此書有 {here} 頁）。仍要將其匯入此文件嗎？
+	{name}: stopped at {move}	{name}：停在 {move}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	頁面高度中有 {p}% 含有過多細墨，不像文字（圖片或有灰塵的掃描）；那些區段未被讀取。
+	{why} (chess OCR needs the chess-glyphs model)	{why}（西洋棋 OCR 需要 chess-glyphs 模型）
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	「{name}」已加密。應用程式會將每份文件的棋圖更正、本書的 PGN 與西洋棋對局以未加密形式保存在這台電腦上，以便再次開啟文件時能找回；字元樣本則存放到為其選擇的資料夾。
+progress bar	Progress	進度
