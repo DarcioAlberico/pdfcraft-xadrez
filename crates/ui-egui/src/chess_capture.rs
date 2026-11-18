@@ -38,7 +38,6 @@ use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::PageGeometry;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::MoveStatus;
 use pdfcraft_engine::chess::text_ocr::AreaRead;
 use pdfcraft_engine::commands::Shortcut;
 use pdfcraft_render::text::{PageText, TextGlyph};
@@ -1204,7 +1203,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
         }
     }
     for (k, s) in c.read.stops.iter().enumerate() {
-        let rich = RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(stop_ink);
+        let rich = RichText::new(format!("✗ {} — {}", s.text, crate::chess_text_para::move_status_words(s.status))).small().color(stop_ink);
         stop_chip(ui, (k < stopped.len()).then_some(k), rich);
     }
     clicked
@@ -1225,19 +1224,6 @@ fn stop_text(reason: GraftStopReason) -> &'static str {
         GraftStopReason::TooDeep => tl!("Variations nest too deep"),
         GraftStopReason::NullMove => tl!("A null move can't be played"),
         GraftStopReason::NoAnchor => tl!("The move it goes after is gone"),
-    }
-}
-
-/// Why the reader did not play a printed move, in words (the Text tab's words).
-fn status_text(status: MoveStatus) -> &'static str {
-    match status {
-        MoveStatus::Valid => tl!("Valid move"),
-        MoveStatus::Illegal => tl!("Illegal move"),
-        MoveStatus::Ambiguous => tl!("Ambiguous move"),
-        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
-        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
-        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
-        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
     }
 }
 

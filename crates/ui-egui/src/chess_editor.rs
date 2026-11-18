@@ -30,6 +30,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::rules::{Violation, position_violatio
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role, resolve};
 
+use crate::chess_board_frame::BoardFrame;
 use crate::theme::Tokens;
 
 /// The board's side on screen, in points, and the image drawn for it, in pixels.
@@ -168,14 +169,12 @@ impl DiagramEditor {
     /// Move the cursor `dx` columns right and `dy` rows down as the board is shown, stopping at
     /// its edges.
     pub fn move_cursor(&mut self, dx: i8, dy: i8) {
-        // As shown: column 0 is the left, row 0 the top.
-        let (file, rank) = (i16::from(self.cursor.file()), i16::from(self.cursor.rank()));
-        let (col, row) = if self.flipped { (7 - file, rank) } else { (file, 7 - rank) };
-        let (col, row) = ((col + i16::from(dx)).clamp(0, 7), (row + i16::from(dy)).clamp(0, 7));
-        let (file, rank) = if self.flipped { (7 - col, row) } else { (col, 7 - row) };
-        // In 0..8 after the clamp, so the conversions cannot fail.
-        if let (Ok(file), Ok(rank)) = (u8::try_from(file), u8::try_from(rank))
-            && let Some(sq) = Square::new(file, rank)
+        // As shown: column 0 is the left, row 0 the top (plan A9-I6: the board's own rule).
+        let frame = BoardFrame::seen_from(self.flipped);
+        let (col, row) = frame.place_of(self.cursor);
+        let step = |at: u8, by: i8| u8::try_from((i16::from(at) + i16::from(by)).clamp(0, 7)).ok();
+        if let (Some(col), Some(row)) = (step(col, dx), step(row, dy))
+            && let Some(sq) = frame.square_of(col, row)
         {
             self.cursor = sq;
         }
@@ -249,14 +248,10 @@ impl DiagramEditor {
         self.seen = None;
     }
 
-    /// The square at `(x, y)` in the board's own units (0..1 from its top left), as shown.
-    pub fn square_at(&self, x: f32, y: f32) -> Option<Square> {
-        if !(x.is_finite() && y.is_finite() && (0.0..1.0).contains(&x) && (0.0..1.0).contains(&y)) {
-            return None;
-        }
-        // In 0..8 after the checks above, so the casts cannot wrap.
-        let (col, row) = ((x * 8.0) as u8, (y * 8.0) as u8);
-        if self.flipped { Square::new(7 - col, row) } else { Square::new(col, 7 - row) }
+    /// The board drawn in `board`, from the side it is shown from: where each square is (plan
+    /// A9-I6, [`BoardFrame`], the board panel's rule too).
+    pub(crate) fn frame(&self, board: egui::Rect) -> BoardFrame {
+        BoardFrame { rect: board, flipped: self.flipped }
     }
 
     /// Show `fen`, the position the user kept for the diagram, instead of the reading (which
@@ -582,7 +577,7 @@ pub(crate) fn board_view(
     }
     if response.clicked()
         && let Some(pos) = response.interact_pointer_pos()
-        && let Some(sq) = ed.square_at((pos.x - rect.min.x) / rect.width().max(1.0), (pos.y - rect.min.y) / rect.height().max(1.0))
+        && let Some(sq) = ed.frame(rect).square_at(pos)
     {
         ed.cursor = sq;
         ed.paint(sq);
@@ -596,7 +591,7 @@ pub(crate) fn board_view(
     }
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, name));
     let here = crate::chess_diagram_keys::square_text(ed, ed.cursor);
-    let cell = rect.width() / 8.0;
+    let frame = ed.frame(rect);
     // Not `id.with(n)`: egui names the board's tooltip `id.with(0)`.
     let cell_id = |sq: Square| id.with(("square", sq.index()));
     ui.ctx().accesskit_node_builder(id, |node| {
@@ -611,8 +606,8 @@ pub(crate) fn board_view(
     ui.scope_builder(egui::UiBuilder::new().accessibility_parent(id), |ui| {
         for row in 0..8u8 {
             for col in 0..8u8 {
-                let Some(sq) = (if ed.flipped { Square::new(7 - col, row) } else { Square::new(col, 7 - row) }) else { continue };
-                let at = egui::Rect::from_min_size(rect.min + egui::vec2(f32::from(col) * cell, f32::from(row) * cell), egui::vec2(cell, cell));
+                let Some(sq) = frame.square_of(col, row) else { continue };
+                let at = frame.square_rect(sq);
                 ui.interact(at, cell_id(sq), egui::Sense::hover());
                 let text = crate::chess_diagram_keys::square_text(ed, sq);
                 ui.ctx().accesskit_node_builder(cell_id(sq), |node| {
@@ -627,12 +622,8 @@ pub(crate) fn board_view(
             }
         }
     });
-    let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
-    let shown = |sq: Square| {
-        let (file, rank) = (f32::from(sq.file()), f32::from(sq.rank()));
-        let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
-        egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell))
-    };
+    response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
+    let shown = |sq: Square| frame.square_rect(sq);
     // The squares the model was unsure of, outlined.
     for u in &ed.uncertain {
         ui.painter().rect_stroke(shown(u.square).shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);

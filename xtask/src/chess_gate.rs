@@ -386,13 +386,16 @@ impl Gate {
         if !self.record(3, "check the CLI and the app", t, result) {
             return false;
         }
+        // The UI too when it changed: the web build is the same crate (CLAUDE.md, the wasm check).
+        let ui = upper.iter().any(|(dir, _)| dir == "ui-egui");
+        let mut wasm = strings(&["check", "-j", "2", "--target", "wasm32-unknown-unknown", "-p", "pdfcraft-engine", "-p", "pdfcraft-automation"]);
+        if ui {
+            wasm.extend(strings(&["-p", "pdfcraft-ui-egui"]));
+        }
         let t = Instant::now();
-        let result = cargo(
-            &self.root,
-            &strings(&["check", "-j", "2", "--target", "wasm32-unknown-unknown", "-p", "pdfcraft-engine", "-p", "pdfcraft-automation"]),
-            &[],
-        );
-        if !self.record(3, "wasm32 engine and automation", t, result) {
+        let result = cargo(&self.root, &wasm, &[]);
+        let name = if ui { "wasm32 engine, automation and the UI" } else { "wasm32 engine and automation" };
+        if !self.record(3, name, t, result) {
             return false;
         }
         for (dir, package) in &upper {
