@@ -26,9 +26,9 @@ use std::path::PathBuf;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
-use egui::{Color32, TextureHandle, vec2};
 #[cfg(not(target_arch = "wasm32"))]
-use egui::{Rect, Stroke};
+use egui::{Color32, Stroke};
+use egui::{Rect, TextureHandle, vec2};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_engine::chess::pdfcraft_chess::fen::Position;
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
@@ -876,6 +876,8 @@ pub(crate) fn board_at(
     square: Rect,
     bar: Option<Rect>,
 ) {
+    // The engine's best move, off the web (no engine there): filled below.
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut best = Vec::new();
     #[cfg(not(target_arch = "wasm32"))]
     if study.analysis {
