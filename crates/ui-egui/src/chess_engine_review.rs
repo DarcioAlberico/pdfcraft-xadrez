@@ -102,12 +102,14 @@ impl Limit {
         }
     }
 
-    /// The depth a position held in the evaluations is left out at: the one asked, or, searched
-    /// for a time, the least the report judges at.
+    /// The depth a position held in the evaluations is left out at: the one asked; searched for a
+    /// time, any (an exact evaluation, however deep the time let it go: asking it again for the
+    /// same time would reach the same depth). A check to a depth asks again what is shallower
+    /// than it; the dialog says so ([`time_note`]).
     pub(crate) fn kept_depth(self) -> u32 {
         match self {
             Limit::Depth(d) => d.clamp(1, MAX_DEPTH),
-            Limit::Seconds(_) => Limits::default().min_depth,
+            Limit::Seconds(_) => 1,
         }
     }
 
@@ -1209,6 +1211,9 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         ui.set_max_width(520.0);
         ui.spacing_mut().item_spacing.y = 8.0;
         fields(ui, &mut d);
+        if !d.by_depth {
+            ui.label(RichText::new(time_note()).small().color(t.text_muted));
+        }
         ui.separator();
         let key = d.key(stamp);
         let counted = d.counted.as_ref().filter(|(k, _)| *k == key).map(|(_, p)| p);
@@ -1327,6 +1332,18 @@ fn fields(ui: &mut egui::Ui, d: &mut Dialog) {
         });
         ui.end_row();
     });
+}
+
+/// What searching for a time means for the report: a position may stay shallower than the depth
+/// it judges at ([`Limits::min_depth`]), and is then asked again only by a check to a depth.
+fn time_note() -> String {
+    let d = Limits::default().min_depth.to_string();
+    crate::i18n::fmt(
+        tl!(
+            "Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again."
+        ),
+        &[("d", &d)],
+    )
 }
 
 /// What the count found: the positions to ask and about how long, those held left out, and the
@@ -1480,6 +1497,6 @@ mod tests {
         assert_eq!(duration_words(f64::INFINITY), minutes_words(1_000_000_000_000));
         assert_eq!(Limit::Seconds(-3.0).budget().per_position, Duration::from_secs_f32(MIN_SECONDS));
         assert_eq!(Limit::Depth(0).budget().depth, 1);
-        assert_eq!(Limit::Seconds(1.0).kept_depth(), Limits::default().min_depth);
+        assert_eq!(Limit::Seconds(1.0).kept_depth(), 1, "searched for a time: whatever is held is left out");
     }
 }

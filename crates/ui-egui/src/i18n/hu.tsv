@@ -3762,3 +3762,4 @@ progress bar	Progress	Előrehaladás
 	another solution: {move} {value}	másik megoldás: {move} {value}
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Megkérdez egy motort a kiválasztott oldalak minden jellel ellátott lépéséről és minden diagramjáról, és felsorolja, hol tér el a könyv és a számítás.
 	Engine: {value} (depth {d})	Motor: {value} ({d} mélység)
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Időre keresve egy állás sekélyebb maradhat a(z) {d} mélységnél, amit a jelentés nem értékel; a(z) {d} mélységig tartó ellenőrzés újra lekéri.

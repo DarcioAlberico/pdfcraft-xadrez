@@ -3727,3 +3727,4 @@ progress bar	Progress	Напредък
 	another solution: {move} {value}	друго решение: {move} {value}
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Пита двигателя за всеки ход със знак и всяка диаграма от избраните страници и изброява къде книгата и изчислението се разминават.
 	Engine: {value} (depth {d})	Двигател: {value} (дълбочина {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	При търсене за определено време една позиция може да остане по-плитка от дълбочина {d}, която докладът не оценява; проверка до дълбочина {d} я изисква отново.

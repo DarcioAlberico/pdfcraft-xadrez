@@ -677,6 +677,27 @@ fn a_save_mid_batch_writes_under_the_documents_keys_now() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): searched for a time, a position held at any depth is left
+/// out (asking it again for the same time would reach the same depth), and the dialog says that
+/// such a position may stay shallower than the report judges at.
+#[test]
+fn a_check_for_a_time_leaves_out_what_is_held_and_says_it_may_stay_shallow() {
+    let data = temp_dir("time");
+    let mut h = harness(book(&[MOVES]), &data);
+    let (keys, pages) = keys(&h);
+    let shallow = Eval::new(12, Score::Centipawns(30), Bound::Exact, &["e7e5".to_owned()], Some("Stockfish 17"), 1).unwrap();
+    DirStore::new(data.join("evals")).keep(&keys, pages, &[(after(&["e4"]), shallow)]).unwrap();
+    text_menu_item(&mut h, "Check with the engine…");
+    h.get_by_label("Seconds each").click();
+    h.run_steps(2);
+    assert!(shown(&h, "Searched for a time, a position may stay shallower than depth 18"), "said");
+    h.get_by_label("Count the positions").click();
+    h.run_steps(3);
+    assert!(said(&h, "Positions to check: ").starts_with("Positions to check: 4 "), "{}", said(&h, "Positions to check: "));
+    assert!(shown(&h, "Checked before at this depth, left out: 1"));
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.

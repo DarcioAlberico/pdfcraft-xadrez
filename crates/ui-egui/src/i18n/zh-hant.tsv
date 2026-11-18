@@ -3703,3 +3703,4 @@ progress bar	Progress	進度
 	another solution: {move} {value}	另一種解法：{move} {value}
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	就所選頁面中每個帶符號的著法和每個棋圖詢問引擎，並列出書與計算結果不一致之處。
 	Engine: {value} (depth {d})	引擎：{value}（深度 {d}）
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	按時間搜尋時，局面可能達不到深度 {d}，報告不會判定它；到深度 {d} 的核對會再次詢問它。

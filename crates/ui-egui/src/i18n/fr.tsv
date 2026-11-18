@@ -3763,3 +3763,4 @@ progress bar	Progress	Progression
 	another solution: {move} {value}	autre solution : {move} {value}
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Interroger un moteur sur chaque coup annoté d'un signe et chaque diagramme des pages choisies, et lister les endroits où le livre et le calcul divergent.
 	Engine: {value} (depth {d})	Moteur : {value} (profondeur {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Recherchée pendant un temps donné, une position peut rester moins profonde que la profondeur {d}, que le rapport ne juge pas ; une vérification jusqu'à la profondeur {d} la redemande.
