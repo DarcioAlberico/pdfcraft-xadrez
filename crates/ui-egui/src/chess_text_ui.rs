@@ -33,7 +33,7 @@ use pdfcraft_engine::chess::export::ChessExportOptions;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, ReviewFlag, UserRect};
 use pdfcraft_engine::chess::reference_store::Choice;
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
