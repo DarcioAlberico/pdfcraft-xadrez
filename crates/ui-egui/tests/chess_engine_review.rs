@@ -586,6 +586,30 @@ fn a_count_of_a_document_changed_meanwhile_is_dropped() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): Quit stops the batch before the writes are waited for, so
+/// nothing it found is left behind: once the app's shutdown returns, no batch runs, and the store
+/// holds every position the batch took off its queue.
+#[test]
+fn quitting_stops_the_batch_before_its_finds_are_written() {
+    let data = temp_dir("quit");
+    let mut h = harness(book(&[MOVES]), &data);
+    let (keys, pages) = keys(&h);
+    let (analyser, engine) = engine(Answers::Gated { wait: NET }, 100);
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    count(&mut h);
+    h.get_by_label("Start the check").click();
+    engine.answer(1);
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 2 of 5").is_some()), "one answered");
+    h.state_mut().shutdown_recovery();
+    assert!(!h.state().chess.engine_review.running(), "stopped, its engine closed, before the app goes");
+    let id = h.state().views[0].id;
+    let left = h.state().chess.engine_review.left(id).unwrap_or(0);
+    let kept = DirStore::new(data.join("evals")).load(&keys, pages).unwrap().file.evals.len();
+    assert_eq!((kept, left), (1, 4), "what it found is written; the rest stays for Continue");
+    drop(engine);
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.

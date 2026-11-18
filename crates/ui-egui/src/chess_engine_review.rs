@@ -842,7 +842,30 @@ impl PdfCraftApp {
         self.post_error(crate::i18n::fmt(tl!("The engine's evaluations could not be kept: {why}"), &[("why", why)]));
     }
 
-    /// Wait at most `timeout` for the evaluations being written (Quit).
+    /// Quit, before the writes are waited for (`shutdown_recovery`): the batch running stops now,
+    /// its search cut short, its job (and so its engine) waited for at most
+    /// [`crate::chess_writer::SETTLE`], and what it found handed to the store, so that the writes
+    /// waited for next hold all of it. Halt, wait, take, flush; the settle follows.
+    pub(crate) fn quit_engine_review(&mut self) {
+        if let Some(run) = &self.chess.engine_review.running {
+            run.halt.store(true, Ordering::Relaxed);
+            run.job.cancel();
+            run.job.wait(crate::chess_writer::SETTLE);
+        }
+        // Ended: taken as any end is (what it found written now, its stopped batch kept).
+        self.poll_running();
+        // Still running past the wait: what it found so far.
+        if let Some(run) = &self.chess.engine_review.running {
+            let (doc, found) = (run.doc, std::mem::take(&mut *lock(&run.found)));
+            self.take_found(doc, found);
+        }
+        let ids: Vec<DocId> = self.chess.engine_review.writes.keys().copied().collect();
+        for id in ids {
+            self.flush_check(id, true);
+        }
+    }
+
+    /// Wait at most `timeout` for the evaluations being written (Close and Quit).
     pub(crate) fn settle_engine_review(&mut self, timeout: Duration) {
         if let Some(run) = &self.chess.engine_review.running {
             let (doc, found) = (run.doc, std::mem::take(&mut *lock(&run.found)));
