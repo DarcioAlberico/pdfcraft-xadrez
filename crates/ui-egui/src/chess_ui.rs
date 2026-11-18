@@ -136,9 +136,12 @@ pub struct ChessState {
     /// The export dialog, while it is shown (plan A9-X2): the diagrams still to review are said
     /// in it.
     pub export_dialog: Option<crate::chess_export_ui::ExportDialog>,
-    /// The export dialog's choices that are remembered: the format, the PGN's choices and the
-    /// descriptions (plan A9-X2; the `chess_export` setting).
+    /// The export dialog's choices that are remembered: the format, the PGN's choices, the
+    /// exercise sheet's layout and the descriptions (plan A9-X2, N12b; the `chess_export`
+    /// setting).
     pub export: crate::chess_export_ui::ExportChoices,
+    /// The exercise sheet's count of the export dialog's pages, while it runs (plan A9-N12b).
+    pub(crate) sheet_count: Option<crate::chess_export_ui::Counting>,
     /// What the last export said, while it is shown (P9c).
     pub export_done: Option<crate::chess_export_ui::Done>,
     /// The sheet of the chess keys is shown (plan A9-I16: `chess.shortcuts`, F1 in the chess

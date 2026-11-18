@@ -3665,3 +3665,23 @@ progress bar	Progress	Napredek
 	Illegal move: {move} can't be played here.	Neveljavna poteza: {move} tu ni mogoče odigrati.
 	{move} is not a move.	{move} ni poteza.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Puščica od {from}: Alt+klik na ciljno polje ali znova na to za krog.
+	exercises	vaje
+	Exercise sheet (PDF)	List z vajami (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Oštevilčeni diagrami knjige v novem PDF za tiskanje, 4, 6 ali 9 na stran, z rešitvami na koncu.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Ni vaje za list: oštevilčeni diagrami izbranih strani nimajo izhodiščne pozicije ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Ni vaje za list: izbrane strani nimajo oštevilčenega diagrama.
+	Exercises: counting…	Vaje: štetje…
+	Exercises: counted when exported	Vaje: preštete ob izvozu
+	Pages not read yet: {n} (counted when exported)	Še neprebrane strani: {n} (preštete ob izvozu)
+	Exercises: {n}	Vaje: {n}
+	solution not read: {n}	rešitev ni prebrana: {n}
+	no position to start from	brez izhodiščne pozicije
+	no solution read	nobena rešitev ni prebrana
+	Left out: {n} ({why})	Izpuščeno: {n} ({why})
+	past the sheet's {max}	nad {max} lista
+	Per page	Na stran
+	Diagrams a page: {n} ({grid})	Diagramov na stran: {n} ({grid})
+	With the solutions	Z rešitvami
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Rešitve na koncu, po vrstnem redu številk. Diagram, katerega rešitev ni bila prebrana, to pove.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Lista z vajami ni mogoče zapisati čez odprt PDF: izberite drugo ime.
+	No exercise sheet was written	List z vajami ni bil zapisan

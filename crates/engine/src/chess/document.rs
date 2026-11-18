@@ -398,6 +398,22 @@ impl Session {
         lang: Option<Lang>,
         ocr: &OcrOptions<'_>,
     ) -> Result<ChessDocument, String> {
+        self.chess_document_of(id, pages, settings, lang, ocr, true)
+    }
+
+    /// [`Self::chess_document_with`]; with `look_before` false, a page before (whose foot may
+    /// number the first diagram of the page after) that no scan of this session has looked at is
+    /// not looked at now, and its caption is not carried: with pages already read, nothing is
+    /// scanned (plan A9-N12b, the export dialog's count of the exercises).
+    pub(super) fn chess_document_of(
+        &mut self,
+        id: DocId,
+        pages: &[usize],
+        settings: &ChessScanSettings,
+        lang: Option<Lang>,
+        ocr: &OcrOptions<'_>,
+        look_before: bool,
+    ) -> Result<ChessDocument, String> {
         let corrected = self.chess_scan_corrected(id, pages, settings)?;
         let scanned = corrected.pages;
         // A page with diagrams whose page before is not read with it (the Text tab reads one
@@ -413,6 +429,7 @@ impl Session {
                 (!read_with_it).then_some(prev)
             })
             .collect();
+        let before = if look_before { before } else { self.chess_looked_at(id, &before, settings) };
         // Leniently: a page before that cannot be scanned leaves its page without the caption.
         let looked_at = if before.is_empty() { Vec::new() } else { self.chess_scan(id, &before, settings, false).unwrap_or_default() };
         let doc = self.get(id).ok_or("no such document")?;
