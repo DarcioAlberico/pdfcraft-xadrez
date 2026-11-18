@@ -83,6 +83,25 @@ fn the_grid_takes_four_six_or_nine_a_page() {
     assert_eq!((PerPage::of(6), PerPage::of(5)), (Some(PerPage::Six), None));
 }
 
+/// Plan A9-N12b2: the exercises past the cap are counted and placed, in the book's order, so the
+/// export dialog counts those of the pages it believes as it counts the others.
+#[test]
+fn the_exercises_past_the_cap_say_where_they_are() {
+    let mut b = DocBuilder::new();
+    for p in 0..5u32 {
+        let (n1, n2) = (2 * p + 1, 2 * p + 2);
+        let text = page_text(vec![line(45.0, &format!("№{n1}. A – B")), line(245.0, &format!("№{n2}. C – D"))]);
+        let d = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, SCHOLAR, true, false)];
+        b.add_page(&input(p, &text, &d, &[], &[]));
+    }
+    let doc = b.finish();
+    let sheet = crate::doc::worksheet::capped(&doc, &book(&[]), &Layout::default(), 7);
+    assert_eq!((sheet.items().count(), sheet.over), (7, 3));
+    let at: Vec<(usize, usize)> = sheet.over_at.iter().map(|a| (a.page, a.index)).collect();
+    assert_eq!(at, [(3, 1), (4, 0), (4, 1)], "the eighth, ninth and tenth, where they are");
+    assert!(worksheet(&doc, &book(&[]), &Layout::default()).over_at.is_empty(), "none past the real cap");
+}
+
 /// Plan A9-N12a2: the numbered diagram whose solution was not read, its side to move assumed,
 /// says both in the key, in each language the key is written in; the English beside it always.
 #[test]
