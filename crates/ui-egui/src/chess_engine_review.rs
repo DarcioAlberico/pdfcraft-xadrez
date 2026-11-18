@@ -274,12 +274,30 @@ impl Drop for Running {
     }
 }
 
-/// A write of a document's evaluations, for the writer thread.
+/// Evaluations handed on together: every write that asks for them shares them, none copies them.
+type Chunk = Arc<[(String, Eval)]>;
+
+/// A write of a document's evaluations, for the writer thread: every chunk not known written.
 struct EvalsJob {
     dir: PathBuf,
     keys: DocKeys,
     pages: usize,
-    evals: Vec<(String, Eval)>,
+    evals: Vec<Chunk>,
+}
+
+/// Add `chunk` to the chunks not known written (`unwritten`, oldest first), holding at most `cap`
+/// evaluations in all: past them the oldest chunks go (the store keeps no more for a document,
+/// [`MAX_EVALS`]; the session still shows them). The newest chunk always stays. How many went.
+fn hold_unwritten(unwritten: &mut Vec<Chunk>, chunk: Chunk, cap: usize) -> usize {
+    unwritten.push(chunk);
+    let mut total = unwritten.iter().fold(0usize, |n, c| n.saturating_add(c.len()));
+    let mut gone = 0usize;
+    while total > cap && unwritten.len() > 1 {
+        let oldest = unwritten.remove(0);
+        total = total.saturating_sub(oldest.len());
+        gone = gone.saturating_add(1);
+    }
+    gone
 }
 
 type EvalsWriter = crate::chess_writer::StoreWriter<EvalsJob, Result<usize, String>>;
@@ -293,10 +311,11 @@ struct Writes {
     keep: Option<Keeping>,
     /// Found since the last time they were handed on.
     new: Vec<(String, Eval)>,
-    /// Handed to the writer and not known written yet, oldest first: each write asks for all of
-    /// them (the last request wins, and holds what the ones it replaced held).
-    unwritten: Vec<(String, Eval)>,
-    /// The writes asked for: their generation, and how many of `unwritten` each held.
+    /// Handed to the writer and not known written yet, in the chunks they were handed on in,
+    /// oldest first, at most [`MAX_EVALS`] evaluations ([`hold_unwritten`]): each write asks for
+    /// all of them (the last request wins, and holds what the ones it replaced held).
+    unwritten: Vec<Chunk>,
+    /// The writes asked for: their generation, and how many chunks of `unwritten` each held.
     asked: Vec<(u64, usize)>,
     /// When they were last handed on.
     last: Option<Instant>,
@@ -800,7 +819,10 @@ impl PdfCraftApp {
             Some(dir) => {
                 let review = &mut self.chess.engine_review;
                 let Some(w) = review.writes.get_mut(&id) else { return };
-                w.unwritten.extend(new);
+                let gone = hold_unwritten(&mut w.unwritten, Arc::from(new), MAX_EVALS);
+                for (_, n) in &mut w.asked {
+                    *n = n.saturating_sub(gone);
+                }
                 let Some(file) = pdfcraft_engine::chess::store::file_name(&keys, <EvalsKind as pdfcraft_engine::chess::store::StoreKind>::KIND)
                 else {
                     return;
@@ -811,7 +833,9 @@ impl PdfCraftApp {
                     crate::chess_writer::StoreWriter::new(
                         "chess-evals-writer",
                         |_file: &str, job: EvalsJob| {
-                            pdfcraft_engine::chess::evals::DirStore::new(&job.dir).keep(&job.keys, job.pages, &job.evals).map_err(|e| e.to_string())
+                            // One list, made here on the writer's thread.
+                            let evals: Vec<(String, Eval)> = job.evals.iter().flat_map(|c| c.iter().cloned()).collect();
+                            pdfcraft_engine::chess::evals::DirStore::new(&job.dir).keep(&job.keys, job.pages, &evals).map_err(|e| e.to_string())
                         },
                         |panic| Err(format!("the writer stopped: {panic}")),
                     )
@@ -1334,6 +1358,28 @@ fn summary(ui: &mut egui::Ui, t: &Tokens, p: &Prepared, limit: Limit) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A9-N17b (the review of #420): what waits to be written holds at most its cap of
+    /// evaluations, the oldest chunks going first and the newest always staying; the chunks are
+    /// shared, not copied, by the writes that ask for them.
+    #[test]
+    fn what_waits_to_be_written_is_capped_and_shared() {
+        let chunk = |n: usize| -> Chunk {
+            use pdfcraft_engine::chess::pdfcraft_chess::uci::{Bound, Score};
+            let e = Eval::new(20, Score::Centipawns(10), Bound::Exact, &[], None, 1).unwrap();
+            (0..n).map(|i| (format!("p{i}"), e.clone())).collect::<Vec<_>>().into()
+        };
+        let mut unwritten: Vec<Chunk> = Vec::new();
+        assert_eq!(hold_unwritten(&mut unwritten, chunk(4), 10), 0);
+        assert_eq!(hold_unwritten(&mut unwritten, chunk(4), 10), 0);
+        let newest = chunk(4);
+        assert_eq!(hold_unwritten(&mut unwritten, Arc::clone(&newest), 10), 1, "the oldest went");
+        assert_eq!(unwritten.iter().map(|c| c.len()).sum::<usize>(), 8);
+        assert!(unwritten.last().is_some_and(|c| Arc::ptr_eq(c, &newest)), "shared, not copied");
+        // A chunk bigger than the cap stays alone.
+        assert_eq!(hold_unwritten(&mut unwritten, chunk(12), 10), 2);
+        assert_eq!(unwritten.len(), 1);
+    }
 
     /// A one-page book whose line is `moves`, in Helvetica.
     fn book(moves: &str) -> Vec<u8> {
