@@ -330,7 +330,7 @@ pub(crate) static RAIL: &[&[Entry]] = &[
 const ESC: ChessKey = ChessKey::plain(Key::Escape);
 
 fn has_moves(board: &BoardState) -> bool {
-    board.illegal.is_none() && !board.game.is_empty()
+    !board.is_illegal() && !board.game().is_empty()
 }
 
 const NAVIGATE: Tool = Tool {
@@ -468,7 +468,7 @@ const STRUCTURE: Group = Group {
             keys: &[],
             command: Some("chess.moves.null"),
             kind: Kind::Action(|b, t| structure(b, Op::Threat, t)),
-            enabled: |b| b.illegal.is_none(),
+            enabled: |b| !b.is_illegal(),
             heads: None,
             visible: |_| true,
             on_move: Some(|g, n| Op::Threat.check(g, n)),
@@ -571,7 +571,7 @@ const COMMENT: Tool = Tool {
     keys: &[ChessKey::plain(Key::Enter)],
     command: Some("chess.comment.edit"),
     kind: Kind::Action(|b, _| b.toggle_comment_editor()),
-    enabled: |b| b.illegal.is_none(),
+    enabled: |b| !b.is_illegal(),
     visible: |_| true,
     heads: None,
     on_move: None,
@@ -1193,7 +1193,7 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
                     let enabled = can_act(tool, chess);
                     let r = ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| tool_button(ui, tool, on, &name)).inner).inner;
                     // Off: why, as a move's menu says it (Show in PDF: no place on the page).
-                    let game = &chess.board().game;
+                    let game = chess.board().game();
                     let r = match tool.on_move.map(|on_move| on_move(game, game.current())) {
                         Some(Err(why)) if !enabled => r.on_disabled_hover_text(why),
                         _ => r,
@@ -1329,7 +1329,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
                     ui.close();
                 }
                 // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
-                let game = &chess.board().game;
+                let game = chess.board().game();
                 if can_act(tool, chess)
                     && let Some(head) = head_choices(ui, t, game, tool, &label, game.current())
                 {
@@ -1489,7 +1489,7 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
         return;
     }
     let board = chess.board_mut();
-    if board.illegal.is_some() {
+    if board.is_illegal() {
         return;
     }
     board.selected = None;
@@ -1497,19 +1497,19 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
     match nav {
         Nav::Back => board.step(false),
         Nav::Forward => board.step(true),
-        Nav::Start => board.game.go_to(0),
-        Nav::End => board.game.go_to(usize::MAX),
-        Nav::MainEnd => board.game.go_to_main_end(),
+        Nav::Start => board.walk(|game| game.go_to(0)),
+        Nav::End => board.walk(|game| game.go_to(usize::MAX)),
+        Nav::MainEnd => board.walk(Game::go_to_main_end),
         Nav::Up | Nav::Down => {
-            if let Some(node) = sibling(&board.game, board.game.current(), nav == Nav::Down) {
-                board.game.go_to_node(node);
+            if let Some(node) = sibling(board.game(), board.game().current(), nav == Nav::Down) {
+                board.walk(|game| game.go_to_node(node));
             }
         }
         Nav::PreviousVariation | Nav::NextVariation => {
-            let current = board.game.current();
-            let to = if nav == Nav::NextVariation { board.game.next_variation(current) } else { board.game.previous_variation(current) };
+            let current = board.game().current();
+            let to = if nav == Nav::NextVariation { board.game().next_variation(current) } else { board.game().previous_variation(current) };
             if let Some(node) = to {
-                board.game.go_to_node(node);
+                board.walk(|game| game.go_to_node(node));
             }
         }
         Nav::Escape => {}
@@ -1722,13 +1722,13 @@ fn threat_refusal() -> String {
 /// Use structure tool `op` on `target` as one undo step; a refusal is said in the panel, never
 /// silently nothing.
 fn structure(board: &mut BoardState, op: Op, target: Target) {
-    if board.illegal.is_some() {
+    if board.is_illegal() {
         return;
     }
     board.selected = None;
     board.promotion = None;
     let mut refused = None;
-    board.edit(|s| match op.apply(&mut s.game, target) {
+    board.edit(|s| match op.apply(s.game_mut()?, target) {
         Ok(edit) => Some(edit),
         Err(why) => {
             refused = Some(why);
@@ -1747,12 +1747,12 @@ pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> 
     let mut chosen = None;
     for tool in tools() {
         let (Kind::Action(run), Some(on_move)) = (tool.kind, tool.on_move) else { continue };
-        let target = on_move(&board.game, node);
+        let target = on_move(board.game(), node);
         let label = label(tool, board);
         let r = ui.add_enabled(target.is_ok(), egui::Button::new(label.as_str()));
         let r = match &target {
             Ok(Target::Head(head)) if *head != node => {
-                r.on_hover_text(crate::i18n::fmt(tl!("Acts on {move}"), &[("move", &move_name(&board.game, *head))]))
+                r.on_hover_text(crate::i18n::fmt(tl!("Acts on {move}"), &[("move", &move_name(board.game(), *head))]))
             }
             Err(why) => r.on_disabled_hover_text(why.as_str()),
             Ok(_) => r,
@@ -1763,7 +1763,7 @@ pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> 
             chosen = Some((run, target));
         }
         if target.is_ok()
-            && let Some(head) = head_choices(ui, &t, &board.game, tool, &label, node)
+            && let Some(head) = head_choices(ui, &t, board.game(), tool, &label, node)
         {
             chosen = Some((run, Target::Head(head)));
         }

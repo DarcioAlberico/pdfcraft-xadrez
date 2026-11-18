@@ -1981,7 +1981,7 @@ fn the_control_channel_steps_the_board() {
     }
     let (mut game, _) = Game::from_pgn("1. e4 e5 2. Nf3 *").unwrap();
     game.go_to_node(0);
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     for _ in 0..2 {
         host_step(&mut h);
     }
@@ -1991,6 +1991,6 @@ fn the_control_channel_steps_the_board() {
     host_ok(&mut h, &c, "ui.click", json!({ "x": (r[0] + r[2]) / 2.0, "y": (r[1] + r[3]) / 2.0 }));
     assert!(h.state().chess.in_scope(), "the click put the chess scope on");
     host_ok(&mut h, &c, "ui.key", json!({ "key": "ArrowRight" }));
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.san(game.current()), "e4", "→ stepped the game");
 }

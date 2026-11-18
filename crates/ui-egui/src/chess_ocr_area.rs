@@ -94,7 +94,7 @@ pub(crate) const OCR_AREA: Tool = Tool {
     keys: &[ChessKey::plain(Key::O)],
     command: Some("chess.tool.ocr_area"),
     kind: Kind::Switch(toggle),
-    enabled: |b| b.illegal.is_none(),
+    enabled: |b| !b.is_illegal(),
     visible: |_| true,
     heads: None,
     on_move: None,

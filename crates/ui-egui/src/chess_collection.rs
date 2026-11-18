@@ -149,7 +149,7 @@ impl GameEntry {
 
     /// The move shown, as a path from the start.
     pub fn current_path(&self) -> NodePath {
-        self.board.game.path_of(self.board.game.current()).unwrap_or_default()
+        self.board.game().path_of(self.board.game().current()).unwrap_or_default()
     }
 
     /// The diagram the game was opened from.
@@ -177,7 +177,7 @@ impl GameEntry {
     /// What the game is named by: its White, Black and Event tags (empty when unknown, `?`
     /// included).
     pub fn names(&self) -> GameNames {
-        GameNames::of(&self.board.game)
+        GameNames::of(self.board.game())
     }
 
     /// Name the game: its White, Black, Event, Site, Date and Round tags take `names` (an empty
@@ -191,7 +191,7 @@ impl GameEntry {
         }
         let mut done = collection::Renamed::default();
         self.board.edit(|s| {
-            done = collection::rename(&mut s.game, names);
+            done = collection::rename(s.game_mut()?, names);
             s.refresh_fields(true);
             Some(ChessEdit::GameDetails)
         });
@@ -202,8 +202,7 @@ impl GameEntry {
     /// diagram; a history of its own, empty.
     fn copy(&self) -> GameEntry {
         let mut board = BoardState::default();
-        board.game = self.board.game.clone();
-        board.illegal = self.board.illegal.clone();
+        board.content = self.board.content.clone();
         board.source = self.board.source;
         board.flipped = self.board.flipped;
         board.cut = self.board.cut.clone();
@@ -213,16 +212,16 @@ impl GameEntry {
 
     /// Moves of the main line, counted as a scoresheet does (a move each side).
     pub fn moves(&self) -> usize {
-        collection::scoresheet_moves(&self.board.game)
+        collection::scoresheet_moves(self.board.game())
     }
 
     /// Never touched: the standard start, nothing played, no diagram, no history.
     fn is_blank(&self) -> bool {
-        self.board.illegal.is_none()
+        !self.board.is_illegal()
             && self.board.source.is_none()
             && self.untouched()
-            && self.board.game.is_empty()
-            && self.board.game.pgn() == Game::standard().pgn()
+            && self.board.game().is_empty()
+            && self.board.game().pgn() == Game::standard().pgn()
     }
 
     /// Nothing done on it since it was opened (no undo or redo step).
@@ -532,21 +531,23 @@ impl ChessCollection {
                     }
                 }
             }
+            // An illegal position has no moves, and so no places of moves.
+            let Some(game) = b.game_mut() else { continue };
             let nodes: Vec<NodeId> = std::iter::once(0)
-                .chain(b.game.tokens().into_iter().filter_map(|t| match t {
+                .chain(game.tokens().into_iter().filter_map(|t| match t {
                     pdfcraft_engine::chess::pdfcraft_chess::game::Token::Move { node, .. } => Some(node),
                     _ => None,
                 }))
                 .collect();
             for node in nodes {
-                let Some(src) = b.game.source(node) else { continue };
+                let Some(src) = game.source(node) else { continue };
                 match usize::try_from(src.page).ok().and_then(to).and_then(|p| u32::try_from(p).ok()) {
                     Some(p) if p == src.page => {}
                     Some(p) => {
-                        b.game.set_source(node, Some(pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource { page: p, ..src }));
+                        game.set_source(node, Some(pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource { page: p, ..src }));
                     }
                     None => {
-                        b.game.set_source(node, None);
+                        game.set_source(node, None);
                         lost = lost.saturating_add(1);
                     }
                 }
@@ -910,11 +911,11 @@ impl ChessCollection {
     /// an illegal position, which can't start a game; the error says why.
     pub(crate) fn new_from(&mut self, node: Option<NodeId>) -> Result<(), String> {
         let b = &self.active().board;
-        if b.illegal.is_some() {
+        if b.is_illegal() {
             return Err(tl!("An illegal position can't start a game: correct it in the diagram editor first.").to_string());
         }
         let game =
-            collection::game_from(&b.game, node).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+            collection::game_from(b.game(), node).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
         let source = b.source;
         self.insert_new(game, source, None)
     }
@@ -971,7 +972,7 @@ impl ChessCollection {
             return Err(full_note(1));
         }
         let mut board = BoardState::default();
-        board.game = game;
+        board.set_game(game);
         board.source = source;
         board.flipped = self.active().board.flipped;
         board.refresh_fields(true);
@@ -1052,8 +1053,8 @@ impl ChessCollection {
             let Some(entry) = self.games.delete(index) else { continue };
             // An illegal position has no game to keep: it stays on the redo side only.
             if !entry.untouched()
-                && entry.board.illegal.is_none()
-                && let Some(item) = self.trash.keep_item(&entry.board.game, &name, None)
+                && !entry.board.is_illegal()
+                && let Some(item) = self.trash.keep_item(entry.board.game(), &name, None)
             {
                 kept.push(item);
             }
@@ -1098,14 +1099,14 @@ impl ChessCollection {
         use std::hash::{Hash, Hasher};
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.active_index().hash(&mut h);
-        self.active().board.game.current().hash(&mut h);
+        self.active().board.game().current().hash(&mut h);
         self.trash.stamp().hash(&mut h);
         for e in self.iter() {
             e.uid.hash(&mut h);
             e.board.history.edits().hash(&mut h);
-            e.board.game.revision().hash(&mut h);
+            e.board.game().revision().hash(&mut h);
             e.board.flipped.hash(&mut h);
-            e.board.illegal.as_ref().map(|(_, f)| f.as_str()).hash(&mut h);
+            e.board.illegal_fen().hash(&mut h);
         }
         h.finish()
     }
@@ -2265,11 +2266,12 @@ enum RowChoice {
 }
 
 /// The menu of a row, acting on the games at `targets` (the row's game, or the games selected
-/// with it) of `len`: Rename… for one game, Save PGN… for several.
-fn row_menu(ui: &mut egui::Ui, targets: &[usize], len: usize) -> Option<RowChoice> {
+/// with it) of `len`: Rename… for one game (off, and saying why, when its board shows a position
+/// that is not legal: plan A9-I6b), Save PGN… for several.
+fn row_menu(ui: &mut egui::Ui, targets: &[usize], len: usize, illegal: bool) -> Option<RowChoice> {
     let mut choice = None;
     let many = targets.len() > 1;
-    if !many && ui.button(tl!("Rename…")).clicked() {
+    if !many && renaming_off(ui.add_enabled(!illegal, egui::Button::new(tl!("Rename…"))), illegal).clicked() {
         choice = Some(RowChoice::Rename);
     }
     if ui.button(tl!("Duplicate")).clicked() {
@@ -2443,7 +2445,7 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
             }
         }
         r.context_menu(|ui| {
-            chosen = row_menu(ui, &list.sel.targets(c, i, uid), len);
+            chosen = row_menu(ui, &list.sel.targets(c, i, uid), len, e.board.is_illegal());
         });
         if list.see(&r) {
             focused = true;
@@ -2489,7 +2491,8 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
                 ("copy-plus", tl!("Duplicate game"), RowChoice::Duplicate),
                 ("trash-2", tl!("Delete game…"), RowChoice::Delete),
             ] {
-                let b = crate::icons::button(ui, icon, ROW_BUTTON, false, label);
+                let off = matches!(what, RowChoice::Rename) && e.board.is_illegal();
+                let b = renaming_off(ui.add_enabled_ui(!off, |ui| crate::icons::button(ui, icon, ROW_BUTTON, false, label)).inner, off);
                 let has = list.see(&b);
                 focused |= has;
                 if b.clicked() {
@@ -2525,7 +2528,7 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
     let first = targets.first().copied().unwrap_or(i);
     let last = targets.last().copied().unwrap_or(i);
     match chosen {
-        Some(RowChoice::Rename) => list.ask(uid, e.names(), true, true, by_keys),
+        Some(RowChoice::Rename) if !e.board.is_illegal() => list.ask(uid, e.names(), true, true, by_keys),
         Some(RowChoice::Delete) if many => list.ask_many(targets.iter().filter_map(|&k| c.get(k)).map(|g| g.uid).collect(), by_keys),
         Some(RowChoice::Delete) => list.ask(uid, e.names(), false, by_keys, false),
         Some(RowChoice::Duplicate) if many => action = Some(GamesAction::DuplicateMany(targets)),
@@ -2539,7 +2542,7 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
             action = Some(if many { GamesAction::MoveMany(targets, false) } else { GamesAction::Move(i, false) });
             list.focus_later(ui.ctx(), by_keys.then_some(uid));
         }
-        Some(RowChoice::Up | RowChoice::Down) | None => {}
+        Some(RowChoice::Rename | RowChoice::Up | RowChoice::Down) | None => {}
     }
     action
 }
@@ -2577,7 +2580,8 @@ fn pending(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollect
     let mut action = None;
     egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
         ui.label(egui::RichText::new(name).strong());
-        action = if deleting.is_some() { delete_question(ui, t, list, c, i, many) } else { name_editor(ui, list, i) };
+        let illegal = c.get(i).is_some_and(|e| e.board.is_illegal());
+        action = if deleting.is_some() { delete_question(ui, t, list, c, i, many) } else { name_editor(ui, list, i, illegal) };
     });
     action
 }
@@ -2623,8 +2627,9 @@ fn delete_question(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &Ches
 
 /// The name editor of game `i`: White, Black, Event, Site, Date and Round (as Game details names
 /// them), then Rename (or Enter) and Cancel (or Esc). A date PGN can't read is said under the
-/// fields, and keeps Rename from applying.
-fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<GamesAction> {
+/// fields, and keeps Rename from applying. The fields and Rename are off while the game's board
+/// shows a position that is not legal (`illegal`, plan A9-I6b): it has no game to name.
+fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize, illegal: bool) -> Option<GamesAction> {
     let r = list.renaming.as_mut()?;
     let (mut commit, mut cancel) = (false, false);
     let mut seen = None;
@@ -2645,7 +2650,7 @@ fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<Game
             ];
             for (k, (label, value)) in fields.into_iter().enumerate() {
                 let l = ui.label(label);
-                let f = ui.add(egui::TextEdit::singleline(value).desired_width(150.0)).labelled_by(l.id);
+                let f = renaming_off(ui.add_enabled(!illegal, egui::TextEdit::singleline(value).desired_width(150.0)), illegal).labelled_by(l.id);
                 if k == 0 && focus {
                     f.request_focus();
                 }
@@ -2667,7 +2672,7 @@ fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<Game
             commit = false;
         }
         ui.horizontal(|ui| {
-            let ok = ui.add_enabled(date_ok, egui::Button::new(tl!("Rename")).small());
+            let ok = renaming_off(ui.add_enabled(date_ok && !illegal, egui::Button::new(tl!("Rename")).small()), illegal);
             let no = ui.small_button(tl!("Cancel"));
             if std::mem::take(&mut r.reveal) || gained {
                 reveal = Some(top.map_or(ok.rect, |t| t.union(ok.rect)).union(no.rect));
@@ -2688,7 +2693,13 @@ fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<Game
     }
     let r = list.renaming.take()?;
     list.focus_later(ui.ctx(), r.refocus.then_some(r.uid));
-    (commit && !cancel).then_some(GamesAction::Rename(i, r.names))
+    (commit && !cancel && !illegal).then_some(GamesAction::Rename(i, r.names))
+}
+
+/// `r`, a control that renames a game, saying why it is off when the game's board shows a
+/// position that is not legal (`illegal`).
+fn renaming_off(r: egui::Response, illegal: bool) -> egui::Response {
+    if illegal { crate::chess_board_ui::off_on_illegal(r) } else { r }
 }
 
 /// `message`, then ` · note` when there is one.
@@ -2987,10 +2998,12 @@ impl PdfCraftApp {
         }
         // Where in the book it came from, as PGN tags (plan A8 P8a): the same tags, in the same
         // order, as the book's PGN export gives the diagram's game.
-        if let Some(src) = source {
+        if let Some(src) = source
+            && let Some(game) = board.game_mut()
+        {
             for (name, value) in self.chess_pgn_origin(src).tags() {
                 // Valid tag names; a value too long is cut by the game.
-                let _ = board.game.set_tag(&name, &value);
+                let _ = game.set_tag(&name, &value);
             }
         }
         // A new game: its own history starts empty (opening it is a step of the list's).
@@ -3137,7 +3150,7 @@ impl PdfCraftApp {
         let boards: Vec<&BoardState> = self.chess.games.chosen(&PgnGames::All).into_iter().map(|(_, e)| &e.board).collect();
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
         let games: Vec<pdfcraft_engine::chess::pdfcraft_chess::game::Game> =
-            boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.clone()).collect();
+            boards.iter().filter(|b| !b.is_illegal()).map(|b| b.game().clone()).collect();
         let skipped = boards.len().saturating_sub(games.len());
         // A game read from a document is that document's content: its copy permission applies.
         for doc in docs {
@@ -3238,7 +3251,7 @@ impl PdfCraftApp {
         let boards: Vec<&BoardState> = self.chess.games.chosen(which).into_iter().map(|(_, e)| &e.board).collect();
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
         // Each game's PGN ends with a line break: joined by another, a blank line parts them.
-        let text: Vec<String> = boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.pgn()).collect();
+        let text: Vec<String> = boards.iter().filter(|b| !b.is_illegal()).map(|b| b.game().pgn()).collect();
         let skipped = boards.len().saturating_sub(text.len());
         for doc in docs {
             if self.session.get(doc).is_some() && !self.may_copy(doc) {
@@ -3274,7 +3287,7 @@ impl PdfCraftApp {
             .games
             .chosen(&which)
             .into_iter()
-            .filter(|(_, e)| e.board.illegal.is_none())
+            .filter(|(_, e)| !e.board.is_illegal())
             .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1), &labels), m)))
             .collect();
         if !cut.is_empty() {
@@ -3546,7 +3559,7 @@ fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usi
         match Game::from_pgn_report(text) {
             Ok((game, report)) => {
                 let mut board = BoardState::default();
-                board.game = game;
+                board.set_game(game);
                 board.message = crate::chess_board_ui::read_message(&report);
                 board.cut = report.stopped;
                 board.refresh_fields(true);
@@ -3578,13 +3591,13 @@ mod tests {
     fn board_with(moves: &[&str]) -> BoardState {
         let mut b = BoardState::default();
         for m in moves {
-            b.game.play_uci(m).unwrap();
+            b.game_mut().unwrap().play_uci(m).unwrap();
         }
         b
     }
 
     fn names(c: &ChessCollection) -> Vec<String> {
-        c.iter().map(|e| e.board.game.movetext()).collect()
+        c.iter().map(|e| e.board.game().movetext()).collect()
     }
 
     #[test]
@@ -3599,7 +3612,7 @@ mod tests {
         for (to, shown) in [(0, "1. e4"), (1, "1. d4"), (2, "1. c4"), (0, "1. e4"), (2, "1. c4"), (1, "1. d4")] {
             assert!(c.switch_to(to));
             assert_eq!(c.active_index(), to);
-            assert_eq!(c.active().board.game.movetext(), shown);
+            assert_eq!(c.active().board.game().movetext(), shown);
             assert_eq!(names(&c), ["1. e4", "1. d4", "1. c4"], "after switching to {to}");
         }
         assert!(!c.switch_to(3));
@@ -3656,7 +3669,7 @@ mod tests {
         assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }).changed);
         assert_eq!(e.name(1, &[]), "Training", "named by its event without players");
         assert!(e.rename(&GameNames::default()).changed);
-        assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
+        assert!(e.board.game().tags().is_empty(), "empty names remove the tags");
         // Site, Date and Round, from the list, with the names: one step for all of them.
         let placed = GameNames {
             white: "Werle".into(),
@@ -3666,14 +3679,14 @@ mod tests {
             ..GameNames::default()
         };
         assert!(e.rename(&placed).changed);
-        let game = &e.board.game;
+        let game = e.board.game();
         assert_eq!(
             (game.tag("White"), game.tag("Site"), game.tag("Date"), game.tag("Round")),
             (Some("Werle"), Some("Wijk aan Zee NED"), Some("2025.01.??"), Some("6"))
         );
         assert_eq!(e.names(), placed, "the editor opens with what the game has");
         assert!(e.board.undo());
-        assert!(e.board.game.tags().is_empty(), "one step took all four back");
+        assert!(e.board.game().tags().is_empty(), "one step took all four back");
     }
 
     /// Several games deleted at once are one step of the list: Undo puts each back where it was
@@ -3693,7 +3706,7 @@ mod tests {
         assert!(games.history_step(true).is_some());
         let c = games.collection();
         assert_eq!((uids(c), c.active_index()), (all.clone(), 1), "each back at its place, the game shown before shown");
-        assert_eq!(c.active().board.game.movetext(), "1. d4");
+        assert_eq!(c.active().board.game().movetext(), "1. d4");
         assert!(games.history_step(false).is_some());
         assert_eq!(names(games.collection()), ["1. e4", "1. c4"]);
         assert!(games.history_step(true).is_some());
@@ -3716,7 +3729,7 @@ mod tests {
         for m in ["a2a3", "b2b3", "c2c3", "d2d3", "e2e3"] {
             c.add(GameEntry::new(board_with(&[m])));
         }
-        let first = |c: &ChessCollection| c.iter().map(|e| e.board.game.movetext().chars().nth(3).unwrap_or('-')).collect::<String>();
+        let first = |c: &ChessCollection| c.iter().map(|e| e.board.game().movetext().chars().nth(3).unwrap_or('-')).collect::<String>();
         assert!(c.switch_to(3));
         assert!(c.move_many(&[1, 3], true));
         assert_eq!((first(c), c.active_index()), ("badce".to_owned(), 2), "the game shown moved with them");
@@ -3838,21 +3851,21 @@ mod tests {
         let mut c = ChessCollection::new(DocKeys::default(), "c".into());
         c.active_mut().board = board_with(&["e2e4", "e7e5"]);
         c.active_mut().board.source = Some(Source { doc: DocId(3), page: 1, index: 0 });
-        let after_e4 = c.active().board.game.main_line()[1];
+        let after_e4 = c.active().board.game().main_line()[1];
         assert!(c.new_from(None).is_ok());
         assert_eq!(c.active_index(), 1);
-        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen());
+        assert_eq!(c.active().board.game().start_fen(), c.get(0).unwrap().board.game().fen());
         assert_eq!(c.active().origin(), Some(Source { doc: DocId(3), page: 1, index: 0 }));
         assert!(c.switch_to(0));
         assert!(c.new_from(Some(after_e4)).is_ok());
-        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen_at(after_e4).unwrap().to_string());
+        assert_eq!(c.active().board.game().start_fen(), c.get(0).unwrap().board.game().fen_at(after_e4).unwrap().to_string());
         assert_eq!(names(&c), ["1. e4 e5", "", ""], "after the game it came from");
         // A move the game doesn't have: the move shown.
         assert!(c.switch_to(0));
         assert!(c.new_from(Some(usize::MAX)).is_ok());
-        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen());
+        assert_eq!(c.active().board.game().start_fen(), c.get(0).unwrap().board.game().fen());
         let placement = c.active().board.placement();
-        c.active_mut().board.illegal = Some((placement, "8/8/8/8/8/8/8/8 w - - 0 1".into()));
+        c.active_mut().board.content = crate::chess_board_ui::BoardContent::illegal(placement, "8/8/8/8/8/8/8/8 w - - 0 1".into());
         let before = c.len();
         assert!(c.new_from(None).is_err());
         assert_eq!(c.len(), before);
@@ -3866,10 +3879,10 @@ mod tests {
         let fen = "4k3/8/8/8/8/8/4P3/4K3 b - - 0 40";
         assert!(c.new_at(fen).is_ok());
         assert_eq!((c.len(), c.active_index()), (2, 1));
-        assert_eq!(c.active().board.game.start_fen(), fen);
+        assert_eq!(c.active().board.game().start_fen(), fen);
         assert!(c.active().board.flipped, "on the side of the game it came from");
         assert_eq!(c.active().origin(), None, "a position set up comes from no diagram");
-        assert_eq!(c.get(0).unwrap().board.game.movetext(), "1. e4 e5");
+        assert_eq!(c.get(0).unwrap().board.game().movetext(), "1. e4 e5");
         assert!(c.new_at("not a fen").is_err());
         assert_eq!(c.len(), 2);
     }
@@ -3880,20 +3893,20 @@ mod tests {
         assert_eq!(e.name(3, &[]), "Game 3");
         e.board.source = Some(Source { doc: DocId(1), page: 16, index: 2 });
         assert_eq!(e.name(3, &[]), "Diagram 3, p. 17");
-        e.board.game.set_tag("White", "?").unwrap();
+        e.board.game_mut().unwrap().set_tag("White", "?").unwrap();
         assert_eq!(e.name(3, &[]), "Diagram 3, p. 17", "an unknown player is no name");
-        e.board.game.set_tag("White", "Werle").unwrap();
-        e.board.game.set_tag("Black", "Jianu").unwrap();
+        e.board.game_mut().unwrap().set_tag("White", "Werle").unwrap();
+        e.board.game_mut().unwrap().set_tag("Black", "Jianu").unwrap();
         assert_eq!(e.name(3, &[]), "Werle–Jianu");
-        e.board.game.play_uci("e2e4").unwrap();
-        e.board.game.play_uci("e7e5").unwrap();
-        e.board.game.play_uci("g1f3").unwrap();
+        e.board.game_mut().unwrap().play_uci("e2e4").unwrap();
+        e.board.game_mut().unwrap().play_uci("e7e5").unwrap();
+        e.board.game_mut().unwrap().play_uci("g1f3").unwrap();
         assert_eq!(e.moves(), 2);
     }
 
     /// Play `uci` on the game shown, as one undo step of the game.
     fn play(c: &mut ChessCollection, uci: &str) {
-        let edited = c.active_mut().board.edit(|s| s.game.play_uci(uci).ok().map(|_| ChessEdit::Play(uci.to_owned())));
+        let edited = c.active_mut().board.edit(|s| s.game_mut().unwrap().play_uci(uci).ok().map(|_| ChessEdit::Play(uci.to_owned())));
         assert!(edited, "{uci}");
     }
 
@@ -3908,12 +3921,12 @@ mod tests {
         let c = games.collection_mut();
         c.add(GameEntry::new(board_with(&["e2e4", "e7e5", "g1f3"])));
         let b = &mut c.active_mut().board;
-        b.game.go_to(1);
-        assert!(b.edit(|s| s.game.play_uci("c7c5").ok().map(|_| ChessEdit::Play("c7c5".into()))));
-        let c5 = b.game.current();
+        b.game_mut().unwrap().go_to(1);
+        assert!(b.edit(|s| s.game_mut().unwrap().play_uci("c7c5").ok().map(|_| ChessEdit::Play("c7c5".into()))));
+        let c5 = b.game().current();
         // As the move list's menu deletes a move (MoveEdit::Delete): no rail is drawn.
         assert!(b.edit(|s| {
-            s.game.delete(c5);
+            s.game_mut().unwrap().delete(c5);
             Some(ChessEdit::DeleteMoves)
         }));
         games.autosave(None);
@@ -3923,7 +3936,7 @@ mod tests {
         let b = &mut games.collection_mut().active_mut().board;
         b.pgn_text = "1. d4 d5 2. c4 e6 3. Nc3 Nf6 *".into();
         let _ = b.load_pgn();
-        assert_eq!(b.game.movetext(), "1. d4 d5 2. c4 e6 3. Nc3 Nf6");
+        assert_eq!(b.game().movetext(), "1. d4 d5 2. c4 e6 3. Nc3 Nf6");
         games.autosave(None);
         assert_eq!(kept(&games), [(3, 3), (4, 1)]);
         let newest = games.collection().trash().newest_first().next().map(|(_, t)| t.pgn.clone()).unwrap_or_default();
@@ -4282,7 +4295,7 @@ mod tests {
         let mut games = ChessGames::default();
         let c = games.collection_mut();
         c.add(GameEntry::new(board_with(&["e2e4", "e7e5"])));
-        let old = |moves: &[&str]| board_with(moves).game;
+        let old = |moves: &[&str]| board_with(moves).game().clone();
         c.trash.keep(&old(&["d2d4"]), "A", 1);
         c.trash.keep(&old(&["c2c4"]), "B", 1);
         let trashed = |c: &ChessCollection| c.trash().stored().into_iter().map(|t| t.name).collect::<Vec<_>>();

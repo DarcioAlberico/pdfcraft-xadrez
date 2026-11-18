@@ -103,7 +103,7 @@ fn listed(app: &PdfCraftApp) -> (Vec<String>, usize) {
 
 /// The movetext of every game, in list order.
 fn movetexts(app: &PdfCraftApp) -> Vec<String> {
-    app.chess.games.collection().iter().map(|e| e.board.game.movetext()).collect()
+    app.chess.games.collection().iter().map(|e| e.board.game().movetext()).collect()
 }
 
 /// Three games read from a PGN file: events A, B and C.
@@ -213,7 +213,7 @@ fn a_game_renamed_through_its_tags_shows_in_the_list_and_in_the_exported_pgn() {
     h.get_by_label("Rename").click();
     h.run_steps(3);
     assert_eq!(listed(h.state()).0, ["Werle–Jianu"]);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!((game.tag("White"), game.tag("Black"), game.tag("Event")), (Some("Werle"), Some("Jianu"), Some("Wijk aan Zee B")));
     assert_eq!(game.movetext(), "1. e4 e5", "the moves are untouched");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Edit game details"), "one undo step");
@@ -255,18 +255,18 @@ fn duplicating_makes_an_identical_game_after_it() {
     {
         let b = h.state_mut().chess.board_mut();
         b.play_uci_line(&["e7e5".into(), "g1f3".into()]);
-        b.game.go_to(2);
+        b.game_mut().unwrap().go_to(2);
         b.flipped = true;
     }
     h.run_steps(2);
-    let original = h.state().chess.board().game.pgn();
+    let original = h.state().chess.board().game().pgn();
     row_menu(&mut h, "A");
     h.get_by_label("Duplicate").click();
     h.run_steps(3);
     assert_eq!(listed(h.state()), (vec!["A".to_owned(), "A".to_owned(), "B".to_owned(), "C".to_owned()], 1), "the copy is after it, shown");
     let c = h.state().chess.games.collection();
     let (a, copy) = (c.get(0).unwrap(), c.get(1).unwrap());
-    assert_eq!(copy.board.game.pgn(), original);
+    assert_eq!(copy.board.game().pgn(), original);
     assert_eq!(copy.current_path(), a.current_path(), "the same move shown");
     assert!(copy.board.flipped);
     assert_eq!(copy.board.undo_label(), None, "a history of its own");
@@ -352,8 +352,8 @@ fn deleting_asks_first_and_the_last_delete_leaves_a_blank_game() {
     h.run_steps(3);
     assert_eq!(listed(h.state()), (vec!["Game 1".to_owned()], 0));
     let board = h.state().chess.board();
-    assert_eq!(board.game.movetext(), "");
-    assert!(board.game.tags().is_empty() && board.source.is_none());
+    assert_eq!(board.game().movetext(), "");
+    assert!(board.game().tags().is_empty() && board.source.is_none());
 }
 
 /// Moving a game up or down changes the order the collection is exported in (and the game shown
@@ -403,12 +403,12 @@ fn a_new_game_from_here_starts_at_that_position() {
     h.run_steps(3);
     let source = h.state().chess.board().source.expect("the board came from the diagram");
     h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into(), "e7e5".into(), "g1f3".into()]);
-    h.state_mut().chess.board_mut().game.go_to(2);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(2);
     h.run_steps(2);
-    let after_e5 = h.state().chess.board().game.fen();
+    let after_e5 = h.state().chess.board().game().fen();
     assert!(after_e5.starts_with("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq"), "{after_e5}");
     let after_e4 = {
-        let game = &h.state().chess.board().game;
+        let game = h.state().chess.board().game();
         game.fen_at(game.main_line()[1]).unwrap().to_string()
     };
     assert!(after_e4.starts_with("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq"), "{after_e4}");
@@ -417,10 +417,10 @@ fn a_new_game_from_here_starts_at_that_position() {
     let (names, shown) = listed(h.state());
     assert_eq!((names.len(), shown), (2, 1), "after the game it came from, shown");
     let board = h.state().chess.board();
-    assert_eq!(board.game.start_fen(), after_e5);
-    assert_eq!(board.game.movetext(), "");
+    assert_eq!(board.game().start_fen(), after_e5);
+    assert_eq!(board.game().movetext(), "");
     assert_eq!(board.source, Some(source), "the diagram it came from");
-    let pgn = board.game.pgn();
+    let pgn = board.game().pgn();
     assert!(pgn.contains("[SetUp \"1\"]\n") && pgn.contains(&format!("[FEN \"{after_e5}\"]\n")), "{pgn}");
     assert_eq!(movetexts(h.state())[0], "1. e4 e5 2. Nf3", "the game it came from is untouched");
     // From a move's menu in the notation: the position after that move. Both games are named by
@@ -436,11 +436,11 @@ fn a_new_game_from_here_starts_at_that_position() {
     h.run_steps(3);
     let (names, shown) = listed(h.state());
     assert_eq!((names.len(), shown), (3, 1));
-    assert_eq!(h.state().chess.board().game.start_fen(), after_e4);
+    assert_eq!(h.state().chess.board().game().start_fen(), after_e4);
     assert_eq!(movetexts(h.state()), ["1. e4 e5 2. Nf3", "", ""], "the game it came from is untouched, and so is the first new one");
     // A move played in it is Black's.
     h.state_mut().chess.board_mut().play_uci_line(&["c7c5".into()]);
-    assert!(h.state().chess.board().game.movetext().contains("... c5"), "{}", h.state().chess.board().game.movetext());
+    assert!(h.state().chess.board().game().movetext().contains("... c5"), "{}", h.state().chess.board().game().movetext());
 }
 
 /// Delete pressed on a focused row of the list asks about deleting that game, and never deletes
@@ -459,7 +459,7 @@ fn delete_on_a_focused_row_is_the_lists_and_on_the_board_the_games() {
     let put = |h: &mut Harness<'static, PdfCraftApp>| {
         let (mut game, _) = Game::from_pgn(forks).unwrap();
         game.go_to_node(game.node_at(&NodePath::new(vec![0, 2])).unwrap());
-        h.state_mut().chess.board_mut().game = game;
+        h.state_mut().chess.board_mut().set_game(game);
         h.run_steps(2);
     };
     put(&mut h);
@@ -908,7 +908,7 @@ fn the_list_renames_site_date_and_round_and_refuses_a_date_pgn_cannot_read() {
     assert!(h.query_by_label(hint).is_none());
     h.get_by_label("Rename").click();
     h.run_steps(3);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(
         (game.tag("White"), game.tag("Site"), game.tag("Date"), game.tag("Round")),
         (Some("Werle"), Some("Wijk aan Zee NED"), Some("2025.01.18"), Some("6"))
@@ -917,7 +917,7 @@ fn the_list_renames_site_date_and_round_and_refuses_a_date_pgn_cannot_read() {
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Edit game details"));
     assert!(h.state_mut().chess.board_mut().undo());
     h.run_steps(2);
-    assert!(h.state().chess.board().game.tags().is_empty(), "one undo step took them all back");
+    assert!(h.state().chess.board().game().tags().is_empty(), "one undo step took them all back");
     // The editor opens with the game's tags.
     assert!(h.state_mut().chess.board_mut().redo());
     assert!(h.state_mut().execute("chess.game.rename"));
@@ -1017,4 +1017,63 @@ fn the_games_list_exports_its_games_as_a_book() {
         assert!(h.state().said().is_some_and(|t| t.starts_with("Exported to")), "{:?}", h.state().said());
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I6b: a position that is not legal has no game, so nothing can name it. The list's
+/// name editor already open on the game, its Rename… (menu, F2, Chess ▸ Rename game…) and Game
+/// details' fields are off and say why; typing in them changes nothing.
+#[test]
+fn an_illegal_position_has_no_names_to_type() {
+    let mut h = harness();
+    let why = "The board shows a position that is not legal: correct it in the diagram editor first.";
+    let name = listed(h.state()).0[0].clone();
+    row_menu(&mut h, &name);
+    h.get_by_label("Rename…").click();
+    h.run_steps(4);
+    assert!(field(&h, "White").is_focused());
+    // The game becomes an illegal position while its name editor is open.
+    h.state_mut().chess.board_mut().load_fen("K7/8/8/8/8/8/8/K6k w - - 0 1", false, None);
+    h.run_steps(2);
+    assert!(h.state().chess.board().is_illegal());
+    for label in ["White", "Black", "Event", "Site", "Date", "Round"] {
+        let f = field(&h, label);
+        assert!(f.accesskit_node().is_disabled(), "{label}");
+        assert_eq!(f.accesskit_node().description().as_deref(), Some(why), "{label}");
+    }
+    field(&h, "White").type_text("Werle");
+    h.run_steps(2);
+    assert_eq!(field(&h, "White").value().as_deref(), Some(""));
+    assert!(h.get_by_label("Rename").accesskit_node().is_disabled());
+    h.get_by_label("Cancel").click();
+    h.run_steps(2);
+    assert!(h.query_all_by_label("White").all(|n| n.accesskit_node().role() != Role::TextInput), "closed");
+    // Its menu's Rename… is off and says why; F2 and Chess ▸ Rename game… open nothing.
+    let name = listed(h.state()).0[0].clone();
+    row_menu(&mut h, &name);
+    let item = h.get_by_label("Rename…");
+    assert!(item.accesskit_node().is_disabled());
+    assert_eq!(item.accesskit_node().description().as_deref(), Some(why));
+    h.key_press(Key::Escape);
+    h.run_steps(2);
+    h.get_by_label(&name).focus();
+    h.run_steps(1);
+    host_key(&mut h, Modifiers::NONE, Key::F2);
+    assert!(!h.state_mut().execute("chess.game.rename"));
+    h.run_steps(2);
+    assert!(h.state().all_said().any(|t| t == why), "{:?}", h.state().said());
+    assert!(h.query_all_by_label("White").all(|n| n.accesskit_node().role() != Role::TextInput), "no name editor");
+    // Game details: the seven fields are off and say why.
+    moves_view(&mut h);
+    h.get_by_label("Game").click();
+    h.run_steps(2);
+    h.get_by_label("Game details").click();
+    h.run_steps(3);
+    let off: Vec<_> = h.query_all_by_role(Role::TextInput).filter(|n| n.accesskit_node().description().as_deref() == Some(why)).collect();
+    assert_eq!(off.len(), 7, "White, Black, Event, Site, Date, Round, Result");
+    assert!(off.iter().all(|n| n.accesskit_node().is_disabled()));
+    off[0].type_text("Werle");
+    h.run_steps(2);
+    let board = h.state().chess.board();
+    assert!(board.is_illegal() && board.game().tags().is_empty(), "nothing typed behind the position");
+    assert_eq!(listed(h.state()).0[0], name, "the list's name is as it was");
 }

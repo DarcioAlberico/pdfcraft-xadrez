@@ -283,7 +283,7 @@ struct CaptureJob {
 // ─── The rail ────────────────────────────────────────────────────────────────────────────────
 
 fn can_capture(board: &BoardState) -> bool {
-    board.illegal.is_none()
+    !board.is_illegal()
 }
 
 const fn capture_tool(
@@ -624,7 +624,7 @@ impl PdfCraftApp {
     /// Plan `request` (off the interface thread when it is long), then apply it or keep it for the
     /// user to look at.
     pub(crate) fn start_capture(&mut self, request: Request) {
-        if self.chess.board().illegal.is_some() {
+        if self.chess.board().is_illegal() {
             self.inform(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
             return;
         }
@@ -633,12 +633,12 @@ impl PdfCraftApp {
         self.chess.capture.job = None;
         #[cfg(not(target_arch = "wasm32"))]
         if request.len() > INLINE_BYTES && !self.run_inline {
-            let (game, work) = (self.chess.board().game.clone(), request.clone());
+            let (game, work) = (self.chess.board().game().clone(), request.clone());
             let job = crate::chess_job::Job::spawn("pdfcraft-capture", false, move |_| Ok(plan_for(&game, &work)));
             self.chess.capture.job = Some(CaptureJob { request, job });
             return;
         }
-        let plan = plan_for(&self.chess.board().game, &request);
+        let plan = plan_for(self.chess.board().game(), &request);
         self.finish_capture(request, plan, false);
     }
 
@@ -680,14 +680,14 @@ impl PdfCraftApp {
         let kind = captured(plan, choice, request.mode);
         let rest = if keep_rest { candidate(plan, choice).map(leftover).unwrap_or_default() } else { String::new() };
         let (mut stale, mut rest_kept) = (false, true);
-        let recorded = self.chess.board_mut().edit(|s| match plan.apply(&mut s.game, choice) {
+        let recorded = self.chess.board_mut().edit(|s| match plan.apply(s.game_mut()?, choice) {
             Ok(()) => {
                 if !rest.is_empty() {
-                    let node = s.game.current();
-                    let old = s.game.comment(node);
+                    let node = s.game().current();
+                    let old = s.game().comment(node);
                     let joined = if old.is_empty() { rest.clone() } else { format!("{old} {rest}") };
                     // Never cut: a rest too long for the comment stays on the page, and is said.
-                    rest_kept = joined.len() <= MAX_COMMENT_LEN && s.game.set_comment(node, &joined).is_ok();
+                    rest_kept = joined.len() <= MAX_COMMENT_LEN && s.game_mut().is_some_and(|g| g.set_comment(node, &joined).is_ok());
                 }
                 s.selected = None;
                 s.promotion = None;
@@ -705,7 +705,7 @@ impl PdfCraftApp {
                 self.post_error(tl!("The game kept changing: the capture was not applied.").to_owned());
                 return;
             }
-            let again = plan_for(&self.chess.board().game, &request);
+            let again = plan_for(self.chess.board().game(), &request);
             self.finish_capture(request, again, true);
             return;
         }
@@ -721,8 +721,8 @@ impl PdfCraftApp {
         let now = self.ctx.as_ref().map_or(0.0, |ctx| ctx.input(|i| i.time));
         let game_id = self.chess.games.scope_stamp().0;
         let board = self.chess.board_mut();
-        let nodes = candidate(plan, choice).map(|c| c.report.new_nodes.iter().filter_map(|p| board.game.node_at(p)).collect()).unwrap_or_default();
-        let revision = board.game.revision();
+        let nodes = candidate(plan, choice).map(|c| c.report.new_nodes.iter().filter_map(|p| board.game().node_at(p)).collect()).unwrap_or_default();
+        let revision = board.game().revision();
         board.fresh = Fresh { nodes, revision, since: now };
         // What it did, with Undo: the app's notice (plan A9-I17), gone when the game changes.
         let undo = (tl!("Undo").to_owned(), crate::notice::NoticeAction::UndoCapture { game: game_id, revision });
@@ -979,7 +979,7 @@ fn relang(chess: &mut ChessState, lang: Lang) {
         chess.capture.lang = Some((doc, lang));
     }
     p.request.lang = lang;
-    let plan = plan_for(&chess.board().game, &p.request);
+    let plan = plan_for(chess.board().game(), &p.request);
     let renumbering = p.renumbering();
     chess.capture.pending = Some(Pending::new(p.request, plan).renumbered_if(renumbering));
 }
@@ -1243,7 +1243,7 @@ fn leftover(c: &Candidate) -> String {
 /// Whether the game shown is game `game` (its id in the collection) at `revision`: as a capture
 /// left it.
 fn capture_is_current(chess: &ChessState, game: u64, revision: u64) -> bool {
-    chess.games.scope_stamp().0 == game && chess.board().game.revision() == revision
+    chess.games.scope_stamp().0 == game && chess.board().game().revision() == revision
 }
 
 /// Take Enter out of a frame's `events` (the main window's raw input, or the chess window's
@@ -1286,8 +1286,8 @@ pub(crate) fn captured_layer(chess: &mut ChessState, doc: DocId) -> Option<Layer
     doc.hash(&mut h);
     games.len().hash(&mut h);
     for e in games.iter() {
-        e.board.game.revision().hash(&mut h);
-        e.board.game.start_fen().hash(&mut h);
+        e.board.game().revision().hash(&mut h);
+        e.board.game().start_fen().hash(&mut h);
     }
     let key = h.finish();
     if let Some((k, layer)) = &chess.capture.layer
@@ -1297,7 +1297,7 @@ pub(crate) fn captured_layer(chess: &mut ChessState, doc: DocId) -> Option<Layer
     }
     let mut boxes = Vec::new();
     'games: for e in games.iter() {
-        let g = &e.board.game;
+        let g = e.board.game();
         for token in g.tokens() {
             if let Token::Move { node, .. } = token
                 && let Some(source) = g.source(node)

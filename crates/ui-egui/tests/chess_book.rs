@@ -154,12 +154,12 @@ fn host_key(h: &mut Harness<'static, PdfCraftApp>, key: egui::Key) {
 }
 
 fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.movetext()
+    h.state().chess.board().game().movetext()
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 
@@ -187,7 +187,7 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
     assert_eq!(shown(&h), "a6", "at the move clicked");
     assert_eq!(games(&h), 1, "the blank game gave way to it");
     {
-        let game = &h.state().chess.board().game;
+        let game = h.state().chess.board().game();
         let source = game.source(game.current()).expect("the move keeps its place");
         assert_eq!((source.page as usize, source.rect_user), printed(&h, "a6"));
         assert_eq!(h.state().chess.board().undo_label(), None, "opening a game is no step of the game");
@@ -211,7 +211,7 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
     double_click_at(&mut h, at);
     assert_eq!((games(&h), shown(&h).as_str()), (1, "e5"));
     // Changed (a move played at the end), then opened again from the menu: a new game.
-    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(usize::MAX);
     h.state_mut().chess.board_mut().play_uci_line(&["b5a4".to_owned()]);
     h.run_steps(2);
     assert!(movetext(&h).ends_with("a6 4. Ba4"));
@@ -227,7 +227,7 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
 /// The page each move of the board's game was printed on, in PGN order.
 fn move_pages(h: &Harness<'static, PdfCraftApp>) -> Vec<Option<u32>> {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Token;
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.tokens().into_iter().filter_map(|t| if let Token::Move { node, .. } = t { Some(game.source(node).map(|s| s.page)) } else { None }).collect()
 }
 
@@ -275,7 +275,7 @@ fn a_move_with_no_game_around_it_says_so() {
     let at = h.get_all_by_label_contains("d5").find(|n| n.accesskit_node().role() == Role::Label).expect("the move").rect().center();
     double_click_at(&mut h, at);
     assert_eq!(games(&h), 1);
-    assert!(h.state().chess.board().game.is_empty(), "nothing was opened");
+    assert!(h.state().chess.board().game().is_empty(), "nothing was opened");
     assert_eq!(h.state().said(), Some("No game was found for this move, on its page or the pages around it."));
 }
 
@@ -332,7 +332,7 @@ fn follow_scrolls_the_page_to_each_move_shown() {
     h.run_steps(3);
     assert_eq!(last_shown(&h).map(|s| (s.0, s.1)), Some(printed(&h, "e4")));
     // A move played on the board has no place: Show in PDF is off, Follow shows nothing.
-    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(usize::MAX);
     h.state_mut().chess.board_mut().play_uci_line(&["b5a4".to_owned()]);
     h.run_steps(2);
     let before = last_shown(&h);
@@ -374,12 +374,12 @@ fn a_captured_game_follows_its_moves_on_the_page() {
     // Follow on: the move shown (the last captured) at once, then each move walked to.
     assert!(h.state_mut().execute("chess.source.follow"));
     h.run_steps(3);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     let a6 = game.source(game.current()).expect("a captured move keeps its place");
     assert_eq!(last_shown(&h).map(|s| (s.0, s.1)), Some((a6.page as usize, a6.rect_user)));
     notation_move(&h, "knight f3").click();
     h.run_steps(3);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     let nf3 = game.source(game.current()).expect("a captured move keeps its place");
     assert_eq!(shown(&h), "Nf3");
     assert_eq!(last_shown(&h).map(|s| (s.0, s.1)), Some((nf3.page as usize, nf3.rect_user)));
@@ -444,7 +444,7 @@ fn fen_after(h: &Harness<'static, PdfCraftApp>, san: &str) -> String {
 }
 
 fn board_fen(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.fen()
+    h.state().chess.board().game().fen()
 }
 
 /// An Alt+click at `at`: Alt held, a press and a release, Alt let go.
@@ -584,7 +584,7 @@ fn reading_the_page_is_said_at_its_foot_while_it_is_read() {
     assert_eq!(notice.accesskit_node().role(), Role::Status);
     let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
     assert!(page.contains(notice.rect().center()), "on the page");
-    support::wait_until(&mut h, "the game opened", |app| !app.chess.board().game.is_empty());
+    support::wait_until(&mut h, "the game opened", |app| !app.chess.board().game().is_empty());
     h.run_steps(2);
     assert_eq!(shown(&h), "a6");
     assert!(h.query_by_label("Reading the page…").is_none(), "gone once the game opened");
@@ -597,7 +597,7 @@ fn reading_the_page_is_said_at_its_foot_while_it_is_read() {
 #[test]
 fn seeing_a_printed_move_on_the_board_takes_one_gesture() {
     let mut h = harness_unread(book(), true);
-    assert!(h.state().chess.board().game.is_empty());
+    assert!(h.state().chess.board().game().is_empty());
     let mut gestures = 0;
     let at = on_word(&h, 0, "Nc6");
     double_click_at(&mut h, at);
@@ -657,6 +657,6 @@ fn a_move_under_the_pointer_is_underlined_in_both_themes() {
         if h.query_by_label("Reading the page…").is_some() {
             shot(&mut h, &format!("n1-reading-{theme}.png"));
         }
-        support::wait_until(&mut h, "the game opened", |app| !app.chess.board().game.is_empty());
+        support::wait_until(&mut h, "the game opened", |app| !app.chess.board().game().is_empty());
     }
 }

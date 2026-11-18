@@ -136,10 +136,10 @@ pub(crate) struct Stored {
 pub(crate) fn board_stamp(board: &BoardState) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    board.game.revision().hash(&mut h);
-    board.game.current().hash(&mut h);
+    board.game().revision().hash(&mut h);
+    board.game().current().hash(&mut h);
     board.flipped.hash(&mut h);
-    board.illegal.as_ref().map(|(_, f)| f.as_str()).hash(&mut h);
+    board.illegal_fen().hash(&mut h);
     board.source.map(|s| (s.page, s.index)).hash(&mut h);
     h.finish()
 }
@@ -154,16 +154,16 @@ fn with_board(mut part: GameRecord, board: &BoardState, uid: &str, rev: u64, fin
     // What the diagram's page is now (plan A9-G2c), so it is found again after pages move.
     part.origin_at = part.origin.zip(fingerprints).and_then(|(o, f)| PageAnchor::of(o.page, f));
     part.flipped = board.flipped;
-    if let Some((_, fen)) = &board.illegal {
+    if let Some(fen) = board.illegal_fen() {
         // An empty game: only the position, as given.
         part.pgn.clear();
         part.current.clear();
         part.sources.clear();
         part.comments.clear();
-        part.illegal_fen = Some(fen.clone());
+        part.illegal_fen = Some(fen.to_owned());
         return part;
     }
-    part.current = board.game.path_of(board.game.current()).map(|p| p.indices().to_vec()).unwrap_or_default();
+    part.current = board.game().path_of(board.game().current()).map(|p| p.indices().to_vec()).unwrap_or_default();
     part
 }
 
@@ -194,12 +194,12 @@ impl RecordCache {
         board: &BoardState,
         fingerprints: Option<&Fingerprints>,
     ) -> Option<GameRecord> {
-        let revision = board.game.revision();
+        let revision = board.game().revision();
         let part = match now.get(&revision).or_else(|| before.get(&revision)) {
             Some(part) => part.clone(),
             None => {
                 self.encoded = self.encoded.saturating_add(1);
-                GameRecord::of_game(String::new(), 0, &board.game).map(|mut p| {
+                GameRecord::of_game(String::new(), 0, board.game()).map(|mut p| {
                     if let Some(f) = fingerprints {
                         p.anchor(f);
                     }
@@ -278,7 +278,7 @@ fn encode(cache: &mut RecordCache, c: Collected<'_>) -> Result<GamesFile, Blocke
                 s
             }
         };
-        let part = if board.illegal.is_some() { Some(blank_record()) } else { cache.part(&before, &mut parts, board, fps) };
+        let part = if board.is_illegal() { Some(blank_record()) } else { cache.part(&before, &mut parts, board, fps) };
         match part {
             Some(part) => {
                 let record = with_board(part, board, &s.uid, s.rev, fps);
@@ -344,7 +344,7 @@ pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardSt
     if cut {
         board.message = Some(tl!("Only the first 65,536 bytes of a comment are kept.").to_owned());
     }
-    board.game = game;
+    board.set_game(game);
     board.flipped = record.flipped;
     board.source = source;
     board.refresh_fields(true);
@@ -611,7 +611,7 @@ fn blank_record() -> GameRecord {
 /// The record of a stored game, as the engine keeps it: for the tests.
 #[cfg(test)]
 pub(crate) fn record(board: &BoardState) -> Option<GameRecord> {
-    let part = if board.illegal.is_some() { blank_record() } else { GameRecord::of_game(String::new(), 0, &board.game)? };
+    let part = if board.is_illegal() { blank_record() } else { GameRecord::of_game(String::new(), 0, board.game())? };
     Some(with_board(part, board, "test", 1, None))
 }
 
@@ -742,12 +742,12 @@ pub(crate) mod tests {
         illegal.load_fen("K7/8/8/8/8/8/8/K6k w - - 0 1", false, Some(Source { doc: DocId(7), page: 3, index: 1 }));
         illegal.history = Default::default();
         let mut long = BoardState::default();
-        long.game.play_uci("e2e4").unwrap();
-        let e4 = long.game.current();
-        long.game.play_uci("e7e5").unwrap();
-        let e5 = long.game.current();
-        long.game.set_comment(e4, &"a".repeat(3000)).unwrap();
-        long.game.set_comment_before(e5, &"b".repeat(2500)).unwrap();
+        long.game_mut().unwrap().play_uci("e2e4").unwrap();
+        let e4 = long.game().current();
+        long.game_mut().unwrap().play_uci("e7e5").unwrap();
+        let e5 = long.game().current();
+        long.game_mut().unwrap().set_comment(e4, &"a".repeat(3000)).unwrap();
+        long.game_mut().unwrap().set_comment_before(e5, &"b".repeat(2500)).unwrap();
         vec![annotated(), illegal, long]
     }
 
@@ -757,7 +757,7 @@ pub(crate) mod tests {
     /// variation.
     fn annotated() -> BoardState {
         let mut b = BoardState::default();
-        let g = &mut b.game;
+        let g = b.game_mut().unwrap();
         for m in ["e2e4", "e7e5", "g1f3"] {
             g.play_uci(m).unwrap();
         }
@@ -779,16 +779,16 @@ pub(crate) mod tests {
     }
 
     fn same(a: &BoardState, b: &BoardState) {
-        assert_eq!(a.game.pgn(), b.game.pgn());
-        assert_eq!(a.game.path_of(a.game.current()), b.game.path_of(b.game.current()));
+        assert_eq!(a.game().pgn(), b.game().pgn());
+        assert_eq!(a.game().path_of(a.game().current()), b.game().path_of(b.game().current()));
         assert_eq!(a.flipped, b.flipped);
-        for node in nodes(&a.game) {
-            let path = a.game.path_of(node).unwrap();
-            let other = b.game.node_at(&path).unwrap();
-            assert_eq!(a.game.comment(node), b.game.comment(other), "{path:?}");
-            assert_eq!(a.game.comment_before(node), b.game.comment_before(other), "{path:?}");
-            assert_eq!(a.game.source(node), b.game.source(other), "{path:?}");
-            assert_eq!(a.game.nags(node), b.game.nags(other), "{path:?}");
+        for node in nodes(a.game()) {
+            let path = a.game().path_of(node).unwrap();
+            let other = b.game().node_at(&path).unwrap();
+            assert_eq!(a.game().comment(node), b.game().comment(other), "{path:?}");
+            assert_eq!(a.game().comment_before(node), b.game().comment_before(other), "{path:?}");
+            assert_eq!(a.game().source(node), b.game().source(other), "{path:?}");
+            assert_eq!(a.game().nags(node), b.game().nags(other), "{path:?}");
         }
     }
 
@@ -813,7 +813,7 @@ pub(crate) mod tests {
         let text = serde_json::to_string(&rec).unwrap();
         let back = restore(&serde_json::from_str(&text).unwrap(), None).unwrap();
         same(&board, &back);
-        assert_eq!(back.game.comment_before(back.game.node_at(&NodePath::new(vec![0, 0, 0])).unwrap()), "before Nf3");
+        assert_eq!(back.game().comment_before(back.game().node_at(&NodePath::new(vec![0, 0, 0])).unwrap()), "before Nf3");
         assert!(back.history.undo_edit().is_none(), "a restored game has no history");
     }
 
@@ -822,7 +822,7 @@ pub(crate) mod tests {
         let mut b = BoardState::default();
         b.load_fen("K7/8/8/8/8/8/8/K6k w - - 0 1", false, Some(Source { doc: DocId(7), page: 3, index: 1 }));
         let back = restore(&record(&b).unwrap(), Some(DocId(9))).unwrap();
-        assert_eq!(back.illegal.as_ref().map(|(_, f)| f.as_str()), Some("K7/8/8/8/8/8/8/K6k w - - 0 1"));
+        assert_eq!(back.illegal_fen(), Some("K7/8/8/8/8/8/8/K6k w - - 0 1"));
         assert_eq!(back.source, Some(Source { doc: DocId(9), page: 3, index: 1 }), "the diagram, in the document open now");
         assert!(back.history.undo_edit().is_none());
     }
@@ -839,7 +839,7 @@ pub(crate) mod tests {
         assert_eq!(first.len(), 2);
         m.write(collected("c-1", &keys(), &boards, &mut stored, &mut known)).unwrap();
         assert_eq!(stored.iter().flatten().cloned().collect::<Vec<_>>(), first, "unchanged: the same uids and revisions");
-        boards[1].game.play_uci("d2d4").unwrap();
+        boards[1].game_mut().unwrap().play_uci("d2d4").unwrap();
         m.write(collected("c-1", &keys(), &boards, &mut stored, &mut known)).unwrap();
         assert!(stored[1].as_ref().unwrap().rev > first[1].rev && stored[0] == Some(first[0].clone()));
         // The second game deleted: a tombstone.
@@ -891,7 +891,7 @@ pub(crate) mod tests {
         assert_eq!((boards.len(), lost), (3, 0));
         let sample = v1_sample_boards();
         for ((b, _), a) in boards.iter().zip(&sample) {
-            assert_eq!(a.game.movetext(), b.game.movetext());
+            assert_eq!(a.game().movetext(), b.game().movetext());
             assert_eq!(a.source, b.source);
         }
         let (_, saved) = m.storage_values(None, |_| false).pop().expect("saved under the new key");
@@ -908,21 +908,21 @@ pub(crate) mod tests {
             .map(|g| {
                 let mut b = BoardState::default();
                 for ply in 0..80usize {
-                    let legal = b.game.legal_moves();
+                    let legal = b.game().legal_moves();
                     let Some(pick) = legal.get((ply * 7 + g) % legal.len().max(1)).cloned() else { break };
-                    let here = b.game.current();
-                    let _ = b.game.play_san(&pick);
-                    let next = b.game.current();
+                    let here = b.game().current();
+                    let _ = b.game_mut().unwrap().play_san(&pick);
+                    let next = b.game().current();
                     if ply % 20 == 10
                         && let Some(other) = legal.get((ply * 7 + g + 1) % legal.len()).filter(|o| **o != pick).cloned()
                     {
-                        b.game.go_to_node(here);
-                        let _ = b.game.play_san(&other);
-                        b.game.go_to_node(next);
+                        b.game_mut().unwrap().go_to_node(here);
+                        let _ = b.game_mut().unwrap().play_san(&other);
+                        b.game_mut().unwrap().go_to_node(next);
                     }
                     if ply % 8 == 3 {
-                        let n = b.game.current();
-                        let _ = b.game.set_comment(n, "A quiet move that keeps the balance.");
+                        let n = b.game().current();
+                        let _ = b.game_mut().unwrap().set_comment(n, "A quiet move that keeps the balance.");
                     }
                 }
                 b
@@ -937,7 +937,7 @@ pub(crate) mod tests {
     #[ignore = "timing (plan A9-I3a): run with --ignored perf_"]
     fn perf_the_autosave_of_120_games_takes_at_most_5_ms() {
         let mut boards = book_games();
-        let moves: usize = boards.iter().map(|b| b.game.main_line().len()).sum();
+        let moves: usize = boards.iter().map(|b| b.game().main_line().len()).sum();
         assert!(moves > 120 * 60, "long games: {moves} moves");
         let mut cache = RecordCache::default();
         let (mut stored, mut known) = (Vec::new(), HashMap::new());
@@ -945,8 +945,8 @@ pub(crate) mod tests {
         let mut best = f64::MAX;
         for round in 0..5usize {
             let b = &mut boards[round * 7];
-            let n = b.game.current();
-            let _ = b.game.set_comment(n, &format!("Changed {round}."));
+            let n = b.game().current();
+            let _ = b.game_mut().unwrap().set_comment(n, &format!("Changed {round}."));
             let started = std::time::Instant::now();
             encode(&mut cache, collected("perf-1", &keys(), &boards, &mut stored, &mut known)).unwrap();
             best = best.min(started.elapsed().as_secs_f64() * 1000.0);
@@ -966,8 +966,8 @@ pub(crate) mod tests {
         encode(&mut cache, collected("c-1", &keys(), &boards, &mut stored, &mut known)).unwrap();
         assert_eq!(cache.encoded, 120);
         let b = &mut boards[5];
-        let n = b.game.current();
-        b.game.set_comment(n, "A new comment.").unwrap();
+        let n = b.game().current();
+        b.game_mut().unwrap().set_comment(n, "A new comment.").unwrap();
         encode(&mut cache, collected("c-1", &keys(), &boards, &mut stored, &mut known)).unwrap();
         assert_eq!(cache.encoded, 121, "one of 120 encoded again");
         // Moving through a game or flipping its board is no new encoding, and is written.

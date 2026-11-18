@@ -52,14 +52,14 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     let (mut game, stopped) = Game::from_pgn("1. e4 e5 2. Nf3 *").unwrap();
     assert_eq!(stopped, None);
     game.go_to_node(game.node_at(&NodePath::new(vec![0, 0])).unwrap());
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
     h
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 

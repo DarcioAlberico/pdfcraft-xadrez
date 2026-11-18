@@ -51,17 +51,17 @@ fn put_game(h: &mut Harness<'static, PdfCraftApp>, pgn: &str, path: &[u16]) {
     let (mut game, stopped) = Game::from_pgn(pgn).unwrap();
     assert_eq!(stopped, None);
     game.go_to_node(game.node_at(&NodePath::new(path.to_vec())).unwrap());
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
 }
 
 fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.movetext()
+    h.state().chess.board().game().movetext()
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 
@@ -76,7 +76,7 @@ fn undo(h: &mut Harness<'static, PdfCraftApp>) {
 
 /// The glyphs of the move at `path`.
 fn glyphs_at(h: &Harness<'static, PdfCraftApp>, path: &[u16]) -> Vec<u16> {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.nags(game.node_at(&NodePath::new(path.to_vec())).unwrap()).to_vec()
 }
 

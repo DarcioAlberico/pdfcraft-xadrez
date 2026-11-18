@@ -631,10 +631,7 @@ impl PdfCraftApp {
         // The position.
         let (fen, legal) = {
             let state = self.chess.board();
-            match &state.illegal {
-                Some((_, fen)) => (fen.clone(), false),
-                None => (state.game.fen(), true),
-            }
+            (state.current_fen(), !state.is_illegal())
         };
         let query = Query {
             doc,

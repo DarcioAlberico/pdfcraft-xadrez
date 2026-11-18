@@ -2041,11 +2041,11 @@ impl PdfCraftApp {
         // The page's moves were not read yet: they are (`chess_board_text_tick`), and may still
         // give the game its side to move and number.
         let board = self.chess.board();
-        self.chess.board_text = (!changed && !read && board.illegal.is_none() && board.source == Some(source)).then(|| BoardText {
+        self.chess.board_text = (!changed && !read && !board.is_illegal() && board.source == Some(source)).then(|| BoardText {
             doc: id,
             page,
             index,
-            fen: board.game.start_fen(),
+            fen: board.game().start_fen(),
             started: false,
         });
         true
@@ -2099,7 +2099,7 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         let e = self.chess.games.collection_mut().active_mut();
         let waiting =
-            e.untouched() && e.board.source == source && e.board.illegal.is_none() && e.board.game.is_empty() && e.board.game.start_fen() == want.fen;
+            e.untouched() && e.board.source == source && !e.board.is_illegal() && e.board.game().is_empty() && e.board.game().start_fen() == want.fen;
         if waiting {
             let flipped = e.board.flipped;
             e.board.load_fen(&start, flipped, source);
@@ -2196,10 +2196,10 @@ impl PdfCraftApp {
     /// menu copies it.
     pub(crate) fn copy_chess_line(&mut self, figurines: bool) {
         let board = self.chess.board();
-        if board.illegal.is_some() || board.game.current() == 0 {
+        if board.is_illegal() || board.game().current() == 0 {
             return;
         }
-        let line = board.game.line_text(board.game.current(), figurines);
+        let line = board.game().line_text(board.game().current(), figurines);
         self.copy_from_board(line, tl!("Line copied"));
     }
 
