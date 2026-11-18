@@ -608,10 +608,10 @@ mod tests {
     use super::catalog::{Entry, parse_entries, placeholders};
     use super::*;
 
-    /// Plan A9-Q1a: every chess text is in every catalogue complete for chess (the scan
+    /// Plan A9-Q1a: every chess text is in every catalogue, all 22 since plan A9-I14b (the scan
     /// `chess_scan`, which `cargo xtask chess-gate` runs too).
     #[test]
-    fn every_complete_catalogue_has_every_chess_text() {
+    fn every_catalogue_has_every_chess_text() {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut literals = std::collections::BTreeSet::new();
         for entry in std::fs::read_dir(&src).expect("UI source directory") {

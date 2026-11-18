@@ -3220,7 +3220,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Go to this page	Μετάβαση σε αυτή τη σελίδα
 	Diagram actions	Ενέργειες διαγράμματος
 # Plan A8 P2a2: the Diagrams panel's header.
-	Detect diagrams	Εντοπισμός διαγραμμάτων
+	Detect diagrams	Εντοπισμός
 	Where to detect	Πού να γίνει ο εντοπισμός
 	Find the diagrams of the whole book and read their positions.	Εύρεση των διαγραμμάτων όλου του βιβλίου και ανάγνωση των θέσεών τους.
 	More chess actions	Περισσότερες ενέργειες σκακιού
@@ -3397,3 +3397,278 @@ the move's comment	Move comment	Σχόλιο της κίνησης
 	Indexing the book's PGN…	Ευρετηρίαση του PGN του βιβλίου…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Το PGN του βιβλίου είναι μεγαλύτερο από όσο ευρετηριάζει το PdfCraft: μόνο οι πρώτες {moves} κινήσεις του συνδέονται με το βιβλίο.
 	Importing…	Εισαγωγή…
+
+# A9-I14b: chess texts
+	A correction ({id}) was not used: {e}	Μια διόρθωση ({id}) δεν χρησιμοποιήθηκε: {e}
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Ένα διάγραμμα προσφέρει {offered} dpi· διαβάστηκε το πολύ σε {max} dpi (max_read_dpi).
+	A new game from the standard position; the game on the board keeps its moves.	Νέα παρτίδα από την αρχική θέση· η παρτίδα στη σκακιέρα κρατά τις κινήσεις της.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Αρχείο κειμένου που εισάγει το Anki, μία κάρτα ανά άσκηση, με τις εικόνες των διαγραμμάτων σε φάκελο δίπλα του.
+	Add the bookmarks	Προσθήκη σελιδοδεικτών
+	Aligning was stopped: the book's link is as it was.	Η ευθυγράμμιση διακόπηκε: η σύνδεση του βιβλίου έμεινε όπως ήταν.
+	Alt+O switches between the board as read and the page's own picture.	Το Alt+O εναλλάσσει ανάμεσα στη σκακιέρα όπως διαβάστηκε και στην εικόνα της ίδιας της σελίδας.
+	Anki — cards	Anki — κάρτες
+	Another book's review	Έλεγχος άλλου βιβλίου
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Βέλος από {from}: Alt+κλικ στο τετράγωνο προορισμού ή ξανά σε αυτό για κύκλο.
+	Arrow {from} to {to} taken off	Αφαιρέθηκε το βέλος από {from} προς {to}
+	Arrow {from} to {to}, {color}	Βέλος από {from} προς {to}, {color}
+	As the book says ({lang})	Όπως λέει το βιβλίο ({lang})
+	As the book's text says	Όπως λέει το κείμενο του βιβλίου
+	Back to Diagrams	Πίσω στα Διαγράμματα
+	Back to the moves	Πίσω στις κινήσεις
+	Back to the moves (Esc)	Πίσω στις κινήσεις (Esc)
+	Black has more extra pieces than missing pawns to promote	τα μαύρα έχουν περισσότερα επιπλέον κομμάτια από τα πιόνια που λείπουν για προαγωγή
+	Black has more than 16 pieces	τα μαύρα έχουν περισσότερα από 16 κομμάτια
+	Black has more than 8 pawns	τα μαύρα έχουν περισσότερα από 8 πιόνια
+	Black has more than one king	τα μαύρα έχουν περισσότερους από έναν βασιλιά
+	Black is in check, but it is White's turn	τα μαύρα είναι σε σαχ, αλλά παίζουν τα λευκά
+	Black may castle, but its king or rook has left its square	τα μαύρα μπορούν να κάνουν ροκέ, αλλά ο βασιλιάς ή ο πύργος τους έχει φύγει από το τετράγωνό του
+	Black's king is in a double check no move could give	ο μαύρος βασιλιάς είναι σε διπλό σαχ που καμία κίνηση δεν θα μπορούσε να δώσει
+	Black's king is in check from more than two pieces	ο μαύρος βασιλιάς δέχεται σαχ από περισσότερα από δύο κομμάτια
+	Black's king is missing	λείπει ο μαύρος βασιλιάς
+	Board, move list and Chess panel	Σκακιέρα, λίστα κινήσεων και πίνακας σκακιού
+	Book's language	Γλώσσα του βιβλίου
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Προστέθηκαν σελιδοδείκτες κάτω από «{title}»: {n}. Η Αναίρεση τους αφαιρεί.
+	Chapters	Κεφάλαια
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Κεφάλαια: {chapters} · Παρτίδες: {games} · Ασκήσεις: {exercises}
+	Chess OCR failed: {e}	Το OCR σκακιού απέτυχε: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Ζητήθηκε OCR σκακιού, αλλά χρειάζεται το μοντέλο chess-glyphs.
+	Chess engine	Σκακιστική μηχανή
+	Chess games not saved	Μη αποθηκευμένες παρτίδες σκακιού
+	Chess shortcuts	Συντομεύσεις σκακιού
+	Choices made on this page not found in its reading (kept): {n}	Επιλογές σε αυτή τη σελίδα που δεν βρέθηκαν στην ανάγνωσή της (διατηρήθηκαν): {n}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Επιλογές σε κινήσεις σε σύγκρουση που αναφέρουν κίνηση που δεν έχει αυτό το PGN: {n}. Διατηρούνται για ένα PGN που την έχει.
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Επιλογές που περιμένουν το PGN του βιβλίου: {n} (φορτώστε το PGN και μετά εισαγάγετε ξανά τον έλεγχο).
+	Circle on {from} taken off	Αφαιρέθηκε ο κύκλος στο {from}
+	Circle on {from}, {color}	Κύκλος στο {from}, {color}
+	Close without saving	Κλείσιμο χωρίς αποθήκευση
+	Comment	Σχόλιο
+	Content streams that couldn't be decoded and were skipped: {n}	Ροές περιεχομένου που δεν αποκωδικοποιήθηκαν και παραλείφθηκαν: {n}
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Διορθώσεις για σελίδες που δεν έχει αυτό το έγγραφο: {n} (διατηρήθηκαν, χωρίς διάγραμμα).
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Η περιγραφική σημειογραφία ({examples}) δεν υποστηρίζεται· οι κινήσεις της δεν διαβάστηκαν.
+	Detecting in another book… page {d} of {t}	Εντοπισμός σε άλλο βιβλίο… σελίδα {d} από {t}
+	Diagram descriptions	Περιγραφές διαγραμμάτων
+	Diagram shown	Εμφανιζόμενο διάγραμμα
+	Diagram tab	Καρτέλα Διάγραμμα
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Διάγραμμα {d}: και οι δύο πλευρές κάνουν ματ σε {n}, οπότε το ποιος παίζει παραμένει υπόθεση.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Διάγραμμα {d}: η ανάγνωση άλλαξε από τότε που διορθώθηκε (τώρα {fen})· η διόρθωση διατηρείται.
+	Diagram {n} wasn't found on page {p}.	Το διάγραμμα {n} δεν βρέθηκε στη σελίδα {p}.
+	Diagram {n}, open	Διάγραμμα {n}, άνοιγμα
+	Diagram {n}, page {p}: correction forgotten	Διάγραμμα {n}, σελίδα {p}: η διόρθωση ξεχάστηκε
+	Diagrams a page: {n} ({grid})	Διαγράμματα ανά σελίδα: {n} ({grid})
+	Diagrams: not detected yet	Διαγράμματα: δεν εντοπίστηκαν ακόμη
+	Diagrams: {n}	Διαγράμματα: {n}
+	Don't keep	Να μη φυλαχτούν
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Η καθεμία πηγαίνει στη μηχανή μόνο αν τη δέχεται. Ξεκινήστε την ανάλυση για να δείτε ποιες δέχεται αυτή η μηχανή.
+	Edit the FEN and the PGN	Επεξεργασία του FEN και του PGN
+	End of the line	Τέλος της γραμμής
+	End of the main line	Τέλος της κύριας γραμμής
+	Endgame tables (Syzygy)	Πίνακες φινάλε (Syzygy)
+	Engine's default	Προεπιλογή της μηχανής
+	Engine: {name}, in {folder}	Μηχανή: {name}, στο {folder}
+	Entries that couldn't be read and were left out: {n}.	Καταχωρίσεις που δεν διαβάστηκαν και παραλείφθηκαν: {n}.
+	Exercise	Άσκηση
+	Exercise sheet (PDF)	Φύλλο ασκήσεων (PDF)
+	Exercises	Ασκήσεις
+	Exercises: counted when exported	Ασκήσεις: μετρώνται κατά την εξαγωγή
+	Exercises: counting…	Ασκήσεις: καταμέτρηση…
+	Exercises: {n}	Ασκήσεις: {n}
+	Export as book	Εξαγωγή ως βιβλίο
+	Export the book's review…	Εξαγωγή του ελέγχου του βιβλίου…
+	Exporting the chess document: page {done} of {of}	Εξαγωγή του σκακιστικού εγγράφου: σελίδα {done} από {of}
+	Forget the correction?	Να ξεχαστεί η διόρθωση;
+	Game	Παρτίδα
+	Games	Παρτίδες
+	Games from the book's PGN: {n}	Παρτίδες από το PGN του βιβλίου: {n}
+	Games left out (an illegal position has no game): {n}	Παρτίδες που παραλείφθηκαν (μια μη νόμιμη θέση δεν έχει παρτίδα): {n}
+	Games of “{name}” that autosave doesn't keep: {n}	Παρτίδες του «{name}» που δεν φυλάσσει η αυτόματη αποθήκευση: {n}
+	Games read only up to an impossible move: {n}	Παρτίδες που διαβάστηκαν μόνο μέχρι μια αδύνατη κίνηση: {n}
+	Games with no document open that autosave doesn't keep: {n}	Παρτίδες χωρίς ανοιχτό έγγραφο που δεν φυλάσσει η αυτόματη αποθήκευση: {n}
+	Games: read from the text	Παρτίδες: διαβασμένες από το κείμενο
+	Games: read from the text, linked to the book's PGN	Παρτίδες: διαβασμένες από το κείμενο, συνδεδεμένες με το PGN του βιβλίου
+	Hash table	Πίνακας κατακερματισμού
+	How a screen reader says each diagram's pieces.	Πώς ένας αναγνώστης οθόνης εκφωνεί τα κομμάτια κάθε διαγράμματος.
+	Illegal move: {move} can't be played here.	Αντικανονική κίνηση: το {move} δεν μπορεί να παιχτεί εδώ.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Εικόνες που δεν περικόπηκαν, επειδή τα εικονοστοιχεία των εικόνων της σελίδας υπερβαίνουν το όριο της σάρωσης: {n}
+	Import a book's review…	Εισαγωγή ελέγχου βιβλίου…
+	Import anyway	Εισαγωγή παρ’ όλα αυτά
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Στο πρόγραμμα περιήγησης, ένα βιβλίο με περισσότερες από {n} σελίδες δεν μπορεί ακόμη να εξαχθεί ή να ευθυγραμμιστεί με το PGN του: η καρτέλα θα σταματούσε να αποκρίνεται μέχρι το τέλος. Η εφαρμογή για υπολογιστή το κάνει στο παρασκήνιο.
+	Its moves are deleted (Undo brings them back).	Οι κινήσεις της διαγράφονται (η Αναίρεση τις επαναφέρει).
+	Keep them	Να φυλαχτούν
+	Keep your chess work on this protected document?	Να φυλαχτεί η σκακιστική σας εργασία σε αυτό το προστατευμένο έγγραφο;
+	Language: {lang}	Γλώσσα: {lang}
+	Leave the chess panel	Έξοδος από τον πίνακα σκακιού
+	Left out: {n} ({why})	Παραλείφθηκαν: {n} ({why})
+	Letters (Kg1)	Γράμματα (Kg1)
+	Load	Φόρτωση
+	Load the PGN above on the board, with its variations and comments.	Φορτώνει το παραπάνω PGN στη σκακιέρα, με τις παραλλαγές και τα σχόλιά του.
+	Make the book's bookmarks…	Δημιουργία σελιδοδεικτών του βιβλίου…
+	Mate in {n}: both sides mate, so who moves stays assumed	Ματ σε {n}: και οι δύο πλευρές κάνουν ματ, οπότε το ποιος παίζει παραμένει υπόθεση
+	Mate in {n}: no key found within the search budget	Ματ σε {n}: δεν βρέθηκε κλειδί εντός του ορίου αναζήτησης
+	Mate in {n}: none found	Ματ σε {n}: δεν βρέθηκε
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Ματ σε {n}: δεν βρέθηκε· καλύτερη προσπάθεια {best}, ανασκευάζεται με {reply}
+	Mate in {n}: {keys} ({k} keys)	Ματ σε {n}: {keys} ({k} κλειδιά)
+	Mate in {n}: {key}! (not proved the only key)	Ματ σε {n}: {key}! (δεν αποδείχθηκε ότι είναι το μόνο κλειδί)
+	Mate in {n}: {key}! (unique)	Ματ σε {n}: {key}! (μοναδικό)
+	More Text tab actions	Περισσότερες ενέργειες της καρτέλας Κείμενο
+	More board actions	Περισσότερες ενέργειες σκακιέρας
+	More continuations: {moves}	Περισσότερες συνέχειες: {moves}
+	Move	Κίνηση
+	Move back	Μία κίνηση πίσω
+	Move forward	Μία κίνηση μπροστά
+	New game with this position	Νέα παρτίδα με αυτή τη θέση
+	Next diagram	Επόμενο διάγραμμα
+	Next tool of {group}	Επόμενο εργαλείο: {group}
+	Next variation	Επόμενη παραλλαγή
+	No chapter, game or exercise was found in the book.	Δεν βρέθηκε κανένα κεφάλαιο, παρτίδα ή άσκηση στο βιβλίο.
+	No exercise sheet was written	Δεν γράφτηκε φύλλο ασκήσεων
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Καμία άσκηση για το φύλλο: τα αριθμημένα διαγράμματα των επιλεγμένων σελίδων δεν έχουν θέση εκκίνησης ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Καμία άσκηση για το φύλλο: οι επιλεγμένες σελίδες δεν έχουν αριθμημένο διάγραμμα.
+	No move yet: the start of the game.	Καμία κίνηση ακόμη: η αρχή της παρτίδας.
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Μη νόμιμη θέση ({reason}): διορθώστε τη στον επεξεργαστή διαγράμματος για να παίξετε κινήσεις σε αυτή.
+	Not a legal position: {reason}	Μη νόμιμη θέση: {reason}
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Δεν προστέθηκαν: {n}. Ένα έγγραφο φυλάσσει έως {max} παρτίδες: αποθηκεύστε κάποιες ως PGN και διαγράψτε τες για να κάνετε χώρο.
+	Not confirmed	Μη επιβεβαιωμένο
+	Not kept, they last only until the document is closed.	Αν δεν φυλαχτούν, διαρκούν μόνο μέχρι να κλείσει το έγγραφο.
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Δεν έγινε κατανοητό. Πληκτρολογήστε μια κίνηση (Nf3, e2e4) ή p, u, s, f e, r 4, βέλος e2e4 κόκκινο, κύκλος d5.
+	Nothing to export: an illegal position has no game.	Τίποτα για εξαγωγή: μια μη νόμιμη θέση δεν έχει παρτίδα.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Δεν σχεδιάστηκε τίποτα στο PDF: η διόρθωση δεν φυλάχτηκε ({e}).
+	Only the first {n} of the page's {total} images were looked at.	Εξετάστηκαν μόνο οι πρώτες {n} από τις {total} εικόνες της σελίδας.
+	Original diagram, page {p}, diagram {n}	Πρωτότυπο διάγραμμα, σελίδα {p}, διάγραμμα {n}
+	PGN edited	Επεξεργασμένο PGN
+	PGN — exercises	PGN — ασκήσεις
+	Pages not read yet: {n} (counted when exported)	Σελίδες που δεν διαβάστηκαν ακόμη: {n} (μετρώνται κατά την εξαγωγή)
+	Pages: {n}	Σελίδες: {n}
+	Per page	Ανά σελίδα
+	Previous diagram	Προηγούμενο διάγραμμα
+	Previous variation	Προηγούμενη παραλλαγή
+	Quit without saving	Έξοδος χωρίς αποθήκευση
+	Rank {rank}: empty	Οριζόντια {rank}: κενή
+	Rank {rank}: {pieces}	Οριζόντια {rank}: {pieces}
+	Read with OCR	Ανάγνωση με OCR
+	Reading the book for its bookmarks: page {done} of {of}	Ανάγνωση του βιβλίου για τους σελιδοδείκτες: σελίδα {done} από {of}
+	Reading the book for its bookmarks…	Ανάγνωση του βιβλίου για τους σελιδοδείκτες…
+	Reading was stopped: no bookmark was added.	Η ανάγνωση διακόπηκε: δεν προστέθηκε κανένας σελιδοδείκτης.
+	Redraw in the PDF?	Επανασχεδίαση στο PDF;
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Ο έλεγχος εξήχθη στο {path} (διορθώσεις: {corrections}, επιλογές: {decisions}, παρτίδες: {games}). Τα σχόλια των παρτίδων μπορεί να περιέχουν κείμενο του βιβλίου: κρατήστε το αρχείο για δική σας χρήση.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Ο έλεγχος εισήχθη από το {name} (διορθώσεις: {corrections}, επιλογές: {decisions}, παρτίδες: {games}).
+	Save them as they are	Αποθήκευση ως έχουν
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Δεν ήταν δυνατή η ανάγνωση των αποθηκευμένων PGN βιβλίων ({why}). Παραμερίζονται στην επόμενη αποθήκευση, και από τότε φυλάσσονται τα νέα.
+	Saved by a newer PdfCraft: these games are only read here.	Αποθηκεύτηκαν από νεότερο PdfCraft: εδώ αυτές οι παρτίδες μόνο διαβάζονται.
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Δεν ήταν δυνατή η ανάγνωση των αποθηκευμένων διορθώσεων διαγραμμάτων ({why}). Παραμερίζονται στην επόμενη αποθήκευση, και από τότε φυλάσσονται οι νέες διορθώσεις.
+	Search threads	Νήματα αναζήτησης
+	Show the game on the board again.	Εμφάνιση ξανά της παρτίδας της σκακιέρας.
+	Show the page (F6)	Εμφάνιση της σελίδας (F6)
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Ορισμένες αποθηκευμένες διορθώσεις διαγραμμάτων δεν διαβάστηκαν ({why})· οι υπόλοιπες χρησιμοποιούνται, και το {name} διατηρείται, δεν διαγράφεται ποτέ.
+	Start again from the standard position.	Νέα αρχή από την αρχική θέση.
+	Start of the game	Αρχή της παρτίδας
+	Stop	Διακοπή
+	The board is empty.	Η σκακιέρα είναι κενή.
+	The board is in the column beside.	Η σκακιέρα είναι στη διπλανή στήλη.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Η σκακιέρα δείχνει μη νόμιμη θέση: διορθώστε τη πρώτα στον επεξεργαστή διαγράμματος.
+	The book's PGN couldn't be saved: {e}	Δεν ήταν δυνατή η αποθήκευση του PGN του βιβλίου: {e}
+	The book's alignment was undone.	Η ευθυγράμμιση του βιβλίου αναιρέθηκε.
+	The book's bookmarks	Οι σελιδοδείκτες του βιβλίου
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Τα αριθμημένα διαγράμματα του βιβλίου σε νέο PDF για εκτύπωση, 4, 6 ή 9 ανά σελίδα, με τις λύσεις στο τέλος.
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Τα αριθμημένα διαγράμματα του βιβλίου με τις λύσεις τους, ως τυπικό PGN προβλημάτων.
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Οι αλλαγές που δεν έχουν επιβεβαιωθεί ακόμη απορρίπτονται επίσης. Το PDF δεν αλλάζει.
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Το σκάκι αυτού του κρυπτογραφημένου εγγράφου δεν φυλάσσεται, όπως ορίσατε: δεν μπορεί να εξαχθεί έλεγχος από αυτό ούτε να εισαχθεί σε αυτό.
+	The comments of the move shown, under the moves	Τα σχόλια της εμφανιζόμενης κίνησης, κάτω από τις κινήσεις
+	The document can't be read for editing, so its images and paths were not looked at.	Το έγγραφο δεν μπορεί να διαβαστεί για επεξεργασία, οπότε οι εικόνες και οι διαδρομές του δεν εξετάστηκαν.
+	The document changed since it was read: make its bookmarks again.	Το έγγραφο άλλαξε από τότε που διαβάστηκε: δημιουργήστε ξανά τους σελιδοδείκτες του.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Το έγγραφο έχει {n} παρτίδες, το μέγιστο που φυλάσσει: από εδώ και πέρα δεν ξεκινά καμία παρτίδα.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Το φύλλο ασκήσεων δεν μπορεί να γραφτεί πάνω σε ανοιχτό PDF: επιλέξτε άλλο όνομα.
+	The export was stopped: nothing was written.	Η εξαγωγή διακόπηκε: δεν γράφτηκε τίποτα.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Η γραμματοσειρά {font} μοιάζει με σκακιστική αλλά δεν υπάρχει στον κατάλογο· το κείμενό της κρατήθηκε όπως εξάγεται.
+	The frames around text were not looked for: {e}	Τα πλαίσια γύρω από το κείμενο δεν αναζητήθηκαν: {e}
+	The game on the board has moves. Put this position:	Η παρτίδα στη σκακιέρα έχει κινήσεις. Να τοποθετηθεί αυτή η θέση:
+	The game on the board keeps its moves.	Η παρτίδα στη σκακιέρα κρατά τις κινήσεις της.
+	The game starts at move:	Η παρτίδα ξεκινά από την κίνηση:
+	The games of the list as a book, a page each, with their diagrams.	Οι παρτίδες της λίστας ως βιβλίο, μία σε κάθε σελίδα, με τα διαγράμματά τους.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Το γενικό OCR απέτυχε ({e})· ο αναγνώστης γλύφων διάβασε και το πεζό κείμενο.
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Η γλώσσα στην οποία γράφεται η εξαγωγή και περιγράφει τα διαγράμματά της. Διορθώστε τη όταν το βιβλίο διαβάστηκε ως άλλη γλώσσα.
+	The lines set bolder were not looked for: {e}	Οι γραμμές με εντονότερα στοιχεία δεν αναζητήθηκαν: {e}
+	The original or the position read	Το πρωτότυπο ή η θέση που διαβάστηκε
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Η σελίδα δεν αποδόθηκε σε {wanted} dpi για ανάγνωση ({e})· διαβάστηκε σε {read} dpi.
+	The page couldn't be rendered for chess OCR: {e}	Η σελίδα δεν αποδόθηκε για το OCR σκακιού: {e}
+	The page draws more paths than are looked at; the rest were skipped.	Η σελίδα σχεδιάζει περισσότερες διαδρομές από όσες εξετάζονται· οι υπόλοιπες παραλείφθηκαν.
+	The page has no visible area; it is left out.	Η σελίδα δεν έχει ορατή περιοχή· παραλείπεται.
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Η σελίδα είναι πολύ μεγάλη για απόδοση σε {wanted} dpi· τα διαγράμματά της διαβάστηκαν σε {read} dpi.
+	The page's diagrams couldn't be read; they are left out.	Τα διαγράμματα της σελίδας δεν διαβάστηκαν· παραλείπονται.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Οι παράγραφοι της σελίδας δεν διαβάστηκαν ({e})· οι γραμμές της ομαδοποιήθηκαν κατά τα διάστιχα.
+	The page's paths couldn't be read: {e}	Οι διαδρομές της σελίδας δεν διαβάστηκαν: {e}
+	The page's picture of this diagram shows once its page is drawn.	Η εικόνα αυτού του διαγράμματος από τη σελίδα εμφανίζεται μόλις σχεδιαστεί η σελίδα του.
+	The page's text couldn't be read: {e}	Το κείμενο της σελίδας δεν διαβάστηκε: {e}
+	The rest of each is written as a comment at the move where its reading stopped.	Το υπόλοιπο της καθεμίας γράφεται ως σχόλιο στην κίνηση όπου σταμάτησε η ανάγνωσή της.
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Οι λύσεις στο τέλος, με τη σειρά των αριθμών. Ένα διάγραμμα του οποίου η λύση δεν διαβάστηκε το αναφέρει.
+	The variation above	Η παραλλαγή από πάνω
+	The variation below	Η παραλλαγή από κάτω
+	The words set in bold were not looked for: {e}	Οι λέξεις με έντονα στοιχεία δεν αναζητήθηκαν: {e}
+	The work stopped on an internal error.	Η εργασία σταμάτησε λόγω εσωτερικού σφάλματος.
+	The work stopped on an internal error: {why}	Η εργασία σταμάτησε λόγω εσωτερικού σφάλματος: {why}
+	There is nothing to export yet: this document keeps no correction, choice or game.	Δεν υπάρχει ακόμη τίποτα για εξαγωγή: αυτό το έγγραφο δεν φυλάσσει καμία διόρθωση, επιλογή ή παρτίδα.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Αυτές οι παρτίδες σκακιού αποθηκεύτηκαν από νεότερο PdfCraft (μορφή {v}): αυτό εδώ μόνο τις διαβάζει και δεν αποθηκεύει αυτόματα τις αλλαγές που γίνονται εδώ. Αποθηκεύστε τες με την Αποθήκευση όλων των παρτίδων ως PGN… ώστε να μη χαθεί τίποτα.
+	This engine does not take: {names}	Αυτή η μηχανή δεν δέχεται: {names}
+	This page couldn't be read: {e}	Αυτή η σελίδα δεν διαβάστηκε: {e}
+	Title of the bookmark	Τίτλος του σελιδοδείκτη
+	Tools panel collapsed	Ο πίνακας Εργαλεία συμπτύχθηκε
+	Type a move	Πληκτρολόγηση κίνησης
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Πληκτρολογήστε μια κίνηση (Nf3, e4, e2e4) και Enter, ή: p τα κομμάτια, u η τελευταία κίνηση, s ποιος παίζει, f e μια στήλη, r 4 μια οριζόντια, βέλος e2e4 κόκκινο, κύκλος d5. Το M σας φέρνει εδώ.
+	White has more extra pieces than missing pawns to promote	τα λευκά έχουν περισσότερα επιπλέον κομμάτια από τα πιόνια που λείπουν για προαγωγή
+	White has more than 16 pieces	τα λευκά έχουν περισσότερα από 16 κομμάτια
+	White has more than 8 pawns	τα λευκά έχουν περισσότερα από 8 πιόνια
+	White has more than one king	τα λευκά έχουν περισσότερους από έναν βασιλιά
+	White is in check, but it is Black's turn	τα λευκά είναι σε σαχ, αλλά παίζουν τα μαύρα
+	White may castle, but its king or rook has left its square	τα λευκά μπορούν να κάνουν ροκέ, αλλά ο βασιλιάς ή ο πύργος τους έχει φύγει από το τετράγωνό του
+	White's king is in a double check no move could give	ο λευκός βασιλιάς είναι σε διπλό σαχ που καμία κίνηση δεν θα μπορούσε να δώσει
+	White's king is in check from more than two pieces	ο λευκός βασιλιάς δέχεται σαχ από περισσότερα από δύο κομμάτια
+	White's king is missing	λείπει ο λευκός βασιλιάς
+	With the solutions	Με τις λύσεις
+	Words (king g1)	Λέξεις (βασιλιάς g1)
+	Your games, linked first: {n}	Οι παρτίδες σας, συνδεδεμένες πρώτες: {n}
+	a pawn stands on the first or the eighth rank	ένα πιόνι βρίσκεται στην πρώτη ή στην όγδοη οριζόντια
+	ambiguous	διφορούμενη
+	caption	λεζάντα
+	chess-font glyphs that couldn't be resolved: {n}	γλύφοι σκακιστικής γραμματοσειράς που δεν αναγνωρίστηκαν: {n}
+	exercises	ασκήσεις
+	from the book's text	από το κείμενο του βιβλίου
+	illegal	αντικανονική
+	mates in {m}	ματ σε {m}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	κινήσεις με ένα αδέσποτο σύμβολο στη θέση του κομματιού τους, όπου ένα παλαιότερο επίπεδο OCR έχασε τα σύμβολα κομματιών: {n}
+	no piece model is loaded	δεν έχει φορτωθεί μοντέλο κομματιών
+	no position to start from	χωρίς θέση εκκίνησης
+	no solution read	δεν διαβάστηκε λύση
+	not checked	μη ελεγμένη
+	not checked: {n}	μη ελεγμένες: {n}
+	not reached	δεν επιτεύχθηκε
+	out of sequence	εκτός σειράς
+	past the sheet's {max}	πέρα από τα {max} του φύλλου
+	solution not read: {n}	λύσεις που δεν διαβάστηκαν: {n}
+	supposes castling is allowed	υποθέτει ότι επιτρέπεται το ροκέ
+	the board is empty	η σκακιέρα είναι κενή
+	the diagram lies outside the page raster	το διάγραμμα βρίσκεται έξω από το ράστερ της σελίδας
+	the diagram's box or corners are not finite numbers on this page	το πλαίσιο ή οι γωνίες του διαγράμματος δεν είναι πεπερασμένοι αριθμοί σε αυτή τη σελίδα
+	the diagram's corners do not form a quadrilateral	οι γωνίες του διαγράμματος δεν σχηματίζουν τετράπλευρο
+	the document is closed	το έγγραφο είναι κλειστό
+	the en-passant square does not fit the pawns	το τετράγωνο αν πασάν δεν ταιριάζει με τα πιόνια
+	the kings stand next to each other	οι βασιλιάδες στέκονται ο ένας δίπλα στον άλλον
+	the page has more diagrams than are read on one page	η σελίδα έχει περισσότερα διαγράμματα από όσα διαβάζονται σε μία σελίδα
+	the page has no text layer	η σελίδα δεν έχει επίπεδο κειμένου
+	the page raster's resolution is not a positive number	η ανάλυση του ράστερ της σελίδας δεν είναι θετικός αριθμός
+	the piece model failed: {e}	το μοντέλο κομματιών απέτυχε: {e}
+	the piece model's output is not a probability matrix: {e}	η έξοδος του μοντέλου κομματιών δεν είναι πίνακας πιθανοτήτων: {e}
+	the text layer extracts as replacement characters	το επίπεδο κειμένου εξάγεται ως χαρακτήρες αντικατάστασης
+	the text layer has two-byte codes with no Unicode text	το επίπεδο κειμένου έχει κωδικούς δύο byte χωρίς κείμενο Unicode
+	the text layer is invisible text over an image of the page: another program's OCR	το επίπεδο κειμένου είναι αόρατο κείμενο πάνω από εικόνα της σελίδας: OCR άλλου προγράμματος
+	the text layer's Unicode map is dead	ο χάρτης Unicode του επιπέδου κειμένου είναι νεκρός
+	variation {n}	παραλλαγή {n}
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	όσα αποθηκεύτηκαν πριν δεν διαβάστηκαν και παραμερίζονται πρώτα· δοκιμάστε ξανά σε λίγο
+	with comment	με σχόλιο
+	{file} file: empty	Στήλη {file}: κενή
+	{file} file: {pieces}	Στήλη {file}: {pieces}
+	{move} is not a move.	Το {move} δεν είναι κίνηση.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	Το {name} είναι ο έλεγχος άλλου βιβλίου ({pages} σελίδες· αυτό έχει {here}). Να εισαχθεί σε αυτό το έγγραφο παρ’ όλα αυτά;
+	{name}: stopped at {move}	{name}: σταμάτησε στο {move}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	Το {p}% του ύψους της σελίδας έχει υπερβολικά πολύ λεπτό μελάνι για να είναι κείμενο (εικόνα ή σκονισμένη σάρωση)· αυτές οι λωρίδες δεν διαβάστηκαν.
+	{why} (chess OCR needs the chess-glyphs model)	{why} (το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs)
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	Το «{name}» είναι κρυπτογραφημένο. Η εφαρμογή φυλάσσει τις διορθώσεις διαγραμμάτων, το PGN του βιβλίου και τις παρτίδες σκακιού κάθε εγγράφου χωρίς κρυπτογράφηση σε αυτόν τον υπολογιστή, ώστε να επιστρέφουν όταν ανοίγετε ξανά το έγγραφο· τα δείγματα χαρακτήρων πηγαίνουν στον φάκελο που επιλέχθηκε για αυτά.
+progress bar	Progress	Πρόοδος
