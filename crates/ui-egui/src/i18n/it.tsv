@@ -3872,3 +3872,23 @@ progress bar	Progress	Avanzamento
 	Illegal move: {move} can't be played here.	Mossa illegale: {move} non si può giocare qui.
 	{move} is not a move.	{move} non è una mossa.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Freccia da {from}: Alt+clic sulla casa di arrivo, o di nuovo su questa per cerchiarla.
+	exercises	esercizi
+	Exercise sheet (PDF)	Foglio di esercizi (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	I diagrammi numerati del libro in un nuovo PDF da stampare, 4, 6 o 9 per pagina, con le soluzioni alla fine.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Nessun esercizio da mettere sul foglio: i diagrammi numerati delle pagine scelte non hanno una posizione di partenza ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Nessun esercizio da mettere sul foglio: le pagine scelte non hanno alcun diagramma numerato.
+	Exercises: counting…	Esercizi: conteggio…
+	Exercises: counted when exported	Esercizi: contati all'esportazione
+	Pages not read yet: {n} (counted when exported)	Pagine non ancora lette: {n} (contate all'esportazione)
+	Exercises: {n}	Esercizi: {n}
+	solution not read: {n}	soluzione non letta: {n}
+	no position to start from	nessuna posizione di partenza
+	no solution read	nessuna soluzione letta
+	Left out: {n} ({why})	Esclusi: {n} ({why})
+	past the sheet's {max}	oltre i {max} del foglio
+	Per page	Per pagina
+	Diagrams a page: {n} ({grid})	Diagrammi per pagina: {n} ({grid})
+	With the solutions	Con le soluzioni
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Le soluzioni alla fine, nell'ordine dei numeri. Un diagramma la cui soluzione non è stata letta lo dice.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Il foglio di esercizi non può essere scritto sopra un PDF aperto: scegli un altro nome.
+	No exercise sheet was written	Nessun foglio di esercizi è stato scritto
