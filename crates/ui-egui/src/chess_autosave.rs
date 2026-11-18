@@ -442,7 +442,9 @@ impl Store {
         }
     }
 
-    /// Wait until the queued writes have ended, at most `timeout`. Whether they all have.
+    /// Wait until the queued writes have ended, at most `timeout`. Whether they all have (on the
+    /// web, which writes nothing in the background, at once).
+    #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
     pub(crate) fn settle(&self, timeout: std::time::Duration) -> bool {
         match self {
             #[cfg(not(target_arch = "wasm32"))]

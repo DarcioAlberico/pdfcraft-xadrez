@@ -552,7 +552,8 @@ impl PdfCraftApp {
     }
 
     /// Wait for the In the book search's jobs to end, at most `timeout` each (tests that run them
-    /// on workers). Whether none is running.
+    /// on workers). Whether none is running. Desktop only: on the web the jobs run inline.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn wait_in_book(&mut self, timeout: std::time::Duration) -> bool {
         for _ in 0..4 {
             if let Some((_, job)) = &self.chess.in_book.reading {

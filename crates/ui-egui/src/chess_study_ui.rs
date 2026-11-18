@@ -26,9 +26,9 @@ use std::path::PathBuf;
 #[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
-use egui::{Color32, TextureHandle, vec2};
+use egui::{Rect, TextureHandle, vec2};
 #[cfg(not(target_arch = "wasm32"))]
-use egui::{Rect, Stroke};
+use egui::{Color32, Stroke};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_engine::chess::pdfcraft_chess::fen::Position;
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
