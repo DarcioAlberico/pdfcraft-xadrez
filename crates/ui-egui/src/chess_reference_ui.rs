@@ -314,7 +314,7 @@ fn cut_note(index: &ReferenceIndex) -> Option<String> {
     index.cut()?;
     Some(crate::i18n::fmt(
         tl!("The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book."),
-        &[("moves", &index.moves().to_string())],
+        &[("moves", &crate::i18n::number(index.moves()))],
     ))
 }
 
@@ -663,7 +663,7 @@ impl PdfCraftApp {
         self.refresh_chess_kinds(id);
         let mut note = crate::i18n::fmt(
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
-            &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
+            &[("name", name), ("games", &crate::i18n::number(summary.games)), ("moves", &crate::i18n::number(summary.moves))],
         );
         if let Some(latin) = crate::chess_collection::encoding_note(encoding) {
             note.push_str(" · ");

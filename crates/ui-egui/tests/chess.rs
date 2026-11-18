@@ -281,7 +281,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     assert!(list_is_current(&h));
     assert!(!Arc::ptr_eq(&h.state().chess.results().unwrap().pages[0], &first), "the page changed is read again");
     assert_eq!(diagrams(&h), 2);
-    assert!(h.query_by_label("The document changed since the scan. Scan again to update the diagrams.").is_none());
+    assert!(h.query_by_label("The document changed since its diagrams were detected. Detect them again to update them.").is_none());
     // The boxes are there: clicking one picks it.
     let at = on_page(&h, 140.0, 660.0);
     h.hover_at(at);
@@ -1520,16 +1520,16 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
     std::fs::create_dir_all(&dir).unwrap();
     let store = dir.join("reference");
     let pgn: String = (1..=4097).map(|n| format!("[Event \"Game {n}\"]\n\n1. e4 *\n\n")).collect();
-    let cut = "The book's PGN is larger than PdfCraft indexes: only its first 4096 moves are linked to the book.";
+    let cut = "The book's PGN is larger than PdfCraft indexes: only its first 4,096 moves are linked to the book.";
     {
         let mut h = book_pgn_harness("chapter.pdf", None, chapter(), store.clone());
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "big.pgn", pgn.as_bytes());
         h.run_steps(2);
         let said = h.state().said().unwrap_or_default().to_owned();
-        assert!(said.starts_with("Book's PGN big.pgn: 4096 games, 4096 moves."), "{said}");
+        assert!(said.starts_with("Book's PGN big.pgn: 4,096 games, 4,096 moves."), "{said}");
         assert!(said.contains(cut), "{said}");
-        h.get_by_label("Book's PGN: big.pgn (4096 games)");
+        h.get_by_label("Book's PGN: big.pgn (4,096 games)");
     }
     // Opened again (the Chess panel not shown, whose opening may put up a notice of its own).
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
@@ -1552,19 +1552,25 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
 /// folder's listing alone. "📚Livro.pdf" beside "Livro.pgn" is offered it; a PDF whose folder
 /// holds one PGN of another name is offered that one; a folder named `x.pgn` is not a PGN; and a
 /// folder of more entries than the 4,096 read offers nothing as the only one (it may hold another
-/// PGN past them) and does not hang.
+/// PGN past them) and does not hang. In the same crowded folder, a PGN of the PDF's name among
+/// the entries read is offered (plan A9-I7b2: the search did run there). That control is on
+/// Windows only, where NTFS lists by name (`book.pgn` comes among the first); elsewhere the order
+/// is the file system's.
 #[test]
 fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
     let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
     let offer = |name: &str| format!("{name} sits beside this PDF. Use it as the book's PGN?");
     // (case, the PDF's name, the PGNs beside it, how many other files, the PGN offered)
     type Case = (&'static str, &'static str, &'static [&'static str], usize, Option<&'static str>);
-    let cases: [Case; 4] = [
+    let mut cases: Vec<Case> = vec![
         ("emoji", "📚Livro.pdf", &["Livro.pgn"], 0, Some("Livro.pgn")),
         ("only", "book.pdf", &["games.pgn"], 0, Some("games.pgn")),
         ("folder", "book.pdf", &[], 0, None),
         ("crowded", "book.pdf", &["games.pgn"], 4_100, None),
     ];
+    if cfg!(windows) {
+        cases.push(("crowded-named", "book.pdf", &["games.pgn", "book.pgn"], 4_100, Some("book.pgn")));
+    }
     for (case, pdf_name, pgns, crowd, offered) in cases {
         let dir = corrections_dir(&format!("pgn-beside-{case}"));
         std::fs::create_dir_all(&dir).unwrap();
@@ -1591,6 +1597,32 @@ fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
         assert!(started.elapsed() < std::time::Duration::from_secs(30), "{case}: {:?}", started.elapsed());
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+/// Plan A9-I7b2: a document that keeps a book's PGN never has its folder looked through — the
+/// rail's chess hint started a search for it, which the offer then hid — while one that keeps
+/// none does.
+#[test]
+fn a_document_keeping_a_books_pgn_has_its_folder_not_looked_through() {
+    let dir = corrections_dir("pgn-beside-kept");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join("games.pgn"), RUY_PGN).unwrap();
+    let path = pdf.to_string_lossy().into_owned();
+    {
+        let mut h = book_pgn_harness("book.pdf", Some(path.clone()), bytes.clone(), dir.join("reference"));
+        let id = h.state().views[0].id;
+        assert!(h.state().sibling_pgn_looked_for(id), "no PGN kept yet: looked through");
+        h.state_mut().set_book_pgn(id, "kept.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        h.get_by_label("Book's PGN: kept.pgn (1 games)");
+    }
+    let h = book_pgn_harness("book.pdf", Some(path), bytes, dir.join("reference"));
+    let id = h.state().views[0].id;
+    assert!(!h.state().sibling_pgn_looked_for(id), "it keeps one: not looked through");
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 /// Plan A9-I7b: with the jobs on workers, as in the app, the folder beside the PDF is looked

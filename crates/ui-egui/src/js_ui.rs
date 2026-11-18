@@ -260,9 +260,136 @@ fn reading_mode_label(mode: &str) -> &'static str {
     }
 }
 
-/// Preferences: interface language and size, appearance, identity and JavaScript. Returns `true` to close.
-pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+/// Preferences' sections, in the order they are drawn: the side index lists them (plan A9-I14).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum PrefSection {
+    General,
+    Appearance,
+    Documents,
+    ReadingColours,
+    Identity,
+    FillSign,
+    DateFormat,
+    Chess,
+    JavaScript,
+}
+
+impl PrefSection {
+    pub(crate) const ALL: [PrefSection; 9] = [
+        PrefSection::General,
+        PrefSection::Appearance,
+        PrefSection::Documents,
+        PrefSection::ReadingColours,
+        PrefSection::Identity,
+        PrefSection::FillSign,
+        PrefSection::DateFormat,
+        PrefSection::Chess,
+        PrefSection::JavaScript,
+    ];
+
+    /// The section's name in the index, as its heading says it.
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            PrefSection::General => tl!("General"),
+            PrefSection::Appearance => tl_ctx!("theme", "Appearance"),
+            PrefSection::Documents => tl!("Documents and view"),
+            PrefSection::ReadingColours => tl!("Reading colours"),
+            PrefSection::Identity => tl!("Identity"),
+            PrefSection::FillSign => tl!("Fill & Sign"),
+            PrefSection::DateFormat => tl!("Date format"),
+            PrefSection::Chess => tl!("Chess"),
+            PrefSection::JavaScript => "JavaScript",
+        }
+    }
+}
+
+/// Where each section starts in the scrolled body this frame, and the one the index asked to go to.
+struct Anchors {
+    tops: Vec<(PrefSection, f32)>,
+    go_to: Option<PrefSection>,
+}
+
+impl Anchors {
+    /// `section` starts here: scroll to it when the index asked for it.
+    fn mark(&mut self, ui: &mut egui::Ui, section: PrefSection) {
+        let top = ui.cursor().top();
+        self.tops.push((section, top));
+        if self.go_to == Some(section) {
+            self.go_to = None;
+            let width = ui.available_width().max(1.0);
+            ui.scroll_to_rect(egui::Rect::from_min_size(egui::pos2(ui.cursor().left(), top), egui::vec2(width, 24.0)), Some(Align::TOP));
+        }
+    }
+}
+
+/// Width of Preferences' side index.
+const INDEX_WIDTH: f32 = 160.0;
+
+/// Width of Preferences' settings column.
+const BODY_WIDTH: f32 = 600.0;
+
+/// Preferences (plan A9-I14, finding A6-22): a side index of the sections, which takes any one a
+/// click away, the settings scrolling beside it, and Close under both, never scrolled away.
+/// Returns `true` to close.
+pub(crate) fn preferences(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+    // The dialog as wide as the index and the settings, or the window less a margin.
+    let room = ui.ctx().content_rect().width() - 48.0;
+    let total = (INDEX_WIDTH + BODY_WIDTH + 40.0).min(room).max(INDEX_WIDTH + 200.0);
+    let body_width = total - INDEX_WIDTH - 40.0;
+    ui.set_width(total);
     ui.label(egui::RichText::new(tl!("Preferences")).font(theme::semibold(18.0)));
+    let ids = (ui.id().with("prefs-go-to"), ui.id().with("prefs-in-view"));
+    let in_view: PrefSection = ui.data(|d| d.get_temp(ids.1)).unwrap_or(PrefSection::General);
+    // The window's height less the title, Close and the dialog's margins.
+    let max = (ui.ctx().content_rect().height() - 200.0).max(160.0);
+    let mut anchors = Anchors { tops: Vec::new(), go_to: ui.data(|d| d.get_temp(ids.0)) };
+    ui.horizontal_top(|ui| {
+        ui.allocate_ui_with_layout(egui::vec2(INDEX_WIDTH, max), Layout::top_down(Align::Min), |ui| {
+            ui.set_width(INDEX_WIDTH);
+            for section in PrefSection::ALL {
+                let r = ui.add(egui::Button::selectable(section == in_view, section.name()).min_size(egui::vec2(INDEX_WIDTH, 26.0)));
+                if r.clicked() {
+                    anchors.go_to = Some(section);
+                }
+            }
+        });
+        // A rule between the two, drawn once the settings' height is known: a separator here would
+        // be as tall as the space left on the screen, and the dialog with it.
+        ui.add_space(12.0);
+        // A column of its own: the settings lay out top-down, as they did on their own.
+        let out = ui
+            .allocate_ui_with_layout(egui::vec2(body_width + 16.0, max), Layout::top_down(Align::Min), |ui| {
+                egui::ScrollArea::vertical().id_salt("prefs-body").max_height(max).show(ui, |ui| {
+                    ui.set_width(body_width);
+                    preferences_body(ui, app, t, &mut anchors);
+                })
+            })
+            .inner;
+        let rule = out.inner_rect.left() - 6.5;
+        ui.painter().vline(rule, out.inner_rect.y_range(), ui.visuals().widgets.noninteractive.bg_stroke);
+        // The section in view: the last one whose start is above the view's top quarter.
+        let line = out.inner_rect.top() + out.inner_rect.height() / 4.0;
+        let shown = anchors.tops.iter().take_while(|(_, top)| *top <= line).last().map_or(PrefSection::General, |(s, _)| *s);
+        ui.data_mut(|d| d.insert_temp(ids.1, shown));
+    });
+    // A jump asked for this frame is taken on the next one, when the body is drawn again.
+    ui.data_mut(|d| match anchors.go_to {
+        Some(section) => {
+            d.insert_temp(ids.0, section);
+        }
+        None => d.remove::<PrefSection>(ids.0),
+    });
+    if anchors.go_to.is_some() {
+        ui.ctx().request_repaint();
+    }
+    ui.add_space(10.0);
+    buttons(ui, "Close", &[]).is_some()
+}
+
+/// Preferences' settings: interface language and size, appearance, documents, reading colours,
+/// identity, Fill & Sign, the date format, chess and JavaScript, each section marked for the index.
+fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens, at: &mut Anchors) {
+    at.mark(ui, PrefSection::General);
     ui.horizontal(|ui| {
         ui.label(tl!("Interface language"));
         let selected = crate::i18n::Lang::from_code(&app.language).map_or(tl!("Auto"), crate::i18n::Lang::name);
@@ -323,8 +450,10 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
         }
     });
     ui.add_space(8.0);
+    at.mark(ui, PrefSection::Appearance);
     crate::appearance::preferences_section(ui, app, t);
     ui.add_space(8.0);
+    at.mark(ui, PrefSection::Documents);
     ui.label(egui::RichText::new(tl!("Documents and view")).font(theme::semibold(13.0)));
     ui.horizontal(|ui| {
         ui.label(tl!("Default workspace mode"));
@@ -404,6 +533,7 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
     // Reading colours (Acrobat: Replace Document Colors): solid text and line-art paints are
     // remapped while rendering, and the page clears to the background colour. The preference
     // is app-wide: every open document follows it, and documents open with it.
+    at.mark(ui, PrefSection::ReadingColours);
     ui.label(egui::RichText::new(tl!("Reading colours")).font(theme::semibold(13.0)));
     ui.horizontal(|ui| {
         ui.label(tl!("Replace document colours"));
@@ -462,6 +592,7 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
     ui.label(egui::RichText::new(tl!("Colours are remapped while rendering; the document itself never changes.")).small().color(t.text_muted));
     ui.add_space(8.0);
     // Identity: the author of new comments (Acrobat: Preferences ▸ Identity).
+    at.mark(ui, PrefSection::Identity);
     ui.label(egui::RichText::new(tl!("Identity")).font(theme::semibold(13.0)));
     ui.horizontal(|ui| {
         let label = ui.label(tl!("Name on new comments"));
@@ -469,16 +600,20 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
     });
     ui.add(widgets::checkbox(&mut app.comment_prefs.hide_empty_highlight_hover, tl!("Hide hover previews for highlights without comment text")));
     ui.add_space(8.0);
+    at.mark(ui, PrefSection::FillSign);
     ui.label(egui::RichText::new(tl!("Fill & Sign")).font(theme::semibold(13.0)));
     ui.add(widgets::checkbox(&mut app.flatten_fill_sign_on_save, tl!("Flatten Fill & Sign when saving")));
     ui.label(
         egui::RichText::new(tl!("Text, marks and signatures become part of the page. Other comments stay editable.")).small().color(t.text_muted),
     );
     ui.add_space(8.0);
+    at.mark(ui, PrefSection::DateFormat);
     date_format(ui, app, t);
     ui.add_space(8.0);
     // Chess: the boards' theme (HC4), the piece sets (HC2), then where the user's chess models
     // come from (U4).
+    at.mark(ui, PrefSection::Chess);
+    ui.label(egui::RichText::new(tl!("Chess")).font(theme::semibold(15.0)));
     crate::chess_theme::preferences_section(ui, app, t);
     ui.add_space(8.0);
     crate::chess_pieces_ui::preferences_section(ui, app, t);
@@ -497,6 +632,7 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
     ui.add(widgets::checkbox(&mut app.chess.games.pgn_bom, tl!("Write PGN files with a byte order mark (BOM)")));
     ui.label(egui::RichText::new(tl!("Some Windows programs need the mark to read accents; most read PGN without it.")).small().color(t.text_muted));
     ui.add_space(8.0);
+    at.mark(ui, PrefSection::JavaScript);
     ui.label(egui::RichText::new("JavaScript").font(theme::semibold(13.0)));
     egui::Frame::new().fill(t.hover).corner_radius(egui::CornerRadius::same(6)).inner_margin(egui::Margin::same(10)).show(ui, |ui| {
         ui.set_width(ui.available_width());
@@ -510,8 +646,6 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
                 .color(t.text_muted),
         );
     });
-    ui.add_space(10.0);
-    buttons(ui, tl!("OK"), &[]).is_some()
 }
 
 /// Preferences ▸ Date format: a preset, or any pattern typed in, for Fill & Sign dates, and the

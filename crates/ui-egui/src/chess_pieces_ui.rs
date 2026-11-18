@@ -402,14 +402,37 @@ fn label(c: &Candidate) -> String {
     match c.kind {
         CandidateKind::Auto => tl!("Auto").to_owned(),
         CandidateKind::Geometric => tl!("Plain shapes").to_owned(),
+        CandidateKind::Shipped => shipped_name(&c.name).to_owned(),
         _ => c.name.clone(),
+    }
+}
+
+/// A shipped set's name in the interface's language (plan A9-I14, finding A6-22): the names that
+/// say what the pieces look like are translated; the sets' own names stay as their makers wrote
+/// them (Chessnut, RhosGFX, kiwen suwi, Firi, Bauhaus, Art Deco, Moves).
+fn shipped_name(name: &str) -> &str {
+    match name {
+        "Classic" => tl!("Classic"),
+        "Tokens" => tl!("Tokens"),
+        "Pixel Art" => tl!("Pixel Art"),
+        "Facets" => tl!("Facets"),
+        "Stained Glass" => tl!("Stained Glass"),
+        "Chubby" => tl!("Chubby"),
+        "Gothic" => tl!("Gothic"),
+        "Wood" => tl!("Wood"),
+        "Sketch" => tl!("Sketch"),
+        "Shapes" => tl!("Shapes"),
+        "Fantasy" => tl!("Fantasy"),
+        "Spatial" => tl!("Spatial"),
+        "Celtic" => tl!("Celtic"),
+        other => other,
     }
 }
 
 /// A set's author and licence, or where it is on disk.
 fn about(c: &Candidate) -> String {
     match (c.author, c.licence, &c.path) {
-        (Some(author), Some(licence), _) => format!("{} · {author} · {licence}", c.name),
+        (Some(author), Some(licence), _) => format!("{} · {author} · {licence}", label(c)),
         (_, _, Some(path)) => path.to_string_lossy().into_owned(),
         _ => String::new(),
     }
@@ -454,4 +477,17 @@ fn tile(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, picture: Option<&TextureHa
     let spoken = missing.map_or_else(|| name.clone(), |m| format!("{name}. {m}"));
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, usable, selected, &spoken));
     response
+}
+
+#[cfg(test)]
+mod tests {
+    /// Plan A9-I14 (finding A6-22): the shipped sets' common names are translated, their own names
+    /// stay. Before, every set was named in English ("Stained Glass" beside "Madeira").
+    #[test]
+    fn shipped_set_names_are_translated_and_own_names_kept() {
+        crate::i18n::set_current(crate::i18n::Lang::from_code("pt-br").expect("pt-br"));
+        let names: Vec<&str> = ["Stained Glass", "Wood", "Classic", "Chessnut", "RhosGFX", "Bauhaus"].into_iter().map(super::shipped_name).collect();
+        crate::i18n::set_current(crate::i18n::Lang::EN);
+        assert_eq!(names, ["Vitral", "Madeira", "Clássico", "Chessnut", "RhosGFX", "Bauhaus"]);
+    }
 }

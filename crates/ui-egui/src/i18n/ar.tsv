@@ -2713,8 +2713,7 @@ certificate	Version	الإصدار
 	Page properties	خصائص الصفحة
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	البحث عن مخططات الشطرنج
-	Chess diagrams panel	لوحة مخططات الشطرنج
+	Chess panel	لوحة الشطرنج
 	Chess	الشطرنج
 	Diagrams	المخططات
 	Chess diagrams	مخططات الشطرنج
@@ -2722,10 +2721,10 @@ certificate	Version	الإصدار
 	Scan all pages	البحث في كل الصفحات
 	Scanning for diagrams… page {d} of {t}	جارٍ البحث عن المخططات… الصفحة {d} من {t}
 	Scan this page or all pages to find the chess diagrams in this document.	ابحث في هذه الصفحة أو في كل الصفحات للعثور على مخططات الشطرنج في هذا المستند.
-	The document changed since the scan. Scan again to update the diagrams.	تغيّر المستند منذ البحث. ابحث مرة أخرى لتحديث المخططات.
+	The document changed since its diagrams were detected. Detect them again to update them.	تغيّر المستند منذ اكتشاف مخططاته. اكتشفها مرة أخرى لتحديثها.
 	The piece model couldn't be loaded: {e}	تعذّر تحميل نموذج القطع: {e}
 	No diagrams found.	لم يُعثر على مخططات.
-	This page couldn't be scanned: {e}	تعذّر فحص هذه الصفحة: {e}
+	The diagrams on this page couldn't be detected: {e}	تعذّر اكتشاف مخططات هذه الصفحة: {e}
 	Only the first {n} diagrams on this page are listed.	تُعرض أول {n} من مخططات هذه الصفحة فقط.
 	Diagram {n}	المخطط {n}
 	Position read	قُرئت الوضعية
@@ -2800,7 +2799,7 @@ chess side	Black	الأسود
 	{n} to review	للمراجعة: {n}
 	◀ Previous to review	◀ السابق للمراجعة
 	Open in lichess	فتح في lichess
-	Diagrams are already being scanned	البحث عن المخططات جارٍ بالفعل
+	Diagrams are already being detected	يجري اكتشاف المخططات بالفعل
 	Diagrams found: {n}	المخططات التي عُثر عليها: {n}
 	FEN copied	تم نسخ FEN
 # Chess ▸ Board: the analysis board panel.
@@ -2872,7 +2871,7 @@ chess side	Black	الأسود
 	That side can't be to move: the other king is in check.	لا يمكن أن يكون الدور لهذا الطرف: الملك الآخر في كش.
 	The FEN couldn't be read: {e}	تعذرت قراءة FEN: {e}
 	The PGN couldn't be read: {e}	تعذرت قراءة PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	لم يُقرأ هذا المخطط: امسح صفحته أولًا أو اضبط الوضع في المحرر.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	لم يُقرأ هذا المخطط بعد: اكتشف مخططات صفحته أولًا، أو اضبط وضعيته في المحرر.
 	White to move	دور الأبيض
 	White to move, in check	دور الأبيض، في كش
 # Chess ▸ Board: variations, annotations and game details.
@@ -3449,7 +3448,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	{n} arrows	{n} أسهم
 	1 ring	حلقة واحدة
 	{n} rings	{n} حلقات
-	The comment on the move shown, large under the board	تعليق النقلة المعروضة بخط كبير تحت الرقعة
+	Show the move's comment in large type under the board	عرض تعليق النقلة بخط كبير تحت الرقعة
 	Running text	نص متصل
 	Columns	أعمدة
 	Text size	حجم النص
@@ -3458,7 +3457,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	Large	كبير
 	Previous variation (Page Up)	التفريع السابق (Page Up)
 	Next variation (Page Down)	التفريع التالي (Page Down)
-	A move the pointer rests on shows its position	النقلة التي يستقر عليها المؤشر تعرض وضعها
+	Show a move's position when the pointer rests on it	عرض وضعية النقلة عند توقف المؤشر عليها
 	Position after {move}	الوضع بعد {move}
 	To review	للمراجعة
 	With an error	به خطأ
@@ -3682,7 +3681,6 @@ castling	long	طويل
 	{name} (no page discusses it)	{name} (لا تتناولها أي صفحة)
 	Go to its page and put the game on the board.	الانتقال إلى صفحتها ووضع المباراة على الرقعة.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	رُبط الكتاب بـ PGN الخاص به: {linked} من {moves} نقلة ({recovered} مقروءة من PGN)، {conflict} متعارضة.
-	Link the whole book to its PGN	ربط الكتاب كله بـ PGN الخاص به
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	يلعب PGN الكتاب هذه النقلة من وضعية أخرى: تحقّق منها ثم استخدم نقلة PGN أو احتفظ بنقلة الكتاب.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN الكتاب في هذه الصفحة: {confirmed} مؤكدة، {recovered} مقروءة من PGN، {conflict} متعارضة ({open} للمراجعة).
 	You kept the book's move.	احتفظت بنقلة الكتاب.
@@ -3703,7 +3701,7 @@ castling	long	طويل
 	Corners	زوايا
 	Start outlined, end filled	البداية محددة والنهاية ممتلئة
 	Border and light fill	حدود وتعبئة خفيفة
-	Last move	آخر نقلة
+	Highlight the last move	تمييز آخر نقلة
 	Strength	الشدة
 	Import fonts…	استيراد خطوط…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	انسخ خطوط الشطرنج إلى مجلد الخطوط بجانب البرنامج: كل خط مخططات هو مجموعة قطع، وخط الرموز يكتب نقلات التصديرات.
@@ -3956,3 +3954,16 @@ progress bar	Progress	التقدم
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	الحلول في النهاية بترتيب الأرقام. المخطط الذي لم يُقرأ حله يذكر ذلك.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	لا يمكن كتابة ورقة التمارين فوق ملف PDF مفتوح: اختر اسمًا آخر.
 	No exercise sheet was written	لم تُكتب أي ورقة تمارين
+	Filled squares	مربعات ملوّنة
+	Classic	كلاسيكي
+	Tokens	رموز
+	Pixel Art	فن البكسل
+	Facets	أوجه
+	Stained Glass	زجاج معشّق
+	Chubby	ممتلئ
+	Gothic	قوطي
+	Sketch	رسم تخطيطي
+	Shapes	أشكال
+	Fantasy	خيال
+	Spatial	مجسّم
+	Celtic	سلتي

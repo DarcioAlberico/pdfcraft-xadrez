@@ -2432,8 +2432,7 @@ animation effects	Off	Kapalı
 	Page properties	Sayfa özellikleri
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Satranç diyagramlarını bul
-	Chess diagrams panel	Satranç diyagramları paneli
+	Chess panel	Satranç paneli
 	Chess	Satranç
 	Diagrams	Diyagramlar
 	Chess diagrams	Satranç diyagramları
@@ -2441,10 +2440,10 @@ animation effects	Off	Kapalı
 	Scan all pages	Tüm sayfalarda ara
 	Scanning for diagrams… page {d} of {t}	Diyagramlar aranıyor… Sayfa {d} / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Bu belgedeki satranç diyagramlarını bulmak için bu sayfada veya tüm sayfalarda arayın.
-	The document changed since the scan. Scan again to update the diagrams.	Belge aramadan sonra değişti. Diyagramları güncellemek için yeniden arayın.
+	The document changed since its diagrams were detected. Detect them again to update them.	Diyagramlar algılandıktan sonra belge değişti. Güncellemek için onları yeniden algılayın.
 	The piece model couldn't be loaded: {e}	Taş modeli yüklenemedi: {e}
 	No diagrams found.	Diyagram bulunamadı.
-	This page couldn't be scanned: {e}	Bu sayfa taranamadı: {e}
+	The diagrams on this page couldn't be detected: {e}	Bu sayfadaki diyagramlar algılanamadı: {e}
 	Only the first {n} diagrams on this page are listed.	Bu sayfadaki yalnızca ilk {n} diyagram listeleniyor.
 	Diagram {n}	Diyagram {n}
 	Position read	Konum okundu
@@ -2519,7 +2518,7 @@ chess side	Black	Siyah
 	{n} to review	Gözden geçirilecek: {n}
 	◀ Previous to review	◀ Önceki gözden geçirilecek
 	Open in lichess	lichess'te aç
-	Diagrams are already being scanned	Diyagramlar zaten aranıyor
+	Diagrams are already being detected	Diyagramlar zaten algılanıyor
 	Diagrams found: {n}	Bulunan diyagramlar: {n}
 	FEN copied	FEN kopyalandı
 # Chess ▸ Board: the analysis board panel.
@@ -2591,7 +2590,7 @@ chess side	Black	Siyah
 	That side can't be to move: the other king is in check.	Hamle o tarafta olamaz: diğer şah tehdit altında.
 	The FEN couldn't be read: {e}	FEN okunamadı: {e}
 	The PGN couldn't be read: {e}	PGN okunamadı: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Bu diyagram okunmadı: önce sayfasını tarayın ya da konumu düzenleyicide kurun.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Bu diyagram okunmadı: önce sayfasındaki diyagramları algılayın ya da konumunu düzenleyicide belirleyin.
 	White to move	Hamle beyazda
 	White to move, in check	Hamle beyazda, şah çekildi
 # Chess ▸ Board: variations, annotations and game details.
@@ -3169,7 +3168,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	{n} arrows	{n} ok
 	1 ring	1 halka
 	{n} rings	{n} halka
-	The comment on the move shown, large under the board	Gösterilen hamlenin yorumu, tahtanın altında büyük
+	Show the move's comment in large type under the board	Hamlenin yorumunu tahtanın altında büyük yazıyla göster
 	Running text	Akan metin
 	Columns	Sütunlar
 	Text size	Metin boyutu
@@ -3178,7 +3177,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Large	Büyük
 	Previous variation (Page Up)	Önceki varyant (Page Up)
 	Next variation (Page Down)	Sonraki varyant (Page Down)
-	A move the pointer rests on shows its position	İşaretçinin durduğu hamle konumunu gösterir
+	Show a move's position when the pointer rests on it	İşaretçi bir hamlenin üzerinde durduğunda konumunu göster
 	Position after {move}	{move} sonrası konum
 	To review	Gözden geçirilecek
 	With an error	Hatalı
@@ -3403,7 +3402,6 @@ castling	long	uzun
 	{name} (no page discusses it)	{name} (hiçbir sayfa ele almıyor)
 	Go to its page and put the game on the board.	Sayfasına git ve oyunu tahtaya koy.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kitap PGN'ine bağlandı: {moves} hamleden {linked} ({recovered} PGN'den okundu), {conflict} çelişkili.
-	Link the whole book to its PGN	Kitabın tamamını PGN'ine bağla
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Kitabın PGN'i bu hamleyi başka bir konumdan oynuyor: kontrol edin, sonra PGN'in hamlesini kullanın ya da kitabın hamlesini koruyun.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	Bu sayfada kitabın PGN'i: {confirmed} doğrulandı, {recovered} PGN'den okundu, {conflict} çelişkili ({open} incelenecek).
 	You kept the book's move.	Kitabın hamlesini korudunuz.
@@ -3424,7 +3422,7 @@ castling	long	uzun
 	Corners	Köşeler
 	Start outlined, end filled	Başlangıç çerçeveli, varış dolu
 	Border and light fill	Kenarlık ve hafif dolgu
-	Last move	Son hamle
+	Highlight the last move	Son hamleyi vurgula
 	Strength	Yoğunluk
 	Import fonts…	Yazı tiplerini içe aktar…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Satranç yazı tiplerini programın yanındaki yazı tipleri klasörüne kopyalar: her diyagram yazı tipi bir taş takımıdır, figürin yazı tipi ise dışa aktarımlardaki hamleleri yazar.
@@ -3679,3 +3677,16 @@ progress bar	Progress	İlerleme
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Çözümler sonda, numara sırasıyla. Çözümü okunmamış bir diyagram bunu belirtir.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Alıştırma sayfası açık bir PDF'nin üzerine yazılamaz: başka bir ad seçin.
 	No exercise sheet was written	Alıştırma sayfası yazılmadı
+	Filled squares	Dolu kareler
+	Classic	Klasik
+	Tokens	Pullar
+	Pixel Art	Piksel sanatı
+	Facets	Yüzeyler
+	Stained Glass	Vitray
+	Chubby	Tombul
+	Gothic	Gotik
+	Sketch	Eskiz
+	Shapes	Şekiller
+	Fantasy	Fantastik
+	Spatial	Uzamsal
+	Celtic	Kelt

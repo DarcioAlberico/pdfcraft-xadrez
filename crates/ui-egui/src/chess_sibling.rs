@@ -24,6 +24,7 @@ use crate::chess_reference_ui::{is_pgn_name, sibling_pgn};
 
 /// Most entries of the PDF's folder read for its PGN: the folder may be Downloads (plan A9-I7a,
 /// I7b).
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 pub(crate) const MAX_FOLDER_ENTRIES: usize = 4096;
 
 /// The search for one document's PGN beside it: running, or done.
@@ -177,6 +178,12 @@ impl PdfCraftApp {
         }
     }
 
+    /// Whether the folder of document `id`'s PDF was looked through for its PGN, or is being, for
+    /// the document as it is open (plan A9-I7b2: never for one that keeps a book's PGN).
+    pub fn sibling_pgn_looked_for(&self, id: DocId) -> bool {
+        self.chess.doc(id).is_some_and(|d| d.pgn_look.started)
+    }
+
     /// Whether the folder of document `id`'s PDF is being looked through for its PGN (plan
     /// A9-I7b): its search has not been taken by a frame yet.
     pub fn sibling_pgn_looking(&self, id: DocId) -> bool {
@@ -210,8 +217,8 @@ mod tests {
         assert_eq!(pick("Livro.pdf", &files(&["a.pgn", "livro.pgn"]), false), Some("livro.pgn"));
     }
 
-    /// Plan A9-I7b (N15's rules): a folder named `x.pgn` is not a PGN, and a link to a PGN is not
-    /// followed; the entries read stop at the cap, and a search asked to stop gives nothing.
+    /// Plan A9-I7b (N15's rules): a folder named `x.pgn` is not a PGN; the entries read stop at the
+    /// cap, and a search asked to stop gives nothing. A link: `a_link_to_a_pgn_is_not_offered`.
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn the_listing_takes_regular_files_only_and_stops_at_its_cap() {
@@ -228,6 +235,48 @@ mod tests {
         let cut = list(&dir, 1, || false).unwrap();
         assert!(!cut.complete && cut.files.len() <= 1, "{:?}", cut.files);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-I7b2 (N15's rules): a link to a PGN outside the folder is not followed, so it is
+    /// not offered. On Unix a symbolic link; on Windows a file symbolic link where the system lets
+    /// this user make one (Developer Mode), and a junction (`mklink /J`, which needs no right but
+    /// can only link a folder). A system that makes neither skips the test, saying so.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_link_to_a_pgn_is_not_offered() {
+        let root = std::env::temp_dir().join(format!("pdfcraft-pgn-link-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let (dir, away) = (root.join("book"), root.join("away"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&away).unwrap();
+        std::fs::write(dir.join("book.pdf"), b"%PDF-1.7").unwrap();
+        std::fs::write(away.join("games.pgn"), b"1.e4 *").unwrap();
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(away.join("games.pgn"), dir.join("games.pgn")).is_ok();
+        #[cfg(windows)]
+        let made = {
+            let file = std::os::windows::fs::symlink_file(away.join("games.pgn"), dir.join("games.pgn")).is_ok();
+            let junction = std::process::Command::new("cmd")
+                .args(["/C", "mklink", "/J"])
+                .arg(dir.join("folder.pgn"))
+                .arg(&away)
+                .output()
+                .is_ok_and(|o| o.status.success());
+            if !file {
+                eprintln!("note: no file symbolic link here (Developer Mode is off); only the junction is checked");
+            }
+            file || junction
+        };
+        #[cfg(not(any(unix, windows)))]
+        let made = false;
+        if !made {
+            eprintln!("note: no link could be made here; a_link_to_a_pgn_is_not_offered checks nothing");
+            let _ = std::fs::remove_dir_all(&root);
+            return;
+        }
+        assert_eq!(list(&dir, 10, || false).unwrap().files, vec!["book.pdf".to_owned()], "the links are left out");
+        assert_eq!(find(&dir.join("book.pdf"), || false), None, "a link to the only PGN is not offered");
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// Plan A9-I7b (N15's rules): a PGN whose data is not on the disk — a OneDrive file not

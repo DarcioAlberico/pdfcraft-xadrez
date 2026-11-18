@@ -94,8 +94,8 @@ fn the_chess_menu_holds_the_chess_commands() {
     h.get_by_label("Chess ⏵").hover();
     h.run_steps(3);
     for item in [
-        "Scan chess diagrams",
-        "Chess diagrams panel",
+        "Detect diagrams",
+        "Chess panel",
         "Chess board",
         "Analyze the position",
         "Load the book's PGN…",

@@ -1130,7 +1130,7 @@ pub(crate) fn tab_contents(
     // small grey text, as a hint is).
     use crate::notice::{Tone, callout};
     if Some(results.stamp) != current {
-        callout(ui, Tone::Warning, tl!("The document changed since the scan. Scan again to update the diagrams."));
+        callout(ui, Tone::Warning, tl!("The document changed since its diagrams were detected. Detect them again to update them."));
         ui.add_space(4.0);
     }
     match &results.model {
@@ -1199,7 +1199,7 @@ impl PdfCraftApp {
     /// nor announces what was found.
     fn start_chess_scan_pages(&mut self, id: DocId, pages: Vec<usize>, quiet: bool, all: bool) {
         if self.chess.run.is_some() {
-            self.inform(tl!("Diagrams are already being scanned").to_string());
+            self.inform(tl!("Diagrams are already being detected").to_string());
             return;
         }
         // Reading positions out of a document copies its content. A double-click's scan is
@@ -1353,7 +1353,9 @@ impl PdfCraftApp {
         // is carried to the state now, and they with it.
         match self.chess.results_of_mut(run.doc) {
             Some(results) => results.ask(&run.pages, run.all),
-            None if run.stale => self.inform(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string()),
+            None if run.stale => {
+                self.inform(tl!("The document changed since its diagrams were detected. Detect them again to update them.").to_string())
+            }
             None => {}
         }
         if !run.stale && !run.quiet {
@@ -2007,7 +2009,7 @@ impl PdfCraftApp {
             .filter(|e| (e.doc, e.page, e.index) == (id, page, index))
             .is_some_and(|e| e.original.as_deref() != Some(e.fen().as_str()));
         let Some((fen, flipped)) = edited.or_else(read) else {
-            self.inform(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
+            self.inform(tl!("This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.").to_string());
             return false;
         };
         let text_start = if changed { None } else { self.chess_text_start(id, page, index, &fen) };
