@@ -3665,6 +3665,8 @@ progress bar	Progress	Napredek
 	Illegal move: {move} can't be played here.	Neveljavna poteza: {move} tu ni mogoče odigrati.
 	{move} is not a move.	{move} ni poteza.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Puščica od {from}: Alt+klik na ciljno polje ali znova na to za krog.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Neveljavna poteza: {move} je dvoumna, lahko je {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Neveljavna poteza: {move} potrebuje figuro, v katero se spremeni kmet, na primer {example}.
 	exercises	vaje
 	Exercise sheet (PDF)	List z vajami (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Oštevilčeni diagrami knjige v novem PDF za tiskanje, 4, 6 ali 9 na stran, z rešitvami na koncu.

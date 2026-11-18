@@ -3306,3 +3306,278 @@ the move's comment	Move comment	ఎత్తు వ్యాఖ్య
 	Analyze the position	స్థితిని విశ్లేషించు
 	Export chess book…	చదరంగం పుస్తకాన్ని ఎగుమతి చేయి…
 	Chess shortcuts	చదరంగం సత్వరమార్గాలు
+
+# A9-I14b: chess texts
+	A correction ({id}) was not used: {e}	ఒక సవరణ ({id}) ఉపయోగించబడలేదు: {e}
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	ఒక రేఖాచిత్రం {offered} dpi అందిస్తోంది; అది గరిష్ఠంగా {max} dpi వద్ద చదవబడింది (max_read_dpi).
+	A new game from the standard position; the game on the board keeps its moves.	ప్రామాణిక ప్రారంభ స్థితి నుండి కొత్త ఆట; బోర్డుపై ఉన్న ఆట తన ఎత్తులను ఉంచుకుంటుంది.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Anki దిగుమతి చేసుకునే టెక్స్ట్ ఫైల్, ఒక్కో అభ్యాసానికి ఒక కార్డు, పక్కనే ఉన్న ఫోల్డర్‌లో రేఖాచిత్రాల బొమ్మలతో.
+	Add the bookmarks	బుక్‌మార్క్‌లను జోడించు
+	Aligning was stopped: the book's link is as it was.	సరిపోల్చడం ఆపబడింది: పుస్తకం లింక్ ముందు ఉన్నట్లే ఉంది.
+	Alt+O switches between the board as read and the page's own picture.	Alt+O చదివిన బోర్డుకు, పేజీలోని అసలు బొమ్మకు మధ్య మారుస్తుంది.
+	Anki — cards	Anki — కార్డులు
+	Another book's review	మరో పుస్తకం సమీక్ష
+	Another file dialog is still open. Finish with it first.	మరో ఫైల్ డైలాగ్ ఇంకా తెరిచే ఉంది. ముందుగా దాన్ని పూర్తి చేయండి.
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} నుండి బాణం: అది వెళ్లే గడిపై Alt+క్లిక్ చేయండి, లేదా వృత్తం కోసం మళ్లీ ఈ గడిపైనే.
+	Arrow {from} to {to} taken off	{from} నుండి {to}కు బాణం తీసివేయబడింది
+	Arrow {from} to {to}, {color}	{from} నుండి {to}కు బాణం, {color}
+	As the book says ({lang})	పుస్తకంలో ఉన్నట్లు ({lang})
+	As the book's text says	పుస్తకం వచనంలో ఉన్నట్లు
+	Back to Diagrams	రేఖాచిత్రాలకు వెనుకకు
+	Back to the moves	ఎత్తులకు వెనుకకు
+	Back to the moves (Esc)	ఎత్తులకు వెనుకకు (Esc)
+	Black has more extra pieces than missing pawns to promote	ప్రమోట్ చేయడానికి తప్పిపోయిన బంటుల కంటే నలుపుకు ఎక్కువ అదనపు పావులు ఉన్నాయి
+	Black has more than 16 pieces	నలుపుకు 16 కంటే ఎక్కువ పావులు ఉన్నాయి
+	Black has more than 8 pawns	నలుపుకు 8 కంటే ఎక్కువ బంటులు ఉన్నాయి
+	Black has more than one king	నలుపుకు ఒకటి కంటే ఎక్కువ రాజులు ఉన్నారు
+	Black is in check, but it is White's turn	నలుపు చెక్‌లో ఉంది, కానీ ఆడాల్సింది తెలుపు
+	Black may castle, but its king or rook has left its square	నలుపు క్యాస్లింగ్ చేయవచ్చు, కానీ దాని రాజు లేదా ఏనుగు తన గడిని వదిలింది
+	Black's king is in a double check no move could give	నలుపు రాజు ఏ ఎత్తూ ఇవ్వలేని డబుల్ చెక్‌లో ఉన్నాడు
+	Black's king is in check from more than two pieces	నలుపు రాజుకు రెండు కంటే ఎక్కువ పావుల నుండి చెక్ ఉంది
+	Black's king is missing	నలుపు రాజు లేడు
+	Board, move list and Chess panel	బోర్డు, ఎత్తుల జాబితా మరియు చదరంగం ప్యానెల్
+	Book's language	పుస్తకం భాష
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	“{title}” కింద బుక్‌మార్క్‌లు జోడించబడ్డాయి: {n}. రద్దు చేయడం వాటిని తీసివేస్తుంది.
+	Chapters	అధ్యాయాలు
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	అధ్యాయాలు: {chapters} · ఆటలు: {games} · అభ్యాసాలు: {exercises}
+	Chess OCR failed: {e}	చదరంగం OCR విఫలమైంది: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	చదరంగం OCR అడిగారు, కానీ దానికి chess-glyphs మోడల్ అవసరం.
+	Chess engine	చదరంగం ఇంజిన్
+	Chess games not saved	సేవ్ చేయని చదరంగం ఆటలు
+	Choices made on this page not found in its reading (kept): {n}	ఈ పేజీలో చేసిన ఎంపికలు, దాన్ని చదివిన దానిలో కనబడలేదు (ఉంచబడ్డాయి): {n}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	ఈ PGNలో లేని ఎత్తును పేర్కొనే, వైరుధ్యంలో ఉన్న ఎత్తులపై ఎంపికలు: {n}. ఆ ఎత్తు ఉన్న PGN కోసం అవి ఉంచబడతాయి.
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	పుస్తకం PGN కోసం వేచి ఉన్న ఎంపికలు: {n} (PGNను లోడ్ చేసి, ఆపై సమీక్షను మళ్లీ దిగుమతి చేయండి).
+	Circle on {from} taken off	{from} పై వృత్తం తీసివేయబడింది
+	Circle on {from}, {color}	{from} పై వృత్తం, {color}
+	Close without saving	సేవ్ చేయకుండా మూసివేయి
+	Comment	వ్యాఖ్య
+	Content streams that couldn't be decoded and were skipped: {n}	డీకోడ్ చేయలేక వదిలివేసిన కంటెంట్ స్ట్రీమ్‌లు: {n}
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	ఈ పత్రంలో లేని పేజీల సవరణలు: {n} (ఉంచబడ్డాయి, ఏ రేఖాచిత్రంపైనా కాదు).
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	డిస్క్రిప్టివ్ నొటేషన్ ({examples})కు మద్దతు లేదు; దాని ఎత్తులు చదవబడలేదు.
+	Detecting in another book… page {d} of {t}	మరో పుస్తకంలో గుర్తిస్తోంది… {t} లో పేజీ {d}
+	Diagram descriptions	రేఖాచిత్రాల వివరణలు
+	Diagram shown	చూపిన రేఖాచిత్రం
+	Diagram tab	రేఖాచిత్రం ట్యాబ్
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	రేఖాచిత్రం {d}: రెండు వైపులా {n} ఎత్తుల్లో మేట్ చేస్తాయి, కాబట్టి ఎవరు ఆడాలో అనేది ఊహగానే ఉంటుంది.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	రేఖాచిత్రం {d}: సవరించినప్పటి నుండి చదివినది మారింది (ఇప్పుడు {fen}); సవరణ ఉంచబడింది.
+	Diagram {n} wasn't found on page {p}.	పేజీ {p}లో రేఖాచిత్రం {n} కనబడలేదు.
+	Diagram {n}, open	రేఖాచిత్రం {n}, తెరువు
+	Diagram {n}, page {p}: correction forgotten	రేఖాచిత్రం {n}, పేజీ {p}: సవరణ మర్చిపోబడింది
+	Diagrams a page: {n} ({grid})	ఒక్కో పేజీకి రేఖాచిత్రాలు: {n} ({grid})
+	Diagrams: not detected yet	రేఖాచిత్రాలు: ఇంకా గుర్తించలేదు
+	Diagrams: {n}	రేఖాచిత్రాలు: {n}
+	Don't keep	ఉంచవద్దు
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	ఇంజిన్ స్వీకరిస్తేనే ఒక్కొక్కటి దానికి వెళ్తుంది. ఈ ఇంజిన్ ఏవి స్వీకరిస్తుందో చూడటానికి విశ్లేషణను ప్రారంభించండి.
+	Edit the FEN and the PGN	FEN మరియు PGNను సవరించు
+	End of the line	వరుస ముగింపు
+	End of the main line	ప్రధాన వరుస ముగింపు
+	Endgame tables (Syzygy)	ఎండ్‌గేమ్ పట్టికలు (Syzygy)
+	Engine's default	ఇంజిన్ డిఫాల్ట్
+	Engine: {name}, in {folder}	ఇంజిన్: {name}, {folder}లో
+	Entries that couldn't be read and were left out: {n}.	చదవలేక వదిలివేసిన ఎంట్రీలు: {n}.
+	Exercise	అభ్యాసం
+	Exercise sheet (PDF)	అభ్యాసాల షీట్ (PDF)
+	Exercises	అభ్యాసాలు
+	Exercises: counted when exported	అభ్యాసాలు: ఎగుమతి చేసినప్పుడు లెక్కించబడతాయి
+	Exercises: counting…	అభ్యాసాలు: లెక్కిస్తోంది…
+	Exercises: {n}	అభ్యాసాలు: {n}
+	Export as book	పుస్తకంగా ఎగుమతి చేయి
+	Exporting the chess document: page {done} of {of}	చదరంగం పత్రాన్ని ఎగుమతి చేస్తోంది: {of} లో పేజీ {done}
+	Forget the correction?	సవరణను మర్చిపోవాలా?
+	Game	ఆట
+	Games	ఆటలు
+	Games from the book's PGN: {n}	పుస్తకం PGN నుండి ఆటలు: {n}
+	Games left out (an illegal position has no game): {n}	వదిలివేసిన ఆటలు (చెల్లని స్థితికి ఆట ఉండదు): {n}
+	Games of “{name}” that autosave doesn't keep: {n}	స్వయంచాలక సేవ్ ఉంచని “{name}” ఆటలు: {n}
+	Games read only up to an impossible move: {n}	అసాధ్యమైన ఎత్తు వరకు మాత్రమే చదివిన ఆటలు: {n}
+	Games with no document open that autosave doesn't keep: {n}	తెరిచిన పత్రం లేని, స్వయంచాలక సేవ్ ఉంచని ఆటలు: {n}
+	Games: read from the text	ఆటలు: వచనం నుండి చదివినవి
+	Games: read from the text, linked to the book's PGN	ఆటలు: వచనం నుండి చదివినవి, పుస్తకం PGNకు లింక్ చేయబడినవి
+	Hash table	హాష్ పట్టిక
+	How a screen reader says each diagram's pieces.	స్క్రీన్ రీడర్ ప్రతి రేఖాచిత్రంలోని పావులను ఎలా చెబుతుందో.
+	Illegal move: {move} can't be played here.	చెల్లని ఎత్తు: {move} ఇక్కడ ఆడలేము.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	పేజీ చిత్రాల పిక్సెల్‌లు స్కాన్ పరిమితిని మించినందున కత్తిరించని చిత్రాలు: {n}
+	Import anyway	అయినా దిగుమతి చేయి
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	బ్రౌజర్‌లో, {n} కంటే ఎక్కువ పేజీలు ఉన్న పుస్తకాన్ని ఇంకా ఎగుమతి చేయలేము లేదా దాని PGNతో సరిపోల్చలేము: ముగిసే వరకు ట్యాబ్ స్పందించడం ఆపేస్తుంది. డెస్క్‌టాప్ యాప్ దీన్ని నేపథ్యంలో చేస్తుంది.
+	Its moves are deleted (Undo brings them back).	దాని ఎత్తులు తొలగించబడతాయి (రద్దు చేయడం వాటిని తిరిగి తెస్తుంది).
+	Keep them	ఉంచు
+	Keep your chess work on this protected document?	ఈ రక్షిత పత్రంపై మీ చదరంగం పనిని ఉంచాలా?
+	Language: {lang}	భాష: {lang}
+	Leave the chess panel	చదరంగం ప్యానెల్ నుండి బయటకు వెళ్లు
+	Left out: {n} ({why})	వదిలివేసినవి: {n} ({why})
+	Letters (Kg1)	అక్షరాలు (Kg1)
+	Load	లోడ్ చేయి
+	Load the PGN above on the board, with its variations and comments.	పై PGNను దాని ఉపవరుసలు, వ్యాఖ్యలతో బోర్డుపై లోడ్ చేస్తుంది.
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} ఎత్తుల్లో మేట్: రెండు వైపులా మేట్ చేస్తాయి, కాబట్టి ఎవరు ఆడాలో అనేది ఊహగానే ఉంటుంది
+	Mate in {n}: no key found within the search budget	{n} ఎత్తుల్లో మేట్: శోధన పరిమితిలో కీ ఎత్తు దొరకలేదు
+	Mate in {n}: none found	{n} ఎత్తుల్లో మేట్: ఏదీ దొరకలేదు
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} ఎత్తుల్లో మేట్: ఏదీ దొరకలేదు; ఉత్తమ ప్రయత్నం {best}, {reply} దాన్ని ఖండిస్తుంది
+	Mate in {n}: {keys} ({k} keys)	{n} ఎత్తుల్లో మేట్: {keys} ({k} కీ ఎత్తులు)
+	Mate in {n}: {key}! (not proved the only key)	{n} ఎత్తుల్లో మేట్: {key}! (ఇదొక్కటే కీ ఎత్తు అని నిరూపించబడలేదు)
+	Mate in {n}: {key}! (unique)	{n} ఎత్తుల్లో మేట్: {key}! (ఏకైకం)
+	More Text tab actions	టెక్స్ట్ ట్యాబ్ మరిన్ని చర్యలు
+	More board actions	మరిన్ని బోర్డు చర్యలు
+	More continuations: {moves}	మరిన్ని కొనసాగింపులు: {moves}
+	Move	ఎత్తు
+	Move back	ఒక ఎత్తు వెనుకకు
+	Move forward	ఒక ఎత్తు ముందుకు
+	New game with this position	ఈ స్థితితో కొత్త ఆట
+	Next diagram	తదుపరి రేఖాచిత్రం
+	Next tool of {group}	{group} తదుపరి సాధనం
+	Next variation	తదుపరి ఉపవరుస
+	No chapter, game or exercise was found in the book.	పుస్తకంలో ఏ అధ్యాయం, ఆట లేదా అభ్యాసం కనబడలేదు.
+	No exercise sheet was written	అభ్యాసాల షీట్ రాయబడలేదు
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	షీట్‌పై పెట్టడానికి అభ్యాసం లేదు: ఎంచుకున్న పేజీల సంఖ్య ఉన్న రేఖాచిత్రాలకు మొదలుపెట్టే స్థితి లేదు ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	షీట్‌పై పెట్టడానికి అభ్యాసం లేదు: ఎంచుకున్న పేజీలలో సంఖ్య ఉన్న రేఖాచిత్రం లేదు.
+	No move yet: the start of the game.	ఇంకా ఎత్తు లేదు: ఆట ప్రారంభం.
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	చెల్లని స్థితి ({reason}): దానిపై ఎత్తులు ఆడటానికి రేఖాచిత్ర ఎడిటర్‌లో దాన్ని సరిచేయండి.
+	Not a legal position: {reason}	చెల్లని స్థితి: {reason}
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	జోడించబడనివి: {n}. ఒక పత్రం గరిష్ఠంగా {max} ఆటలను ఉంచుతుంది: స్థలం కోసం కొన్నింటిని PGNగా సేవ్ చేసి తొలగించండి.
+	Not confirmed	నిర్ధారించలేదు
+	Not kept, they last only until the document is closed.	ఉంచకపోతే, పత్రం మూసే వరకు మాత్రమే అవి ఉంటాయి.
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	అర్థం కాలేదు. ఒక ఎత్తు (Nf3, e2e4) టైప్ చేయండి, లేదా p, u, s, f e, r 4, బాణం e2e4 ఎరుపు, వృత్తం d5.
+	Nothing to export: an illegal position has no game.	ఎగుమతి చేయడానికి ఏమీ లేదు: చెల్లని స్థితికి ఆట ఉండదు.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	PDFలో ఏమీ గీయబడలేదు: సవరణను ఉంచలేకపోయాం ({e}).
+	Only the first {n} of the page's {total} images were looked at.	పేజీలోని {total} చిత్రాలలో మొదటి {n} మాత్రమే పరిశీలించబడ్డాయి.
+	Original diagram, page {p}, diagram {n}	అసలు రేఖాచిత్రం, పేజీ {p}, రేఖాచిత్రం {n}
+	PGN edited	PGN సవరించబడింది
+	PGN — exercises	PGN — అభ్యాసాలు
+	Pages not read yet: {n} (counted when exported)	ఇంకా చదవని పేజీలు: {n} (ఎగుమతి చేసినప్పుడు లెక్కించబడతాయి)
+	Pages: {n}	పేజీలు: {n}
+	Per page	ఒక్కో పేజీకి
+	Previous diagram	మునుపటి రేఖాచిత్రం
+	Previous variation	మునుపటి ఉపవరుస
+	Quit without saving	సేవ్ చేయకుండా నిష్క్రమించు
+	Rank {rank}: empty	అడ్డు వరుస {rank}: ఖాళీ
+	Rank {rank}: {pieces}	అడ్డు వరుస {rank}: {pieces}
+	Read with OCR	OCRతో చదువు
+	Reading the book for its bookmarks: page {done} of {of}	బుక్‌మార్క్‌ల కోసం పుస్తకాన్ని చదువుతోంది: {of} లో పేజీ {done}
+	Reading the book for its bookmarks…	బుక్‌మార్క్‌ల కోసం పుస్తకాన్ని చదువుతోంది…
+	Reading was stopped: no bookmark was added.	చదవడం ఆపబడింది: ఏ బుక్‌మార్క్ జోడించబడలేదు.
+	Redraw in the PDF?	PDFలో మళ్లీ గీయాలా?
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	సమీక్ష {path}కు ఎగుమతి చేయబడింది (సవరణలు: {corrections}, ఎంపికలు: {decisions}, ఆటలు: {games}). ఆటల వ్యాఖ్యలలో పుస్తకం వచనం ఉండవచ్చు: ఫైల్‌ను మీ స్వంత ఉపయోగానికే ఉంచండి.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	{name} నుండి సమీక్ష దిగుమతి చేయబడింది (సవరణలు: {corrections}, ఎంపికలు: {decisions}, ఆటలు: {games}).
+	Save them as they are	ఉన్నవి ఉన్నట్లే సేవ్ చేయి
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	సేవ్ చేసిన పుస్తకాల PGNలను చదవలేకపోయాం ({why}). తదుపరి సేవ్‌లో అవి పక్కన పెట్టబడతాయి, అప్పటి నుండి కొత్తవి ఉంచబడతాయి.
+	Saved by a newer PdfCraft: these games are only read here.	కొత్త PdfCraft సేవ్ చేసింది: ఈ ఆటలు ఇక్కడ చదవబడతాయి మాత్రమే.
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	సేవ్ చేసిన రేఖాచిత్ర సవరణలను చదవలేకపోయాం ({why}). తదుపరి సేవ్‌లో అవి పక్కన పెట్టబడతాయి, అప్పటి నుండి కొత్త సవరణలు ఉంచబడతాయి.
+	Search threads	శోధన థ్రెడ్‌లు
+	Show the game on the board again.	బోర్డుపై ఉన్న ఆటను మళ్లీ చూపించు.
+	Show the page (F6)	పేజీని చూపించు (F6)
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	సేవ్ చేసిన కొన్ని రేఖాచిత్ర సవరణలను చదవలేకపోయాం ({why}); మిగతావి ఉపయోగించబడతాయి, {name} ఉంచబడుతుంది, ఎప్పటికీ తొలగించబడదు.
+	Start again from the standard position.	ప్రామాణిక ప్రారంభ స్థితి నుండి మళ్లీ మొదలుపెట్టు.
+	Start of the game	ఆట ప్రారంభం
+	Stop	ఆపు
+	The board is empty.	బోర్డు ఖాళీగా ఉంది.
+	The board is in the column beside.	బోర్డు పక్కనున్న కాలమ్‌లో ఉంది.
+	The board shows a position that is not legal: correct it in the diagram editor first.	బోర్డు చెల్లని స్థితిని చూపుతోంది: ముందుగా రేఖాచిత్ర ఎడిటర్‌లో దాన్ని సరిచేయండి.
+	The book's PGN couldn't be saved: {e}	పుస్తకం PGNను సేవ్ చేయలేకపోయాం: {e}
+	The book's alignment was undone.	పుస్తకం సరిపోలిక రద్దు చేయబడింది.
+	The book's bookmarks	పుస్తకం బుక్‌మార్క్‌లు
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	పుస్తకంలోని సంఖ్య ఉన్న రేఖాచిత్రాలు ముద్రించడానికి కొత్త PDFగా, పేజీకి 4, 6 లేదా 9, చివరలో వాటి పరిష్కారాలతో.
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	పుస్తకంలోని సంఖ్య ఉన్న రేఖాచిత్రాలు వాటి పరిష్కారాలతో, సమస్యల ప్రామాణిక PGNగా.
+	The changes not confirmed yet are discarded too. The PDF is not changed.	ఇంకా నిర్ధారించని మార్పులు కూడా విస్మరించబడతాయి. PDF మారదు.
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	మీరు చెప్పినట్లు, ఈ ఎన్‌క్రిప్ట్ చేసిన పత్రం చదరంగం ఉంచబడదు: దాని నుండి సమీక్షను ఎగుమతి చేయలేము, దానిలోకి దిగుమతి కూడా చేయలేము.
+	The comments of the move shown, under the moves	చూపిన ఎత్తు వ్యాఖ్యలు, ఎత్తుల కింద
+	The document can't be read for editing, so its images and paths were not looked at.	సవరణ కోసం పత్రాన్ని చదవలేము, కాబట్టి దాని చిత్రాలు, పాత్‌లు పరిశీలించబడలేదు.
+	The document changed since it was read: make its bookmarks again.	చదివినప్పటి నుండి పత్రం మారింది: దాని బుక్‌మార్క్‌లను మళ్లీ సృష్టించండి.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	పత్రంలో {n} ఆటలు ఉన్నాయి, అది ఉంచగలిగే గరిష్ఠం: ఇక్కడి నుండి ఏ ఆటా మొదలవదు.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	తెరిచి ఉన్న PDF పైన అభ్యాసాల షీట్‌ను రాయలేము: మరో పేరు ఎంచుకోండి.
+	The export was stopped: nothing was written.	ఎగుమతి ఆపబడింది: ఏమీ రాయబడలేదు.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	{font} ఫాంట్ చదరంగం ఫాంట్‌లా కనిపిస్తోంది కానీ కేటలాగ్‌లో లేదు; దాని వచనం సంగ్రహించినట్లే ఉంచబడింది.
+	The frames around text were not looked for: {e}	వచనం చుట్టూ ఉన్న ఫ్రేమ్‌ల కోసం వెతకలేదు: {e}
+	The game on the board has moves. Put this position:	బోర్డుపై ఉన్న ఆటలో ఎత్తులు ఉన్నాయి. ఈ స్థితిని పెట్టు:
+	The game on the board keeps its moves.	బోర్డుపై ఉన్న ఆట తన ఎత్తులను ఉంచుకుంటుంది.
+	The game starts at move:	ఆట మొదలయ్యే ఎత్తు:
+	The games of the list as a book, a page each, with their diagrams.	జాబితాలోని ఆటలు పుస్తకంగా, ఒక్కొక్కటి ఒక పేజీలో, వాటి రేఖాచిత్రాలతో.
+	The general OCR failed ({e}); the glyph reader read the prose too.	సాధారణ OCR విఫలమైంది ({e}); గ్లిఫ్ రీడర్ గద్యాన్ని కూడా చదివింది.
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	ఎగుమతి రాయబడే, దాని రేఖాచిత్రాలను చెప్పే భాష. పుస్తకం మరో భాషగా చదవబడితే దీన్ని సరిచేయండి.
+	The lines set bolder were not looked for: {e}	మందంగా ముద్రించిన పంక్తుల కోసం వెతకలేదు: {e}
+	The original or the position read	అసలు లేదా చదివిన స్థితి
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	చదవడానికి పేజీని {wanted} dpi వద్ద రెండర్ చేయలేకపోయాం ({e}); అది {read} dpi వద్ద చదవబడింది.
+	The page couldn't be rendered for chess OCR: {e}	చదరంగం OCR కోసం పేజీని రెండర్ చేయలేకపోయాం: {e}
+	The page draws more paths than are looked at; the rest were skipped.	పరిశీలించే వాటి కంటే పేజీ ఎక్కువ పాత్‌లు గీస్తుంది; మిగతావి వదిలివేయబడ్డాయి.
+	The page has no visible area; it is left out.	పేజీకి కనిపించే ప్రాంతం లేదు; అది వదిలివేయబడింది.
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	{wanted} dpi వద్ద రెండర్ చేయడానికి పేజీ చాలా పెద్దది; దాని రేఖాచిత్రాలు {read} dpi వద్ద చదవబడ్డాయి.
+	The page's diagrams couldn't be read; they are left out.	పేజీ రేఖాచిత్రాలను చదవలేకపోయాం; అవి వదిలివేయబడ్డాయి.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	పేజీ పేరాలను చదవలేకపోయాం ({e}); దాని పంక్తులు అంతరం ప్రకారం సమూహం చేయబడ్డాయి.
+	The page's paths couldn't be read: {e}	పేజీ పాత్‌లను చదవలేకపోయాం: {e}
+	The page's picture of this diagram shows once its page is drawn.	ఈ రేఖాచిత్రం పేజీ బొమ్మ దాని పేజీ గీయబడిన వెంటనే కనిపిస్తుంది.
+	The page's text couldn't be read: {e}	పేజీ వచనాన్ని చదవలేకపోయాం: {e}
+	The rest of each is written as a comment at the move where its reading stopped.	ప్రతి దాని మిగతా భాగం, దాని చదవడం ఆగిన ఎత్తు వద్ద వ్యాఖ్యగా రాయబడుతుంది.
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	చివరలో పరిష్కారాలు, సంఖ్యల క్రమంలో. పరిష్కారం చదవబడని రేఖాచిత్రం ఆ విషయం చెబుతుంది.
+	The variation above	పైన ఉన్న ఉపవరుస
+	The variation below	కింద ఉన్న ఉపవరుస
+	The words set in bold were not looked for: {e}	బోల్డ్‌లో ఉన్న పదాల కోసం వెతకలేదు: {e}
+	The work stopped on an internal error.	అంతర్గత లోపం వల్ల పని ఆగిపోయింది.
+	The work stopped on an internal error: {why}	అంతర్గత లోపం వల్ల పని ఆగిపోయింది: {why}
+	There is nothing to export yet: this document keeps no correction, choice or game.	ఎగుమతి చేయడానికి ఇంకా ఏమీ లేదు: ఈ పత్రం ఏ సవరణ, ఎంపిక లేదా ఆటనూ ఉంచలేదు.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	ఈ చదరంగం ఆటలు కొత్త PdfCraft ద్వారా సేవ్ చేయబడ్డాయి (ఫార్మాట్ {v}): ఇది వాటిని చదువుతుంది మాత్రమే, ఇక్కడ చేసిన మార్పులను స్వయంచాలకంగా సేవ్ చేయదు. ఏమీ కోల్పోకుండా ఉండటానికి వాటిని అన్ని ఆటలను PGNగా సేవ్ చేయి… తో సేవ్ చేయండి.
+	This engine does not take: {names}	ఈ ఇంజిన్ స్వీకరించనివి: {names}
+	This page couldn't be read: {e}	ఈ పేజీని చదవలేకపోయాం: {e}
+	Title of the bookmark	బుక్‌మార్క్ శీర్షిక
+	Tools panel collapsed	సాధనాల ప్యానెల్ కుదించబడింది
+	Type a move	ఎత్తును టైప్ చేయి
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	ఒక ఎత్తు (Nf3, e4, e2e4) టైప్ చేసి Enter నొక్కండి, లేదా: p పావులు, u చివరి ఎత్తు, s ఎవరు ఆడాలి, f e ఒక నిలువు వరుస, r 4 ఒక అడ్డు వరుస, బాణం e2e4 ఎరుపు, వృత్తం d5. M మిమ్మల్ని ఇక్కడికి తెస్తుంది.
+	White has more extra pieces than missing pawns to promote	ప్రమోట్ చేయడానికి తప్పిపోయిన బంటుల కంటే తెలుపుకు ఎక్కువ అదనపు పావులు ఉన్నాయి
+	White has more than 16 pieces	తెలుపుకు 16 కంటే ఎక్కువ పావులు ఉన్నాయి
+	White has more than 8 pawns	తెలుపుకు 8 కంటే ఎక్కువ బంటులు ఉన్నాయి
+	White has more than one king	తెలుపుకు ఒకటి కంటే ఎక్కువ రాజులు ఉన్నారు
+	White is in check, but it is Black's turn	తెలుపు చెక్‌లో ఉంది, కానీ ఆడాల్సింది నలుపు
+	White may castle, but its king or rook has left its square	తెలుపు క్యాస్లింగ్ చేయవచ్చు, కానీ దాని రాజు లేదా ఏనుగు తన గడిని వదిలింది
+	White's king is in a double check no move could give	తెలుపు రాజు ఏ ఎత్తూ ఇవ్వలేని డబుల్ చెక్‌లో ఉన్నాడు
+	White's king is in check from more than two pieces	తెలుపు రాజుకు రెండు కంటే ఎక్కువ పావుల నుండి చెక్ ఉంది
+	White's king is missing	తెలుపు రాజు లేడు
+	With the solutions	పరిష్కారాలతో
+	Words (king g1)	పదాలు (రాజు g1)
+	Your games, linked first: {n}	మీ ఆటలు, ముందుగా లింక్ చేయబడినవి: {n}
+	a pawn stands on the first or the eighth rank	ఒక బంటు మొదటి లేదా ఎనిమిదవ అడ్డు వరుసలో ఉంది
+	ambiguous	అస్పష్టం
+	caption	క్యాప్షన్
+	chess-font glyphs that couldn't be resolved: {n}	పరిష్కరించలేని చదరంగం ఫాంట్ గ్లిఫ్‌లు: {n}
+	exercises	అభ్యాసాలు
+	from the book's text	పుస్తకం వచనం నుండి
+	illegal	చెల్లనిది
+	mates in {m}	{m} ఎత్తుల్లో మేట్
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	పావుకు బదులుగా ఒక అనవసర చిహ్నం ఉన్న ఎత్తులు, ఇక్కడ మునుపటి OCR పొర పావుల బొమ్మలను కోల్పోయింది: {n}
+	no piece model is loaded	ఏ పావుల మోడల్ లోడ్ కాలేదు
+	no position to start from	మొదలుపెట్టే స్థితి లేదు
+	no solution read	పరిష్కారం చదవబడలేదు
+	not checked	తనిఖీ చేయనిది
+	not checked: {n}	తనిఖీ చేయనివి: {n}
+	not reached	చేరలేదు
+	out of sequence	క్రమం తప్పింది
+	past the sheet's {max}	షీట్ యొక్క {max} దాటినవి
+	solution not read: {n}	పరిష్కారం చదవనివి: {n}
+	supposes castling is allowed	క్యాస్లింగ్ అనుమతించబడిందని భావిస్తుంది
+	the board is empty	బోర్డు ఖాళీగా ఉంది
+	the diagram lies outside the page raster	రేఖాచిత్రం పేజీ రాస్టర్ బయట ఉంది
+	the diagram's box or corners are not finite numbers on this page	ఈ పేజీలో రేఖాచిత్రం పెట్టె లేదా మూలలు పరిమిత సంఖ్యలు కావు
+	the diagram's corners do not form a quadrilateral	రేఖాచిత్రం మూలలు చతుర్భుజాన్ని ఏర్పరచవు
+	the document is closed	పత్రం మూసివేయబడింది
+	the en-passant square does not fit the pawns	ఎన్ పాసెంట్ గడి బంటులకు సరిపోదు
+	the kings stand next to each other	రాజులు పక్కపక్కనే ఉన్నారు
+	the page has more diagrams than are read on one page	ఒక పేజీలో చదివే వాటి కంటే పేజీలో ఎక్కువ రేఖాచిత్రాలు ఉన్నాయి
+	the page has no text layer	పేజీకి వచన పొర లేదు
+	the page raster's resolution is not a positive number	పేజీ రాస్టర్ రిజల్యూషన్ ధనాత్మక సంఖ్య కాదు
+	the piece model failed: {e}	పావుల మోడల్ విఫలమైంది: {e}
+	the piece model's output is not a probability matrix: {e}	పావుల మోడల్ అవుట్‌పుట్ సంభావ్యత మాత్రిక కాదు: {e}
+	the text layer extracts as replacement characters	వచన పొర ప్రత్యామ్నాయ అక్షరాలుగా సంగ్రహించబడుతుంది
+	the text layer has two-byte codes with no Unicode text	వచన పొరలో Unicode వచనం లేని రెండు-బైట్ కోడ్‌లు ఉన్నాయి
+	the text layer is invisible text over an image of the page: another program's OCR	వచన పొర పేజీ చిత్రంపై కనిపించని వచనం: మరో ప్రోగ్రామ్ OCR
+	the text layer's Unicode map is dead	వచన పొర Unicode మ్యాప్ పనిచేయడం లేదు
+	variation {n}	ఉపవరుస {n}
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	ముందు సేవ్ చేసినది చదవలేకపోయాం, అది ముందుగా పక్కన పెట్టబడింది; కాసేపట్లో మళ్లీ ప్రయత్నించండి
+	with comment	వ్యాఖ్యతో
+	{file} file: empty	{file} నిలువు వరుస: ఖాళీ
+	{file} file: {pieces}	{file} నిలువు వరుస: {pieces}
+	{move} is not a move.	{move} ఎత్తు కాదు.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} మరో పుస్తకం సమీక్ష ({pages} పేజీలు; ఇందులో {here} ఉన్నాయి). అయినా దీన్ని ఈ పత్రంలోకి దిగుమతి చేయాలా?
+	{name}: stopped at {move}	{name}: {move} వద్ద ఆగింది
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	పేజీ ఎత్తులో {p}% భాగంలో వచనం కావడానికి చాలా ఎక్కువ సన్నని సిరా ఉంది (ఒక బొమ్మ, లేదా దుమ్ము ఉన్న స్కాన్); ఆ పట్టీలు చదవబడలేదు.
+	{why} (chess OCR needs the chess-glyphs model)	{why} (చదరంగం OCRకు chess-glyphs మోడల్ అవసరం)
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	“{name}” ఎన్‌క్రిప్ట్ చేయబడింది. పత్రాన్ని మళ్లీ తెరిచినప్పుడు తిరిగి రావడానికి, యాప్ ప్రతి పత్రం రేఖాచిత్ర సవరణలు, పుస్తకం PGN, చదరంగం ఆటలను ఈ కంప్యూటర్‌లో ఎన్‌క్రిప్ట్ చేయకుండా ఉంచుతుంది; అక్షరాల నమూనాలు వాటి కోసం ఎంచుకున్న ఫోల్డర్‌కు వెళ్తాయి.
+progress bar	Progress	పురోగతి
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	చెల్లని ఎత్తు: {move} అస్పష్టం, అది {moves} కావచ్చు.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	చెల్లని ఎత్తు: {move}కు బంటు ఏ పావుగా మారుతుందో చెప్పాలి, ఉదాహరణకు {example}.

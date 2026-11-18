@@ -1,15 +1,12 @@
 //! The chess texts' catalogue coverage (plan A9-Q1a): every `tl!` literal in the chess source
-//! files (`src/chess*.rs`) must be in every catalogue that is complete for chess.
+//! files (`src/chess*.rs`) must be in every catalogue. All 22 are checked: the four that were
+//! exempt (`el`, `pl`, `te`, `zh-hant`) got their chess texts in plan A9-I14b.
 //!
 //! Plain text processing with no dependency beyond `std`, so `cargo xtask chess-gate` includes
 //! this very file (`#[path]`) and runs it in a fraction of a second, while the crate's own test
 //! runs it on the same files: one scan, two callers.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
-
-/// Catalogues not yet complete for chess: each lacks 34 chess texts (measured 2026-11-11, plan
-/// A9 R10), so they show those in English. Step A9-I14 completes them and empties this list.
-pub const INCOMPLETE: &[&str] = &["el", "pl", "te", "zh-hant"];
 
 /// Whether `file_name` (in `src/`) is a chess source file the scan reads.
 pub fn is_chess_source(file_name: &str) -> bool {
@@ -83,14 +80,11 @@ pub fn catalogue_sources(tsv: &str) -> HashSet<String> {
         .collect()
 }
 
-/// For each catalogue (`code`, its text) outside [`INCOMPLETE`], the chess literals it lacks;
-/// catalogues that lack none are left out.
+/// For each catalogue (`code`, its text), the chess literals it lacks; catalogues that lack none
+/// are left out.
 pub fn missing(chess_literals: &BTreeSet<String>, catalogues: &[(String, String)]) -> BTreeMap<String, Vec<String>> {
     let mut out = BTreeMap::new();
     for (code, text) in catalogues {
-        if INCOMPLETE.contains(&code.as_str()) {
-            continue;
-        }
         let have = catalogue_sources(text);
         let lacks: Vec<String> = chess_literals.iter().filter(|l| !have.contains(*l)).cloned().collect();
         if !lacks.is_empty() {
@@ -116,10 +110,12 @@ mod tests {
         let literals: BTreeSet<String> = ["Detect diagrams".to_owned(), "Line\nbreak".to_owned()].into();
         let full = "# header\n\tDetect diagrams\tDetectar diagramas\n\tLine\\nbreak\tQuebra\\nde linha\n".to_owned();
         let gap = "\tDetect diagrams\tDiagramme erkennen\n".to_owned();
+        // No catalogue is exempt any more (plan A9-I14b): a gap in `el`, once skipped, is named.
         let catalogues = vec![("pt-br".to_owned(), full), ("de".to_owned(), gap.clone()), ("el".to_owned(), gap)];
         let m = missing(&literals, &catalogues);
-        assert_eq!(m.len(), 1, "{m:?}");
+        assert_eq!(m.len(), 2, "{m:?}");
         assert_eq!(m.get("de").map(Vec::as_slice), Some(&["Line\nbreak".to_owned()][..]));
+        assert_eq!(m.get("el").map(Vec::as_slice), Some(&["Line\nbreak".to_owned()][..]));
         assert!(is_chess_source("chess_ui.rs") && !is_chess_source("canvas.rs"));
     }
 }

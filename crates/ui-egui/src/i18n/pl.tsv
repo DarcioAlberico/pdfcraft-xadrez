@@ -3190,7 +3190,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Go to this page	Przejdź do tej strony
 	Diagram actions	Działania diagramu
 # Plan A8 P2a2: the Diagrams panel's header.
-	Detect diagrams	Wykryj diagramy
+	Detect diagrams	Wykryj
 	Where to detect	Gdzie wykrywać
 	Find the diagrams of the whole book and read their positions.	Znajdź diagramy w całej książce i odczytaj ich pozycje.
 	More chess actions	Więcej działań szachowych
@@ -3369,3 +3369,281 @@ the move's comment	Move comment	Komentarz do ruchu
 	Indexing the book's PGN…	Indeksowanie PGN książki…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	PGN książki jest większy, niż PdfCraft indeksuje: z książką powiązano tylko pierwsze {moves} posunięć.
 	Importing…	Importowanie…
+
+# A9-I14b: chess texts
+	A correction ({id}) was not used: {e}	Poprawka ({id}) nie została użyta: {e}
+	A diagram offers {offered} dpi; it was read at {max} dpi at most (max_read_dpi).	Diagram oferuje {offered} dpi; odczytano go najwyżej w {max} dpi (max_read_dpi).
+	A new game from the standard position; the game on the board keeps its moves.	Nowa partia z pozycji wyjściowej; partia na szachownicy zachowuje swoje ruchy.
+	A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.	Plik tekstowy do importu w Anki, jedna karta na zadanie, z obrazami diagramów w folderze obok.
+	Add the bookmarks	Dodaj zakładki
+	Aligning was stopped: the book's link is as it was.	Dopasowywanie przerwano: powiązanie książki pozostało bez zmian.
+	Alt+O switches between the board as read and the page's own picture.	Alt+O przełącza między szachownicą w odczytanej postaci a obrazem z samej strony.
+	Anki — cards	Anki — karty
+	Another book's review	Przegląd innej książki
+	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Strzałka z {from}: Alt+kliknij pole docelowe albo ponownie to pole, aby je zakreślić.
+	Arrow {from} to {to} taken off	Strzałka z {from} na {to} usunięta
+	Arrow {from} to {to}, {color}	Strzałka z {from} na {to}, {color}
+	As the book says ({lang})	Jak w książce ({lang})
+	As the book's text says	Jak w tekście książki
+	Back to Diagrams	Wróć do diagramów
+	Back to the moves	Wróć do ruchów
+	Back to the moves (Esc)	Wróć do ruchów (Esc)
+	Black has more extra pieces than missing pawns to promote	czarne mają więcej dodatkowych figur, niż brakuje pionów do promocji
+	Black has more than 16 pieces	czarne mają więcej niż 16 bierek
+	Black has more than 8 pawns	czarne mają więcej niż 8 pionów
+	Black has more than one king	czarne mają więcej niż jednego króla
+	Black is in check, but it is White's turn	czarne są szachowane, ale ruch mają białe
+	Black may castle, but its king or rook has left its square	czarne mają prawo do roszady, ale ich król lub wieża nie stoi na swoim polu
+	Black's king is in a double check no move could give	czarny król jest w podwójnym szachu, którego żaden ruch nie mógł dać
+	Black's king is in check from more than two pieces	czarny król jest szachowany przez więcej niż dwie bierki
+	Black's king is missing	brak czarnego króla
+	Board, move list and Chess panel	Szachownica, lista ruchów i panel szachowy
+	Book's language	Język książki
+	Bookmarks added under “{title}”: {n}. Undo takes them away.	Dodano zakładki pod „{title}”: {n}. Polecenie Cofnij je usuwa.
+	Chapters	Rozdziały
+	Chapters: {chapters} · Games: {games} · Exercises: {exercises}	Rozdziały: {chapters} · Partie: {games} · Zadania: {exercises}
+	Chess OCR failed: {e}	OCR szachowy nie powiódł się: {e}
+	Chess OCR was asked for, but it needs the chess-glyphs model.	Zażądano OCR-u szachowego, ale wymaga on modelu chess-glyphs.
+	Chess engine	Silnik szachowy
+	Chess games not saved	Niezapisane partie szachowe
+	Chess shortcuts	Skróty szachowe
+	Choices made on this page not found in its reading (kept): {n}	Wybory dokonane na tej stronie, których nie ma w jej odczycie (zachowane): {n}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Wybory przy ruchach w konflikcie wskazujące ruch, którego ten PGN nie ma: {n}. Są zachowane dla PGN, który go ma.
+	Choices waiting for the book's PGN: {n} (load the PGN, then import the review again).	Wybory czekające na PGN książki: {n} (wczytaj PGN, a potem ponownie zaimportuj przegląd).
+	Circle on {from} taken off	Okrąg na {from} usunięty
+	Circle on {from}, {color}	Okrąg na {from}, {color}
+	Close without saving	Zamknij bez zapisywania
+	Comment	Komentarz
+	Content streams that couldn't be decoded and were skipped: {n}	Strumienie zawartości, których nie udało się zdekodować i pominięto: {n}
+	Corrections for pages this document doesn't have: {n} (kept, on no diagram).	Poprawki stron, których ten dokument nie ma: {n} (zachowane, bez diagramu).
+	Descriptive notation ({examples}) isn't supported; its moves were not read.	Notacja opisowa ({examples}) nie jest obsługiwana; jej ruchów nie odczytano.
+	Detecting in another book… page {d} of {t}	Wykrywanie w innej książce… strona {d} z {t}
+	Diagram descriptions	Opisy diagramów
+	Diagram shown	Pokazany diagram
+	Diagram tab	Karta Diagram
+	Diagram {d}: both sides mate in {n}, so who moves stays assumed.	Diagram {d}: obie strony dają mata w {n}, więc to, kto ma ruch, pozostaje założeniem.
+	Diagram {d}: the reading changed since it was corrected (now {fen}); the correction is kept.	Diagram {d}: odczyt zmienił się od czasu poprawki (teraz {fen}); poprawka zostaje zachowana.
+	Diagram {n} wasn't found on page {p}.	Nie znaleziono diagramu {n} na stronie {p}.
+	Diagram {n}, open	Diagram {n}, otwórz
+	Diagram {n}, page {p}: correction forgotten	Diagram {n}, strona {p}: poprawka zapomniana
+	Diagrams a page: {n} ({grid})	Diagramów na stronę: {n} ({grid})
+	Diagrams: not detected yet	Diagramy: jeszcze niewykryte
+	Diagrams: {n}	Diagramy: {n}
+	Don't keep	Nie zachowuj
+	Each one goes to the engine only if it takes it. Start the analysis to see which ones this engine takes.	Każda trafia do silnika tylko wtedy, gdy ją obsługuje. Uruchom analizę, aby zobaczyć, które obsługuje ten silnik.
+	Edit the FEN and the PGN	Edytuj FEN i PGN
+	End of the line	Koniec linii
+	End of the main line	Koniec linii głównej
+	Endgame tables (Syzygy)	Tablice końcówek (Syzygy)
+	Engine's default	Domyślne silnika
+	Engine: {name}, in {folder}	Silnik: {name}, w {folder}
+	Entries that couldn't be read and were left out: {n}.	Wpisy, których nie udało się odczytać i pominięto: {n}.
+	Exercise	Zadanie
+	Exercise sheet (PDF)	Arkusz zadań (PDF)
+	Exercises	Zadania
+	Exercises: counted when exported	Zadania: liczone przy eksporcie
+	Exercises: counting…	Zadania: liczenie…
+	Exercises: {n}	Zadania: {n}
+	Export as book	Eksportuj jako książkę
+	Export the book's review…	Eksportuj przegląd książki…
+	Exporting the chess document: page {done} of {of}	Eksportowanie dokumentu szachowego: strona {done} z {of}
+	Forget the correction?	Zapomnieć poprawkę?
+	Game	Partia
+	Games	Partie
+	Games from the book's PGN: {n}	Partie z PGN książki: {n}
+	Games left out (an illegal position has no game): {n}	Pominięte partie (nielegalna pozycja nie ma partii): {n}
+	Games of “{name}” that autosave doesn't keep: {n}	Partie z „{name}”, których nie zachowuje zapis automatyczny: {n}
+	Games read only up to an impossible move: {n}	Partie odczytane tylko do niemożliwego ruchu: {n}
+	Games with no document open that autosave doesn't keep: {n}	Partie bez otwartego dokumentu, których nie zachowuje zapis automatyczny: {n}
+	Games: read from the text	Partie: odczytane z tekstu
+	Games: read from the text, linked to the book's PGN	Partie: odczytane z tekstu, powiązane z PGN książki
+	Hash table	Tablica mieszająca
+	How a screen reader says each diagram's pieces.	Jak czytnik ekranu odczytuje bierki każdego diagramu.
+	Illegal move: {move} can't be played here.	Nielegalny ruch: {move} nie może być tu zagrany.
+	Images not trimmed, as the page's image pixels exceed the scan budget: {n}	Obrazy nieprzycięte, bo piksele obrazów strony przekraczają budżet skanowania: {n}
+	Import a book's review…	Importuj przegląd książki…
+	Import anyway	Importuj mimo to
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	W przeglądarce książki o ponad {n} stronach nie można jeszcze eksportować ani dopasować do jej PGN: karta przestałaby odpowiadać do końca. Aplikacja na komputer robi to w tle.
+	Its moves are deleted (Undo brings them back).	Jej ruchy zostaną usunięte (polecenie Cofnij je przywraca).
+	Keep them	Zachowaj
+	Keep your chess work on this protected document?	Zachować pracę szachową nad tym chronionym dokumentem?
+	Language: {lang}	Język: {lang}
+	Leave the chess panel	Opuść panel szachowy
+	Left out: {n} ({why})	Pominięte: {n} ({why})
+	Letters (Kg1)	Litery (Kg1)
+	Load	Wczytaj
+	Load the PGN above on the board, with its variations and comments.	Wczytuje powyższy PGN na szachownicę, z wariantami i komentarzami.
+	Make the book's bookmarks…	Utwórz zakładki książki…
+	Mate in {n}: both sides mate, so who moves stays assumed	Mat w {n}: obie strony dają mata, więc to, kto ma ruch, pozostaje założeniem
+	Mate in {n}: no key found within the search budget	Mat w {n}: nie znaleziono klucza w limicie wyszukiwania
+	Mate in {n}: none found	Mat w {n}: nie znaleziono
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mat w {n}: nie znaleziono; najlepsza próba {best}, odparta przez {reply}
+	Mate in {n}: {keys} ({k} keys)	Mat w {n}: {keys} (kluczy: {k})
+	Mate in {n}: {key}! (not proved the only key)	Mat w {n}: {key}! (nie dowiedziono, że to jedyny klucz)
+	Mate in {n}: {key}! (unique)	Mat w {n}: {key}! (jedyny)
+	More Text tab actions	Więcej działań karty Tekst
+	More board actions	Więcej działań szachownicy
+	More continuations: {moves}	Więcej kontynuacji: {moves}
+	Move	Ruch
+	Move back	Ruch wstecz
+	Move forward	Ruch naprzód
+	New game with this position	Nowa partia z tą pozycją
+	Next diagram	Następny diagram
+	Next tool of {group}	Następne narzędzie: {group}
+	Next variation	Następny wariant
+	No chapter, game or exercise was found in the book.	W książce nie znaleziono rozdziału, partii ani zadania.
+	No exercise sheet was written	Nie zapisano arkusza zadań
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Brak zadań do arkusza: ponumerowane diagramy wybranych stron nie mają pozycji wyjściowej ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Brak zadań do arkusza: wybrane strony nie mają ponumerowanego diagramu.
+	No move yet: the start of the game.	Jeszcze bez ruchu: początek partii.
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Pozycja nielegalna ({reason}): popraw ją w edytorze diagramu, aby grać w niej ruchy.
+	Not a legal position: {reason}	Pozycja nielegalna: {reason}
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Nie dodano: {n}. Dokument przechowuje najwyżej {max} partii: zapisz część jako PGN i usuń je, by zrobić miejsce.
+	Not confirmed	Niepotwierdzony
+	Not kept, they last only until the document is closed.	Jeśli ich nie zachowasz, przetrwają tylko do zamknięcia dokumentu.
+	Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.	Nie zrozumiano. Wpisz ruch (Nf3, e2e4) albo p, u, s, f e, r 4, strzałka e2e4 czerwony, okrąg d5.
+	Nothing to export: an illegal position has no game.	Nie ma czego eksportować: nielegalna pozycja nie ma partii.
+	Nothing was drawn in the PDF: the correction couldn't be kept ({e}).	Nic nie narysowano w PDF: nie udało się zachować poprawki ({e}).
+	Only the first {n} of the page's {total} images were looked at.	Sprawdzono tylko pierwsze {n} z {total} obrazów strony.
+	Original diagram, page {p}, diagram {n}	Oryginalny diagram, strona {p}, diagram {n}
+	PGN edited	Edytowano PGN
+	PGN — exercises	PGN — zadania
+	Pages not read yet: {n} (counted when exported)	Jeszcze nieodczytane strony: {n} (liczone przy eksporcie)
+	Pages: {n}	Strony: {n}
+	Per page	Na stronę
+	Previous diagram	Poprzedni diagram
+	Previous variation	Poprzedni wariant
+	Quit without saving	Zakończ bez zapisywania
+	Rank {rank}: empty	Rząd {rank}: pusty
+	Rank {rank}: {pieces}	Rząd {rank}: {pieces}
+	Read with OCR	Odczytaj OCR-em
+	Reading the book for its bookmarks: page {done} of {of}	Odczytywanie książki dla zakładek: strona {done} z {of}
+	Reading the book for its bookmarks…	Odczytywanie książki dla zakładek…
+	Reading was stopped: no bookmark was added.	Odczyt przerwano: nie dodano żadnej zakładki.
+	Redraw in the PDF?	Przerysować w PDF?
+	Review exported to {path} (corrections: {corrections}, choices: {decisions}, games: {games}). The games' comments may hold the book's text: keep the file for your own use.	Przegląd wyeksportowano do {path} (poprawki: {corrections}, wybory: {decisions}, partie: {games}). Komentarze partii mogą zawierać tekst książki: zachowaj plik na własny użytek.
+	Review imported from {name} (corrections: {corrections}, choices: {decisions}, games: {games}).	Zaimportowano przegląd z {name} (poprawki: {corrections}, wybory: {decisions}, partie: {games}).
+	Save them as they are	Zapisz w obecnej postaci
+	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Nie udało się odczytać zapisanych PGN książek ({why}). Przy następnym zapisie zostaną odłożone na bok, a od tej pory będą zachowywane nowe.
+	Saved by a newer PdfCraft: these games are only read here.	Zapisane przez nowszy PdfCraft: te partie są tu tylko odczytywane.
+	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Nie udało się odczytać zapisanych poprawek diagramów ({why}). Przy następnym zapisie zostaną odłożone na bok, a od tej pory będą zachowywane nowe poprawki.
+	Search threads	Wątki wyszukiwania
+	Show the game on the board again.	Pokaż ponownie partię z szachownicy.
+	Show the page (F6)	Pokaż stronę (F6)
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Części zapisanych poprawek diagramów nie udało się odczytać ({why}); pozostałe są używane, a plik {name} jest zachowany, nigdy nieusuwany.
+	Start again from the standard position.	Zacznij od nowa z pozycji wyjściowej.
+	Start of the game	Początek partii
+	Stop	Zatrzymaj
+	The board is empty.	Szachownica jest pusta.
+	The board is in the column beside.	Szachownica jest w kolumnie obok.
+	The board shows a position that is not legal: correct it in the diagram editor first.	Szachownica pokazuje nielegalną pozycję: najpierw popraw ją w edytorze diagramu.
+	The book's PGN couldn't be saved: {e}	Nie udało się zapisać PGN książki: {e}
+	The book's alignment was undone.	Cofnięto dopasowanie książki.
+	The book's bookmarks	Zakładki książki
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Ponumerowane diagramy książki jako nowy PDF do druku, po 4, 6 lub 9 na stronie, z rozwiązaniami na końcu.
+	The book's numbered diagrams with their solutions, as a standard PGN of problems.	Ponumerowane diagramy książki z rozwiązaniami, jako standardowy PGN zadań.
+	The changes not confirmed yet are discarded too. The PDF is not changed.	Niepotwierdzone jeszcze zmiany również zostaną odrzucone. PDF nie zostanie zmieniony.
+	The chess of this encrypted document is not kept, as you said: a review can't be exported from it or imported into it.	Szachy tego zaszyfrowanego dokumentu nie są zachowywane, zgodnie z Twoim wyborem: nie można z niego eksportować przeglądu ani go do niego importować.
+	The comments of the move shown, under the moves	Komentarze pokazanego ruchu, pod ruchami
+	The document can't be read for editing, so its images and paths were not looked at.	Dokumentu nie można odczytać do edycji, więc jego obrazów i ścieżek nie sprawdzono.
+	The document changed since it was read: make its bookmarks again.	Dokument zmienił się od odczytu: utwórz zakładki ponownie.
+	The document holds {n} games, the most it keeps: from here on, no game starts.	Dokument ma {n} partii, najwięcej, ile przechowuje: od tego miejsca żadna partia się nie zaczyna.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Arkusza zadań nie można zapisać w miejsce otwartego PDF: wybierz inną nazwę.
+	The export was stopped: nothing was written.	Eksport przerwano: nic nie zapisano.
+	The font {font} looks like a chess font but isn't in the catalogue; its text was kept as it extracts.	Czcionka {font} wygląda na szachową, ale nie ma jej w katalogu; jej tekst zachowano tak, jak się wyodrębnia.
+	The frames around text were not looked for: {e}	Nie szukano ramek wokół tekstu: {e}
+	The game on the board has moves. Put this position:	Partia na szachownicy ma ruchy. Ustaw tę pozycję:
+	The game on the board keeps its moves.	Partia na szachownicy zachowuje swoje ruchy.
+	The game starts at move:	Partia zaczyna się od ruchu:
+	The games of the list as a book, a page each, with their diagrams.	Partie z listy jako książka, każda na osobnej stronie, z diagramami.
+	The general OCR failed ({e}); the glyph reader read the prose too.	Ogólny OCR nie powiódł się ({e}); czytnik glifów odczytał też prozę.
+	The language the export is written in and says its diagrams in. Correct it when the book was read as another.	Język, w którym eksport jest napisany i opisuje diagramy. Popraw go, gdy książkę odczytano jako inny.
+	The lines set bolder were not looked for: {e}	Nie szukano wierszy złożonych grubszą czcionką: {e}
+	The original or the position read	Oryginał lub odczytana pozycja
+	The page couldn't be rendered at {wanted} dpi for reading ({e}); it was read at {read} dpi.	Nie udało się wyrenderować strony w {wanted} dpi do odczytu ({e}); odczytano ją w {read} dpi.
+	The page couldn't be rendered for chess OCR: {e}	Nie udało się wyrenderować strony dla OCR-u szachowego: {e}
+	The page draws more paths than are looked at; the rest were skipped.	Strona rysuje więcej ścieżek, niż jest sprawdzanych; resztę pominięto.
+	The page has no visible area; it is left out.	Strona nie ma widocznego obszaru; zostaje pominięta.
+	The page is too large to render at {wanted} dpi; its diagrams were read at {read} dpi.	Strona jest za duża do wyrenderowania w {wanted} dpi; jej diagramy odczytano w {read} dpi.
+	The page's diagrams couldn't be read; they are left out.	Nie udało się odczytać diagramów strony; zostają pominięte.
+	The page's paragraphs couldn't be read ({e}); its lines were grouped by spacing.	Nie udało się odczytać akapitów strony ({e}); jej wiersze pogrupowano według odstępów.
+	The page's paths couldn't be read: {e}	Nie udało się odczytać ścieżek strony: {e}
+	The page's picture of this diagram shows once its page is drawn.	Obraz tego diagramu ze strony pojawi się, gdy jego strona zostanie narysowana.
+	The page's text couldn't be read: {e}	Nie udało się odczytać tekstu strony: {e}
+	The rest of each is written as a comment at the move where its reading stopped.	Reszta każdej jest zapisywana jako komentarz przy ruchu, na którym zatrzymał się odczyt.
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Rozwiązania na końcu, w kolejności numerów. Diagram, którego rozwiązania nie odczytano, mówi o tym.
+	The variation above	Wariant powyżej
+	The variation below	Wariant poniżej
+	The words set in bold were not looked for: {e}	Nie szukano słów złożonych pogrubieniem: {e}
+	The work stopped on an internal error.	Praca zatrzymała się na błędzie wewnętrznym.
+	The work stopped on an internal error: {why}	Praca zatrzymała się na błędzie wewnętrznym: {why}
+	There is nothing to export yet: this document keeps no correction, choice or game.	Nie ma jeszcze czego eksportować: ten dokument nie przechowuje poprawek, wyborów ani partii.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Te partie szachowe zapisał nowszy PdfCraft (format {v}): ten tylko je odczytuje i nie zapisuje automatycznie zmian wprowadzonych tutaj. Zapisz je poleceniem Zapisz wszystkie partie jako PGN…, aby nic nie przepadło.
+	This engine does not take: {names}	Ten silnik nie obsługuje: {names}
+	This page couldn't be read: {e}	Nie udało się odczytać tej strony: {e}
+	Title of the bookmark	Tytuł zakładki
+	Tools panel collapsed	Panel narzędzi zwinięty
+	Type a move	Wpisz ruch
+	Type a move (Nf3, e4, e2e4) and Enter, or: p the pieces, u the last move, s whose move it is, f e a file, r 4 a rank, arrow e2e4 red, circle d5. M brings you here.	Wpisz ruch (Nf3, e4, e2e4) i Enter albo: p — bierki, u — ostatni ruch, s — czyj ruch, f e — linia, r 4 — rząd, strzałka e2e4 czerwony, okrąg d5. M przenosi tutaj.
+	White has more extra pieces than missing pawns to promote	białe mają więcej dodatkowych figur, niż brakuje pionów do promocji
+	White has more than 16 pieces	białe mają więcej niż 16 bierek
+	White has more than 8 pawns	białe mają więcej niż 8 pionów
+	White has more than one king	białe mają więcej niż jednego króla
+	White is in check, but it is Black's turn	białe są szachowane, ale ruch mają czarne
+	White may castle, but its king or rook has left its square	białe mają prawo do roszady, ale ich król lub wieża nie stoi na swoim polu
+	White's king is in a double check no move could give	biały król jest w podwójnym szachu, którego żaden ruch nie mógł dać
+	White's king is in check from more than two pieces	biały król jest szachowany przez więcej niż dwie bierki
+	White's king is missing	brak białego króla
+	With the solutions	Z rozwiązaniami
+	Words (king g1)	Słowa (król g1)
+	Your games, linked first: {n}	Twoje partie, powiązane najpierw: {n}
+	a pawn stands on the first or the eighth rank	pion stoi na pierwszym lub ósmym rzędzie
+	ambiguous	niejednoznaczny
+	caption	podpis
+	chess-font glyphs that couldn't be resolved: {n}	glify czcionki szachowej, których nie udało się rozpoznać: {n}
+	exercises	zadania
+	from the book's text	z tekstu książki
+	illegal	nielegalny
+	mates in {m}	mat w {m}
+	moves with a stray symbol for their piece, where an earlier OCR layer lost the figurines: {n}	ruchy z przypadkowym symbolem zamiast bierki, gdzie wcześniejsza warstwa OCR zgubiła figurki: {n}
+	no piece model is loaded	nie wczytano modelu bierek
+	no position to start from	brak pozycji wyjściowej
+	no solution read	nie odczytano rozwiązania
+	not checked	niesprawdzony
+	not checked: {n}	niesprawdzone: {n}
+	not reached	nieosiągnięty
+	out of sequence	poza kolejnością
+	past the sheet's {max}	ponad {max} na arkusz
+	solution not read: {n}	nieodczytane rozwiązania: {n}
+	supposes castling is allowed	zakłada, że roszada jest dozwolona
+	the board is empty	szachownica jest pusta
+	the diagram lies outside the page raster	diagram leży poza rastrem strony
+	the diagram's box or corners are not finite numbers on this page	ramka lub narożniki diagramu nie są na tej stronie liczbami skończonymi
+	the diagram's corners do not form a quadrilateral	narożniki diagramu nie tworzą czworokąta
+	the document is closed	dokument jest zamknięty
+	the en-passant square does not fit the pawns	pole bicia w przelocie nie pasuje do pionów
+	the kings stand next to each other	królowie stoją obok siebie
+	the page has more diagrams than are read on one page	strona ma więcej diagramów, niż odczytuje się z jednej strony
+	the page has no text layer	strona nie ma warstwy tekstu
+	the page raster's resolution is not a positive number	rozdzielczość rastra strony nie jest liczbą dodatnią
+	the piece model failed: {e}	model bierek zawiódł: {e}
+	the piece model's output is not a probability matrix: {e}	wyjście modelu bierek nie jest macierzą prawdopodobieństw: {e}
+	the text layer extracts as replacement characters	warstwa tekstu wyodrębnia się jako znaki zastępcze
+	the text layer has two-byte codes with no Unicode text	warstwa tekstu ma kody dwubajtowe bez tekstu Unicode
+	the text layer is invisible text over an image of the page: another program's OCR	warstwa tekstu to niewidoczny tekst nad obrazem strony: OCR innego programu
+	the text layer's Unicode map is dead	mapa Unicode warstwy tekstu jest martwa
+	variation {n}	wariant {n}
+	what was saved before couldn't be read, and is kept aside first; try again in a moment	nie udało się odczytać tego, co zapisano wcześniej, więc najpierw zostaje odłożone na bok; spróbuj ponownie za chwilę
+	with comment	z komentarzem
+	{file} file: empty	Linia {file}: pusta
+	{file} file: {pieces}	Linia {file}: {pieces}
+	{move} is not a move.	{move} nie jest ruchem.
+	{name} is the review of another book ({pages} pages; this one has {here}). Import it into this document anyway?	{name} to przegląd innej książki ({pages} stron; ta ma {here}). Zaimportować go mimo to do tego dokumentu?
+	{name}: stopped at {move}	{name}: zatrzymano na {move}
+	{p}% of the page's height holds too much fine ink to be text (a picture, or a dusty scan); those strips were not read.	{p}% wysokości strony zawiera zbyt dużo drobnego tuszu, by był to tekst (obraz lub zakurzony skan); tych pasów nie odczytano.
+	{why} (chess OCR needs the chess-glyphs model)	{why} (OCR szachowy wymaga modelu chess-glyphs)
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	„{name}” jest zaszyfrowany. Aplikacja przechowuje poprawki diagramów, PGN książki i partie szachowe każdego dokumentu bez szyfrowania na tym komputerze, aby wróciły po ponownym otwarciu dokumentu; próbki znaków trafiają do folderu wybranego dla nich.
+progress bar	Progress	Postęp
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nielegalny ruch: {move} jest niejednoznaczny, może to być {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nielegalny ruch: {move} wymaga figury, na którą promuje pion, np. {example}.

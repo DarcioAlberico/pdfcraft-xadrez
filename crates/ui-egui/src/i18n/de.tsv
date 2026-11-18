@@ -3661,6 +3661,8 @@ progress bar	Progress	Fortschritt
 	Illegal move: {move} can't be played here.	Regelwidriger Zug: {move} kann hier nicht gespielt werden.
 	{move} is not a move.	{move} ist kein Zug.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Pfeil von {from}: Alt+Klick auf das Zielfeld, oder noch einmal auf dieses für einen Kreis.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Regelwidriger Zug: {move} ist mehrdeutig, es könnte {moves} sein.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Regelwidriger Zug: {move} braucht die Figur, in die sich der Bauer umwandelt, etwa {example}.
 	exercises	Aufgaben
 	Exercise sheet (PDF)	Aufgabenblatt (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Die nummerierten Diagramme des Buchs als neues PDF zum Drucken, 4, 6 oder 9 pro Seite, mit ihren Lösungen am Ende.

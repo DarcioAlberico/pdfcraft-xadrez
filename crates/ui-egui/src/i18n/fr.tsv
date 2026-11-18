@@ -3660,6 +3660,8 @@ progress bar	Progress	Progression
 	Illegal move: {move} can't be played here.	Coup illégal : {move} ne peut pas être joué ici.
 	{move} is not a move.	{move} n'est pas un coup.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flèche depuis {from} : Alt+clic sur la case d'arrivée, ou de nouveau sur celle-ci pour l'entourer.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Coup illégal : {move} est ambigu, ce peut être {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Coup illégal : {move} demande la pièce en laquelle le pion se transforme, comme dans {example}.
 	exercises	exercices
 	Exercise sheet (PDF)	Feuille d'exercices (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Les diagrammes numérotés du livre dans un nouveau PDF à imprimer, 4, 6 ou 9 par page, avec leurs solutions à la fin.
