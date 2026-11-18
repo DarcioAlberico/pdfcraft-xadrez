@@ -3659,6 +3659,52 @@ progress bar	Progress	進度
 	Open game {n} on the board at {move}	在棋盤上開啟對局 {n}，停在 {move}
 	Only the pieces were compared: the side to move isn't printed.	只比較了棋子：未印出輪到哪方走。
 	The first {n} are listed.	已列出前 {n} 項。
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	用引擎核對…
+	Check with the engine	用引擎核對
+	Count the positions	統計局面
+	Reading the pages: page {done} of {of}	正在讀取頁面：第 {done} 頁，共 {of} 頁
+	Positions to check: {n} ({time})	待核對的局面：{n}（{time}）
+	Checked before at this depth, left out: {n}	已在此深度核對過，略過：{n}
+	Nothing to check: the evaluations hold every position at this depth.	無需核對：評估已包含此深度下的每個局面。
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	這些頁面的局面多於評估為每份文件保留的 {max} 個：只核對前 {max} 個，較舊的評估會讓出位置。
+	Search each position	分析每個局面
+	To depth	到深度
+	Seconds each	每個局面的秒數
+	Start the check	開始核對
+	Continue the check ({n} left)	繼續核對（剩餘 {n}）
+	≈ {m} min	≈ {m} 分鐘
+	≈ {h} h	≈ {h} 小時
+	≈ {h} h {m} min	≈ {h} 小時 {m} 分鐘
+	Checking with the engine: position {done} of {of} ({time} left)	正在用引擎核對：第 {done} 個局面，共 {of} 個（剩餘 {time}）
+	A check with the engine is already running: stop it first.	已有一次引擎核對在進行：請先停止它。
+	The check is done. Positions checked: {n}. Divergences: {d}.	核對完成。已核對的局面：{n}。分歧：{d}。
+	Positions the engine gave no answer for: {n}	引擎未作答的局面：{n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	核對已停止：已核對 {done} / {of} 個局面。已找到的結果會保留。
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} 引擎找到的結果會保留：「繼續核對」會從那裡接著進行。
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	引擎連續 {n} 個局面未作答，因此核對已停止。它找到的結果會保留。
+	The check of {name} stopped: the document was closed. What the engine found is kept.	{name} 的核對已停止：文件已關閉。引擎找到的結果會保留。
+	The engine's evaluations could not be kept: {why}	無法保存引擎的評估：{why}
+	Divergences ({n})	分歧（{n}）
+	‹ Text	‹ 文字
+	Back to the page's text (Esc)	返回頁面文字（Esc）
+	No divergence in what was checked.	已核對的內容中沒有分歧。
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	未判定：{none} 個沒有評估，{shallow} 個搜尋過淺。
+	The book says: {what}	書中說：{what}
+	The calculation says: {what}	計算結果：{what}
+	Engine	引擎
+	Solver	解題器
+	{value}: lets a mate go	{value}：錯失一個將殺
+	{value}: loses {pawns} pawns to {best}	{value}：相比 {best} 損失 {pawns} 個兵
+	{value}: loses {pawns} pawns	{value}：損失 {pawns} 個兵
+	{value}: loses only {pawns} pawns	{value}：只損失 {pawns} 個兵
+	{value}: the engine's best move	{value}：引擎的最佳著法
+	another solution: {move} {value}	另一種解法：{move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	就所選頁面中每個帶符號的著法和每個棋圖詢問引擎，並列出書與計算結果不一致之處。
+	Engine: {value} (depth {d})	引擎：{value}（深度 {d}）
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	按時間搜尋時，局面可能達不到深度 {d}，報告不會判定它；到深度 {d} 的核對會再次詢問它。
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	棋盤的分析也已開啟：其引擎搜尋時，兩個引擎共用處理器。
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	依子力在書中尋找…
 	Look for	尋找

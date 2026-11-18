@@ -109,8 +109,10 @@ pub(crate) struct Paragraph {
 }
 
 /// `inlines` as one job in `font`, `wrap` wide: each inline's text (`text_of`), the moves drawn
-/// as `look_of` says and the rest in `prose`. Spaced as the exports space them: none before a
-/// sign or closing punctuation, nor after an opening bracket.
+/// as `look_of` says and the rest in `prose`, with what `after_of` gives after an inline (the
+/// engine's evaluation after a move and its signs, plan A9-N17b) a little smaller in its colour,
+/// part of that inline. Spaced as the exports space them: none before a sign or closing
+/// punctuation, nor after an opening bracket.
 pub(crate) fn paragraph(
     inlines: &[Inline],
     font: &FontId,
@@ -118,6 +120,7 @@ pub(crate) fn paragraph(
     wrap: f32,
     text_of: impl Fn(&Inline) -> String,
     look_of: impl Fn(usize, &Inline) -> Option<Look>,
+    after_of: impl Fn(usize) -> Option<(String, Color32)>,
 ) -> Paragraph {
     let mut job = LayoutJob { wrap: egui::text::TextWrapping::wrap_at_width(wrap.max(1.0)), ..Default::default() };
     let mut chars = 0usize;
@@ -157,6 +160,13 @@ pub(crate) fn paragraph(
                 chars = chars.saturating_add(text.chars().count());
                 job.append(&text, 0.0, plain.clone());
             }
+        }
+        if let Some((text, colour)) = after_of(k) {
+            // A thin space, then the text, 85 % of the font's size.
+            let after = format!("\u{2009}{text}");
+            chars = chars.saturating_add(after.chars().count());
+            let small = FontId::new(font.size * 0.85, font.family.clone());
+            job.append(&after, 0.0, TextFormat { font_id: small, color: colour, ..Default::default() });
         }
         spans.push(start..chars);
     }
@@ -308,6 +318,8 @@ mod tests {
                 120.0,
                 |i| if let Inline::Move(m) = i { m.text.clone() } else { String::new() },
                 |k, _| Some(looks(k)),
+                // An evaluation after every fourth move: the rows stay as tall as each other.
+                |k| k.is_multiple_of(4).then(|| ("+0.50".to_owned(), Color32::GRAY)),
             );
             let galley = ctx.fonts_mut(|f| f.layout_job(para.job));
             let heights: Vec<f32> = galley.rows.iter().map(|r| r.rect().height()).collect();
@@ -321,7 +333,7 @@ mod tests {
     /// Plan A9-I9b: a move with no text still takes a place, so it keeps its stop.
     #[test]
     fn a_move_with_no_text_keeps_a_place() {
-        let para = paragraph(&[a_move("")], &FontId::proportional(13.0), Color32::BLACK, 200.0, |_| String::new(), |_, _| Some(look()));
+        let para = paragraph(&[a_move("")], &FontId::proportional(13.0), Color32::BLACK, 200.0, |_| String::new(), |_, _| Some(look()), |_| None);
         assert!(para.moves.first().is_some_and(|(_, r)| !r.is_empty()), "{:?}", para.moves);
     }
 

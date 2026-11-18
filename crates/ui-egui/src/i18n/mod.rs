@@ -1737,6 +1737,13 @@ mod tests {
             // How long a typed sign waits (plan A9-I18): seconds are "s" in Czech too.
             "1 s",
             "2 s",
+            // How long a check with the engine takes (plan A9-N17b): minutes and hours are "min"
+            // and "h" in Czech too.
+            "≈ {m} min",
+            "≈ {h} h",
+            "≈ {h} h {m} min",
+            // Back from the Divergences list to the Text tab (plan A9-N17b): the same word.
+            "‹ Text",
             // How many diagrams of a state (plan A8, P4): only placeholders and a dot.
             "{n} · {state}",
             "{field}: {e}",
