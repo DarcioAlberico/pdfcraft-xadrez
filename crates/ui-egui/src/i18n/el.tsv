@@ -3712,3 +3712,20 @@ progress bar	Progress	Πρόοδος
 	Open game {n} on the board at {move}	Άνοιγμα της παρτίδας {n} στη σκακιέρα στην κίνηση {move}
 	Only the pieces were compared: the side to move isn't printed.	Συγκρίθηκαν μόνο τα κομμάτια: δεν είναι τυπωμένο ποιος παίζει.
 	The first {n} are listed.	Εμφανίζονται οι πρώτες {n}.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Εύρεση στο βιβλίο κατά υλικό…
+	Look for	Αναζήτηση
+	This position	Αυτή η θέση
+	By material	Κατά υλικό
+	Material	Υλικό
+	Either side	Οποιαδήποτε πλευρά
+	The material with the colours swapped is found too.	Βρίσκεται και το υλικό με ανεστραμμένα χρώματα.
+	Pawns:	Πιόνια:
+	Doubled	Διπλά
+	Isolated	Απομονωμένα
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Δεν είναι υπογραφή υλικού: τα κομμάτια κάθε πλευράς με τη σειρά K Q R B N P, πρώτα τα λευκά, όπως KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Γράψτε ένα υλικό, όπως KRP-KR, ή επιλέξτε είδος πιονιού.
+	Looking in the book…	Αναζήτηση στο βιβλίο…
+	Nothing in the book as read has this material and these pawns.	Τίποτα στο βιβλίο όπως διαβάστηκε δεν έχει αυτό το υλικό και αυτά τα πιόνια.
+	{first} to {last}	{first} έως {last}
+	Positions: {n}	Θέσεις: {n}

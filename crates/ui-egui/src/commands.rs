@@ -515,6 +515,7 @@ impl PdfCraftApp {
             // Plan A9-I16 (R4-02): the chess tools by name, without the panel.
             "chess.board.show" => self.show_chess_board(),
             "chess.analyze" => self.analyze_chess_position(),
+            "chess.find_material" => self.find_chess_material(),
             "chess.export" => self.open_chess_export(),
             "chess.shortcuts" => self.show_chess_shortcuts(),
             "chess.models" => self.choose_chess_models(),
