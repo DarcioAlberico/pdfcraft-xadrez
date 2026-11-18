@@ -876,6 +876,8 @@ pub(crate) fn board_at(
     square: Rect,
     bar: Option<Rect>,
 ) {
+    // The engine's best move, off the web (no engine there): filled below.
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut best = Vec::new();
     #[cfg(not(target_arch = "wasm32"))]
     if study.analysis {
