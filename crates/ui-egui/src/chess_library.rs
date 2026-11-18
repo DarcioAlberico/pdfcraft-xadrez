@@ -363,7 +363,8 @@ fn n(v: impl TryInto<u64>) -> String {
 /// Why a book was skipped, in words.
 fn skip_words(why: Option<Skip>, error: Option<&str>) -> String {
     let with = |text: &str| match error.filter(|e| !e.is_empty()) {
-        Some(e) => crate::i18n::fmt(tl!("{why} ({e})"), &[("why", text), ("e", e)]),
+        // The engine's error after the words, as the board's lines put a sign's name after it.
+        Some(e) => format!("{text} ({e})"),
         None => text.to_owned(),
     };
     match why {
@@ -433,22 +434,21 @@ fn bare_san(san: &str) -> String {
 
 /// A game's players and event, as a result says them ("Capablanca – Lasker · Havana").
 fn game_words(g: &IndexedGame) -> String {
-    let players = match (g.white.trim(), g.black.trim()) {
-        ("", "") => String::new(),
-        (w, "") => w.to_owned(),
-        ("", b) => b.to_owned(),
-        (w, b) => format!("{w} – {b}"),
+    // A tag the game leaves unknown ("?", as PGN writes it) says nothing.
+    let known = |s: &str| {
+        let s = s.trim();
+        (!s.is_empty() && s.chars().any(|c| c != '?')).then(|| s.to_owned())
+    };
+    let players = match (known(&g.white), known(&g.black)) {
+        (None, None) => None,
+        (Some(w), None) => Some(w),
+        (None, Some(b)) => Some(b),
+        (Some(w), Some(b)) => Some(format!("{w} – {b}")),
     };
     let mut parts: Vec<String> = Vec::new();
-    if !players.is_empty() {
-        parts.push(players);
-    }
-    if !g.event.trim().is_empty() {
-        parts.push(g.event.trim().to_owned());
-    }
-    if let Some(eco) = g.eco.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
-        parts.push(eco.to_owned());
-    }
+    parts.extend(players);
+    parts.extend(known(&g.event));
+    parts.extend(g.eco.as_deref().and_then(known));
     parts.join(" · ")
 }
 
@@ -1563,7 +1563,7 @@ mod tests {
         let mut said = std::collections::BTreeSet::new();
         for state in [State::Indexed, State::Partial, State::Pending, State::Cloud, State::Full] {
             let w = state_words(&CatalogBook { state, ..CatalogBook::default() }, false);
-            assert!(!w.contains(state.name()) || state == State::Pending, "{w}");
+            assert!(w != state.name() && !w.contains('_'), "{w}");
             said.insert(w);
         }
         for reason in [
@@ -1580,7 +1580,8 @@ mod tests {
         ] {
             let b = CatalogBook { state: State::Skipped, reason: Some(reason), ..CatalogBook::default() };
             let w = state_words(&b, false);
-            assert!(!w.contains(reason.name()), "{w}");
+            // Words, never the reason's name in the tools' replies ("does_not_open").
+            assert!(w != reason.name() && !w.contains('_'), "{w}");
             said.insert(w);
         }
         assert_eq!(said.len(), 15, "each its own words: {said:#?}");

@@ -3788,7 +3788,6 @@ progress bar	Progress	İlerleme
 	The book couldn't be searched: {e}	Kitapta arama yapılamadı: {e}
 	The diagrams read couldn't be looked at: {e}	Okunan diyagramlara bakılamadı: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Atlandı: kopyalamaya izin verilmiyor
 	Encrypted: read it into the Library?	Şifreli: Kitaplığa okunsun mu?
 	Skipped: does not open	Atlandı: açılmıyor

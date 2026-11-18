@@ -4040,7 +4040,6 @@ progress bar	Progress	Eiga
 	The book couldn't be searched: {e}	Knygoje ieškoti nepavyko: {e}
 	The diagrams read couldn't be looked at: {e}	Perskaitytų diagramų peržiūrėti nepavyko: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Praleista: kopijuoti neleidžiama
 	Encrypted: read it into the Library?	Užšifruota: nuskaityti į Biblioteką?
 	Skipped: does not open	Praleista: neatsidaro

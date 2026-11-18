@@ -3732,7 +3732,6 @@ progress bar	Progress	進度
 	The book couldn't be searched: {e}	無法在書中尋找：{e}
 	The diagrams read couldn't be looked at: {e}	無法查看已讀取的局面圖：{e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why}（{e}）
 	Skipped: copying not allowed	已略過：不允許複製
 	Encrypted: read it into the Library?	已加密：要讀入書庫嗎？
 	Skipped: does not open	已略過：無法開啟

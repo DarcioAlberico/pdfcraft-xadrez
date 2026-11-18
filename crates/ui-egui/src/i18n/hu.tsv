@@ -3791,7 +3791,6 @@ progress bar	Progress	Előrehaladás
 	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
 	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Kihagyva: a másolás nem engedélyezett
 	Encrypted: read it into the Library?	Titkosítva: beolvassa a Könyvtárba?
 	Skipped: does not open	Kihagyva: nem nyílik meg

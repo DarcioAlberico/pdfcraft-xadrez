@@ -3757,7 +3757,6 @@ progress bar	Progress	Postęp
 	The book couldn't be searched: {e}	Nie udało się przeszukać książki: {e}
 	The diagrams read couldn't be looked at: {e}	Nie udało się przejrzeć przeczytanych diagramów: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Pominięto: kopiowanie niedozwolone
 	Encrypted: read it into the Library?	Zaszyfrowana: wczytać do Biblioteki?
 	Skipped: does not open	Pominięto: nie otwiera się

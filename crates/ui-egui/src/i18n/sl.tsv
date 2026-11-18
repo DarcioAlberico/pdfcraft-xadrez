@@ -3797,7 +3797,6 @@ progress bar	Progress	Napredek
 	The book couldn't be searched: {e}	V knjigi ni bilo mogoče iskati: {e}
 	The diagrams read couldn't be looked at: {e}	Prebranih diagramov ni bilo mogoče pregledati: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Preskočeno: kopiranje ni dovoljeno
 	Encrypted: read it into the Library?	Šifrirano: jo prebrati v knjižnico?
 	Skipped: does not open	Preskočeno: se ne odpre

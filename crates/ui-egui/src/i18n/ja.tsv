@@ -3794,7 +3794,6 @@ progress bar	Progress	進行状況
 	The book couldn't be searched: {e}	本を検索できませんでした: {e}
 	The diagrams read couldn't be looked at: {e}	読み取った局面図を調べられませんでした: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why}（{e}）
 	Skipped: copying not allowed	スキップ：コピーが許可されていません
 	Encrypted: read it into the Library?	暗号化：ライブラリに読み込みますか？
 	Skipped: does not open	スキップ：開けません

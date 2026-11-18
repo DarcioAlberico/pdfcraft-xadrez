@@ -3790,7 +3790,6 @@ progress bar	Progress	Орындалу барысы
 	The book couldn't be searched: {e}	Кітаптан іздеу мүмкін болмады: {e}
 	The diagrams read couldn't be looked at: {e}	Оқылған диаграммаларды қарау мүмкін болмады: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Өткізілді: көшіруге рұқсат жоқ
 	Encrypted: read it into the Library?	Шифрланған: Кітапханаға оқылсын ба?
 	Skipped: does not open	Өткізілді: ашылмайды

@@ -4042,7 +4042,6 @@ progress bar	Progress	Tiến độ
 	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
 	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Bỏ qua: không cho phép sao chép
 	Encrypted: read it into the Library?	Đã mã hóa: đọc vào Thư viện?
 	Skipped: does not open	Bỏ qua: không mở được

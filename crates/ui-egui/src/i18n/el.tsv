@@ -3785,7 +3785,6 @@ progress bar	Progress	Πρόοδος
 	The book couldn't be searched: {e}	Δεν ήταν δυνατή η αναζήτηση στο βιβλίο: {e}
 	The diagrams read couldn't be looked at: {e}	Δεν ήταν δυνατός ο έλεγχος των διαγραμμάτων που διαβάστηκαν: {e}
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
-	{why} ({e})	{why} ({e})
 	Skipped: copying not allowed	Παραλείφθηκε: δεν επιτρέπεται η αντιγραφή
 	Encrypted: read it into the Library?	Κρυπτογραφημένο: να διαβαστεί στη Βιβλιοθήκη;
 	Skipped: does not open	Παραλείφθηκε: δεν ανοίγει
