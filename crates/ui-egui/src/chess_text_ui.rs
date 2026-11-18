@@ -387,7 +387,7 @@ fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::che
 /// What the document keeps of the book's PGN, in a line.
 fn book_pgn_line(ui: &mut egui::Ui, t: &Tokens, s: &crate::chess_reference_ui::BookPgnSummary) {
     let name = s.name.as_deref().unwrap_or("PGN");
-    let said = crate::i18n::fmt(tl!("Book's PGN: {name} ({games} games)"), &[("name", name), ("games", &s.games.to_string())]);
+    let said = crate::i18n::fmt(tl!("Book's PGN: {name} ({games} games)"), &[("name", name), ("games", &crate::i18n::number(s.games))]);
     ui.label(egui::RichText::new(said).small().color(t.text_muted)).on_hover_text(tl!(
         "The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics)."
     ));
@@ -402,10 +402,10 @@ fn book_link_summary(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_referenc
     let said = crate::i18n::fmt(
         tl!("Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages."),
         &[
-            ("linked", &link.linked().to_string()),
-            ("moves", &link.moves().to_string()),
-            ("recovered", &link.counts.recovered.to_string()),
-            ("conflict", &link.counts.conflict.to_string()),
+            ("linked", &crate::i18n::number(link.linked())),
+            ("moves", &crate::i18n::number(link.moves())),
+            ("recovered", &crate::i18n::number(link.counts.recovered)),
+            ("conflict", &crate::i18n::number(link.counts.conflict)),
             ("pages", &link.pages_linked.to_string()),
             ("all", &link.pages.to_string()),
         ],
@@ -571,11 +571,15 @@ struct PlacedMove {
 }
 
 /// What a paragraph's layout depends on beyond the paragraph, the same for every paragraph of a
-/// frame: the theme, the interface's language, the figurines and the caption's shape.
-fn frame_key(t: &Tokens, figurines: Figurines, caption: bool) -> u64 {
+/// frame: the theme, the interface's language, the figurines, the caption's shape, and the fonts
+/// egui lays out with and at what scale (plan A9-I9c: a galley kept across a change of fonts
+/// draws its glyphs from an atlas that no longer exists).
+fn frame_key(ctx: &egui::Context, figurines: Figurines, caption: bool) -> u64 {
     use std::hash::{Hash, Hasher};
+    let t = Tokens::get(ctx);
+    let fonts = (theme::fonts_generation(ctx), ctx.pixels_per_point().to_bits());
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    (t.dark(), t.text.to_array(), crate::i18n::current().code(), format!("{figurines:?}"), caption).hash(&mut h);
+    (t.dark(), t.text.to_array(), crate::i18n::current().code(), format!("{figurines:?}"), caption, fonts).hash(&mut h);
     h.finish()
 }
 
@@ -682,17 +686,18 @@ pub fn text_tab(
     {
         action = Some(TextAction::Stop);
     }
-    if let Some(label) = busy {
+    let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
+    // With no page shown yet, the work under way is the heading, said once (plan A9-I14, A6-26).
+    if let Some(label) = busy.filter(|_| current.is_some()) {
         ui.horizontal(|ui| {
             ui.spinner();
             ui.label(egui::RichText::new(label).color(t.text_muted));
         });
     }
-    let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
     // The top (plan A9-I9, sketch c): the page read and Read with OCR; the book's origin, its
     // PGN and the export in the menu.
     let heading = current.as_ref().map_or_else(
-        || egui::RichText::new(tl!("Reading the page…")).color(t.text_muted),
+        || egui::RichText::new(busy.unwrap_or(tl!("Reading the page…"))).color(t.text_muted),
         |x| egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &x.label)])).font(theme::semibold(12.5)),
     );
     ui.horizontal(|ui| {
@@ -714,6 +719,9 @@ pub fn text_tab(
                 action = Some(TextAction::Read(true));
             }
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                if current.is_none() && busy.is_some() {
+                    ui.spinner();
+                }
                 ui.add(egui::Label::new(heading).truncate());
             });
         });
@@ -805,7 +813,7 @@ pub fn text_tab(
     }
     // The caption's shape, when the font has it (plan A9-I9).
     let caption = ui.ctx().fonts_mut(|f| f.has_glyphs(&egui::TextStyle::Body.resolve(ui.style()), "▸"));
-    let frame = frame_key(&Tokens::get(ui.ctx()), figurines, caption);
+    let frame = frame_key(ui.ctx(), figurines, caption);
     for (bi, block) in page_doc.blocks.iter().enumerate() {
         ui.push_id(bi, |ui| match block {
             Block::Heading { inlines, source_rect, .. } => {
@@ -1287,9 +1295,14 @@ impl PdfCraftApp {
                 self.chess.export_done = Some(crate::chess_export_ui::Done { path: None, said, notes: vec![why] });
             }
             #[cfg(not(target_arch = "wasm32"))]
-            (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
+            (JobKind::Export { format, path, image_dir }, JobDone::Export(made)) => {
                 if let Ok(m) = &made {
                     self.keep_chess_cipher(job.doc, m.read.cipher.clone());
+                }
+                // A PDF may have been opened at the sheet's path while the job ran (plan
+                // A9-N12b2): asked again just before the file is written.
+                if format == ExportFormat::Sheet && self.is_open_file(&path) {
+                    return self.refuse_sheet_over_open_file();
                 }
                 self.write_chess_export(made, &path, &image_dir);
             }
@@ -1314,10 +1327,10 @@ impl PdfCraftApp {
                         let said = crate::i18n::fmt(
                             tl!("The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict."),
                             &[
-                                ("linked", &link.linked().to_string()),
-                                ("moves", &link.moves().to_string()),
-                                ("recovered", &link.counts.recovered.to_string()),
-                                ("conflict", &link.counts.conflict.to_string()),
+                                ("linked", &crate::i18n::number(link.linked())),
+                                ("moves", &crate::i18n::number(link.moves())),
+                                ("recovered", &crate::i18n::number(link.counts.recovered)),
+                                ("conflict", &crate::i18n::number(link.counts.conflict)),
                             ],
                         );
                         let mut link = link;
@@ -1494,6 +1507,13 @@ impl PdfCraftApp {
         self.session.docs().iter().filter_map(|d| d.path.as_deref()).any(|open| same(std::path::Path::new(open), path))
     }
 
+    /// Say that the exercise sheet is not written over a PDF that is open (plan A9-N12b), when the
+    /// export starts and again just before it writes (A9-N12b2).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn refuse_sheet_over_open_file(&mut self) {
+        self.post_error_for("export", tl!("The exercise sheet can't be written over a PDF that is open: choose another name.").to_string());
+    }
+
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn export_chess_to(&mut self, id: DocId, export: impl Into<ExportFormat>, path: &std::path::Path) {
@@ -1502,8 +1522,7 @@ impl PdfCraftApp {
             return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         if export == ExportFormat::Sheet && self.is_open_file(path) {
-            return self
-                .post_error_for("export", tl!("The exercise sheet can't be written over a PDF that is open: choose another name.").to_string());
+            return self.refuse_sheet_over_open_file();
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = self.chess_export_base(id, export, &stem);
@@ -1552,5 +1571,27 @@ impl PdfCraftApp {
                 self.post_error_fmt_for("export", "Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())])
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use egui_kittest::Harness;
+    use egui_kittest::kittest::Queryable;
+
+    use super::*;
+
+    /// Plan A9-I14 (finding A6-26): while the page is read, the tab says so once, as its heading
+    /// with the spinner; with a page shown, the work under way is a row of its own.
+    #[test]
+    fn reading_the_page_is_said_once() {
+        let mut h = Harness::builder().with_size(egui::vec2(420.0, 240.0)).build_ui(|ui| {
+            let t = Tokens::get(ui.ctx());
+            let pgn = crate::chess_reference_ui::BookPgnView::default();
+            let _ = text_tab(ui, &t, None, DocId(1), 0, None, BookOrigin::Auto, Some(tl!("Reading the page…")), None, &pgn);
+        });
+        // The spinner asks for frames all the time: a few, not until it settles.
+        h.run_steps(3);
+        assert_eq!(h.get_all_by_label("Reading the page…").count(), 1);
     }
 }

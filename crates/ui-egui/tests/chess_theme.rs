@@ -223,13 +223,13 @@ fn the_last_move_mark_is_chosen_in_the_menu_and_the_preferences() {
     assert_eq!(h.state().board_theme().id, "green");
     assert!(h.query_by_label("Coral").is_none(), "a theme picked closes it");
     let mut h = harness("", true);
-    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move")).scroll_to_me();
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Highlight the last move")).scroll_to_me();
     h.run_steps(2);
-    let list = h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move"));
-    assert_eq!(list.value().as_deref(), Some("Filled"), "it says the mark chosen");
+    let list = h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Highlight the last move"));
+    assert_eq!(list.value().as_deref(), Some("Filled squares"), "it says the mark chosen");
     list.hover();
     h.run_steps(1);
-    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move")).click();
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Highlight the last move")).click();
     h.run_steps(2);
     h.get_by_label("Start outlined, end filled").click();
     h.run_steps(3);
@@ -525,4 +525,48 @@ fn the_move_lists_buttons_step_its_text_size() {
     press(&mut h, "Smaller text");
     assert_eq!(size(&h), 250);
     h.get_by_label("250%");
+}
+
+/// Plan A9-I14 (finding A6-22): Preferences has an index of its sections and Close, which stays in
+/// view; the chess section, some 1,450 pt down the settings, is one click away at 1366 × 768 and
+/// at the two larger screens: after a click on Chess in the index its heading is in view, with no
+/// dragging. Before, the settings scrolled as one column with OK at their very end. Pictures of
+/// the three sizes with PDFCRAFT_CHESS_SHOTS.
+#[test]
+fn preferences_reach_the_chess_section_in_one_click() {
+    for (width, height) in [(1366.0, 768.0), (1440.0, 900.0), (1920.0, 1080.0)] {
+        let mut h = Harness::builder().with_size(egui::vec2(width, height)).build_eframe(|_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.open_bytes("page.pdf", None, PDF.to_vec()).unwrap();
+            app.set_option("dialog", "preferences").unwrap();
+            app
+        });
+        h.run_steps(4);
+        shot(&mut h, &format!("preferences-{width}x{height}-opened.png"));
+        // The index's entries are one column: General is only there.
+        let index = h.get_by_label("General").rect();
+        let entry = |h: &Harness<'static, PdfCraftApp>| {
+            h.get_all_by_label("Chess").find(|n| (n.rect().left() - index.left()).abs() < 4.0).expect("Chess in the index").rect()
+        };
+        let heading = |h: &Harness<'static, PdfCraftApp>| {
+            h.get_all_by_label("Chess").find(|n| n.rect().left() > index.right()).expect("the Chess heading").rect()
+        };
+        let close = h.get_by_label("Close").rect();
+        assert!(heading(&h).top() > close.top(), "{width}: the chess section starts out of view");
+        let at = entry(&h).center();
+        h.hover_at(at);
+        h.run_steps(1);
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.run_steps(4);
+        shot(&mut h, &format!("preferences-{width}x{height}.png"));
+        let (top, now) = (index.top(), heading(&h));
+        assert!(now.top() >= top - 1.0 && now.bottom() < close.top(), "{width}: {now:?} in view, between {top} and {close:?}");
+        assert_eq!(h.get_by_label("Close").rect(), close, "Close stays where it was");
+        h.get_by_label("Close").click();
+        h.run_steps(2);
+        assert!(h.state().dialog.is_none(), "Close closes Preferences");
+    }
 }

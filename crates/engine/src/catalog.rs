@@ -287,8 +287,8 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
         sections: &[ToolSection {
             title: "Diagrams",
             items: &[
-                item("Scan chess diagrams", "grid-3x3", "chess.scan", Ready),
-                item("Chess diagrams panel", "grid-3x3", "chess.panel", Ready),
+                item("Detect diagrams", "grid-3x3", "chess.scan", Ready),
+                item("Chess panel", "grid-3x3", "chess.panel", Ready),
                 item("Chess board", "grid-3x3", "chess.board.show", Ready),
                 item("Capture (automatic)", "wand-sparkles", "chess.tool.capture", Ready),
                 item("Load the book's PGN…", "book-open", "chess.reference.load", Ready),

@@ -118,7 +118,7 @@ fn note_text(note: &ScanNote) -> String {
         ScanNote::TooManyGames { max } => {
             fmt(tl!("The document holds {n} games, the most it keeps: from here on, no game starts."), &[("n", &max.to_string())])
         }
-        ScanNote::ScanFailed { error } => fmt(tl!("This page couldn't be scanned: {e}"), &[("e", error)]),
+        ScanNote::ScanFailed { error } => fmt(tl!("The diagrams on this page couldn't be detected: {e}"), &[("e", error)]),
         ScanNote::PageNotRead { error } => fmt(tl!("This page couldn't be read: {e}"), &[("e", error)]),
     }
 }

@@ -2438,8 +2438,7 @@ animation effects	Off	オフ
 	Page properties	ページのプロパティ
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	チェスの局面図を検索
-	Chess diagrams panel	チェス局面図パネル
+	Chess panel	チェスパネル
 	Chess	チェス
 	Diagrams	局面図
 	Chess diagrams	チェスの局面図
@@ -2447,10 +2446,10 @@ animation effects	Off	オフ
 	Scan all pages	すべてのページを検索
 	Scanning for diagrams… page {d} of {t}	局面図を検索中… ページ {d} / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	このページまたはすべてのページを検索して、この文書のチェスの局面図を見つけます。
-	The document changed since the scan. Scan again to update the diagrams.	検索後に文書が変更されました。局面図を更新するには、もう一度検索してください。
+	The document changed since its diagrams were detected. Detect them again to update them.	局面図の検出後に文書が変更されました。更新するにはもう一度検出してください。
 	The piece model couldn't be loaded: {e}	駒モデルを読み込めませんでした: {e}
 	No diagrams found.	局面図は見つかりませんでした。
-	This page couldn't be scanned: {e}	このページを検索できませんでした: {e}
+	The diagrams on this page couldn't be detected: {e}	このページの局面図を検出できませんでした: {e}
 	Only the first {n} diagrams on this page are listed.	このページの最初の {n} 個の局面図だけを表示しています。
 	Diagram {n}	局面図 {n}
 	Position read	局面を読み取りました
@@ -2502,6 +2501,7 @@ animation effects	Off	オフ
 	Black knight	黒のナイト
 	Black pawn	黒のポーン
 	White	白
+chess side	Black	黒
 	Board: {fen}	盤面: {fen}
 	Board, {state}, move {n}	盤面、{state}、{n} 手目
 	Board, {state}	盤面、{state}
@@ -2524,7 +2524,7 @@ animation effects	Off	オフ
 	{n} to review	確認待ち {n} 件
 	◀ Previous to review	◀ 前の確認対象
 	Open in lichess	lichess で開く
-	Diagrams are already being scanned	局面図はすでに検索中です
+	Diagrams are already being detected	局面図はすでに検出中です
 	Diagrams found: {n}	見つかった局面図: {n}
 	FEN copied	FEN をコピーしました
 # Chess ▸ Board: the analysis board panel.
@@ -2596,7 +2596,7 @@ animation effects	Off	オフ
 	That side can't be to move: the other king is in check.	その手番にはできません：相手のキングがチェックされています。
 	The FEN couldn't be read: {e}	FEN を読み取れませんでした: {e}
 	The PGN couldn't be read: {e}	PGN を読み取れませんでした: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	この図面はまだ読み取られていません：先にそのページをスキャンするか、エディターで局面を設定してください。
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	この局面図はまだ読み取られていません。先にそのページの局面図を検出するか、エディターで局面を設定してください。
 	White to move	白番
 	White to move, in check	白番、チェックされています
 # Chess ▸ Board: variations, annotations and game details.
@@ -3174,7 +3174,7 @@ chess undo step	Clear drawings	描画の消去
 	{n} arrows	矢印{n}本
 	1 ring	円1つ
 	{n} rings	円{n}つ
-	The comment on the move shown, large under the board	表示中の手のコメントを盤の下に大きく表示
+	Show the move's comment in large type under the board	指し手のコメントを盤の下に大きな文字で表示
 	Running text	続け書き
 	Columns	列
 	Text size	文字サイズ
@@ -3183,7 +3183,7 @@ chess undo step	Clear drawings	描画の消去
 	Large	大
 	Previous variation (Page Up)	前の変化 (Page Up)
 	Next variation (Page Down)	次の変化 (Page Down)
-	A move the pointer rests on shows its position	ポインターを止めた手の局面を表示
+	Show a move's position when the pointer rests on it	ポインターを置いた指し手の局面を表示
 	Position after {move}	{move} の後の局面
 	To review	要確認
 	With an error	エラーあり
@@ -3408,7 +3408,6 @@ castling	long	ロング
 	{name} (no page discusses it)	{name} (扱うページなし)
 	Go to its page and put the game on the board.	そのページに移動し、対局を盤に置きます。
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本を PGN に関連付けました: {moves} 手中 {linked} 手 (PGN から読み取り {recovered})、矛盾 {conflict}。
-	Link the whole book to its PGN	本全体を PGN に関連付ける
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	本の PGN はこの手を別の局面から指しています。確認して、PGN の手を使うか本の手を残してください。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	このページの本の PGN: 一致 {confirmed}、PGN から読み取り {recovered}、矛盾 {conflict} (要確認 {open})。
 	You kept the book's move.	本の手を残しました。
@@ -3429,7 +3428,7 @@ castling	long	ロング
 	Corners	四隅
 	Start outlined, end filled	移動元は枠線、移動先は塗りつぶし
 	Border and light fill	枠線と薄い塗りつぶし
-	Last move	最後の指し手
+	Highlight the last move	最後の指し手を強調
 	Strength	強さ
 	Import fonts…	フォントを読み込む…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	チェスのフォントをプログラムの横のフォントフォルダーにコピーします。図面用フォントはそれぞれ駒のセットになり、フィギュリンフォントはエクスポートの指し手を書きます。
@@ -3684,3 +3683,16 @@ progress bar	Progress	進行状況
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	解答は最後に番号順で載せます。解答を読み取れなかった局面図にはその旨を記します。
 	The exercise sheet can't be written over a PDF that is open: choose another name.	練習問題シートは開いている PDF に上書きできません。別の名前を選んでください。
 	No exercise sheet was written	練習問題シートは書き出されませんでした
+	Filled squares	マスを塗りつぶし
+	Classic	クラシック
+	Tokens	トークン
+	Pixel Art	ピクセルアート
+	Facets	ファセット
+	Stained Glass	ステンドグラス
+	Chubby	ぽっちゃり
+	Gothic	ゴシック
+	Sketch	スケッチ
+	Shapes	図形
+	Fantasy	ファンタジー
+	Spatial	立体
+	Celtic	ケルト

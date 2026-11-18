@@ -2441,8 +2441,7 @@ animation effects	Off	Izklopljeni
 	Page properties	Lastnosti strani
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Poišči šahovske diagrame
-	Chess diagrams panel	Podokno šahovskih diagramov
+	Chess panel	Šahovsko podokno
 	Chess	Šah
 	Diagrams	Diagrami
 	Chess diagrams	Šahovski diagrami
@@ -2450,10 +2449,10 @@ animation effects	Off	Izklopljeni
 	Scan all pages	Išči na vseh straneh
 	Scanning for diagrams… page {d} of {t}	Iskanje diagramov… stran {d} od {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Preiščite to stran ali vse strani, da najdete šahovske diagrame v tem dokumentu.
-	The document changed since the scan. Scan again to update the diagrams.	Dokument se je po iskanju spremenil. Ponovno iščite, da posodobite diagrame.
+	The document changed since its diagrams were detected. Detect them again to update them.	Dokument se je spremenil, odkar so bili diagrami zaznani. Zaznajte jih znova, da jih posodobite.
 	The piece model couldn't be loaded: {e}	Modela figur ni bilo mogoče naložiti: {e}
 	No diagrams found.	Ni najdenih diagramov.
-	This page couldn't be scanned: {e}	Te strani ni bilo mogoče preiskati: {e}
+	The diagrams on this page couldn't be detected: {e}	Diagramov na tej strani ni bilo mogoče zaznati: {e}
 	Only the first {n} diagrams on this page are listed.	Prikazani so le prvi diagrami te strani: {n}.
 	Diagram {n}	Diagram {n}
 	Position read	Pozicija prebrana
@@ -2505,6 +2504,7 @@ animation effects	Off	Izklopljeni
 	Black knight	Črni skakač
 	Black pawn	Črni kmet
 	White	Beli
+chess side	Black	Črni
 	Board: {fen}	Šahovnica: {fen}
 	Board, {state}, move {n}	Šahovnica, {state}, poteza {n}
 	Board, {state}	Šahovnica, {state}
@@ -2527,7 +2527,7 @@ animation effects	Off	Izklopljeni
 	{n} to review	Za pregled: {n}
 	◀ Previous to review	◀ Prejšnji za pregled
 	Open in lichess	Odpri v lichess
-	Diagrams are already being scanned	Diagrami se že iščejo
+	Diagrams are already being detected	Diagrami se že zaznavajo
 	Diagrams found: {n}	Najdeni diagrami: {n}
 	FEN copied	FEN kopiran
 # Chess ▸ Board: the analysis board panel.
@@ -2599,7 +2599,7 @@ animation effects	Off	Izklopljeni
 	That side can't be to move: the other king is in check.	Ta stran ne more biti na potezi: drugi kralj je v šahu.
 	The FEN couldn't be read: {e}	FEN-a ni bilo mogoče prebrati: {e}
 	The PGN couldn't be read: {e}	PGN-ja ni bilo mogoče prebrati: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ta diagram ni prebran: najprej skenirajte njegovo stran ali nastavite položaj v urejevalniku.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Ta diagram ni bil prebran: najprej zaznajte diagrame na njegovi strani ali nastavite pozicijo v urejevalniku.
 	White to move	Na potezi je beli
 	White to move, in check	Na potezi je beli, v šahu
 # Chess ▸ Board: variations, annotations and game details.
@@ -3177,7 +3177,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	{n} arrows	{n} puščic
 	1 ring	1 obroč
 	{n} rings	{n} obročev
-	The comment on the move shown, large under the board	Komentar k prikazani potezi, velik pod šahovnico
+	Show the move's comment in large type under the board	Prikaži komentar poteze z velikimi črkami pod šahovnico
 	Running text	Tekoče besedilo
 	Columns	Stolpci
 	Text size	Velikost besedila
@@ -3186,7 +3186,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Large	Velika
 	Previous variation (Page Up)	Prejšnja varianta (Page Up)
 	Next variation (Page Down)	Naslednja varianta (Page Down)
-	A move the pointer rests on shows its position	Poteza, na kateri se ustavi kazalec, pokaže svojo pozicijo
+	Show a move's position when the pointer rests on it	Prikaži pozicijo poteze, ko kazalec obstane na njej
 	Position after {move}	Pozicija po {move}
 	To review	Za pregled
 	With an error	Z napako
@@ -3411,7 +3411,6 @@ castling	long	dolga
 	{name} (no page discusses it)	{name} (nobena stran je ne obravnava)
 	Go to its page and put the game on the board.	Pojdi na njeno stran in postavi partijo na šahovnico.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Knjiga je povezana s PGN: {linked} od {moves} potez (prebranih iz PGN {recovered}), v sporu {conflict}.
-	Link the whole book to its PGN	Poveži celo knjigo z njenim PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN knjige igra to potezo iz drugega položaja: preverite jo, nato uporabite potezo iz PGN ali obdržite potezo iz knjige.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN knjige na tej strani: potrjenih {confirmed}, prebranih iz PGN {recovered}, v sporu {conflict} (za pregled {open}).
 	You kept the book's move.	Obdržali ste potezo iz knjige.
@@ -3432,7 +3431,7 @@ castling	long	dolga
 	Corners	Koti
 	Start outlined, end filled	Začetek obrobljen, cilj zapolnjen
 	Border and light fill	Obroba in svetlo polnilo
-	Last move	Zadnja poteza
+	Highlight the last move	Poudari zadnjo potezo
 	Strength	Moč
 	Import fonts…	Uvozi pisave…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopira šahovske pisave v mapo pisav ob programu: vsaka pisava za diagrame je komplet figur, pisava s figuricami pa piše poteze v izvozih.
@@ -3687,3 +3686,16 @@ progress bar	Progress	Napredek
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Rešitve na koncu, po vrstnem redu številk. Diagram, katerega rešitev ni bila prebrana, to pove.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Lista z vajami ni mogoče zapisati čez odprt PDF: izberite drugo ime.
 	No exercise sheet was written	List z vajami ni bil zapisan
+	Filled squares	Zapolnjena polja
+	Classic	Klasičen
+	Tokens	Žetoni
+	Pixel Art	Pikselna umetnost
+	Facets	Fasete
+	Stained Glass	Vitraž
+	Chubby	Debeluhasto
+	Gothic	Gotski
+	Sketch	Skica
+	Shapes	Oblike
+	Fantasy	Fantazija
+	Spatial	Prostorsko
+	Celtic	Keltski

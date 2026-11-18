@@ -2458,8 +2458,7 @@ animation effects	Off	Вимкнено
 	Page properties	Властивості сторінки
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Знайти шахові діаграми
-	Chess diagrams panel	Панель шахових діаграм
+	Chess panel	Шахова панель
 	Chess	Шахи
 	Diagrams	Діаграми
 	Chess diagrams	Шахові діаграми
@@ -2467,10 +2466,10 @@ animation effects	Off	Вимкнено
 	Scan all pages	Шукати на всіх сторінках
 	Scanning for diagrams… page {d} of {t}	Пошук діаграм… сторінка {d} із {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Запустіть пошук на цій сторінці або на всіх сторінках, щоб знайти шахові діаграми в документі.
-	The document changed since the scan. Scan again to update the diagrams.	Документ змінився після пошуку. Повторіть пошук, щоб оновити діаграми.
+	The document changed since its diagrams were detected. Detect them again to update them.	Документ змінився після того, як у ньому знайшли діаграми. Знайдіть їх знову, щоб оновити.
 	The piece model couldn't be loaded: {e}	Не вдалося завантажити модель фігур: {e}
 	No diagrams found.	Діаграм не знайдено.
-	This page couldn't be scanned: {e}	Не вдалося перевірити сторінку: {e}
+	The diagrams on this page couldn't be detected: {e}	Не вдалося знайти діаграми на цій сторінці: {e}
 	Only the first {n} diagrams on this page are listed.	Показано лише перші діаграми цієї сторінки: {n}.
 	Diagram {n}	Діаграма {n}
 	Position read	Позицію прочитано
@@ -2522,6 +2521,7 @@ animation effects	Off	Вимкнено
 	Black knight	Чорний кінь
 	Black pawn	Чорний пішак
 	White	Білі
+chess side	Black	Чорні
 	Board: {fen}	Дошка: {fen}
 	Board, {state}, move {n}	Дошка, {state}, хід {n}
 	Board, {state}	Дошка, {state}
@@ -2544,7 +2544,7 @@ animation effects	Off	Вимкнено
 	{n} to review	Для перевірки: {n}
 	◀ Previous to review	◀ Попередня для перевірки
 	Open in lichess	Відкрити в lichess
-	Diagrams are already being scanned	Пошук діаграм уже триває
+	Diagrams are already being detected	Діаграми вже шукаються
 	Diagrams found: {n}	Знайдено діаграм: {n}
 	FEN copied	FEN скопійовано
 # Chess ▸ Board: the analysis board panel.
@@ -2616,7 +2616,7 @@ animation effects	Off	Вимкнено
 	That side can't be to move: the other king is in check.	Ця сторона не може ходити: інший король під шахом.
 	The FEN couldn't be read: {e}	Не вдалося прочитати FEN: {e}
 	The PGN couldn't be read: {e}	Не вдалося прочитати PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Цю діаграму не прочитано: спершу проскануйте її сторінку або задайте позицію в редакторі.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Цю діаграму не прочитано: спершу знайдіть діаграми на її сторінці або задайте позицію в редакторі.
 	White to move	Хід білих
 	White to move, in check	Хід білих, шах
 # Chess ▸ Board: variations, annotations and game details.
@@ -3194,7 +3194,7 @@ chess undo step	Clear drawings	видалення малюнків
 	{n} arrows	{n} стрілок
 	1 ring	1 кільце
 	{n} rings	{n} кілець
-	The comment on the move shown, large under the board	Коментар до показаного ходу великим під дошкою
+	Show the move's comment in large type under the board	Показувати коментар до ходу великим шрифтом під дошкою
 	Running text	Суцільний текст
 	Columns	Стовпці
 	Text size	Розмір тексту
@@ -3203,7 +3203,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Large	Великий
 	Previous variation (Page Up)	Попередній варіант (Page Up)
 	Next variation (Page Down)	Наступний варіант (Page Down)
-	A move the pointer rests on shows its position	Хід, на якому зупинився вказівник, показує свою позицію
+	Show a move's position when the pointer rests on it	Показувати позицію ходу, коли на ньому зупиняється вказівник
 	Position after {move}	Позиція після {move}
 	To review	На перевірку
 	With an error	З помилкою
@@ -3428,7 +3428,6 @@ castling	long	довга
 	{name} (no page discusses it)	{name} (жодна сторінка її не розбирає)
 	Go to its page and put the game on the board.	Перейти на її сторінку й поставити партію на дошку.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Книгу пов'язано з її PGN: ходів — {linked} з {moves} (взято з PGN — {recovered}), у конфлікті — {conflict}.
-	Link the whole book to its PGN	Пов'язати всю книгу з її PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	У PGN книги цей хід зроблено з іншої позиції: перевірте його, потім візьміть хід із PGN або залиште хід книги.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN книги на цій сторінці: підтверджено — {confirmed}, взято з PGN — {recovered}, у конфлікті — {conflict} (на перевірку — {open}).
 	You kept the book's move.	Ви залишили хід книги.
@@ -3449,7 +3448,7 @@ castling	long	довга
 	Corners	Кутики
 	Start outlined, end filled	Звідки — рамка, куди — заливка
 	Border and light fill	Рамка і легка заливка
-	Last move	Останній хід
+	Highlight the last move	Виділяти останній хід
 	Strength	Інтенсивність
 	Import fonts…	Імпортувати шрифти…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Копіює шахові шрифти до теки шрифтів поруч із програмою: кожен шрифт діаграм стає набором фігур, а шрифт фігурок пише ходи в експорті.
@@ -3704,3 +3703,16 @@ progress bar	Progress	Хід виконання
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Розв'язки в кінці, за порядком номерів. Для діаграми, розв'язок якої не прочитано, це вказано.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Аркуш вправ не можна записати поверх відкритого PDF: виберіть іншу назву.
 	No exercise sheet was written	Аркуш вправ не записано
+	Filled squares	Зафарбовані поля
+	Classic	Класичний
+	Tokens	Фішки
+	Pixel Art	Піксель-арт
+	Facets	Грані
+	Stained Glass	Вітраж
+	Chubby	Пухкенькі
+	Gothic	Готичний
+	Sketch	Ескіз
+	Shapes	Форми
+	Fantasy	Фентезі
+	Spatial	Об'ємні
+	Celtic	Кельтські

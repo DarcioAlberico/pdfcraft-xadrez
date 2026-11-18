@@ -2690,8 +2690,7 @@ key	Space	Space
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
 	Replace diagram	Thay thế sơ đồ
 	Add lichess links	Thêm liên kết lichess
-	Scan chess diagrams	Tìm sơ đồ cờ vua
-	Chess diagrams panel	Bảng sơ đồ cờ vua
+	Chess panel	Bảng cờ vua
 	Chess	Cờ vua
 	Diagrams	Sơ đồ
 	Chess diagrams	Sơ đồ cờ vua
@@ -2699,10 +2698,10 @@ key	Space	Space
 	Scan all pages	Tìm trên mọi trang
 	Scanning for diagrams… page {d} of {t}	Đang tìm sơ đồ… trang {d} trên {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Hãy tìm trên trang này hoặc trên mọi trang để thấy các sơ đồ cờ vua trong tài liệu này.
-	The document changed since the scan. Scan again to update the diagrams.	Tài liệu đã thay đổi sau khi tìm. Hãy tìm lại để cập nhật các sơ đồ.
+	The document changed since its diagrams were detected. Detect them again to update them.	Tài liệu đã thay đổi kể từ khi phát hiện sơ đồ. Hãy phát hiện lại để cập nhật.
 	The piece model couldn't be loaded: {e}	Không tải được mô hình quân cờ: {e}
 	No diagrams found.	Không tìm thấy sơ đồ nào.
-	This page couldn't be scanned: {e}	Không thể kiểm tra trang này: {e}
+	The diagrams on this page couldn't be detected: {e}	Không thể phát hiện sơ đồ trên trang này: {e}
 	Only the first {n} diagrams on this page are listed.	Chỉ liệt kê {n} sơ đồ đầu tiên trên trang này.
 	Diagram {n}	Sơ đồ {n}
 	Position read	Đã đọc thế cờ
@@ -2777,7 +2776,7 @@ chess side	Black	Đen
 	{n} to review	Cần xem lại: {n}
 	◀ Previous to review	◀ Cần xem lại trước đó
 	Open in lichess	Mở trong lichess
-	Diagrams are already being scanned	Đang tìm sơ đồ rồi
+	Diagrams are already being detected	Đang phát hiện sơ đồ
 	Diagrams found: {n}	Số sơ đồ tìm thấy: {n}
 	FEN copied	Đã sao chép FEN
 # Chess ▸ Board: the analysis board panel.
@@ -2849,7 +2848,7 @@ chess side	Black	Đen
 	That side can't be to move: the other king is in check.	Bên đó không thể đến lượt: vua bên kia đang bị chiếu.
 	The FEN couldn't be read: {e}	Không đọc được FEN: {e}
 	The PGN couldn't be read: {e}	Không đọc được PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Sơ đồ này chưa được đọc: hãy quét trang của nó trước, hoặc đặt thế cờ trong trình chỉnh sửa.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Sơ đồ này chưa được đọc: hãy phát hiện sơ đồ trên trang của nó trước, hoặc đặt thế cờ trong trình chỉnh sửa.
 	White to move	Đến lượt Trắng
 	White to move, in check	Đến lượt Trắng, đang bị chiếu
 # Chess ▸ Board: variations, annotations and game details.
@@ -3426,7 +3425,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	{n} arrows	{n} mũi tên
 	1 ring	1 vòng
 	{n} rings	{n} vòng
-	The comment on the move shown, large under the board	Bình luận của nước đang hiện, chữ lớn dưới bàn cờ
+	Show the move's comment in large type under the board	Hiện bình luận của nước đi bằng chữ lớn dưới bàn cờ
 	Running text	Văn bản liền
 	Columns	Cột
 	Text size	Cỡ chữ
@@ -3435,7 +3434,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Large	Lớn
 	Previous variation (Page Up)	Biến thể trước (Page Up)
 	Next variation (Page Down)	Biến thể sau (Page Down)
-	A move the pointer rests on shows its position	Nước đi mà con trỏ dừng lại sẽ hiện thế cờ của nó
+	Show a move's position when the pointer rests on it	Hiện thế cờ của nước đi khi con trỏ dừng trên nó
 	Position after {move}	Thế cờ sau {move}
 	To review	Cần xem lại
 	With an error	Có lỗi
@@ -3659,7 +3658,6 @@ castling	long	xa
 	{name} (no page discusses it)	{name} (không trang nào bàn đến)
 	Go to its page and put the game on the board.	Đi đến trang của ván cờ và đặt nó lên bàn cờ.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Sách đã được liên kết với PGN: {linked} trên {moves} nước ({recovered} lấy từ PGN), {conflict} xung đột.
-	Link the whole book to its PGN	Liên kết toàn bộ sách với PGN của nó
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN của sách đi nước này từ một thế cờ khác: hãy kiểm tra, rồi dùng nước của PGN hoặc giữ nước của sách.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN của sách ở trang này: {confirmed} đã xác nhận, {recovered} lấy từ PGN, {conflict} xung đột ({open} cần xem lại).
 	You kept the book's move.	Bạn đã giữ nước của sách.
@@ -3680,7 +3678,7 @@ castling	long	xa
 	Corners	Góc
 	Start outlined, end filled	Ô đi viền, ô đến tô đầy
 	Border and light fill	Viền và tô nhạt
-	Last move	Nước đi cuối
+	Highlight the last move	Tô sáng nước đi cuối
 	Strength	Cường độ
 	Import fonts…	Nhập phông chữ…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Sao chép phông chữ cờ vua vào thư mục phông chữ bên cạnh chương trình: mỗi phông chữ sơ đồ là một bộ quân cờ, còn phông chữ ký hiệu quân ghi các nước đi của bản xuất.
@@ -3933,3 +3931,16 @@ progress bar	Progress	Tiến độ
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Lời giải ở cuối, theo thứ tự số. Sơ đồ chưa đọc được lời giải sẽ ghi rõ điều đó.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Không thể ghi tờ bài tập đè lên một PDF đang mở: hãy chọn tên khác.
 	No exercise sheet was written	Không có tờ bài tập nào được ghi
+	Filled squares	Tô kín ô
+	Classic	Cổ điển
+	Tokens	Thẻ
+	Pixel Art	Nghệ thuật điểm ảnh
+	Facets	Mặt cắt
+	Stained Glass	Kính màu
+	Chubby	Mũm mĩm
+	Gothic	Gô-tích
+	Sketch	Phác thảo
+	Shapes	Hình khối
+	Fantasy	Kỳ ảo
+	Spatial	Không gian
+	Celtic	Xen-tơ

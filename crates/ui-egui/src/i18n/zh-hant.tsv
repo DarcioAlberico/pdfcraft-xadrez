@@ -2384,8 +2384,7 @@ animation effects	Off	關
 	Page properties	頁面屬性
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	尋找西洋棋棋圖
-	Chess diagrams panel	西洋棋棋圖面板
+	Chess panel	西洋棋面板
 	Chess	西洋棋
 	Diagrams	棋圖
 	Chess diagrams	西洋棋棋圖
@@ -2393,10 +2392,10 @@ animation effects	Off	關
 	Scan all pages	尋找所有頁面
 	Scanning for diagrams… page {d} of {t}	正在尋找棋圖…第{d}頁，共{t}頁
 	Scan this page or all pages to find the chess diagrams in this document.	尋找此頁或所有頁面，以找出此文件中的西洋棋棋圖。
-	The document changed since the scan. Scan again to update the diagrams.	尋找之後文件已變更。請重新尋找以更新棋圖。
+	The document changed since its diagrams were detected. Detect them again to update them.	偵測局面圖後文件已變更。請重新偵測以更新它們。
 	The piece model couldn't be loaded: {e}	無法載入棋子模型：{e}
 	No diagrams found.	找不到棋圖。
-	This page couldn't be scanned: {e}	無法尋找此頁：{e}
+	The diagrams on this page couldn't be detected: {e}	無法偵測此頁面上的局面圖：{e}
 	Only the first {n} diagrams on this page are listed.	僅列出此頁的前 {n} 個棋圖。
 	Diagram {n}	棋圖 {n}
 	Position read	已讀取局面
@@ -2448,6 +2447,7 @@ animation effects	Off	關
 	Black knight	黑馬
 	Black pawn	黑兵
 	White	白方
+chess side	Black	黑方
 	Board: {fen}	棋盤：{fen}
 	Board, {state}, move {n}	棋盤，{state}，第 {n} 回合
 	Board, {state}	棋盤，{state}
@@ -2470,7 +2470,7 @@ animation effects	Off	關
 	{n} to review	待複核 {n} 個
 	◀ Previous to review	◀ 上一個待複核
 	Open in lichess	在 lichess 中開啟
-	Diagrams are already being scanned	已在尋找棋圖
+	Diagrams are already being detected	正在偵測局面圖
 	Diagrams found: {n}	找到的棋圖：{n}
 	FEN copied	已複製 FEN
 # Chess ▸ Board: the analysis board panel.
@@ -2508,7 +2508,7 @@ animation effects	Off	關
 	That side can't be to move: the other king is in check.	該方不能走棋：對方的王正被將軍。
 	The FEN couldn't be read: {e}	無法讀取 FEN：{e}
 	The PGN couldn't be read: {e}	無法讀取 PGN：{e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	此圖表尚未讀取：請先掃描其所在頁面，或在編輯器中設定局面。
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	此局面圖尚未讀取：請先偵測其所在頁面的局面圖，或在編輯器中設定局面。
 	White to move	白方走棋
 	White to move, in check	白方走棋，被將軍
 # Chess ▸ Board: variations, annotations and game details.
@@ -3074,7 +3074,7 @@ chess undo step	Clear drawings	清除標記
 	{n} arrows	{n} 個箭頭
 	1 ring	1 個圓環
 	{n} rings	{n} 個圓環
-	The comment on the move shown, large under the board	在棋盤下方大字顯示目前著法的註解
+	Show the move's comment in large type under the board	在棋盤下方以大字顯示著法註解
 	Running text	連續文字
 	Columns	分欄
 	Text size	文字大小
@@ -3083,7 +3083,7 @@ chess undo step	Clear drawings	清除標記
 	Large	大
 	Previous variation (Page Up)	上一個變著 (Page Up)
 	Next variation (Page Down)	下一個變著 (Page Down)
-	A move the pointer rests on shows its position	指標停留的著法顯示其局面
+	Show a move's position when the pointer rests on it	指標停在著法上時顯示其局面
 	Position after {move}	{move} 之後的局面
 	To review	待複核
 	With an error	有錯誤
@@ -3305,7 +3305,6 @@ castling	long	長
 	{name} (no page discusses it)	{name}（沒有頁面討論它）
 	Go to its page and put the game on the board.	前往其頁面並將對局放到棋盤上。
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本書已與其 PGN 連結：{moves} 步中 {linked} 步（從 PGN 讀取 {recovered} 步），衝突 {conflict} 步。
-	Link the whole book to its PGN	將整本書與其 PGN 連結
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	本書的 PGN 從另一局面走出這步棋：請核對，然後使用 PGN 的著法或保留書中的著法。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	此頁的本書 PGN：已確認 {confirmed}，從 PGN 讀取 {recovered}，衝突 {conflict}（待複核 {open}）。
 	You kept the book's move.	你保留了書中的著法。
@@ -3326,7 +3325,7 @@ castling	long	長
 	Corners	四角
 	Start outlined, end filled	起點描邊，終點填滿
 	Border and light fill	邊框加淺色填滿
-	Last move	上一步
+	Highlight the last move	醒目顯示上一步
 	Strength	強度
 	Import fonts…	匯入字型…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	將西洋棋字型複製到程式旁邊的字型資料夾：每種棋圖字型都是一套棋子，棋子符號字型則用於寫出匯出內容中的著法。
@@ -3347,6 +3346,19 @@ the move's comment	Move comment	此著法的評論
 	Analyze the position	分析局面
 	Export chess book…	匯出西洋棋書…
 	Chess shortcuts	西洋棋快速鍵
+	Filled squares	填滿格子
+	Classic	經典
+	Tokens	籌碼
+	Pixel Art	像素畫
+	Facets	刻面
+	Stained Glass	彩繪玻璃
+	Chubby	圓胖
+	Gothic	哥德
+	Sketch	素描
+	Shapes	形狀
+	Fantasy	奇幻
+	Spatial	立體
+	Celtic	凱爾特
 
 # A9-I14b: chess texts
 	A correction ({id}) was not used: {e}	一項更正（{id}）未被使用：{e}

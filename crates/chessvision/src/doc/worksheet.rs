@@ -103,6 +103,9 @@ pub struct Worksheet {
     pub left_out: Vec<LeftOut>,
     /// Exercises past [`MAX_EXERCISES`], counted, not on the sheet.
     pub over: usize,
+    /// Where each of those is, in the book's order (plan A9-N12b2: the export dialog counts only
+    /// the pages it believes).
+    pub over_at: Vec<DiagramAt>,
 }
 
 impl Worksheet {
@@ -157,16 +160,22 @@ fn side_of(fen: &str) -> Color {
 
 /// The sheet of `doc`'s exercises, `book` naming its pages, as `layout` says.
 pub fn worksheet(doc: &ChessDoc, book: &PgnBook, layout: &Layout) -> Worksheet {
+    capped(doc, book, layout, MAX_EXERCISES)
+}
+
+/// [`worksheet`], with at most `max` exercises on the sheet (the tests' small cap).
+pub(crate) fn capped(doc: &ChessDoc, book: &PgnBook, layout: &Layout, max: usize) -> Worksheet {
     let labels = PageLabel::with_folios(&book.labels, doc);
     let (found, left_out) = find(doc, book);
     let mut items: Vec<Item> = Vec::new();
     let mut out = Worksheet::default();
     let page_lang = |page: u32| doc.pages.iter().find(|p| p.index == page).map_or(Lang::En, |p| p.text_language());
     let mut push = |item: Item, out: &mut Worksheet| {
-        if items.len() < MAX_EXERCISES {
+        if items.len() < max {
             items.push(item);
         } else {
             out.over = out.over.saturating_add(1);
+            out.over_at.push(item.at);
         }
     };
     let mut solved = found.into_iter().peekable();

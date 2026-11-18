@@ -2440,8 +2440,7 @@ animation effects	Off	Ανενεργά
 	Page properties	Ιδιότητες σελίδας
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Εύρεση σκακιστικών διαγραμμάτων
-	Chess diagrams panel	Πίνακας σκακιστικών διαγραμμάτων
+	Chess panel	Πίνακας σκακιού
 	Chess	Σκάκι
 	Diagrams	Διαγράμματα
 	Chess diagrams	Σκακιστικά διαγράμματα
@@ -2449,10 +2448,10 @@ animation effects	Off	Ανενεργά
 	Scan all pages	Αναζήτηση σε όλες τις σελίδες
 	Scanning for diagrams… page {d} of {t}	Αναζήτηση διαγραμμάτων… σελίδα {d} από {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Αναζητήστε σε αυτή τη σελίδα ή σε όλες τις σελίδες για να βρείτε τα σκακιστικά διαγράμματα του εγγράφου.
-	The document changed since the scan. Scan again to update the diagrams.	Το έγγραφο άλλαξε μετά την αναζήτηση. Αναζητήστε ξανά για να ενημερωθούν τα διαγράμματα.
+	The document changed since its diagrams were detected. Detect them again to update them.	Το έγγραφο άλλαξε από τότε που εντοπίστηκαν τα διαγράμματά του. Εντοπίστε τα ξανά για να ενημερωθούν.
 	The piece model couldn't be loaded: {e}	Δεν ήταν δυνατή η φόρτωση του μοντέλου κομματιών: {e}
 	No diagrams found.	Δεν βρέθηκαν διαγράμματα.
-	This page couldn't be scanned: {e}	Δεν ήταν δυνατή η εξέταση αυτής της σελίδας: {e}
+	The diagrams on this page couldn't be detected: {e}	Δεν ήταν δυνατός ο εντοπισμός των διαγραμμάτων αυτής της σελίδας: {e}
 	Only the first {n} diagrams on this page are listed.	Εμφανίζονται μόνο τα πρώτα {n} διαγράμματα αυτής της σελίδας.
 	Diagram {n}	Διάγραμμα {n}
 	Position read	Η θέση διαβάστηκε
@@ -2504,6 +2503,7 @@ animation effects	Off	Ανενεργά
 	Black knight	Μαύρος ίππος
 	Black pawn	Μαύρο πιόνι
 	White	Λευκά
+chess side	Black	Μαύρα
 	Board: {fen}	Σκακιέρα: {fen}
 	Board, {state}, move {n}	Σκακιέρα, {state}, κίνηση {n}
 	Board, {state}	Σκακιέρα, {state}
@@ -2526,7 +2526,7 @@ animation effects	Off	Ανενεργά
 	{n} to review	Για έλεγχο: {n}
 	◀ Previous to review	◀ Προηγούμενο για έλεγχο
 	Open in lichess	Άνοιγμα στο lichess
-	Diagrams are already being scanned	Η αναζήτηση διαγραμμάτων είναι ήδη σε εξέλιξη
+	Diagrams are already being detected	Τα διαγράμματα εντοπίζονται ήδη
 	Diagrams found: {n}	Διαγράμματα που βρέθηκαν: {n}
 	FEN copied	Το FEN αντιγράφηκε
 # Chess ▸ Board: the analysis board panel.
@@ -2564,7 +2564,7 @@ animation effects	Off	Ανενεργά
 	That side can't be to move: the other king is in check.	Αυτή η πλευρά δεν μπορεί να έχει τη σειρά: ο άλλος βασιλιάς είναι σε σαχ.
 	The FEN couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση του FEN: {e}
 	The PGN couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση του PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Αυτό το διάγραμμα δεν έχει διαβαστεί: σαρώστε πρώτα τη σελίδα του ή ορίστε τη θέση στον επεξεργαστή.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Αυτό το διάγραμμα δεν έχει διαβαστεί: εντοπίστε πρώτα τα διαγράμματα της σελίδας του ή ορίστε τη θέση του στον επεξεργαστή.
 	White to move	Παίζουν τα λευκά
 	White to move, in check	Παίζουν τα λευκά, σε σαχ
 # Chess ▸ Board: variations, annotations and game details.
@@ -3130,7 +3130,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	{n} arrows	{n} βέλη
 	1 ring	1 δακτύλιος
 	{n} rings	{n} δακτύλιοι
-	The comment on the move shown, large under the board	Το σχόλιο της κίνησης που εμφανίζεται, μεγάλο κάτω από τη σκακιέρα
+	Show the move's comment in large type under the board	Εμφάνιση του σχολίου της κίνησης με μεγάλα γράμματα κάτω από τη σκακιέρα
 	Running text	Συνεχές κείμενο
 	Columns	Στήλες
 	Text size	Μέγεθος κειμένου
@@ -3139,7 +3139,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Large	Μεγάλο
 	Previous variation (Page Up)	Προηγούμενη παραλλαγή (Page Up)
 	Next variation (Page Down)	Επόμενη παραλλαγή (Page Down)
-	A move the pointer rests on shows its position	Η κίνηση όπου σταματά ο δείκτης δείχνει τη θέση της
+	Show a move's position when the pointer rests on it	Εμφάνιση της θέσης μιας κίνησης όταν ο δείκτης σταματά πάνω της
 	Position after {move}	Θέση μετά το {move}
 	To review	Για έλεγχο
 	With an error	Με σφάλμα
@@ -3361,7 +3361,6 @@ castling	long	μεγάλο
 	{name} (no page discusses it)	{name} (καμία σελίδα δεν την εξετάζει)
 	Go to its page and put the game on the board.	Μετάβαση στη σελίδα της και τοποθέτηση της παρτίδας στη σκακιέρα.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Το βιβλίο συνδέθηκε με το PGN του: {linked} από {moves} κινήσεις ({recovered} από το PGN), {conflict} σε σύγκρουση.
-	Link the whole book to its PGN	Σύνδεση ολόκληρου του βιβλίου με το PGN του
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Το PGN του βιβλίου παίζει αυτή την κίνηση από άλλη θέση: ελέγξτε την και μετά χρησιμοποιήστε την κίνηση του PGN ή κρατήστε την κίνηση του βιβλίου.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN του βιβλίου σε αυτή τη σελίδα: {confirmed} επιβεβαιωμένες, {recovered} από το PGN, {conflict} σε σύγκρουση ({open} για έλεγχο).
 	You kept the book's move.	Κρατήσατε την κίνηση του βιβλίου.
@@ -3382,7 +3381,7 @@ castling	long	μεγάλο
 	Corners	Γωνίες
 	Start outlined, end filled	Αρχή με περίγραμμα, τέλος γεμάτο
 	Border and light fill	Περίγραμμα και απαλό γέμισμα
-	Last move	Τελευταία κίνηση
+	Highlight the last move	Επισήμανση της τελευταίας κίνησης
 	Strength	Ένταση
 	Import fonts…	Εισαγωγή γραμματοσειρών…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Αντιγράφει γραμματοσειρές σκακιού στον φάκελο γραμματοσειρών δίπλα στο πρόγραμμα: κάθε γραμματοσειρά διαγραμμάτων είναι ένα σετ πεσσών, και μια γραμματοσειρά συμβόλων γράφει τις κινήσεις των εξαγωγών.
@@ -3397,6 +3396,19 @@ the move's comment	Move comment	Σχόλιο της κίνησης
 	Indexing the book's PGN…	Ευρετηρίαση του PGN του βιβλίου…
 	The book's PGN is larger than PdfCraft indexes: only its first {moves} moves are linked to the book.	Το PGN του βιβλίου είναι μεγαλύτερο από όσο ευρετηριάζει το PdfCraft: μόνο οι πρώτες {moves} κινήσεις του συνδέονται με το βιβλίο.
 	Importing…	Εισαγωγή…
+	Filled squares	Γεμάτα τετράγωνα
+	Classic	Κλασικό
+	Tokens	Μάρκες
+	Pixel Art	Pixel art
+	Facets	Έδρες
+	Stained Glass	Βιτρό
+	Chubby	Στρουμπουλό
+	Gothic	Γοτθικό
+	Sketch	Σκίτσο
+	Shapes	Σχήματα
+	Fantasy	Φαντασία
+	Spatial	Χωρικό
+	Celtic	Κελτικό
 
 # A9-I14b: chess texts
 	A correction ({id}) was not used: {e}	Μια διόρθωση ({id}) δεν χρησιμοποιήθηκε: {e}

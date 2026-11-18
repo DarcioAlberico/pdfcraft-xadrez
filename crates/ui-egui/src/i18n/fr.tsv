@@ -2436,8 +2436,7 @@ animation effects	Off	Désactivés
 	Page properties	Propriétés de la page
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Rechercher les diagrammes d'échecs
-	Chess diagrams panel	Panneau des diagrammes d'échecs
+	Chess panel	Panneau d'échecs
 	Chess	Échecs
 	Diagrams	Diagrammes
 	Chess diagrams	Diagrammes d'échecs
@@ -2445,10 +2444,10 @@ animation effects	Off	Désactivés
 	Scan all pages	Rechercher dans toutes les pages
 	Scanning for diagrams… page {d} of {t}	Recherche de diagrammes… page {d} sur {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Lancez la recherche sur cette page ou sur toutes les pages pour trouver les diagrammes d'échecs de ce document.
-	The document changed since the scan. Scan again to update the diagrams.	Le document a changé depuis la recherche. Relancez-la pour mettre à jour les diagrammes.
+	The document changed since its diagrams were detected. Detect them again to update them.	Le document a changé depuis la détection de ses diagrammes. Détectez-les à nouveau pour les mettre à jour.
 	The piece model couldn't be loaded: {e}	Impossible de charger le modèle de pièces : {e}
 	No diagrams found.	Aucun diagramme trouvé.
-	This page couldn't be scanned: {e}	Impossible d'analyser cette page : {e}
+	The diagrams on this page couldn't be detected: {e}	Les diagrammes de cette page n'ont pas pu être détectés : {e}
 	Only the first {n} diagrams on this page are listed.	Seuls les {n} premiers diagrammes de cette page sont listés.
 	Diagram {n}	Diagramme {n}
 	Position read	Position lue
@@ -2500,6 +2499,7 @@ animation effects	Off	Désactivés
 	Black knight	Cavalier noir
 	Black pawn	Pion noir
 	White	Blancs
+chess side	Black	Noirs
 	Board: {fen}	Échiquier : {fen}
 	Board, {state}, move {n}	Échiquier, {state}, coup {n}
 	Board, {state}	Échiquier, {state}
@@ -2522,7 +2522,7 @@ animation effects	Off	Désactivés
 	{n} to review	{n} à revoir
 	◀ Previous to review	◀ Précédent à revoir
 	Open in lichess	Ouvrir dans lichess
-	Diagrams are already being scanned	La recherche de diagrammes est déjà en cours
+	Diagrams are already being detected	Les diagrammes sont déjà en cours de détection
 	Diagrams found: {n}	Diagrammes trouvés : {n}
 	FEN copied	FEN copiée
 # Chess ▸ Board: the analysis board panel.
@@ -2594,7 +2594,7 @@ animation effects	Off	Désactivés
 	That side can't be to move: the other king is in check.	Ce camp ne peut pas avoir le trait : l'autre roi est en échec.
 	The FEN couldn't be read: {e}	Impossible de lire la FEN : {e}
 	The PGN couldn't be read: {e}	Impossible de lire le PGN : {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ce diagramme n'a pas été lu : analysez d'abord sa page ou saisissez la position dans l'éditeur.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Ce diagramme n'a pas été lu : détectez d'abord les diagrammes de sa page, ou définissez sa position dans l'éditeur.
 	White to move	Trait aux Blancs
 	White to move, in check	Trait aux Blancs, en échec
 # Chess ▸ Board: variations, annotations and game details.
@@ -3172,7 +3172,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	{n} arrows	{n} flèches
 	1 ring	1 anneau
 	{n} rings	{n} anneaux
-	The comment on the move shown, large under the board	Le commentaire du coup affiché, en grand sous l'échiquier
+	Show the move's comment in large type under the board	Afficher le commentaire du coup en gros caractères sous l'échiquier
 	Running text	Texte continu
 	Columns	Colonnes
 	Text size	Taille du texte
@@ -3181,7 +3181,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Large	Grande
 	Previous variation (Page Up)	Variante précédente (Page préc.)
 	Next variation (Page Down)	Variante suivante (Page suiv.)
-	A move the pointer rests on shows its position	Un coup sur lequel s'arrête le pointeur montre sa position
+	Show a move's position when the pointer rests on it	Afficher la position d'un coup quand le pointeur s'y arrête
 	Position after {move}	Position après {move}
 	To review	À vérifier
 	With an error	Avec erreur
@@ -3406,7 +3406,6 @@ castling	long	grand
 	{name} (no page discusses it)	{name} (aucune page n'en parle)
 	Go to its page and put the game on the board.	Aller à sa page et placer la partie sur l'échiquier.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Le livre est relié à son PGN : {linked} coups sur {moves} ({recovered} lus dans le PGN), {conflict} en conflit.
-	Link the whole book to its PGN	Relier le livre entier à son PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Le PGN du livre joue ce coup depuis une autre position : vérifiez-le, puis utilisez le coup du PGN ou gardez celui du livre.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN du livre sur cette page : {confirmed} confirmés, {recovered} lus dans le PGN, {conflict} en conflit ({open} à vérifier).
 	You kept the book's move.	Vous avez gardé le coup du livre.
@@ -3427,7 +3426,7 @@ castling	long	grand
 	Corners	Coins
 	Start outlined, end filled	Départ encadré, arrivée remplie
 	Border and light fill	Bordure et fond léger
-	Last move	Dernier coup
+	Highlight the last move	Mettre en évidence le dernier coup
 	Strength	Intensité
 	Import fonts…	Importer des polices…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copie des polices d'échecs dans le dossier des polices à côté du programme : chaque police de diagrammes est un jeu de pièces, et une police de figurines écrit les coups des exportations.
@@ -3682,3 +3681,16 @@ progress bar	Progress	Progression
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Les solutions à la fin, dans l'ordre des numéros. Un diagramme dont la solution n'a pas été lue le dit.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	La feuille d'exercices ne peut pas être écrite sur un PDF ouvert : choisissez un autre nom.
 	No exercise sheet was written	Aucune feuille d'exercices n'a été écrite
+	Filled squares	Cases remplies
+	Classic	Classique
+	Tokens	Jetons
+	Pixel Art	Pixel art
+	Facets	Facettes
+	Stained Glass	Vitrail
+	Chubby	Dodu
+	Gothic	Gothique
+	Sketch	Croquis
+	Shapes	Formes
+	Fantasy	Fantaisie
+	Spatial	En volume
+	Celtic	Celtique

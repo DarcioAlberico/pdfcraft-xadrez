@@ -2510,8 +2510,7 @@ animation effects	Off	Vypnuto
 	Page properties	Vlastnosti stránky
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Najít šachové diagramy
-	Chess diagrams panel	Panel šachových diagramů
+	Chess panel	Šachový panel
 	Chess	Šachy
 	Diagrams	Diagramy
 	Chess diagrams	Šachové diagramy
@@ -2519,10 +2518,10 @@ animation effects	Off	Vypnuto
 	Scan all pages	Hledat na všech stránkách
 	Scanning for diagrams… page {d} of {t}	Hledání diagramů… stránka {d} z {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Spusťte hledání na této stránce nebo na všech stránkách a najděte šachové diagramy v tomto dokumentu.
-	The document changed since the scan. Scan again to update the diagrams.	Dokument se od hledání změnil. Spusťte hledání znovu, aby se diagramy aktualizovaly.
+	The document changed since its diagrams were detected. Detect them again to update them.	Dokument se od nalezení diagramů změnil. Najděte je znovu, abyste je aktualizovali.
 	The piece model couldn't be loaded: {e}	Model figur se nepodařilo načíst: {e}
 	No diagrams found.	Nebyly nalezeny žádné diagramy.
-	This page couldn't be scanned: {e}	Tuto stránku se nepodařilo prohledat: {e}
+	The diagrams on this page couldn't be detected: {e}	Diagramy na této stránce nebylo možné najít: {e}
 	Only the first {n} diagrams on this page are listed.	Zobrazeny jsou jen první diagramy této stránky: {n}.
 	Diagram {n}	Diagram č. {n}
 	Position read	Pozice přečtena
@@ -2574,6 +2573,7 @@ animation effects	Off	Vypnuto
 	Black knight	Černý jezdec
 	Black pawn	Černý pěšec
 	White	Bílý
+chess side	Black	Černý
 	Board: {fen}	Šachovnice: {fen}
 	Board, {state}, move {n}	Šachovnice, {state}, tah {n}
 	Board, {state}	Šachovnice, {state}
@@ -2596,7 +2596,7 @@ animation effects	Off	Vypnuto
 	{n} to review	Ke kontrole: {n}
 	◀ Previous to review	◀ Předchozí ke kontrole
 	Open in lichess	Otevřít v lichess
-	Diagrams are already being scanned	Diagramy se už hledají
+	Diagrams are already being detected	Diagramy se už hledají
 	Diagrams found: {n}	Nalezené diagramy: {n}
 	FEN copied	FEN zkopírován
 # Chess ▸ Board: the analysis board panel.
@@ -2668,7 +2668,7 @@ animation effects	Off	Vypnuto
 	That side can't be to move: the other king is in check.	Tato strana nemůže být na tahu: druhý král je v šachu.
 	The FEN couldn't be read: {e}	FEN nelze přečíst: {e}
 	The PGN couldn't be read: {e}	PGN nelze přečíst: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Tento diagram nebyl přečten: nejprve naskenujte jeho stránku nebo zadejte pozici v editoru.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Tento diagram nebyl přečten: nejprve najděte diagramy na jeho stránce, nebo nastavte jeho pozici v editoru.
 	White to move	Na tahu je bílý
 	White to move, in check	Na tahu je bílý, v šachu
 # Chess ▸ Board: variations, annotations and game details.
@@ -3246,7 +3246,7 @@ chess undo step	Clear drawings	smazání kreseb
 	{n} arrows	{n} šipek
 	1 ring	1 kroužek
 	{n} rings	{n} kroužků
-	The comment on the move shown, large under the board	Komentář k zobrazenému tahu velkým písmem pod šachovnicí
+	Show the move's comment in large type under the board	Zobrazit komentář k tahu velkým písmem pod šachovnicí
 	Running text	Souvislý text
 	Columns	Sloupce
 	Text size	Velikost textu
@@ -3255,7 +3255,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Large	Velká
 	Previous variation (Page Up)	Předchozí varianta (Page Up)
 	Next variation (Page Down)	Další varianta (Page Down)
-	A move the pointer rests on shows its position	Tah, na kterém se zastaví ukazatel, ukáže svou pozici
+	Show a move's position when the pointer rests on it	Zobrazit pozici tahu, když na něm spočine ukazatel
 	Position after {move}	Pozice po {move}
 	To review	K revizi
 	With an error	S chybou
@@ -3480,7 +3480,6 @@ castling	long	dlouhá
 	{name} (no page discusses it)	{name} (žádná stránka ji nerozebírá)
 	Go to its page and put the game on the board.	Přejít na její stránku a postavit partii na šachovnici.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kniha je propojena s PGN: {linked} z {moves} tahů (přečteno z PGN {recovered}), v rozporu {conflict}.
-	Link the whole book to its PGN	Propojit celou knihu s jejím PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN knihy hraje tento tah z jiné pozice: zkontrolujte ho a pak použijte tah z PGN, nebo ponechte tah z knihy.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN knihy na této stránce: potvrzeno {confirmed}, přečteno z PGN {recovered}, v rozporu {conflict} (ke kontrole {open}).
 	You kept the book's move.	Ponechali jste tah z knihy.
@@ -3501,7 +3500,7 @@ castling	long	dlouhá
 	Corners	Rohy
 	Start outlined, end filled	Začátek s okrajem, cíl vyplněný
 	Border and light fill	Okraj a jemná výplň
-	Last move	Poslední tah
+	Highlight the last move	Zvýraznit poslední tah
 	Strength	Síla
 	Import fonts…	Importovat písma…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Zkopíruje šachová písma do složky písem vedle programu: každé diagramové písmo je sada figur a písmo s figurkami píše tahy v exportech.
@@ -3756,3 +3755,16 @@ progress bar	Progress	Průběh
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Řešení na konci, v pořadí čísel. Diagram, jehož řešení nebylo přečteno, to uvádí.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	List cvičení nelze zapsat přes otevřené PDF: zvolte jiný název.
 	No exercise sheet was written	Žádný list cvičení nebyl zapsán
+	Filled squares	Vybarvená pole
+	Classic	Klasické
+	Tokens	Žetony
+	Pixel Art	Pixel art
+	Facets	Fasety
+	Stained Glass	Vitráž
+	Chubby	Baculaté
+	Gothic	Gotické
+	Sketch	Skica
+	Shapes	Tvary
+	Fantasy	Fantastické
+	Spatial	Prostorové
+	Celtic	Keltské

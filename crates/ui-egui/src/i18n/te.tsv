@@ -2343,8 +2343,7 @@ animation effects	Off	ఆఫ్
 	Page properties	పేజీ లక్షణాలు
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	చదరంగం రేఖాచిత్రాలను కనుగొను
-	Chess diagrams panel	చదరంగం రేఖాచిత్రాల ప్యానెల్
+	Chess panel	చదరంగం ప్యానెల్
 	Chess	చదరంగం
 	Diagrams	రేఖాచిత్రాలు
 	Chess diagrams	చదరంగం రేఖాచిత్రాలు
@@ -2352,10 +2351,10 @@ animation effects	Off	ఆఫ్
 	Scan all pages	అన్ని పేజీలలో వెతుకు
 	Scanning for diagrams… page {d} of {t}	రేఖాచిత్రాల కోసం వెతుకుతోంది… {t}లో {d}వ పేజీ
 	Scan this page or all pages to find the chess diagrams in this document.	ఈ పత్రంలోని చదరంగం రేఖాచిత్రాలను కనుగొనడానికి ఈ పేజీలో లేదా అన్ని పేజీలలో వెతకండి.
-	The document changed since the scan. Scan again to update the diagrams.	వెతికిన తర్వాత పత్రం మారింది. రేఖాచిత్రాలను నవీకరించడానికి మళ్లీ వెతకండి.
+	The document changed since its diagrams were detected. Detect them again to update them.	చిత్రాలను గుర్తించిన తర్వాత పత్రం మారింది. వాటిని నవీకరించడానికి మళ్లీ గుర్తించండి.
 	The piece model couldn't be loaded: {e}	పావుల మోడల్‌ను లోడ్ చేయలేకపోయింది: {e}
 	No diagrams found.	రేఖాచిత్రాలు ఏవీ కనుగొనబడలేదు.
-	This page couldn't be scanned: {e}	ఈ పేజీని పరిశీలించలేకపోయింది: {e}
+	The diagrams on this page couldn't be detected: {e}	ఈ పేజీలోని చిత్రాలను గుర్తించలేకపోయాం: {e}
 	Only the first {n} diagrams on this page are listed.	ఈ పేజీలోని మొదటి {n} రేఖాచిత్రాలు మాత్రమే జాబితాలో ఉన్నాయి.
 	Diagram {n}	రేఖాచిత్రం {n}
 	Position read	స్థితి చదవబడింది
@@ -2407,6 +2406,7 @@ animation effects	Off	ఆఫ్
 	Black knight	నల్ల గుర్రం
 	Black pawn	నల్ల బంటు
 	White	తెలుపు
+chess side	Black	నలుపు
 	Board: {fen}	బోర్డు: {fen}
 	Board, {state}, move {n}	బోర్డు, {state}, ఎత్తు {n}
 	Board, {state}	బోర్డు, {state}
@@ -2429,7 +2429,7 @@ animation effects	Off	ఆఫ్
 	{n} to review	సమీక్షకు: {n}
 	◀ Previous to review	◀ మునుపటి సమీక్ష
 	Open in lichess	lichessలో తెరువు
-	Diagrams are already being scanned	రేఖాచిత్రాల కోసం ఇప్పటికే వెతుకుతోంది
+	Diagrams are already being detected	చిత్రాలు ఇప్పటికే గుర్తించబడుతున్నాయి
 	Diagrams found: {n}	కనుగొన్న రేఖాచిత్రాలు: {n}
 	FEN copied	FEN కాపీ అయింది
 # Chess ▸ Board: the analysis board panel.
@@ -2467,7 +2467,7 @@ animation effects	Off	ఆఫ్
 	That side can't be to move: the other king is in check.	ఆ పక్షం ఆడలేదు: మరో రాజు చెక్‌లో ఉన్నాడు.
 	The FEN couldn't be read: {e}	FEN చదవలేకపోయాం: {e}
 	The PGN couldn't be read: {e}	PGN చదవలేకపోయాం: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	ఈ డయాగ్రామ్ చదవబడలేదు: ముందు దాని పేజీని స్కాన్ చేయండి, లేదా ఎడిటర్‌లో స్థితిని అమర్చండి.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	ఈ చిత్రం ఇంకా చదవబడలేదు: ముందుగా దాని పేజీలోని చిత్రాలను గుర్తించండి, లేదా ఎడిటర్‌లో దాని స్థితిని సెట్ చేయండి.
 	White to move	తెలుపు ఆడాలి
 	White to move, in check	తెలుపు ఆడాలి, చెక్‌లో ఉంది
 # Chess ▸ Board: variations, annotations and game details.
@@ -3033,7 +3033,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	{n} arrows	{n} బాణాలు
 	1 ring	1 ఉంగరం
 	{n} rings	{n} ఉంగరాలు
-	The comment on the move shown, large under the board	చూపిన ఎత్తుపై వ్యాఖ్య, బోర్డు కింద పెద్దగా
+	Show the move's comment in large type under the board	ఎత్తు వ్యాఖ్యను బోర్డు కింద పెద్ద అక్షరాలలో చూపు
 	Running text	నిరంతర పాఠం
 	Columns	నిలువు వరుసలు
 	Text size	పాఠం పరిమాణం
@@ -3042,7 +3042,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Large	పెద్దది
 	Previous variation (Page Up)	మునుపటి వేరియేషన్ (Page Up)
 	Next variation (Page Down)	తదుపరి వేరియేషన్ (Page Down)
-	A move the pointer rests on shows its position	పాయింటర్ ఆగిన ఎత్తు దాని స్థితిని చూపుతుంది
+	Show a move's position when the pointer rests on it	పాయింటర్ ఎత్తుపై ఆగినప్పుడు దాని స్థితిని చూపు
 	Position after {move}	{move} తర్వాత స్థితి
 	To review	సమీక్షించాలి
 	With an error	లోపంతో
@@ -3264,7 +3264,6 @@ castling	long	పెద్ద
 	{name} (no page discusses it)	{name} (ఏ పేజీ దీన్ని చర్చించదు)
 	Go to its page and put the game on the board.	దాని పేజీకి వెళ్లి ఆటను బోర్డుపై ఉంచండి.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	పుస్తకం దాని PGN కు అనుసంధానించబడింది: {moves} ఎత్తులలో {linked} (PGN నుండి {recovered}), {conflict} వైరుధ్యంలో.
-	Link the whole book to its PGN	మొత్తం పుస్తకాన్ని దాని PGN కు అనుసంధానించండి
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	పుస్తకం PGN ఈ ఎత్తును మరొక స్థితి నుండి ఆడుతుంది: సరిచూసి, PGN ఎత్తును ఉపయోగించండి లేదా పుస్తకం ఎత్తును ఉంచండి.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	ఈ పేజీలో పుస్తకం PGN: {confirmed} ధృవీకరించబడ్డాయి, {recovered} PGN నుండి చదివినవి, {conflict} వైరుధ్యంలో ({open} సమీక్షకు).
 	You kept the book's move.	మీరు పుస్తకం ఎత్తును ఉంచారు.
@@ -3285,7 +3284,7 @@ castling	long	పెద్ద
 	Corners	మూలలు
 	Start outlined, end filled	ప్రారంభం అంచుతో, ముగింపు నింపి
 	Border and light fill	అంచు మరియు లేత నింపు
-	Last move	చివరి ఎత్తు
+	Highlight the last move	చివరి ఎత్తును హైలైట్ చేయి
 	Strength	తీవ్రత
 	Import fonts…	ఫాంట్‌లను దిగుమతి చేయి…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	చదరంగం ఫాంట్‌లను ప్రోగ్రామ్ పక్కన ఉన్న ఫాంట్‌ల ఫోల్డర్‌లోకి కాపీ చేస్తుంది: ప్రతి డయాగ్రామ్ ఫాంట్ ఒక పావుల సెట్ అవుతుంది, ఫిగరిన్ ఫాంట్ ఎగుమతులలోని ఎత్తులను రాస్తుంది.
@@ -3306,6 +3305,19 @@ the move's comment	Move comment	ఎత్తు వ్యాఖ్య
 	Analyze the position	స్థితిని విశ్లేషించు
 	Export chess book…	చదరంగం పుస్తకాన్ని ఎగుమతి చేయి…
 	Chess shortcuts	చదరంగం సత్వరమార్గాలు
+	Filled squares	నింపిన గడులు
+	Classic	సాంప్రదాయ
+	Tokens	టోకెన్లు
+	Pixel Art	పిక్సెల్ ఆర్ట్
+	Facets	ముఖాలు
+	Stained Glass	రంగుల గాజు
+	Chubby	బొద్దు
+	Gothic	గోతిక్
+	Sketch	స్కెచ్
+	Shapes	ఆకారాలు
+	Fantasy	ఫాంటసీ
+	Spatial	త్రిమితీయ
+	Celtic	సెల్టిక్
 
 # A9-I14b: chess texts
 	A correction ({id}) was not used: {e}	ఒక సవరణ ({id}) ఉపయోగించబడలేదు: {e}

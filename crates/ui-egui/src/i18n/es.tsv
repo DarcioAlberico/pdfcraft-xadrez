@@ -2577,8 +2577,7 @@ animation effects	Off	Desactivados
 	You are viewing the signed version of “{from}” (revision {rev}). It is a snapshot: changes here won't affect the original.	Estás viendo la versión firmada de «{from}» (revisión {rev}). Es una instantánea: los cambios aquí no afectarán al original.
 	You are viewing revision {rev} of “{from}”. It is a snapshot: changes here won't affect the original.	Estás viendo la revisión {rev} de «{from}». Es una instantánea: los cambios aquí no afectarán al original.
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Buscar diagramas de ajedrez
-	Chess diagrams panel	Panel de diagramas de ajedrez
+	Chess panel	Panel de ajedrez
 	Chess	Ajedrez
 	Diagrams	Diagramas
 	Chess diagrams	Diagramas de ajedrez
@@ -2586,10 +2585,10 @@ animation effects	Off	Desactivados
 	Scan all pages	Buscar en todas las páginas
 	Scanning for diagrams… page {d} of {t}	Buscando diagramas… página {d} de {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Busca en esta página o en todas para encontrar los diagramas de ajedrez de este documento.
-	The document changed since the scan. Scan again to update the diagrams.	El documento cambió después de la búsqueda. Vuelve a buscar para actualizar los diagramas.
+	The document changed since its diagrams were detected. Detect them again to update them.	El documento cambió desde que se detectaron sus diagramas. Vuelve a detectarlos para actualizarlos.
 	The piece model couldn't be loaded: {e}	No se pudo cargar el modelo de piezas: {e}
 	No diagrams found.	No se encontraron diagramas.
-	This page couldn't be scanned: {e}	No se pudo examinar esta página: {e}
+	The diagrams on this page couldn't be detected: {e}	No se pudieron detectar los diagramas de esta página: {e}
 	Only the first {n} diagrams on this page are listed.	Solo se muestran los primeros {n} diagramas de esta página.
 	Diagram {n}	Diagrama {n}
 	Position read	Posición leída
@@ -2641,6 +2640,7 @@ animation effects	Off	Desactivados
 	Black knight	Caballo negro
 	Black pawn	Peón negro
 	White	Blancas
+chess side	Black	Negras
 	Board: {fen}	Tablero: {fen}
 	Board, {state}, move {n}	Tablero, {state}, jugada {n}
 	Board, {state}	Tablero, {state}
@@ -2663,7 +2663,7 @@ animation effects	Off	Desactivados
 	{n} to review	{n} por revisar
 	◀ Previous to review	◀ Anterior por revisar
 	Open in lichess	Abrir en lichess
-	Diagrams are already being scanned	Ya se están buscando diagramas
+	Diagrams are already being detected	Los diagramas ya se están detectando
 	Diagrams found: {n}	Diagramas encontrados: {n}
 	FEN copied	FEN copiado
 # Chess ▸ Board: the analysis board panel.
@@ -2735,7 +2735,7 @@ animation effects	Off	Desactivados
 	That side can't be to move: the other king is in check.	Ese bando no puede tener el turno: el otro rey está en jaque.
 	The FEN couldn't be read: {e}	No se pudo leer la FEN: {e}
 	The PGN couldn't be read: {e}	No se pudo leer el PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama no se ha leído: escanee primero su página o monte la posición en el editor.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Este diagrama no se ha leído: detecta primero los diagramas de su página o fija su posición en el editor.
 	White to move	Juegan las blancas
 	White to move, in check	Juegan las blancas, en jaque
 # Chess ▸ Board: variations, annotations and game details.
@@ -3313,7 +3313,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	{n} arrows	{n} flechas
 	1 ring	1 anillo
 	{n} rings	{n} anillos
-	The comment on the move shown, large under the board	El comentario de la jugada mostrada, grande bajo el tablero
+	Show the move's comment in large type under the board	Mostrar el comentario de la jugada en letra grande bajo el tablero
 	Running text	Texto corrido
 	Columns	Columnas
 	Text size	Tamaño del texto
@@ -3322,7 +3322,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Large	Grande
 	Previous variation (Page Up)	Variante anterior (Re Pág)
 	Next variation (Page Down)	Variante siguiente (Av Pág)
-	A move the pointer rests on shows its position	Una jugada sobre la que se detiene el puntero muestra su posición
+	Show a move's position when the pointer rests on it	Mostrar la posición de una jugada al dejar el puntero sobre ella
 	Position after {move}	Posición tras {move}
 	To review	Por revisar
 	With an error	Con error
@@ -3547,7 +3547,6 @@ castling	long	largo
 	{name} (no page discusses it)	{name} (ninguna página la trata)
 	Go to its page and put the game on the board.	Va a su página y pone la partida en el tablero.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	El libro está enlazado con su PGN: {linked} de {moves} jugadas ({recovered} leídas del PGN), {conflict} en conflicto.
-	Link the whole book to its PGN	Enlazar el libro entero con su PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	El PGN del libro juega esta jugada desde otra posición: compruébela y luego use la jugada del PGN o mantenga la del libro.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN del libro en esta página: {confirmed} confirmadas, {recovered} leídas del PGN, {conflict} en conflicto ({open} por revisar).
 	You kept the book's move.	Mantuvo la jugada del libro.
@@ -3568,7 +3567,7 @@ castling	long	largo
 	Corners	Esquinas
 	Start outlined, end filled	Origen con contorno, destino relleno
 	Border and light fill	Borde y relleno suave
-	Last move	Última jugada
+	Highlight the last move	Resaltar la última jugada
 	Strength	Intensidad
 	Import fonts…	Importar fuentes…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia fuentes de ajedrez en la carpeta de fuentes junto al programa: cada fuente de diagramas es un juego de piezas, y una fuente de figurines escribe las jugadas de las exportaciones.
@@ -3823,3 +3822,16 @@ progress bar	Progress	Progreso
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Las soluciones al final, en el orden de los números. Un diagrama cuya solución no se leyó lo indica.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	La hoja de ejercicios no se puede escribir sobre un PDF abierto: elige otro nombre.
 	No exercise sheet was written	No se escribió ninguna hoja de ejercicios
+	Filled squares	Casillas rellenas
+	Classic	Clásico
+	Tokens	Fichas
+	Pixel Art	Pixel art
+	Facets	Facetas
+	Stained Glass	Vidriera
+	Chubby	Regordete
+	Gothic	Gótico
+	Sketch	Boceto
+	Shapes	Formas
+	Fantasy	Fantasía
+	Spatial	Espacial
+	Celtic	Celta

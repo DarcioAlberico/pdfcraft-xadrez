@@ -596,11 +596,52 @@ pub fn menu_label(id: &str, label: &str) -> String {
     }
 }
 
-/// A plural-aware message: `one`/`other` are the English forms (with `{n}` where the count goes).
+/// A plural-aware message: `one`/`other` are the English forms (with `{n}` where the count goes,
+/// written as [`number_in`] writes it).
 pub fn trn(lang: Lang, n: u64, one: &str, other: &str) -> String {
     let idx = (lang.0.plural)(n);
     let text = lang.catalog().plural(one, other, idx).unwrap_or(if n == 1 { one } else { other });
-    fmt(text, &[("n", &n.to_string())])
+    fmt(text, &[("n", &number_in(lang, n))])
+}
+
+/// A count as the current language writes it ("12,691"; "12.691" in Portuguese).
+pub fn number(n: impl TryInto<u64>) -> String {
+    number_in(current(), n.try_into().unwrap_or(u64::MAX))
+}
+
+/// A count as `lang` writes it (plan A9-I14, finding A6-26): its digits in groups of three with
+/// the language's separator (CLDR), Telugu's in the Indian way (12,34,567). Spanish, Polish and
+/// Bulgarian leave a four-digit number whole (1234, 12.345).
+pub fn number_in(lang: Lang, n: u64) -> String {
+    const NBSP: char = '\u{a0}';
+    const NARROW_NBSP: char = '\u{202f}';
+    let code = lang.code();
+    let (sep, min_digits) = match code {
+        "pt-br" | "de" | "it" | "tr" | "sl" | "vi" | "el" => ('.', 4),
+        "es" => ('.', 5),
+        "fr" => (NARROW_NBSP, 4),
+        "ru" | "uk" | "cs" | "hu" | "kk" | "lt" => (NBSP, 4),
+        "pl" | "bg" => (NBSP, 5),
+        _ => (',', 4),
+    };
+    let digits = n.to_string();
+    if digits.len() < min_digits {
+        return digits;
+    }
+    // Where a separator goes, counted from the right: every three digits, or after the first three
+    // and then every two (Telugu).
+    let indian = code == "te";
+    let len = digits.len();
+    let mut out = String::with_capacity(len + len / 2 * sep.len_utf8());
+    for (i, c) in digits.chars().enumerate() {
+        let left = len - i;
+        let boundary = if indian { left == 3 || (left > 3 && (left - 3).is_multiple_of(2)) } else { left.is_multiple_of(3) };
+        if i > 0 && boundary {
+            out.push(sep);
+        }
+        out.push(c);
+    }
+    out
 }
 
 #[cfg(test)]
@@ -608,24 +649,95 @@ mod tests {
     use super::catalog::{Entry, parse_entries, placeholders};
     use super::*;
 
-    /// Plan A9-Q1a: every chess text is in every catalogue, all 22 since plan A9-I14b (the scan
-    /// `chess_scan`, which `cargo xtask chess-gate` runs too).
-    #[test]
-    fn every_catalogue_has_every_chess_text() {
+    /// Every `tl!` and `tl_ctx!` text of the chess source files, as the scan keys them.
+    fn chess_texts() -> std::collections::BTreeSet<super::chess_scan::Text> {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let mut literals = std::collections::BTreeSet::new();
+        let mut texts = std::collections::BTreeSet::new();
         for entry in std::fs::read_dir(&src).expect("UI source directory") {
             let path = entry.expect("UI source entry").path();
             let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             if super::chess_scan::is_chess_source(&name) {
-                literals.extend(super::chess_scan::tl_literals(&std::fs::read_to_string(&path).expect("chess source").replace("\r\n", "\n")));
+                texts.extend(super::chess_scan::tl_texts(&std::fs::read_to_string(&path).expect("chess source").replace("\r\n", "\n")));
             }
         }
-        assert!(literals.len() > 500 && literals.contains("Detect diagrams"), "the scan found the chess texts: {}", literals.len());
+        texts
+    }
+
+    /// Plan A9-Q1a: every chess text is in every catalogue, all 22 since plan A9-I14b, and a
+    /// `tl_ctx!` text under its own context since plan A9-I14c (the scan `chess_scan`, which
+    /// `cargo xtask chess-gate` runs too).
+    #[test]
+    fn every_catalogue_has_every_chess_text() {
+        let texts = chess_texts();
+        let has = |context: &str, source: &str| texts.contains(&(context.to_owned(), source.to_owned()));
+        assert!(texts.len() > 500 && has("", "Detect diagrams") && has("chess side", "Black"), "the scan found the chess texts: {}", texts.len());
         let catalogues: Vec<(String, String)> =
             LANGUAGES.iter().filter(|l| !l.source.is_empty()).map(|l| (l.code.to_owned(), l.source.to_owned())).collect();
-        let missing = super::chess_scan::missing(&literals, &catalogues);
-        assert!(missing.is_empty(), "chess texts missing from catalogues: {missing:#?}");
+        let missing = super::chess_scan::missing(&texts, &catalogues);
+        let named: Vec<String> = missing
+            .iter()
+            .map(|(code, lacks)| {
+                format!("{code} lacks {}: {}", lacks.len(), lacks.iter().map(super::chess_scan::shown).collect::<Vec<_>>().join(", "))
+            })
+            .collect();
+        assert!(missing.is_empty(), "chess texts missing from catalogues:\n{}", named.join("\n"));
+    }
+
+    /// Plan A9-I14 (§2.1, §2.8.2; findings A6-21, R10-06): one word per concept, checked by root and
+    /// not by phrase, over the texts the chess surfaces show (the chess files' `tl!` literals and
+    /// the engine's chess commands) in English and in the Brazilian catalogue. Detecting diagrams
+    /// is never "scan" (English), nor "procurar", "busca" or "varredura" (Portuguese) in a text
+    /// about diagrams; a move's sign is "sinal", and "glifo" is only the characters the OCR reads
+    /// (with a model, a reader, a font or the OCR in the same text); the book is aligned to its
+    /// PGN, never "ligado" by the action; Back to the main window, never "Encaixar".
+    #[test]
+    fn the_chess_texts_keep_the_glossary() {
+        let mut shown: std::collections::BTreeSet<String> = chess_texts().into_iter().map(|(_, source)| source).collect();
+        shown.extend(pdfcraft_engine::commands::COMMANDS.iter().filter(|c| c.id.starts_with("chess.")).map(|c| c.label.to_owned()));
+        let mut breaches = Vec::new();
+        for text in &shown {
+            let en = text.to_lowercase();
+            if en.contains("diagram") && en.contains("scan") {
+                breaches.push(format!("en: {text}"));
+            }
+        }
+        let pt = LANGUAGES.iter().find(|l| l.code == "pt-br").expect("pt-br registered").source;
+        for line in pt.lines().filter(|l| !l.starts_with('#')) {
+            let mut parts = line.split('\t');
+            let (Some(_), Some(source), Some(translation)) = (parts.next(), parts.next(), parts.next()) else { continue };
+            if !shown.contains(source) {
+                continue;
+            }
+            let (en, br) = (source.to_lowercase(), translation.to_lowercase());
+            let about_diagrams = en.contains("diagram") || br.contains("diagrama");
+            let detecting = ["procur", "busca", "varre", "varri"].iter().any(|r| br.contains(r));
+            let glyph_as_sign = br.contains("glif") && !["modelo", "leitor", "fonte", "ocr"].iter().any(|r| br.contains(r));
+            let phrase = ["ligar o livro", "encaixar"].iter().any(|p| br.contains(p));
+            if (about_diagrams && detecting) || glyph_as_sign || phrase {
+                breaches.push(format!("pt-br: {source} → {translation}"));
+            }
+        }
+        assert!(breaches.is_empty(), "texts off the glossary:\n{}", breaches.join("\n"));
+    }
+
+    /// Plan A9-I14 (finding A6-26): counts in the language's groups of digits ("12.691 lances").
+    #[test]
+    fn counts_are_written_with_the_languages_digit_groups() {
+        let lang = |code: &str| Lang::from_code(code).expect("registered");
+        assert_eq!(number_in(Lang::EN, 12_691), "12,691");
+        assert_eq!(number_in(Lang::EN, 999), "999");
+        assert_eq!(number_in(Lang::EN, 1_234_567), "1,234,567");
+        assert_eq!(number_in(lang("pt-br"), 12_691), "12.691");
+        assert_eq!(number_in(lang("pt-br"), 1_234), "1.234");
+        assert_eq!(number_in(lang("es"), 1_234), "1234");
+        assert_eq!(number_in(lang("es"), 12_345), "12.345");
+        assert_eq!(number_in(lang("fr"), 12_691), "12\u{202f}691");
+        assert_eq!(number_in(lang("ru"), 12_691), "12\u{a0}691");
+        assert_eq!(number_in(lang("te"), 1_234_567), "12,34,567");
+        assert_eq!(number_in(lang("te"), 12_345), "12,345");
+        assert_eq!(number_in(Lang::EN, u64::MAX), "18,446,744,073,709,551,615");
+        assert_eq!(number_in(Lang::EN, 0), "0");
+        assert_eq!(trn(lang("pt-br"), 12_691, "{n} move", "{n} moves"), "12.691 lances");
     }
 
     const JA: fn() -> Lang = || Lang::from_code("ja").expect("ja registered");
@@ -858,7 +970,7 @@ mod tests {
         assert_eq!(tr_id(l, "unknown", "Unknown"), "Unknown");
         assert_eq!(trn(l, 1, "{n} page", "{n} pages"), "One page: 1");
         assert_eq!(trn(l, 0, "{n} page", "{n} pages"), "Many pages: 0");
-        assert_eq!(trn(l, u64::MAX, "{n} page", "{n} pages"), format!("Many pages: {}", u64::MAX));
+        assert_eq!(trn(l, u64::MAX, "{n} page", "{n} pages"), format!("Many pages: {}", number_in(l, u64::MAX)));
     }
 
     #[test]
@@ -2423,8 +2535,8 @@ mod tests {
         assert_eq!(tr(vi, "Interface language"), "Ngôn ngữ giao diện");
         assert_eq!((0..=3).map(|n| (vi.0.plural)(n)).collect::<Vec<_>>(), [0, 0, 0, 0]);
         for n in [0, 1, 2, 5] {
-            assert_eq!(trn(vi, n, "{n} page", "{n} pages"), format!("{n} trang"));
-            assert_eq!(trn(vi, n, "{n} field", "{n} fields"), format!("{n} trường"));
+            assert_eq!(trn(vi, n, "{n} page", "{n} pages"), format!("{} trang", number_in(vi, n)));
+            assert_eq!(trn(vi, n, "{n} field", "{n} fields"), format!("{} trường", number_in(vi, n)));
         }
         let mut app = crate::PdfCraftApp::default();
         app.set_option("language", "vi").unwrap();
@@ -2682,8 +2794,8 @@ mod tests {
             (vec![0, 5, 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25, 31, 100, 111, 112, 121, 122, 1000, u64::MAX], "strani", "polj"),
         ] {
             for n in counts {
-                assert_eq!(trn(sl, n, "{n} page", "{n} pages"), format!("{n} {page}"));
-                assert_eq!(trn(sl, n, "{n} field", "{n} fields"), format!("{n} {field}"));
+                assert_eq!(trn(sl, n, "{n} page", "{n} pages"), format!("{} {page}", number_in(sl, n)));
+                assert_eq!(trn(sl, n, "{n} field", "{n} fields"), format!("{} {field}", number_in(sl, n)));
             }
         }
     }
@@ -3019,8 +3131,8 @@ mod tests {
             (vec![0, 5, 10, 11, 12, 13, 14, 19, 20, 25, 100, 110, 111, 112, 114, 1000, u64::MAX], "сторінок", "полів"),
         ] {
             for n in counts {
-                assert_eq!(trn(uk, n, "{n} page", "{n} pages"), format!("{n} {page}"));
-                assert_eq!(trn(uk, n, "{n} field", "{n} fields"), format!("{n} {field}"));
+                assert_eq!(trn(uk, n, "{n} page", "{n} pages"), format!("{} {page}", number_in(uk, n)));
+                assert_eq!(trn(uk, n, "{n} field", "{n} fields"), format!("{} {field}", number_in(uk, n)));
             }
         }
     }
