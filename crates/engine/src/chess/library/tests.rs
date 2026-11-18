@@ -622,7 +622,7 @@ fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
     assert_eq!(q(Query { material: Some(material.mirrored()), either_side: true, ..Query::default() }), 1);
     // The marks the index keeps answer as the query does on the placement, over the book's positions.
     let mut every = Vec::new();
-    for hash in lib.indexes().0.iter().map(|(h, _)| h.clone()) {
+    for hash in lib.files().indexes.iter().map(|(h, _)| h.clone()) {
         index::read(&lib.index_path(&hash), None, &mut |_, p| every.push(*p)).unwrap();
     }
     let queries = [
@@ -646,7 +646,7 @@ fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
 fn a_damaged_index_is_said_and_not_served() {
     let base = fresh("find-damaged");
     let lib = two_books(&base);
-    let (indexes, _) = lib.indexes();
+    let indexes = lib.files().indexes;
     let path = lib.index_path(&indexes[0].0);
     let mut b = std::fs::read(&path).unwrap();
     let at = b.len() - 2;
@@ -765,6 +765,8 @@ fn perf_library_find_a_million_positions() {
     println!("PERF library_find_a_million_positions {ms:.1} ms ({} bytes, {} positions)", file.len(), index.positions.len());
     assert_eq!((found.indexes_read, found.total), (1, 7), "{found:?}");
     assert!(ms <= 1000.0, "{ms:.0} ms");
+    let _ = std::fs::remove_dir_all(&base);
+}
 
 /// The hash of book `name` in a build.
 fn hash_of(built: &Built, name: &str) -> String {
