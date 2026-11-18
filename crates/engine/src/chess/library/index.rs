@@ -690,8 +690,7 @@ pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPo
         let buf = chunk.get_mut(..n.saturating_mul(RECORD)).ok_or_else(short)?;
         z.read_exact(buf).map_err(damaged)?;
         hash.update(&*buf);
-        for record in buf.chunks_exact(RECORD) {
-            let record: &[u8; RECORD] = record.try_into().map_err(|_| short())?;
+        for record in buf.as_chunks::<RECORD>().0 {
             each(&IndexedPosition::from_bytes(record).ok_or_else(|| ReadError::Damaged("a record of an unknown kind".into()))?);
         }
         left -= n;
@@ -714,9 +713,9 @@ mod tests {
         let placement = *Fen::parse("8/8/8/4k3/8/8/4P3/4K2R w - - 0 1").unwrap().placement();
         IndexedPosition {
             placement: PlacementKey::of(&placement),
-            side: if i % 2 == 0 { Color::White } else { Color::Black },
-            side_assumed: i % 3 == 0,
-            page: (i % 5 != 0).then_some(i),
+            side: if i.is_multiple_of(2) { Color::White } else { Color::Black },
+            side_assumed: i.is_multiple_of(3),
+            page: (!i.is_multiple_of(5)).then_some(i),
             place: match i % 3 {
                 0 => Place::Diagram { index: i },
                 1 => Place::Move { block: i, inline: i + 1 },
@@ -724,9 +723,9 @@ mod tests {
             },
             number: u16::try_from(i % 300).unwrap(),
             black: i % 2 == 1,
-            san: (i % 4 != 0).then_some(i / 4),
-            game: (i % 7 != 0).then_some(i / 7),
-            main_line: i % 2 == 0,
+            san: (!i.is_multiple_of(4)).then_some(i / 4),
+            game: (!i.is_multiple_of(7)).then_some(i / 7),
+            main_line: i.is_multiple_of(2),
             accepted: i % 3 != 1,
             material: material_of(&placement),
             pawns: pawn_marks(&placement),

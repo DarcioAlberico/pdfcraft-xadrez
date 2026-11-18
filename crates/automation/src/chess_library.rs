@@ -216,7 +216,7 @@ mod desktop {
                     // A path of a book in the catalog.
                     let path = self.resolve_to_read(b)?;
                     let wanted = path.to_string_lossy().into_owned();
-                    let hash = library.catalog().books.into_iter().find(|c| c.paths.iter().any(|p| *p == wanted)).and_then(|c| c.hash);
+                    let hash = library.catalog().books.into_iter().find(|c| c.paths.contains(&wanted)).and_then(|c| c.hash);
                     Some(hash.ok_or_else(|| Args::wrong("book", "a book's hash, or the path of a book the Library read"))?)
                 }
             };

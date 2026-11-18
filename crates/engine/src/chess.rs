@@ -1797,8 +1797,8 @@ impl Session {
             // On the cores (plan A9-V10a): the command line and the agents scan whole books here.
             let workers = self.chess.workers.unwrap_or_else(ChessScanJob::default_workers);
             let scan = match &models {
-                Some(m) => job.run_parallel(m, workers, |done, total| progress(done, total)),
-                None => job.run_parallel_with(None, workers, |done, total| progress(done, total)),
+                Some(m) => job.run_parallel(m, workers, &mut *progress),
+                None => job.run_parallel_with(None, workers, &mut *progress),
             };
             // What was read now, not what the disk gave (plan A9-N5b).
             // What was read now, of the pages scanned before a stop.

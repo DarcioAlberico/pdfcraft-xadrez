@@ -220,7 +220,7 @@ fn an_offline_pdf_is_in_the_cloud_and_never_opened() {
     assert!(out.status.success(), "attrib +O: {}", String::from_utf8_lossy(&out.stderr));
     let walked = walk(std::slice::from_ref(&books), Caps::default(), &|| false);
     assert_eq!(walked.pdfs.iter().map(|p| p.path.clone()).collect::<Vec<_>>(), [books.join("here.pdf")]);
-    assert_eq!(walked.cloud, [away.clone()]);
+    assert_eq!(walked.cloud, std::slice::from_ref(&away));
     let built = build(&lib, std::slice::from_ref(&books), &options());
     assert_eq!(book(&built, "away.pdf").book.state, State::Cloud);
     assert_eq!(book(&built, "away.pdf").book.hash, None, "never read");
@@ -399,7 +399,7 @@ fn a_book_never_kept_or_not_yet_allowed_is_skipped_and_said() {
     let (books, lib) = (base.join("books"), Library::new(base.join("library")));
     std::fs::create_dir_all(&books).unwrap();
     std::fs::write(books.join("ask.pdf"), encrypted(book_of_boards(2), -1)).unwrap();
-    std::fs::write(books.join("never.pdf"), encrypted(book_of_boards(3), -1 & !0x10)).unwrap();
+    std::fs::write(books.join("never.pdf"), encrypted(book_of_boards(3), !0x10)).unwrap();
     std::fs::write(books.join("broken.pdf"), b"not a PDF at all").unwrap();
     let built = build(&lib, std::slice::from_ref(&books), &options());
     let said = |name: &str| {
