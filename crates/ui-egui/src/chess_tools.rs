@@ -191,6 +191,11 @@ impl ChessKey {
         ChessKey { key, command: false, shift: false, alt: true }
     }
 
+    /// Alt and Shift with `key` (plan A9-N7b: the analysis board's questions).
+    pub(crate) const fn alt_shift(key: Key) -> ChessKey {
+        ChessKey { key, command: false, shift: true, alt: true }
+    }
+
     /// Whether `key` pressed with `m` is this key: the same modifiers.
     pub(crate) fn matches(self, key: Key, m: Modifiers) -> bool {
         key == self.key && m.command == self.command && m.shift == self.shift && m.alt == self.alt && (self.command || !(m.ctrl || m.mac_cmd))
@@ -762,6 +767,9 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     // A focused row of the Library's results (plan A9-N15c), in its dialog: the same keys.
     #[cfg(not(target_arch = "wasm32"))]
     crate::chess_library::take_keys(&mut chess.library, ctx, &mut raw.events);
+    // The analysis board with the keyboard: the arrows walk its squares, Enter and Space play
+    // (plan A9-N7b).
+    crate::chess_board_ui::take_grid_keys(chess.games.board_mut(), ctx, &mut raw.events, free);
     // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
     // no variation (nor a page or an annotation).
     if free && chess.games.list_has_focus(ctx) {
@@ -828,10 +836,14 @@ fn take_f6(chess: &mut ChessState, ctx: &egui::Context, events: &mut Vec<Event>)
 /// the one-key shortcuts only while they are on) and the typed signs out of `events`, for the
 /// rail drawn this frame.
 fn take_rail_keys(tools: &mut ToolState, events: &mut Vec<Event>, focused: bool, one_key: bool) {
+    // A rank's digit asked with Alt+Shift is taken by where it is (plan A9-N7b).
+    let key_of = |key: &Key, physical: &Option<Key>, m: &Modifiers| crate::chess_keymap::question_key(*key, *physical, *m);
     events.retain(|event| match event {
-        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers, one_key) && !(*key == Key::Enter && focused) => {
+        Event::Key { key, physical_key, pressed: true, modifiers, .. }
+            if scope_key(key_of(key, physical_key, modifiers), *modifiers, one_key) && !(*key == Key::Enter && focused) =>
+        {
             if tools.keys.len() < MAX_KEYS {
-                tools.keys.push((*key, *modifiers));
+                tools.keys.push((key_of(key, physical_key, modifiers), *modifiers));
             }
             false
         }
@@ -920,6 +932,9 @@ pub(crate) fn action_name(action: &str, chess: &ChessState) -> Option<String> {
         "leave" => Some(tl!("Leave the chess panel").to_owned()),
         "shortcuts" => Some(tl!("Chess shortcuts").to_owned()),
         "move-field" => Some(tl!("Type a move").to_owned()),
+        "say-pieces" => Some(tl!("Say the pieces").to_owned()),
+        "say-rank" => Some(tl!("Say a rank's pieces").to_owned()),
+        "say-file" => Some(tl!("Say a file's pieces").to_owned()),
         _ => None,
     }
 }
@@ -1371,6 +1386,14 @@ fn head_choices(ui: &mut egui::Ui, t: &Tokens, game: &Game, tool: &Tool, label: 
 /// A key the scope took: Esc and moving about first, then a group's letter, then a tool's key.
 /// `focused_group` is the popup of the group whose button has the keyboard focus (Down opens it).
 fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifiers, focused_group: Option<egui::Id>) {
+    // The board's questions (plan A9-N7b): the pieces, a rank's, a file's, said as a status.
+    if let Some(asked) = crate::chess_keymap::question(key, m) {
+        match crate::chess_move_field::run(chess.board_mut(), asked) {
+            Ok(said) => crate::notice::announce(ctx, crate::notice::Level::Info, said),
+            Err(why) => crate::notice::announce(ctx, crate::notice::Level::Error, why),
+        }
+        return;
+    }
     // F1: the sheet of the chess keys (plan A9-I16).
     if let crate::chess_keymap::Trigger::Key(sheet) = crate::chess_keymap::SHORTCUT_SHEET.trigger
         && sheet.matches(key, m)

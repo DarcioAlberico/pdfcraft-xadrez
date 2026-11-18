@@ -3696,6 +3696,12 @@ progress bar	Progress	Ход выполнения
 	Nothing in the book as read has this material and these pawns.	В прочитанной части книги нет такого материала и таких пешек.
 	{first} to {last}	{first} — {last}
 	Positions: {n}	Позиций: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Назвать фигуры
+	Say a rank's pieces	Назвать фигуры горизонтали
+	Say a file's pieces	Назвать фигуры вертикали
+	{piece} on {square} picked up	Поднята фигура: {piece} на {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Стрелки выбирают поле; Enter или пробел поднимает фигуру или делает ею ход туда.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Не удалось выполнить поиск в книге: {e}
 	The diagrams read couldn't be looked at: {e}	Не удалось просмотреть прочитанные диаграммы: {e}

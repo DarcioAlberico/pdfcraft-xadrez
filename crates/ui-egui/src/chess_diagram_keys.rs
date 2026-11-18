@@ -94,6 +94,13 @@ pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mu
     keys.tab_keys = on_tab;
 }
 
+/// Whether the diagram editor's board, with the keyboard, takes `key` pressed with `m` (plan
+/// A9-N7b's check: the analysis board's questions are none of its keys).
+#[cfg(test)]
+pub(crate) fn editor_takes(key: Key, m: Modifiers) -> bool {
+    board_key(key, m)
+}
+
 /// Whether the board takes `key` pressed with `m`: the arrows, Delete, Backspace, Space and Enter
 /// alone, and the letters alone or with Shift (all of them, so none of the app's one-letter
 /// shortcuts fires while the board has the keyboard).
@@ -250,7 +257,13 @@ pub(crate) fn board_keys(ed: &mut DiagramEditor, keys: &[(Key, Modifiers)]) -> b
 
 /// A square as screen readers say it: "e4, White knight", "e4, empty".
 pub(crate) fn square_text(ed: &DiagramEditor, square: Square) -> String {
-    match ed.position.placement.get(square) {
+    square_said(&ed.position.placement, square)
+}
+
+/// A square of `placement` as screen readers say it, on the editor's board and the analysis board
+/// alike (plan A9-N7b).
+pub(crate) fn square_said(placement: &pdfcraft_engine::chess::pdfcraft_chess::placement::Placement, square: Square) -> String {
+    match placement.get(square) {
         Some(p) => format!("{square}, {}", crate::chess_editor::piece_name(p)),
         None => crate::i18n::fmt(tl!("{square}, empty"), &[("square", &square.to_string())]),
     }

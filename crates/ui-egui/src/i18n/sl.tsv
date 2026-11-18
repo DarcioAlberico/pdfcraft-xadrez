@@ -3787,6 +3787,12 @@ progress bar	Progress	Napredek
 	Nothing in the book as read has this material and these pawns.	Nič v prebranem delu knjige nima tega materiala in teh kmetov.
 	{first} to {last}	{first} do {last}
 	Positions: {n}	Pozicije: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Povej figure
+	Say a rank's pieces	Povej figure vrste
+	Say a file's pieces	Povej figure linije
+	{piece} on {square} picked up	Dvignjeno: {piece} na {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Puščice izberejo polje; Enter ali preslednica dvigne figuro ali jo tja odigra.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	V knjigi ni bilo mogoče iskati: {e}
 	The diagrams read couldn't be looked at: {e}	Prebranih diagramov ni bilo mogoče pregledati: {e}

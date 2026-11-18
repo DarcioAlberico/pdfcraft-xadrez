@@ -3778,6 +3778,12 @@ progress bar	Progress	İlerleme
 	Nothing in the book as read has this material and these pawns.	Okunan kitapta bu malzemeye ve bu piyonlara sahip bir şey yok.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Konumlar: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Taşları söyle
+	Say a rank's pieces	Bir yatay sıranın taşlarını söyle
+	Say a file's pieces	Bir sütunun taşlarını söyle
+	{piece} on {square} picked up	Kaldırıldı: {square} karesindeki {piece}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Ok tuşları bir kare seçer; Enter veya Boşluk bir taşı kaldırır ya da onu oraya oynar.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Kitapta arama yapılamadı: {e}
 	The diagrams read couldn't be looked at: {e}	Okunan diyagramlara bakılamadı: {e}
