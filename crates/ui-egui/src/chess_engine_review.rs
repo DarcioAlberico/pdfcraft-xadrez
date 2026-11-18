@@ -152,9 +152,11 @@ fn minutes_words(minutes: u64) -> String {
 /// What a count read: the pages chosen, linked to the book's PGN, the evaluations the store holds
 /// (with what was found and not written yet), the batch they leave and the report they give.
 struct Prepared {
-    doc: ChessDoc,
+    /// The reading and the evaluations, shared with the check it gives the Text tab (made on
+    /// the job's thread: a book's reading is large, and the interface never copies it).
+    doc: Arc<ChessDoc>,
     refs: Option<Arc<ReferenceIndex>>,
-    evals: EvalFile,
+    evals: Arc<EvalFile>,
     batch: Batch,
     review: Review,
     cipher: pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher,
@@ -507,7 +509,7 @@ impl PdfCraftApp {
             let batch = Batch::new(&read.doc, &linked, &evals, depth);
             let review = review::divergences(&read.doc, &linked, &evals, &Limits::default());
             let cached = s.chess_cached(sid, &[]);
-            Ok(Prepared { doc: read.doc, refs, evals, batch, review, cipher: read.cipher, cached, unread })
+            Ok(Prepared { doc: Arc::new(read.doc), refs, evals: Arc::new(evals), batch, review, cipher: read.cipher, cached, unread })
         });
         d.failed = None;
         d.counted = None;
@@ -547,9 +549,9 @@ impl PdfCraftApp {
                     self.chess.engine_review.docs.insert(
                         d.doc,
                         Checked {
-                            doc: Arc::new(p.doc.clone()),
+                            doc: Arc::clone(&p.doc),
                             refs: p.refs.clone(),
-                            evals: Arc::new(p.evals.clone()),
+                            evals: Arc::clone(&p.evals),
                             generation,
                             review: p.review.clone(),
                             labels,
