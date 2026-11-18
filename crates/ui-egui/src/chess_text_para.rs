@@ -45,6 +45,21 @@ pub(crate) fn marker(s: MoveStatus) -> &'static str {
     }
 }
 
+/// What the walk found of a move, in words: the Text tab's tooltip and the capture's preview say
+/// it so (plan A9-I6, findings A5-19 and A7-19: they had a copy each), and the exports say a
+/// review's reason in them (`pdfcraft_chess::spoken`).
+pub(crate) fn move_status_words(s: MoveStatus) -> &'static str {
+    match s {
+        MoveStatus::Valid => tl!("Valid move"),
+        MoveStatus::Illegal => tl!("Illegal move"),
+        MoveStatus::Ambiguous => tl!("Ambiguous move"),
+        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
+        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
+        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
+        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
+    }
+}
+
 /// The walk state in a few words, for the move's name: none for a valid one.
 pub(crate) fn status_words(s: MoveStatus) -> Option<&'static str> {
     match s {
@@ -194,6 +209,26 @@ mod tests {
         MoveStatus::Unchecked,
         MoveStatus::Caption,
     ];
+
+    /// Plan A9-I6 (findings A5-19, A7-19): one function says a move's state in words, for the Text
+    /// tab's tooltip and the capture's preview; its words are those the two copies it replaced
+    /// gave (run before the change), each its own.
+    #[test]
+    fn a_moves_state_in_words_is_as_before() {
+        let words: Vec<&str> = ALL.iter().map(|s| move_status_words(*s)).collect();
+        assert_eq!(
+            words,
+            [
+                "Valid move",
+                "Illegal move",
+                "Ambiguous move",
+                "Move out of sequence",
+                "Not reached: an earlier move failed",
+                "Unchecked: no position to play it from",
+                "Caption: the move that led to the diagram, which gives it its side to move and move number",
+            ]
+        );
+    }
 
     /// WCAG 2 contrast ratio between two opaque colours.
     fn contrast(a: Color32, b: Color32) -> f32 {
