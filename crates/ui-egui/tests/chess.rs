@@ -1552,19 +1552,25 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
 /// folder's listing alone. "📚Livro.pdf" beside "Livro.pgn" is offered it; a PDF whose folder
 /// holds one PGN of another name is offered that one; a folder named `x.pgn` is not a PGN; and a
 /// folder of more entries than the 4,096 read offers nothing as the only one (it may hold another
-/// PGN past them) and does not hang.
+/// PGN past them) and does not hang. In the same crowded folder, a PGN of the PDF's name among
+/// the entries read is offered (plan A9-I7b2: the search did run there). That control is on
+/// Windows only, where NTFS lists by name (`book.pgn` comes among the first); elsewhere the order
+/// is the file system's.
 #[test]
 fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
     let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
     let offer = |name: &str| format!("{name} sits beside this PDF. Use it as the book's PGN?");
     // (case, the PDF's name, the PGNs beside it, how many other files, the PGN offered)
     type Case = (&'static str, &'static str, &'static [&'static str], usize, Option<&'static str>);
-    let cases: [Case; 4] = [
+    let mut cases: Vec<Case> = vec![
         ("emoji", "📚Livro.pdf", &["Livro.pgn"], 0, Some("Livro.pgn")),
         ("only", "book.pdf", &["games.pgn"], 0, Some("games.pgn")),
         ("folder", "book.pdf", &[], 0, None),
         ("crowded", "book.pdf", &["games.pgn"], 4_100, None),
     ];
+    if cfg!(windows) {
+        cases.push(("crowded-named", "book.pdf", &["games.pgn", "book.pgn"], 4_100, Some("book.pgn")));
+    }
     for (case, pdf_name, pgns, crowd, offered) in cases {
         let dir = corrections_dir(&format!("pgn-beside-{case}"));
         std::fs::create_dir_all(&dir).unwrap();
@@ -1591,6 +1597,32 @@ fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
         assert!(started.elapsed() < std::time::Duration::from_secs(30), "{case}: {:?}", started.elapsed());
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+/// Plan A9-I7b2: a document that keeps a book's PGN never has its folder looked through — the
+/// rail's chess hint started a search for it, which the offer then hid — while one that keeps
+/// none does.
+#[test]
+fn a_document_keeping_a_books_pgn_has_its_folder_not_looked_through() {
+    let dir = corrections_dir("pgn-beside-kept");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join("games.pgn"), RUY_PGN).unwrap();
+    let path = pdf.to_string_lossy().into_owned();
+    {
+        let mut h = book_pgn_harness("book.pdf", Some(path.clone()), bytes.clone(), dir.join("reference"));
+        let id = h.state().views[0].id;
+        assert!(h.state().sibling_pgn_looked_for(id), "no PGN kept yet: looked through");
+        h.state_mut().set_book_pgn(id, "kept.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        h.get_by_label("Book's PGN: kept.pgn (1 games)");
+    }
+    let h = book_pgn_harness("book.pdf", Some(path), bytes, dir.join("reference"));
+    let id = h.state().views[0].id;
+    assert!(!h.state().sibling_pgn_looked_for(id), "it keeps one: not looked through");
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 /// Plan A9-I7b: with the jobs on workers, as in the app, the folder beside the PDF is looked
