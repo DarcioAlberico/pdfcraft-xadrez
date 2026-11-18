@@ -1468,6 +1468,88 @@ fn a_books_pgn_past_the_index_cap_is_said_with_the_moves_that_went_in() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan A9-I7b (findings A6-02, A6-03): the PGN beside the PDF is looked for in a job, from the
+/// folder's listing alone. "📚Livro.pdf" beside "Livro.pgn" is offered it; a PDF whose folder
+/// holds one PGN of another name is offered that one; a folder named `x.pgn` is not a PGN; and a
+/// folder of more entries than the 4,096 read offers nothing as the only one (it may hold another
+/// PGN past them) and does not hang.
+#[test]
+fn the_only_pgn_of_the_folder_is_offered_and_a_crowded_folder_offers_nothing() {
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    let offer = |name: &str| format!("{name} sits beside this PDF. Use it as the book's PGN?");
+    // (case, the PDF's name, the PGNs beside it, how many other files, the PGN offered)
+    type Case = (&'static str, &'static str, &'static [&'static str], usize, Option<&'static str>);
+    let cases: [Case; 4] = [
+        ("emoji", "📚Livro.pdf", &["Livro.pgn"], 0, Some("Livro.pgn")),
+        ("only", "book.pdf", &["games.pgn"], 0, Some("games.pgn")),
+        ("folder", "book.pdf", &[], 0, None),
+        ("crowded", "book.pdf", &["games.pgn"], 4_100, None),
+    ];
+    for (case, pdf_name, pgns, crowd, offered) in cases {
+        let dir = corrections_dir(&format!("pgn-beside-{case}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let pdf = dir.join(pdf_name);
+        std::fs::write(&pdf, &bytes).unwrap();
+        for pgn in pgns {
+            std::fs::write(dir.join(pgn), RUY_PGN).unwrap();
+        }
+        if case == "folder" {
+            std::fs::create_dir_all(dir.join("x.pgn")).unwrap();
+        }
+        for i in 0..crowd {
+            std::fs::write(dir.join(format!("note-{i:05}.txt")), b"").unwrap();
+        }
+        let started = std::time::Instant::now();
+        let mut h = book_pgn_harness(pdf_name, Some(pdf.to_string_lossy().into_owned()), bytes.clone(), dir.join("reference"));
+        h.run_steps(2);
+        // A label's text is its node's value.
+        let shown: Vec<String> = h
+            .query_all_by(|n| n.value().is_some_and(|l| l.ends_with("sits beside this PDF. Use it as the book's PGN?")))
+            .filter_map(|n| n.accesskit_node().value())
+            .collect();
+        assert_eq!(shown, offered.map(offer).into_iter().collect::<Vec<_>>(), "{case}");
+        assert!(started.elapsed() < std::time::Duration::from_secs(30), "{case}: {:?}", started.elapsed());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
+
+/// Plan A9-I7b: with the jobs on workers, as in the app, the folder beside the PDF is looked
+/// through on one, and its offer comes in a frame after the search ends — it is waited for, not
+/// the clock (plan A9-Q4b) — with nothing more done by the user.
+#[test]
+fn the_pgn_beside_the_pdf_is_looked_for_on_a_worker_and_offered_when_found() {
+    let dir = corrections_dir("pgn-beside-worker");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join("games.pgn"), RUY_PGN).unwrap();
+    for i in 0..1_000 {
+        std::fs::write(dir.join(format!("note-{i:04}.txt")), b"").unwrap();
+    }
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe({
+        let (path, store) = (pdf.to_string_lossy().into_owned(), dir.join("reference"));
+        move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.chess.book_pgns.use_folder(store);
+            app.open_bytes("book.pdf", Some(path), bytes).unwrap();
+            app.run_inline = false;
+            app
+        }
+    });
+    h.run_steps(2);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    let id = h.state().views[0].id;
+    assert!(h.state().wait_sibling_pgn_looks(NET), "the search ended");
+    h.run_steps(2);
+    assert!(!h.state().sibling_pgn_looking(id), "taken by a frame");
+    h.get_by_label("games.pgn sits beside this PDF. Use it as the book's PGN?");
+    h.get_by_label("Not now: don't use games.pgn as the book's PGN");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Plan "Carregar PGN do livro", R6f: a PDF opened with a PGN of its name beside it gets the
 /// offer in the Chess panel. Not now is remembered with the settings, so the document opened
 /// again is not asked (the Text tab still offers it); Use keeps it as the book's PGN.
@@ -1555,13 +1637,16 @@ fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
         h.run_steps(3);
         let offered = format!("{name} sits beside this PDF. Use it as the book's PGN?");
         h.get_by_label(&offered);
-        // The panel ends where the rail beside the window's right edge begins.
+        // The panel ends where the rail beside the window's right edge begins, and opens 330 pt
+        // wide (plan A9-I7b): the offer's buttons stay between its edges.
         let edge = size.x - 48.0;
+        let start = h.get_by_role_and_label(egui::accesskit::Role::Tab, "Diagrams").rect().min.x;
+        assert!((edge - start - 330.0).abs() <= 24.0, "{theme}: the panel is {} pt wide", edge - start);
         let not_now = format!("Not now: don't use {name} as the book's PGN");
         let use_it = format!("Use {name} as the book's PGN");
         for label in [&not_now, &use_it] {
             let r = h.get_by_label(label).rect();
-            assert!(r.max.x <= edge, "{theme}: {label} at {r:?}, the panel ends at {edge}");
+            assert!(r.min.x >= start - 12.0 && r.max.x <= edge, "{theme}: {label} at {r:?}, the panel is {start}..{edge}");
         }
         shot(&mut h, &format!("pgn-offer-1366-{theme}.png"));
         // The Text tab's own Use, in its menu (plan A9-I9), is on screen.
