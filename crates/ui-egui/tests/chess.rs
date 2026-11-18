@@ -7685,6 +7685,146 @@ fn the_chess_column_at_the_plans_screens() {
     }
 }
 
+// ─── Nothing of the Chess column outside it (lane B's screenshots for the help, A9-E1) ──────
+
+/// What of the Chess column, as the last frame drew it, lies outside it sideways: each node
+/// assistive technology sees, and each shape painted under a clip inside the column, level with the
+/// column, that starts in it and runs past its right edge or ends in it and runs past its left edge
+/// (by more than half a point, a point for a shape's stroke). egui widens a column's content to its
+/// widest child, and a right-to-left row too wide for it runs off to the left: one such row moves
+/// every other with it.
+fn outside_the_column(h: &Harness<'static, PdfCraftApp>, when: &str) -> Vec<String> {
+    let column = chess_column(h);
+    let (left, right) = (column.min.x, column.max.x);
+    let outside = |r: egui::Rect, slack: f32| {
+        let level = r.center().y > column.min.y && r.center().y < column.max.y;
+        let off_right = r.min.x >= left - slack && r.min.x < right - slack && r.max.x > right + slack;
+        let off_left = r.max.x <= right + slack && r.max.x > left + slack && r.min.x < left - slack;
+        level && (off_right || off_left)
+    };
+    // The docking workspace's splitter on the column's edge is the workspace's, not the column's.
+    let mut out: Vec<String> = h
+        .query_all_by(|n| n.bounding_box().is_some() && n.role() != egui::accesskit::Role::Splitter)
+        .filter(|n| outside(n.rect(), 0.5))
+        .map(|n| format!("{when}: {:?} {:?} at {:?}", n.accesskit_node().role(), n.accesskit_node().label().unwrap_or_default(), n.rect()))
+        .collect();
+    for clipped in &h.output().shapes {
+        let (clip, r) = (clipped.clip_rect, clipped.shape.visual_bounding_rect());
+        let under_the_column = clip.min.x >= left - 1.0 && clip.max.x <= right + 1.0;
+        if under_the_column && r.is_finite() && outside(r, 1.0) {
+            let what = match &clipped.shape {
+                egui::Shape::Text(text) => format!("the text {:?}", text.galley.text()),
+                _ => "a shape".to_owned(),
+            };
+            out.push(format!("{when}: {what} at {r:?}"));
+        }
+    }
+    out
+}
+
+/// The Board tab's tool rail (the column's left 34 points), as the last frame drew it: each of
+/// its controls that ends below the column or the window.
+fn rail_below_the_column(h: &Harness<'static, PdfCraftApp>, when: &str) -> Vec<String> {
+    let column = chess_column(h);
+    let rail = egui::Rect::from_min_max(column.min, egui::pos2(column.min.x + 34.0, f32::INFINITY));
+    let bottom = column.max.y.min(h.ctx.content_rect().max.y) + 0.5;
+    h.query_all_by(|n| n.bounding_box().is_some())
+        .filter(|n| rail.contains(n.rect().center()) && n.rect().max.y > bottom)
+        .map(|n| format!("{when}: the rail's {:?} at {:?}, under {bottom}", n.accesskit_node().label().unwrap_or_default(), n.rect()))
+        .collect()
+}
+
+/// [`shot`] in the light theme, then the dark one (and back to light).
+fn shot_light_and_dark(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    if std::env::var("PDFCRAFT_CHESS_SHOTS").is_err() {
+        return;
+    }
+    shot(h, &format!("{name}-light.png"));
+    h.state_mut().set_option("theme", "dark").unwrap();
+    h.run_steps(3);
+    shot(h, &format!("{name}-dark.png"));
+    h.state_mut().set_option("theme", "light").unwrap();
+    h.run_steps(3);
+}
+
+/// Choose the Chess column's tab at `place` (0 Diagrams, 1 Text, 2 Board), whatever the language.
+fn column_tab_at(h: &mut Harness<'static, PdfCraftApp>, place: usize) {
+    let column = chess_column(h);
+    h.query_all_by(|n| n.role() == egui::accesskit::Role::Tab && n.data().position_in_set() == Some(place + 1))
+        .find(|n| column.contains(n.rect().center()))
+        .expect("the Chess column's tab")
+        .click();
+    h.run_steps(3);
+}
+
+/// Lane B's screenshots for the help (A9-E1), at the reference screen (1366 × 768, the Tools
+/// collapsed for the column), in Brazilian Portuguese and in English: nothing of the Chess column
+/// is outside it, on any of its three tabs — before a scan, with diagrams read, the Text tab, the
+/// Board tab, the document's games in the moves' place (the Move list beside the page) and In the
+/// book by material — and the Board tab's rail ends inside the window, the tools it has no room
+/// for under its ⋯. Before, in Portuguese, the panel's header asked for more than the 360-point
+/// column, and egui widened the column's content to it (the header's ⋯ and every row's state went
+/// under the window's rail); the games list's header ran 59 points off to the left, taking the
+/// list with it; and the rail's last button, the chess window's, was drawn under the window's
+/// bottom edge. Pictures of each, light and dark, with `PDFCRAFT_CHESS_SHOTS`.
+#[test]
+fn nothing_of_the_chess_column_is_outside_it_at_1366() {
+    use pdfcraft_ui_egui::docking::Panel;
+    let mut found = Vec::new();
+    for language in ["pt-br", "en"] {
+        let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+        h.state_mut().set_option("language", language).unwrap();
+        // The chess window's button on the rail, as on the desktop: kittest draws other windows
+        // inside the main one, and the rail leaves the button out there.
+        h.ctx.set_embed_viewports(false);
+        h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+        h.run_steps(4);
+        assert!(!h.state().left_open, "{language}: the Tools collapsed for the column");
+        let look = |h: &mut Harness<'static, PdfCraftApp>, found: &mut Vec<String>, what: &str| {
+            found.extend(outside_the_column(h, &format!("{language}, {what}")));
+            shot_light_and_dark(h, &format!("e1-{language}-{what}"));
+        };
+        look(&mut h, &mut found, "diagrams-before-a-scan");
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(4);
+        assert!(diagrams(&h) > 0, "{language}: the diagrams read");
+        look(&mut h, &mut found, "diagrams");
+        column_tab_at(&mut h, 1);
+        look(&mut h, &mut found, "text");
+        column_tab_at(&mut h, 2);
+        assert!(h.state().chess_board_shown(), "{language}: the Board tab");
+        look(&mut h, &mut found, "board");
+        found.extend(rail_below_the_column(&h, &format!("{language}, board")));
+        if language == "en" {
+            // The rail's tools with no room on it are under its ⋯, the chess window's among them.
+            match h.query_by_label("More board tools") {
+                Some(more) => {
+                    more.click();
+                    h.run_steps(2);
+                    if h.query_by_label("Chess in its own window").is_none() {
+                        found.push("en, board: the rail's ⋯ has no Chess in its own window".to_owned());
+                    }
+                    shot_light_and_dark(&mut h, "e1-en-board-more-tools");
+                    h.key_press(egui::Key::Escape);
+                    h.run_steps(2);
+                }
+                None => found.push("en, board: the rail has no ⋯ (More board tools)".to_owned()),
+            }
+        }
+        // The document's games in the moves' place, the moves beside the page.
+        assert!(h.state_mut().execute("chess.move_list"));
+        h.run_steps(4);
+        assert!(h.state().docking.layout.contains(&Panel::Moves), "{language}: the Move list beside the page");
+        look(&mut h, &mut found, "board-games");
+        found.extend(rail_below_the_column(&h, &format!("{language}, board-games")));
+        // In the book by material (plan A9-N16b), with its pawns' kinds.
+        assert!(h.state_mut().execute("chess.find_material"));
+        h.run_steps(3);
+        look(&mut h, &mut found, "board-material");
+    }
+    assert!(found.is_empty(), "outside the Chess column at 1366 × 768:\n{}", found.join("\n"));
+}
+
 // ─── Plan A9-I0a: the columns the window's width allows ─────────────────────────────────────
 
 /// The second column beside the Chess column, as the last frame drew it (from 1,600 pt).

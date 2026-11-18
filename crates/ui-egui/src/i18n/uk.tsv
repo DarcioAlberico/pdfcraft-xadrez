@@ -3813,3 +3813,7 @@ progress bar	Progress	Хід виконання
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Не вдалося виконати пошук у книзі: {e}
 	The diagrams read couldn't be looked at: {e}	Не вдалося переглянути прочитані діаграми: {e}
+# fix: pawn structure words
+pawn structure	Passed	Прохідні
+# fix: the board rail's More button
+	More board tools	Інші інструменти дошки

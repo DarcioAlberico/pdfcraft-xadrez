@@ -1019,10 +1019,26 @@ pub fn community_links(ui: &mut egui::Ui) -> Option<&'static str> {
 /// [`icon_pill`] with a ▾ part at its end that opens a menu of related choices. Returns the
 /// main button's response and the ▾'s (give it to `egui::Popup::menu`).
 pub fn split_pill(ui: &mut egui::Ui, icon: &str, label: &str, more: &str) -> (Response, Response) {
+    split_pill_within(ui, icon, label, more, f32::INFINITY)
+}
+
+/// The room around a [`split_pill`]'s label: its icon, paddings and ▾ part, in points.
+const SPLIT_PILL_FRAME: f32 = 46.0 + 28.0;
+
+/// How wide [`split_pill`] draws `label`, in points.
+pub fn split_pill_width(ui: &egui::Ui, label: &str) -> f32 {
+    text_width(ui, label, &theme::medium(12.5)) + SPLIT_PILL_FRAME
+}
+
+/// [`split_pill`] at most `max_width` points wide: a label too long for it is cut with "…" (plan
+/// A9 §2.8.1, "Medir antes de desenhar"), and is whole in the main button's tooltip and its name.
+pub fn split_pill_within(ui: &mut egui::Ui, icon: &str, label: &str, more: &str, max_width: f32) -> (Response, Response) {
     let t = Tokens::get(ui.ctx());
     let font = theme::medium(12.5);
-    let w = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), font.clone(), t.text).size().x);
-    let (rect, _) = ui.allocate_exact_size(vec2(w + 46.0 + 28.0, 30.0), Sense::hover());
+    let whole = split_pill_width(ui, label);
+    let shown = if whole <= max_width { label.to_owned() } else { fit_line(label, max_width - SPLIT_PILL_FRAME, |s| text_width(ui, s, &font)) };
+    let w = text_width(ui, &shown, &font);
+    let (rect, _) = ui.allocate_exact_size(vec2(w + SPLIT_PILL_FRAME, 30.0), Sense::hover());
     let (main_rect, more_rect) = rect.split_left_right_at_x(rect.right() - 28.0);
     let main = ui.interact(main_rect, ui.id().with(("split-pill", label)), Sense::click());
     let arrow = ui.interact(more_rect, ui.id().with(("split-pill-more", label)), Sense::click());
@@ -1044,7 +1060,7 @@ pub fn split_pill(ui: &mut egui::Ui, icon: &str, label: &str, more: &str) -> (Re
     let more_body = more_rect.translate(arrow_press.offset());
     ui.painter().vline(more_rect.left(), rect.y_range().shrink(7.0), Stroke::new(1.0, t.text_muted));
     crate::icons::paint(ui, Rect::from_min_size(body.min + vec2(12.0, 7.0), vec2(16.0, 16.0)), icon, 15.0, t.text);
-    ui.painter().text(body.left_center() + vec2(34.0, 0.0), Align2::LEFT_CENTER, label, font, t.text);
+    ui.painter().text(body.left_center() + vec2(34.0, 0.0), Align2::LEFT_CENTER, shown, font, t.text);
     crate::icons::paint(ui, Rect::from_center_size(more_body.center(), vec2(14.0, 14.0)), "chevron-down", 13.0, t.text);
     focus_ring(ui, &main, main_rect, 15);
     focus_ring(ui, &arrow, more_rect, 15);

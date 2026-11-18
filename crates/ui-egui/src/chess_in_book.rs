@@ -1003,7 +1003,8 @@ fn pattern_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
         ui.label(tl!("Pawns:"));
         ui.add(crate::widgets::checkbox(&mut filter.doubled, tl!("Doubled")));
         ui.add(crate::widgets::checkbox(&mut filter.isolated, tl!("Isolated")));
-        ui.add(crate::widgets::checkbox(&mut filter.passed, tl!("Passed")));
+        // In context: the plain "Passed" is a check's result ("Aprovado"), not a kind of pawn.
+        ui.add(crate::widgets::checkbox(&mut filter.passed, tl_ctx!("pawn structure", "Passed")));
     });
     match filter.query() {
         Err(_) => {
