@@ -3687,6 +3687,31 @@ progress bar	Progress	Πρόοδος
 # A9-N7a2: the Move field's refusals
 	Illegal move: {move} is ambiguous, it could be {moves}.	Αντικανονική κίνηση: το {move} είναι διφορούμενο, μπορεί να είναι {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Αντικανονική κίνηση: το {move} χρειάζεται το κομμάτι στο οποίο προάγεται το πιόνι, όπως στο {example}.
+# A9-N3: the Board tab's In the book (n)
+	In the book	Στο βιβλίο
+	In the book ({n})	Στο βιβλίο ({n})
+	Where the position shown is in the book, and what the book plays from it	Πού βρίσκεται στο βιβλίο η θέση που φαίνεται και τι παίζει το βιβλίο από αυτήν
+	Looking for the position in the book…	Αναζήτηση της θέσης στο βιβλίο…
+	Read the book (Detect diagrams or Text) to search.	Διαβάστε το βιβλίο (Εντοπισμός διαγραμμάτων ή Κείμενο) για αναζήτηση.
+	This position does not appear in the book as read.	Αυτή η θέση δεν εμφανίζεται στο βιβλίο όπως διαβάστηκε.
+	The book's PGN	Το PGN του βιβλίου
+	Pages read: {r} of {p}	Σελίδες που διαβάστηκαν: {r} από {p}
+	Found: {n}	Βρέθηκαν: {n}
+	transpositions: {n}	αντιμεταθέσεις: {n}
+	The book plays here	Το βιβλίο παίζει εδώ
+	Variation	Παραλλαγή
+	Games: {n}	Παρτίδες: {n}
+	from p. {page}	από σ. {page}
+	Play {move} on the board	Παίξτε {move} στη σκακιέρα
+	Castling isn't allowed on this board.	Το ροκέ δεν επιτρέπεται σε αυτή τη σκακιέρα.
+	En passant isn't possible on this board.	Το αν πασάν δεν είναι δυνατό σε αυτή τη σκακιέρα.
+	Not legal on this board.	Δεν είναι νόμιμη σε αυτή τη σκακιέρα.
+	Counted in the first {n} games that reach it.	Μετρήθηκε στις πρώτες {n} παρτίδες που φτάνουν σε αυτήν.
+	Where in the book	Πού στο βιβλίο
+	transposition	αντιμετάθεση
+	Open game {n} on the board at {move}	Άνοιγμα της παρτίδας {n} στη σκακιέρα στην κίνηση {move}
+	Only the pieces were compared: the side to move isn't printed.	Συγκρίθηκαν μόνο τα κομμάτια: δεν είναι τυπωμένο ποιος παίζει.
+	The first {n} are listed.	Εμφανίζονται οι πρώτες {n}.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Έλεγχος με τη μηχανή…

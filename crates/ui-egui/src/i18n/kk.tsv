@@ -3692,6 +3692,31 @@ progress bar	Progress	Орындалу барысы
 	Fantasy	Қиял
 	Spatial	Кеңістіктік
 	Celtic	Кельт
+# A9-N3: the Board tab's In the book (n)
+	In the book	Кітапта
+	In the book ({n})	Кітапта ({n})
+	Where the position shown is in the book, and what the book plays from it	Көрсетілген позиция кітаптың қай жерінде және кітап одан не ойнайды
+	Looking for the position in the book…	Позиция кітаптан ізделуде…
+	Read the book (Detect diagrams or Text) to search.	Іздеу үшін кітапты оқыңыз (Диаграммаларды анықтау немесе Мәтін).
+	This position does not appear in the book as read.	Бұл позиция кітаптың оқылған бөлігінде кездеспейді.
+	The book's PGN	Кітаптың PGN файлы
+	Pages read: {r} of {p}	Оқылған беттер: {r} / {p}
+	Found: {n}	Табылды: {n}
+	transpositions: {n}	транспозициялар: {n}
+	The book plays here	Кітап мұнда осылай ойнайды
+	Variation	Нұсқа
+	Games: {n}	Партиялар: {n}
+	from p. {page}	{page}-беттен
+	Play {move} on the board	{move} жүрісін тақтада ойнау
+	Castling isn't allowed on this board.	Бұл тақтада рокировкаға рұқсат жоқ.
+	En passant isn't possible on this board.	Бұл тақтада өтпелі алу мүмкін емес.
+	Not legal on this board.	Бұл тақтада ережеге сай емес.
+	Counted in the first {n} games that reach it.	Оған жететін алғашқы {n} партияда саналды.
+	Where in the book	Кітаптың қай жерінде
+	transposition	транспозиция
+	Open game {n} on the board at {move}	{n}-партияны тақтада {move} жүрісінде ашу
+	Only the pieces were compared: the side to move isn't printed.	Тек фигуралар салыстырылды: жүріс кезегі басылмаған.
+	The first {n} are listed.	Алғашқы {n} тізімде.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Қозғалтқышпен тексеру…

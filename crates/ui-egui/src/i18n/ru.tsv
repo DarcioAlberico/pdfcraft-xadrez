@@ -3608,6 +3608,31 @@ progress bar	Progress	Ход выполнения
 	Fantasy	Фэнтези
 	Spatial	Объёмные
 	Celtic	Кельтские
+# A9-N3: the Board tab's In the book (n)
+	In the book	В книге
+	In the book ({n})	В книге ({n})
+	Where the position shown is in the book, and what the book plays from it	Где в книге показанная позиция и что книга из неё играет
+	Looking for the position in the book…	Поиск позиции в книге…
+	Read the book (Detect diagrams or Text) to search.	Прочитайте книгу (Найти диаграммы или Текст), чтобы искать.
+	This position does not appear in the book as read.	Этой позиции нет в прочитанной части книги.
+	The book's PGN	PGN книги
+	Pages read: {r} of {p}	Прочитано страниц: {r} из {p}
+	Found: {n}	Найдено: {n}
+	transpositions: {n}	перестановок ходов: {n}
+	The book plays here	Книга играет здесь
+	Variation	Вариант
+	Games: {n}	Партий: {n}
+	from p. {page}	со с. {page}
+	Play {move} on the board	Сыграть {move} на доске
+	Castling isn't allowed on this board.	Рокировка на этой доске не разрешена.
+	En passant isn't possible on this board.	Взятие на проходе на этой доске невозможно.
+	Not legal on this board.	На этой доске недопустимо.
+	Counted in the first {n} games that reach it.	Подсчитано в первых {n} партиях, которые к ней приходят.
+	Where in the book	Где в книге
+	transposition	перестановка ходов
+	Open game {n} on the board at {move}	Открыть партию {n} на доске на ходе {move}
+	Only the pieces were compared: the side to move isn't printed.	Сравнивались только фигуры: очерёдность хода не напечатана.
+	The first {n} are listed.	Показаны первые {n}.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Проверить движком…

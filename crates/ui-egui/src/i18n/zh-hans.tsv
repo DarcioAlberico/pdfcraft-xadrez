@@ -3659,6 +3659,31 @@ progress bar	Progress	进度
 	Fantasy	奇幻
 	Spatial	立体
 	Celtic	凯尔特
+# A9-N3: the Board tab's In the book (n)
+	In the book	书中
+	In the book ({n})	书中 ({n})
+	Where the position shown is in the book, and what the book plays from it	当前局面在书中的位置，以及书中从这里怎么走
+	Looking for the position in the book…	正在书中查找该局面…
+	Read the book (Detect diagrams or Text) to search.	请先读取本书（检测局面图 或 文本）再查找。
+	This position does not appear in the book as read.	已读取的书中没有这个局面。
+	The book's PGN	本书的 PGN
+	Pages read: {r} of {p}	已读取页数：{r} / {p}
+	Found: {n}	找到：{n}
+	transpositions: {n}	着法换序：{n}
+	The book plays here	书中在此的着法
+	Variation	变着
+	Games: {n}	对局：{n}
+	from p. {page}	自第 {page} 页
+	Play {move} on the board	在棋盘上走 {move}
+	Castling isn't allowed on this board.	此棋盘上不能易位。
+	En passant isn't possible on this board.	此棋盘上不能吃过路兵。
+	Not legal on this board.	在此棋盘上不合规则。
+	Counted in the first {n} games that reach it.	按到达此局面的前 {n} 局统计。
+	Where in the book	书中何处
+	transposition	着法换序
+	Open game {n} on the board at {move}	在棋盘上打开对局 {n}，停在 {move}
+	Only the pieces were compared: the side to move isn't printed.	只比较了棋子：未印出轮到哪方走。
+	The first {n} are listed.	已列出前 {n} 项。
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	用引擎核对…

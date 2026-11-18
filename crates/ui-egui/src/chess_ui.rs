@@ -269,6 +269,9 @@ pub struct ChessState {
     /// What the Board tab's moves region shows: the moves, or in their place the game's details,
     /// the document's games or the FEN and PGN fields (plan A9-I0b).
     pub(crate) board_view: crate::chess_board_tab::MovesView,
+    /// Where the board's position is in the book open: the Board tab's In the book (n) (plan
+    /// A9-N3).
+    pub(crate) in_book: crate::chess_in_book::InBook,
 }
 
 impl ChessState {
@@ -1301,6 +1304,7 @@ impl PdfCraftApp {
         self.chess_board_at_tick();
         self.chess_pick_after_scan_tick();
         self.chess_board_text_tick();
+        self.chess_in_book_tick();
     }
 
     fn poll_chess_scan(&mut self) {

@@ -15,9 +15,10 @@
 //!   the diagram the board came from;
 //! - the moves, filling the rest (at least [`ROWS`] rows of them, [`ROWS_WITH_ENGINE`] with the
 //!   engine's lines), their own scroll area the only one;
-//! - a bar of [`BAR`] points at the foot: **Game ▾ · Comment · FEN/PGN ▾**, which took the place
-//!   of the sections under the list. The first move's number is in Game ▾ (§2.8.1); the game's
-//!   details, the document's games and the FEN and PGN fields take the moves' place
+//! - a bar of [`BAR`] points at the foot: **Game ▾ · Comment · In the book (n) · FEN/PGN ▾**,
+//!   which took the place of the sections under the list. The first move's number is in Game ▾
+//!   (§2.8.1); the game's details, the document's games, where the position is in the book (plan
+//!   A9-N3, [`crate::chess_in_book`]) and the FEN and PGN fields take the moves' place
 //!   ([`MovesView`]: "‹ Moves" and Esc go back); Comment opens the comment fields under the moves.
 //!
 //! Captures from the clipboard and the layer of captured text went to the Capture tool's popup
@@ -61,7 +62,8 @@ const ROW_PAD: f32 = 2.0;
 const ROW_LEAST: f32 = 18.0;
 
 /// What the moves' region shows (plan A9-I0b): the moves, or in their place the document's
-/// games, the game's details, or the FEN and PGN fields.
+/// games, the game's details, the FEN and PGN fields, or where the position is in the book (plan
+/// A9-N3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum MovesView {
     #[default]
@@ -69,6 +71,7 @@ pub enum MovesView {
     Games,
     Details,
     Fields,
+    Book,
 }
 
 /// The Board tab's regions, measured before anything is drawn (plan A9-I0b, §2.8.1 "Medir antes
@@ -615,6 +618,7 @@ fn moves_region(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rec
                 let rows = if rows.is_finite() { (rows as usize).clamp(3, 200) } else { 8 };
                 action = chess_board_ui::pgn_field(ui, state, rows).or(fen);
             }
+            MovesView::Book => crate::chess_in_book::list(ui, t, chess),
         }
         crate::widgets::follow_focus(ui);
     });
@@ -703,14 +707,30 @@ fn comment_large(ui: &mut egui::Ui, t: &Tokens, state: &chess_board_ui::BoardSta
 }
 
 /// The bar: Game ▾ (the first move's number, the game's details, the document's games), Comment
-/// (the comment fields under the moves) and FEN/PGN ▾ (copies, lichess, the start position, and
-/// the two fields in the moves' place).
+/// (the comment fields under the moves), In the book (n) (where the position is in the book, in
+/// the moves' place; plan A9-N3) and FEN/PGN ▾ (copies, lichess, the start position, and the two
+/// fields in the moves' place).
 fn bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<BoardAction> {
     let mut action = None;
-    ui.spacing_mut().item_spacing.x = 6.0;
-    // Buttons as tall as the bar, never taller.
-    ui.spacing_mut().button_padding.y = 1.0;
+    ui.spacing_mut().item_spacing.x = 4.0;
+    // Buttons as tall as the bar, never taller, and narrow: four share a 360 pt column.
+    ui.spacing_mut().button_padding = vec2(4.0, 1.0);
     ui.spacing_mut().interact_size.y = BAR - 2.0;
+    // Measured before anything is drawn (§2.8.1): where the four do not fit with their words (the
+    // reference screen's 360 pt column), Comment keeps its icon alone, named as before; In the
+    // book (n) is cut with "…" in the rest.
+    let book = crate::chess_in_book::bar_label(&chess.in_book.status());
+    let (compact, book_room) = {
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let text = |s: &str| crate::widgets::text_width(ui, s, &font);
+        let (pad, gap, icon) = (2.0 * ui.spacing().button_padding.x, ui.spacing().item_spacing.x, ui.spacing().icon_spacing);
+        let menus = text(tl!("Game")) + text("FEN/PGN") + 2.0 * (12.0 + icon + pad);
+        let comment = 14.0 + icon + text(tl!("Comment")) + pad;
+        let room = ui.available_width();
+        let compact = menus + comment + text(&book) + pad + 3.0 * gap > room;
+        let comment = if compact { 24.0_f32.max(14.0 + pad) } else { comment };
+        (compact, (room - menus - comment - 3.0 * gap - pad).max(0.0))
+    };
     let open_menu =
         |label: &str| egui::Button::new((label.to_owned(), crate::icons::image("chevron-down", 12.0, t.icon))).min_size(vec2(24.0, BAR - 2.0));
     // Game ▾: open until a click outside it, so its number can be typed and dragged.
@@ -733,17 +753,17 @@ fn bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<BoardAct
     }
     // Comment: the comment fields of the move shown, under the moves.
     let open = chess.board().comment_open;
-    let r = ui
-        .add(
-            egui::Button::image_and_text(crate::icons::image("message-square", 14.0, t.icon), tl!("Comment"))
-                .selected(open)
-                .min_size(vec2(24.0, BAR - 2.0)),
-        )
-        .on_hover_text(tl!("The comments of the move shown, under the moves"));
+    let icon = crate::icons::image("message-square", 14.0, t.icon);
+    let button = if compact { egui::Button::image(icon) } else { egui::Button::image_and_text(icon, tl!("Comment")) };
+    let r = ui.add(button.selected(open).min_size(vec2(24.0, BAR - 2.0))).on_hover_text(tl!("The comments of the move shown, under the moves"));
     r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, chess.board().illegal.is_none(), open, tl!("Comment")));
     if r.clicked() && chess.board().illegal.is_none() {
         chess.board_view = MovesView::Moves;
         chess.board_mut().toggle_comment_editor();
+    }
+    // In the book (n): its list in the moves' place, or the moves again.
+    if crate::chess_in_book::bar_item(ui, chess, &book, book_room, BAR - 2.0) {
+        chess.board_view = if chess.board_view == MovesView::Book { MovesView::Moves } else { MovesView::Book };
     }
     // FEN/PGN ▾; its lichess link from the side the board's diagram is printed from (plan A9-G9).
     let printed = chess.board().source.and_then(|s| chess.results_of(s.doc).map(|r| r.printed_from(s.page, s.index)));

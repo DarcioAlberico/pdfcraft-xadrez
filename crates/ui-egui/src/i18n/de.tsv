@@ -3695,6 +3695,31 @@ progress bar	Progress	Fortschritt
 	Fantasy	Fantasie
 	Spatial	Räumlich
 	Celtic	Keltisch
+# A9-N3: the Board tab's In the book (n)
+	In the book	Im Buch
+	In the book ({n})	Im Buch ({n})
+	Where the position shown is in the book, and what the book plays from it	Wo die gezeigte Stellung im Buch steht und was das Buch von ihr aus spielt
+	Looking for the position in the book…	Die Stellung wird im Buch gesucht…
+	Read the book (Detect diagrams or Text) to search.	Lesen Sie das Buch (Diagramme erkennen oder Text), um zu suchen.
+	This position does not appear in the book as read.	Diese Stellung kommt im gelesenen Buch nicht vor.
+	The book's PGN	PGN des Buchs
+	Pages read: {r} of {p}	Gelesene Seiten: {r} von {p}
+	Found: {n}	Gefunden: {n}
+	transpositions: {n}	Zugumstellungen: {n}
+	The book plays here	Das Buch spielt hier
+	Variation	Variante
+	Games: {n}	Partien: {n}
+	from p. {page}	ab S. {page}
+	Play {move} on the board	{move} auf dem Brett spielen
+	Castling isn't allowed on this board.	Rochade ist auf diesem Brett nicht erlaubt.
+	En passant isn't possible on this board.	En passant ist auf diesem Brett nicht möglich.
+	Not legal on this board.	Auf diesem Brett nicht regelgerecht.
+	Counted in the first {n} games that reach it.	Gezählt in den ersten {n} Partien, die sie erreichen.
+	Where in the book	Wo im Buch
+	transposition	Zugumstellung
+	Open game {n} on the board at {move}	Partie {n} auf dem Brett bei {move} öffnen
+	Only the pieces were compared: the side to move isn't printed.	Nur die Figuren wurden verglichen: Wer am Zug ist, ist nicht gedruckt.
+	The first {n} are listed.	Die ersten {n} sind aufgeführt.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Mit der Engine prüfen…

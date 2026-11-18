@@ -3659,6 +3659,31 @@ progress bar	Progress	Postęp
 # A9-N7a2: the Move field's refusals
 	Illegal move: {move} is ambiguous, it could be {moves}.	Nielegalny ruch: {move} jest niejednoznaczny, może to być {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nielegalny ruch: {move} wymaga figury, na którą promuje pion, np. {example}.
+# A9-N3: the Board tab's In the book (n)
+	In the book	W książce
+	In the book ({n})	W książce ({n})
+	Where the position shown is in the book, and what the book plays from it	Gdzie w książce jest pokazana pozycja i co książka z niej gra
+	Looking for the position in the book…	Szukanie pozycji w książce…
+	Read the book (Detect diagrams or Text) to search.	Przeczytaj książkę (Wykryj diagramy lub Tekst), aby szukać.
+	This position does not appear in the book as read.	Ta pozycja nie występuje w przeczytanej książce.
+	The book's PGN	PGN książki
+	Pages read: {r} of {p}	Przeczytane strony: {r} z {p}
+	Found: {n}	Znaleziono: {n}
+	transpositions: {n}	transpozycje: {n}
+	The book plays here	Książka gra tu
+	Variation	Wariant
+	Games: {n}	Partie: {n}
+	from p. {page}	od s. {page}
+	Play {move} on the board	Zagraj {move} na szachownicy
+	Castling isn't allowed on this board.	Roszada nie jest dozwolona na tej szachownicy.
+	En passant isn't possible on this board.	Bicie w przelocie nie jest możliwe na tej szachownicy.
+	Not legal on this board.	Niedozwolone na tej szachownicy.
+	Counted in the first {n} games that reach it.	Policzono w pierwszych {n} partiach, które do niej prowadzą.
+	Where in the book	Gdzie w książce
+	transposition	transpozycja
+	Open game {n} on the board at {move}	Otwórz partię {n} na szachownicy przy ruchu {move}
+	Only the pieces were compared: the side to move isn't printed.	Porównano tylko bierki: nie wydrukowano, kto jest na posunięciu.
+	The first {n} are listed.	Wymieniono pierwsze {n}.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Sprawdź silnikiem…

@@ -3944,6 +3944,31 @@ progress bar	Progress	Tiến độ
 	Fantasy	Kỳ ảo
 	Spatial	Không gian
 	Celtic	Xen-tơ
+# A9-N3: the Board tab's In the book (n)
+	In the book	Trong sách
+	In the book ({n})	Trong sách ({n})
+	Where the position shown is in the book, and what the book plays from it	Thế cờ đang hiển thị nằm ở đâu trong sách, và sách đi gì từ đó
+	Looking for the position in the book…	Đang tìm thế cờ trong sách…
+	Read the book (Detect diagrams or Text) to search.	Hãy đọc sách (Phát hiện sơ đồ hoặc Văn bản) để tìm.
+	This position does not appear in the book as read.	Thế cờ này không xuất hiện trong phần sách đã đọc.
+	The book's PGN	PGN của sách
+	Pages read: {r} of {p}	Số trang đã đọc: {r}/{p}
+	Found: {n}	Tìm thấy: {n}
+	transpositions: {n}	hoán vị nước đi: {n}
+	The book plays here	Sách đi ở đây
+	Variation	Biến
+	Games: {n}	Ván: {n}
+	from p. {page}	từ tr. {page}
+	Play {move} on the board	Đi {move} trên bàn cờ
+	Castling isn't allowed on this board.	Không được nhập thành trên bàn cờ này.
+	En passant isn't possible on this board.	Không thể bắt tốt qua đường trên bàn cờ này.
+	Not legal on this board.	Không hợp lệ trên bàn cờ này.
+	Counted in the first {n} games that reach it.	Đã đếm trong {n} ván đầu tiên đi đến thế cờ này.
+	Where in the book	Ở đâu trong sách
+	transposition	hoán vị nước đi
+	Open game {n} on the board at {move}	Mở ván {n} trên bàn cờ tại {move}
+	Only the pieces were compared: the side to move isn't printed.	Chỉ so sánh các quân: lượt đi không được in.
+	The first {n} are listed.	Đã liệt kê {n} mục đầu tiên.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Kiểm tra bằng engine…

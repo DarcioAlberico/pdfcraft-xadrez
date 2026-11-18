@@ -3690,6 +3690,31 @@ progress bar	Progress	İlerleme
 	Fantasy	Fantastik
 	Spatial	Uzamsal
 	Celtic	Kelt
+# A9-N3: the Board tab's In the book (n)
+	In the book	Kitapta
+	In the book ({n})	Kitapta ({n})
+	Where the position shown is in the book, and what the book plays from it	Gösterilen konumun kitapta nerede olduğu ve kitabın oradan ne oynadığı
+	Looking for the position in the book…	Konum kitapta aranıyor…
+	Read the book (Detect diagrams or Text) to search.	Aramak için kitabı okuyun (Diyagramları algıla veya Metin).
+	This position does not appear in the book as read.	Bu konum okunan kitapta geçmiyor.
+	The book's PGN	Kitabın PGN'i
+	Pages read: {r} of {p}	Okunan sayfalar: {r} / {p}
+	Found: {n}	Bulunan: {n}
+	transpositions: {n}	transpozisyonlar: {n}
+	The book plays here	Kitap burada oynuyor
+	Variation	Varyant
+	Games: {n}	Oyunlar: {n}
+	from p. {page}	s. {page} itibarıyla
+	Play {move} on the board	{move} hamlesini tahtada oyna
+	Castling isn't allowed on this board.	Bu tahtada rok yapılamaz.
+	En passant isn't possible on this board.	Bu tahtada geçerken alma mümkün değil.
+	Not legal on this board.	Bu tahtada kurala uygun değil.
+	Counted in the first {n} games that reach it.	Ona ulaşan ilk {n} oyunda sayıldı.
+	Where in the book	Kitapta nerede
+	transposition	transpozisyon
+	Open game {n} on the board at {move}	Oyun {n} tahtada {move} hamlesinde açılsın
+	Only the pieces were compared: the side to move isn't printed.	Yalnızca taşlar karşılaştırıldı: sıranın kimde olduğu basılı değil.
+	The first {n} are listed.	İlk {n} tanesi listelendi.
 
 # A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
 	Check with the engine…	Motorla denetle…
