@@ -376,7 +376,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>Lances impressos na página</h2>
 <p>Não é preciso passar pela aba Texto: um <b>duplo clique num lance impresso na página</b> abre a partida dele no tabuleiro, naquele lance (a posição depois dele). A partida é a do PGN do livro quando o lance está ligado a ele, senão a da página, lida através das páginas vizinhas; a mesma partida, sem mudança, é mostrada de novo, não acrescentada. A palavra continua selecionada; <kbd>Alt</kbd>+clique faz o mesmo sem selecionar.</p>
 <ul>
-<li>Sobre um lance que a aba Texto já leu, o ponteiro vira mão e o lance ganha um sublinhado na cor de destaque.</li>
+<li>Sobre um lance que a aba Texto já leu, o ponteiro vira mão e o lance ganha um sublinhado na cor de destaque. Com o ponteiro parado 0,4 s, um tabuleiro pequeno com a posição depois do lance aparece ao lado dele (embaixo, ou em cima perto do pé da janela), sem cobri-lo; o ponteiro pode ir até o tabuleiro sem que ele suma. Ele some quando o ponteiro sai dos dois, ao rolar, ao mudar o zoom ou a página e quando o duplo clique abre a partida; <kbd>Esc</kbd> o fecha, e o teclado fica onde estava.</li>
 <li>Numa página ainda não lida, o gesto lê a página primeiro, com <b>Lendo a página…</b> na base da página, e então abre o lance.</li>
 <li>Numa página cujos diagramas não foram detectados, o duplo clique detecta antes os diagramas da página e põe no tabuleiro o que estiver ali; só onde não há diagrama passa ao lance. Na prosa, só seleciona a palavra.</li>
 </ul>
@@ -821,7 +821,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><b>Peças na lista de lances</b></td><td><b>Figurinhas</b> (do conjunto do tabuleiro), <b>Letras no seu idioma</b> (R D T B C) ou <b>Letras em inglês</b> (K Q R B N). Vale para todo lance que o app mostra.</td></tr>
 <tr><td><b>Lista de lances</b></td><td><b>Texto corrido</b> ou <b>Colunas</b> (nº | brancas | pretas, quebrando nos comentários e variantes), e o tamanho do texto.</td></tr>
 <tr><td><b>Mostrar o comentário do lance, em letra grande, sob o tabuleiro</b></td><td>Liga o comentário em destaque.</td></tr>
-<tr><td><b>Mostrar a posição ao passar o ponteiro sobre um lance</b></td><td>Liga ou desliga a prévia.</td></tr>
+<tr><td><b>Mostrar a posição ao passar o ponteiro sobre um lance</b></td><td>Liga ou desliga a prévia, na lista de lances e nos lances impressos na página.</td></tr>
 <tr><td><b>Ao jogar um lance diferente</b>; ao avançar numa bifurcação</td><td><b>Criar variante</b>, <b>Perguntar</b> ou <b>Substituir a continuação</b>; seguir a linha lembrada ou perguntar.</td></tr>
 <tr><td><b>Atalhos de uma tecla (B, C, F, G, O, X, sinais)</b></td><td>Liga ou desliga as teclas de uma letra do trilho e os sinais digitados (capítulo 11).</td></tr>
 <tr><td><b>Um sinal digitado espera o caractere seguinte</b></td><td>0,6 s, 1 s, 1,5 s, 2 s ou <b>Até o Enter</b> (capítulo 13).</td></tr>
@@ -1016,7 +1016,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>Um arquivo PGN só guarda o comentário antes de um lance quando há lugar para ele (o salvamento automático guarda sempre).</li>
 <li>O histórico de desfazer da partida e o da lista de partidas não passam de uma sessão para outra; a importação de uma revisão não se desfaz com Desfazer.</li>
 <li>A barra de progresso ainda não estima o tempo que falta. Ler uma página com OCR não pode ser parado depois de começar.</li>
-<li>No livro não conta os lances que a leitura achou no texto e que nenhum PGN tem, e dá a página onde a partida começa, não a do lance. A prévia do tabuleiro ao parar o ponteiro sobre um lance impresso na página ainda não existe.</li>
+<li>No livro não conta os lances que a leitura achou no texto e que nenhum PGN tem, e dá a página onde a partida começa, não a do lance.</li>
 <li>Uma partida que a linha de comando, outra janela ou uma revisão importada mudou ou apagou com o documento aberto só aparece assim quando você reabre o documento (as acrescentadas entram na hora).</li>
 <li>Criar os marcadores de novo acrescenta outra árvore. A lista de erratas só existe pelas ferramentas.</li>
 <li>Pelo app, a folha de exercícios sai só em A4 (Carta, pela ferramenta). A legenda e o enunciado dos exercícios ainda não dizem o objetivo impresso (“e ganham”). Nos cartões do Anki, as figuras são copiadas à mão para a <code>collection.media</code>.</li>
