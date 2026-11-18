@@ -320,7 +320,8 @@ pub enum TextAction {
     StopCheck,
     /// Show (`true`) or leave the Divergences list in the page text's place.
     Divergences(bool),
-    /// Show divergence `n` of the list on its page, outlined.
+    /// Show divergence `n` of the list on its page, outlined (the list is desktop only).
+    #[cfg(not(target_arch = "wasm32"))]
     ShowDivergence(usize),
 }
 
@@ -1589,11 +1590,7 @@ impl PdfCraftApp {
             #[cfg(not(target_arch = "wasm32"))]
             TextAction::ShowDivergence(i) => self.show_divergence(i),
             #[cfg(target_arch = "wasm32")]
-            TextAction::CheckWithEngine
-            | TextAction::ContinueCheck
-            | TextAction::StopCheck
-            | TextAction::Divergences(_)
-            | TextAction::ShowDivergence(_) => {}
+            TextAction::CheckWithEngine | TextAction::ContinueCheck | TextAction::StopCheck | TextAction::Divergences(_) => {}
         }
     }
 
