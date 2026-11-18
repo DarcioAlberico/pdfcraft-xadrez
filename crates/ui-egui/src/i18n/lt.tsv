@@ -3942,3 +3942,28 @@ progress bar	Progress	Eiga
 	Fantasy	Fantastika
 	Spatial	Erdviniai
 	Celtic	Keltų
+# A9-N3: the Board tab's In the book (n)
+	In the book	Knygoje
+	In the book ({n})	Knygoje ({n})
+	Where the position shown is in the book, and what the book plays from it	Kur knygoje yra rodoma pozicija ir ką knyga iš jos žaidžia
+	Looking for the position in the book…	Ieškoma pozicijos knygoje…
+	Read the book (Detect diagrams or Text) to search.	Perskaitykite knygą (Aptikti diagramas arba Tekstas), kad galėtumėte ieškoti.
+	This position does not appear in the book as read.	Šios pozicijos perskaitytoje knygoje nėra.
+	The book's PGN	Knygos PGN
+	Pages read: {r} of {p}	Perskaityta puslapių: {r} iš {p}
+	Found: {n}	Rasta: {n}
+	transpositions: {n}	perstatymai: {n}
+	The book plays here	Knyga čia žaidžia
+	Variation	Variantas
+	Games: {n}	Partijų: {n}
+	from p. {page}	nuo {page} psl.
+	Play {move} on the board	Sužaisti {move} lentoje
+	Castling isn't allowed on this board.	Šioje lentoje rokiruotė neleidžiama.
+	En passant isn't possible on this board.	Šioje lentoje kirsti prasilenkiant neįmanoma.
+	Not legal on this board.	Šioje lentoje neleistina.
+	Counted in the first {n} games that reach it.	Suskaičiuota pirmosiose {n} partijose, kurios ją pasiekia.
+	Where in the book	Kur knygoje
+	transposition	perstatymas
+	Open game {n} on the board at {move}	Atverti {n} partiją lentoje ties {move}
+	Only the pieces were compared: the side to move isn't printed.	Palygintos tik figūros: kieno ėjimas, neatspausdinta.
+	The first {n} are listed.	Išvardytos pirmosios {n}.
