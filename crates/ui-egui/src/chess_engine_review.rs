@@ -1045,23 +1045,25 @@ fn row(ui: &mut egui::Ui, t: &Tokens, c: &Checked, d: &Divergence, i: usize) -> 
     ui.push_id(("chess-divergence", i), |ui| {
         ui.allocate_ui(egui::vec2(ui.available_width(), ROW), |ui| {
             ui.set_min_height(ROW - 4.0);
-            ui.horizontal_top(|ui| {
-                let show = crate::widgets::pill_button(ui, tl!("Show in PDF"), false);
-                let name = format!("{}, {head}, {book}, {computed}, {source}", tl!("Show in PDF"));
-                show.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
-                if show.clicked() {
-                    action = Some(TextAction::ShowDivergence(i));
-                }
-                ui.vertical(|ui| {
-                    ui.spacing_mut().item_spacing.y = 1.0;
-                    ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.y = 2.0;
+            // The first line: Show in PDF at its end, the page and the move, and the source; the
+            // book's and the calculation's words under it, the column's whole width each.
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let show = crate::widgets::pill_button(ui, tl!("Show in PDF"), false);
+                    let name = format!("{}, {head}, {book}, {computed}, {source}", tl!("Show in PDF"));
+                    show.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name));
+                    if show.clicked() {
+                        action = Some(TextAction::ShowDivergence(i));
+                    }
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                         ui.add(egui::Label::new(RichText::new(&head).strong()).truncate());
                         ui.label(RichText::new(source).small().color(t.text_muted));
                     });
-                    ui.add(egui::Label::new(RichText::new(&book).small()).truncate()).on_hover_text(&book);
-                    ui.add(egui::Label::new(RichText::new(&computed).small()).truncate()).on_hover_text(&computed);
                 });
             });
+            ui.add(egui::Label::new(RichText::new(&book).small()).truncate()).on_hover_text(&book);
+            ui.add(egui::Label::new(RichText::new(&computed).small()).truncate()).on_hover_text(&computed);
         });
     });
     action

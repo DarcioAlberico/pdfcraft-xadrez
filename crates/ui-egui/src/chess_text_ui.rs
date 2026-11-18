@@ -441,8 +441,9 @@ fn text_menu(
 }
 
 /// The head row's chip of the divergences found (plan A9-N17b): "Divergences (n)", measured before
-/// it is drawn and cut with "…" so that the page's heading keeps [`HEADING_ROOM`]; not drawn when
-/// even its "…" would not fit (the ⋯ menu always has the list).
+/// it is drawn so that the page's heading keeps [`HEADING_ROOM`]; where it does not fit, the count
+/// alone after "≠" ("≠ 12"), cut with "…" when even that is too wide; not drawn when nothing of it
+/// would fit (the ⋯ menu always has the list). Whole in its tooltip and its name.
 fn divergences_chip(ui: &mut egui::Ui, t: &Tokens, n: usize) -> Option<TextAction> {
     let label = crate::i18n::fmt(tl!("Divergences ({n})"), &[("n", &crate::i18n::number(n))]);
     let font = egui::TextStyle::Small.resolve(ui.style());
@@ -451,7 +452,9 @@ fn divergences_chip(ui: &mut egui::Ui, t: &Tokens, n: usize) -> Option<TextActio
     if room < crate::widgets::text_width(ui, "…", &font) + 8.0 {
         return None;
     }
-    let shown = crate::widgets::fit_line(&label, room, |s| crate::widgets::text_width(ui, s, &font));
+    let compact = format!("≠ {}", crate::i18n::number(n));
+    let whole = crate::widgets::text_width(ui, &label, &font) <= room;
+    let shown = crate::widgets::fit_line(if whole { &label } else { &compact }, room, |s| crate::widgets::text_width(ui, s, &font));
     let r = ui
         .add(egui::Button::new(egui::RichText::new(&shown).small().color(t.warning_text)).min_size(egui::vec2(0.0, crate::widgets::MIN_TARGET)))
         // Whole in its tooltip and its name when cut.
