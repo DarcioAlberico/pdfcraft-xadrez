@@ -71,6 +71,7 @@ mod chess_redraw;
 mod chess_reference_ui;
 mod chess_review_ui;
 mod chess_samples;
+mod chess_sibling;
 mod chess_theme;
 mod chess_widgets;
 pub use chess_ocr_area::AreaQuery;
@@ -3547,6 +3548,7 @@ impl eframe::App for PdfCraftApp {
             widgets::toast(self, &ctx);
             notice::show(self, &ctx);
             self.settle_chess_focus(&ctx);
+            widgets::paint_focus_ring(&ctx);
             self.finish_render_frame(&ctx);
             return;
         }
@@ -3630,6 +3632,8 @@ impl eframe::App for PdfCraftApp {
         // What the user just did, at the foot of the page area (plan A9-G10).
         notice::show(self, &ctx);
         self.settle_chess_focus(&ctx);
+        // The keyboard's control in a chess surface, ringed on top of what was drawn (plan A9-I11b).
+        widgets::paint_focus_ring(&ctx);
         self.finish_render_frame(&ctx);
     }
 }

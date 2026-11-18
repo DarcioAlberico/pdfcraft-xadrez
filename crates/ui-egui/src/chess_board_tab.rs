@@ -301,7 +301,11 @@ fn draw(
             egui::ScrollArea::vertical()
                 .id_salt("chess-tab-setup-scroll")
                 .auto_shrink([false, false])
-                .show(ui, |ui| crate::chess_study_ui::setup_in_place(ui, t, chess, pieces))
+                .show(ui, |ui| {
+                    let asked = crate::chess_study_ui::setup_in_place(ui, t, chess, pieces);
+                    crate::widgets::follow_focus(ui);
+                    asked
+                })
                 .inner
         })
     } else {
@@ -612,6 +616,7 @@ fn moves_region(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rec
                 action = chess_board_ui::pgn_field(ui, state, rows).or(fen);
             }
         }
+        crate::widgets::follow_focus(ui);
     });
     (action, games)
 }
