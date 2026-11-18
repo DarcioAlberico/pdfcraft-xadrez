@@ -3735,3 +3735,6 @@ progress bar	Progress	Előrehaladás
 	Nothing in the book as read has this material and these pawns.	A beolvasott könyvben nincs ilyen anyagú és ilyen gyalogú állás.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Állások: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
+	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}
