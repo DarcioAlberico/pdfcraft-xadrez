@@ -3976,3 +3976,4 @@ progress bar	Progress	Avanzamento
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Chiede a un motore di ogni mossa con un segno e di ogni diagramma delle pagine scelte, ed elenca dove il libro e il calcolo divergono.
 	Engine: {value} (depth {d})	Motore: {value} (profondità {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Cercando per un tempo, una posizione può restare meno profonda della profondità {d}, che il rapporto non giudica; una verifica fino alla profondità {d} la richiede di nuovo.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Anche l'analisi della scacchiera è attiva: mentre il suo motore cerca, i due motori si dividono il processore.

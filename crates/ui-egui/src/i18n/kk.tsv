@@ -3762,3 +3762,4 @@ progress bar	Progress	Орындалу барысы
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Таңдалған беттердегі белгісі бар әр жүріс пен әр диаграмма туралы қозғалтқыштан сұрап, кітап пен есеп алшақтайтын жерлерді тізеді.
 	Engine: {value} (depth {d})	Қозғалтқыш: {value} (тереңдік {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Уақыт бойынша іздегенде позиция {d} тереңдіктен таяз қалуы мүмкін, оны есеп бағаламайды; {d} тереңдікке дейінгі тексеру оны қайта сұрайды.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Тақтаның талдауы да қосулы: оның қозғалтқышы іздеп жатқанда екі қозғалтқыш процессорды бөліседі.

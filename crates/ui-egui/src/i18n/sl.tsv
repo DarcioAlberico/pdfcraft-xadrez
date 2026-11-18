@@ -3769,3 +3769,4 @@ progress bar	Progress	Napredek
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Šahovski program vpraša o vsaki potezi z znakom in vsakem diagramu izbranih strani ter navede, kje se knjiga in izračun razhajata.
 	Engine: {value} (depth {d})	Šahovski program: {value} (globina {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Pri iskanju po času lahko pozicija ostane plitvejša od globine {d}, ki je poročilo ne ocenjuje; preverjanje do globine {d} jo zahteva znova.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Analiza na šahovnici je tudi vklopljena: medtem ko njen šahovski program išče, si oba programa delita procesor.

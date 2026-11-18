@@ -3766,3 +3766,4 @@ progress bar	Progress	進行状況
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	選んだページの記号付きのすべての手とすべての図をエンジンに問い合わせ、本と計算が食い違う箇所を一覧にします。
 	Engine: {value} (depth {d})	エンジン: {value}（深さ {d}）
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	時間で探索すると、局面が深さ {d} に届かないことがあり、レポートはそれを判定しません。深さ {d} までの検証で再度問い合わせます。
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	盤の検討もオンです。そのエンジンが探索している間は、2つのエンジンがプロセッサを分け合います。

@@ -4012,3 +4012,4 @@ progress bar	Progress	Eiga
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Paklausia variklio apie kiekvieną ženklu pažymėtą ėjimą ir kiekvieną pasirinktų puslapių diagramą ir išvardija, kur knyga ir skaičiavimas nesutampa.
 	Engine: {value} (depth {d})	Variklis: {value} (gylis {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Ieškant tam tikrą laiką, pozicija gali likti seklesnė nei {d} gylis, kurio ataskaita nevertina; tikrinimas iki {d} gylio jos paklaus iš naujo.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Lentos analizė taip pat įjungta: kol jos variklis ieško, abu varikliai dalijasi procesoriumi.

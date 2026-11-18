@@ -698,6 +698,24 @@ fn a_check_for_a_time_leaves_out_what_is_held_and_says_it_may_stay_shallow() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): with the board's analysis on, the dialog says the two
+/// engines share the processor.
+#[test]
+fn the_dialog_says_when_the_boards_engine_runs_too() {
+    let data = temp_dir("two-engines");
+    let mut h = harness(book(&[MOVES]), &data);
+    let note = "The board's analysis is on too";
+    text_menu_item(&mut h, "Check with the engine…");
+    assert!(!shown(&h, note), "not while the board's analysis is off");
+    h.get_by_label("Cancel").click();
+    h.run_steps(2);
+    let (board, _engine) = engine(Answers::Now, 30);
+    h.state_mut().chess.study.use_engine(board);
+    text_menu_item(&mut h, "Check with the engine…");
+    assert!(shown(&h, note), "said");
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.

@@ -3760,3 +3760,4 @@ progress bar	Progress	İlerleme
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Seçtiğiniz sayfalardaki işaretli her hamleyi ve her diyagramı bir motora sorar, kitapla hesabın ayrıldığı yerleri listeler.
 	Engine: {value} (depth {d})	Motor: {value} (derinlik {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Süreyle aranınca bir konum {d} derinliğinden sığ kalabilir, rapor bunu yargılamaz; {d} derinliğine kadar bir denetim onu yeniden sorar.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Tahtanın çözümlemesi de açık: onun motoru ararken iki motor işlemciyi paylaşır.

@@ -3786,3 +3786,4 @@ progress bar	Progress	Хід виконання
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Запитує рушій про кожен хід зі знаком і кожну діаграму вибраних сторінок і перелічує місця, де книга й розрахунок розходяться.
 	Engine: {value} (depth {d})	Рушій: {value} (глибина {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Під час пошуку за часом позиція може лишитися мілкішою за глибину {d}, яку звіт не оцінює; перевірка до глибини {d} запитає її знову.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Аналіз на дошці теж увімкнено: поки його рушій шукає, два рушії ділять процесор.

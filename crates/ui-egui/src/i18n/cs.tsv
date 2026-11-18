@@ -3838,3 +3838,4 @@ progress bar	Progress	Průběh
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Zeptá se enginu na každý tah se znaménkem a každý diagram vybraných stránek a vypíše, kde se kniha a výpočet rozcházejí.
 	Engine: {value} (depth {d})	Engine: {value} (hloubka {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Při hledání po určitý čas může pozice zůstat mělčí než hloubka {d}, kterou zpráva neposuzuje; ověření do hloubky {d} si ji vyžádá znovu.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Analýza na šachovnici běží také: zatímco její engine hledá, oba enginy se dělí o procesor.

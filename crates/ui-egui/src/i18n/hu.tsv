@@ -3763,3 +3763,4 @@ progress bar	Progress	Előrehaladás
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Megkérdez egy motort a kiválasztott oldalak minden jellel ellátott lépéséről és minden diagramjáról, és felsorolja, hol tér el a könyv és a számítás.
 	Engine: {value} (depth {d})	Motor: {value} ({d} mélység)
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Időre keresve egy állás sekélyebb maradhat a(z) {d} mélységnél, amit a jelentés nem értékel; a(z) {d} mélységig tartó ellenőrzés újra lekéri.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	A tábla elemzése is be van kapcsolva: amíg a motorja keres, a két motor osztozik a processzoron.

@@ -3729,3 +3729,4 @@ progress bar	Progress	Postęp
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Pyta silnik o każdy ruch ze znakiem i każdy diagram wybranych stron oraz wypisuje miejsca, w których książka i obliczenie się różnią.
 	Engine: {value} (depth {d})	Silnik: {value} (głębokość {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Przy szukaniu przez określony czas pozycja może pozostać płytsza niż głębokość {d}, której raport nie ocenia; sprawdzanie do głębokości {d} zapyta o nią ponownie.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Analiza na szachownicy też jest włączona: gdy jej silnik szuka, oba silniki dzielą się procesorem.

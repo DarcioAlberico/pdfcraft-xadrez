@@ -4037,3 +4037,4 @@ progress bar	Progress	التقدم
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	يسأل محركًا عن كل نقلة تحمل علامة وكل مخطط في الصفحات التي تختارها، ويسرد المواضع التي يختلف فيها الكتاب والحساب.
 	Engine: {value} (depth {d})	المحرك: {value} (العمق {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	عند البحث لمدة محددة، قد يبقى موقف أقل من العمق {d}، ولا يحكم عليه التقرير؛ والتحقق حتى العمق {d} يعيد طلبه.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	تحليل اللوحة يعمل أيضًا: أثناء بحث محركه، يتقاسم المحركان المعالج.

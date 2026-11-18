@@ -4014,3 +4014,4 @@ progress bar	Progress	Tiến độ
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Hỏi engine về mọi nước đi có ký hiệu và mọi sơ đồ của các trang bạn chọn, rồi liệt kê những chỗ sách và tính toán không khớp nhau.
 	Engine: {value} (depth {d})	Engine: {value} (độ sâu {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Khi tìm theo thời gian, một thế cờ có thể chưa đạt độ sâu {d}, mức mà báo cáo không đánh giá; kiểm tra đến độ sâu {d} sẽ hỏi lại thế cờ đó.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Phân tích trên bàn cờ cũng đang bật: khi engine của nó tìm, hai engine dùng chung bộ xử lý.

@@ -3663,3 +3663,4 @@ progress bar	Progress	పురోగతి
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	మీరు ఎంచుకున్న పేజీలలో గుర్తు ఉన్న ప్రతి ఎత్తు, ప్రతి డయాగ్రామ్ గురించి ఇంజిన్‌ను అడిగి, పుస్తకం మరియు లెక్క విభేదించే చోట్లను జాబితా చేస్తుంది.
 	Engine: {value} (depth {d})	ఇంజిన్: {value} (లోతు {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	సమయం ప్రకారం వెతికితే, ఒక స్థితి లోతు {d} కంటే తక్కువగా మిగిలిపోవచ్చు, దాన్ని నివేదిక నిర్ణయించదు; లోతు {d} వరకు తనిఖీ దాన్ని మళ్ళీ అడుగుతుంది.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	బోర్డు విశ్లేషణ కూడా ఆన్‌లో ఉంది: దాని ఇంజిన్ వెతుకుతున్నప్పుడు రెండు ఇంజిన్‌లు ప్రాసెసర్‌ను పంచుకుంటాయి.

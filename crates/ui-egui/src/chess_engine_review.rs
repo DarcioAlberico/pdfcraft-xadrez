@@ -1206,6 +1206,8 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
     let stamp = app.session.chess_stamp(d.doc);
     let left = app.chess.engine_review.left(d.doc);
+    // Two engines at once: the board's analysis and the check share the processor.
+    let both = app.chess.study.analysing();
     let mut answer: Option<Answer> = None;
     let shown = crate::widgets::show_titled_modal(ctx, "chess-engine-check", tl!("Check with the engine"), |ui| {
         ui.set_max_width(520.0);
@@ -1213,6 +1215,13 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         fields(ui, &mut d);
         if !d.by_depth {
             ui.label(RichText::new(time_note()).small().color(t.text_muted));
+        }
+        if both {
+            ui.label(
+                RichText::new(tl!("The board's analysis is on too: while its engine searches, the two engines share the processor."))
+                    .small()
+                    .color(t.text_muted),
+            );
         }
         ui.separator();
         let key = d.key(stamp);

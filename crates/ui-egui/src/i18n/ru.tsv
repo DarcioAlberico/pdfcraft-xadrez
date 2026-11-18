@@ -3678,3 +3678,4 @@ progress bar	Progress	Ход выполнения
 	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Спрашивает движок о каждом ходе со знаком и каждой диаграмме выбранных страниц и перечисляет места, где книга и расчёт расходятся.
 	Engine: {value} (depth {d})	Движок: {value} (глубина {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	При поиске по времени позиция может остаться мельче глубины {d}, которую отчёт не оценивает; проверка до глубины {d} запросит её снова.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	Анализ на доске тоже включён: пока его движок ищет, два движка делят процессор.
