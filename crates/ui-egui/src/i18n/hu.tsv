@@ -3735,3 +3735,9 @@ progress bar	Progress	Előrehaladás
 	Nothing in the book as read has this material and these pawns.	A beolvasott könyvben nincs ilyen anyagú és ilyen gyalogú állás.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Állások: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Bábuk felolvasása
+	Say a rank's pieces	Egy sor bábuinak felolvasása
+	Say a file's pieces	Egy vonal bábuinak felolvasása
+	{piece} on {square} picked up	Felvéve: {piece}, {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	A nyilak mezőt választanak; az Enter vagy a Szóköz felvesz egy bábut, vagy odalép vele.

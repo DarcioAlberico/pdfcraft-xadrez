@@ -3738,3 +3738,9 @@ progress bar	Progress	進行状況
 	Nothing in the book as read has this material and these pawns.	読み取った本には、この材料とこれらのポーンを持つ局面はありません。
 	{first} to {last}	{first} から {last}
 	Positions: {n}	局面: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	駒を読み上げる
+	Say a rank's pieces	段の駒を読み上げる
+	Say a file's pieces	筋の駒を読み上げる
+	{piece} on {square} picked up	{square} の{piece}を持ち上げました
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	矢印キーでマスを選び、Enter または Space で駒を持ち上げるか、そこへ指します。

@@ -3676,3 +3676,9 @@ progress bar	Progress	進度
 	Nothing in the book as read has this material and these pawns.	已讀取的書中沒有具有此子力和這些兵的局面。
 	{first} to {last}	{first} 至 {last}
 	Positions: {n}	局面：{n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	讀出棋子
+	Say a rank's pieces	讀出一條橫線的棋子
+	Say a file's pieces	讀出一條直線的棋子
+	{piece} on {square} picked up	已拿起 {square} 上的{piece}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	方向鍵選擇格子；Enter 或空白鍵拿起棋子或把它走到那裡。

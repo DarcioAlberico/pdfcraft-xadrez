@@ -3737,3 +3737,9 @@ progress bar	Progress	Fortschritt
 	Nothing in the book as read has this material and these pawns.	Nichts im gelesenen Buch hat dieses Material und diese Bauern.
 	{first} to {last}	{first} bis {last}
 	Positions: {n}	Stellungen: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Figuren ansagen
+	Say a rank's pieces	Figuren einer Reihe ansagen
+	Say a file's pieces	Figuren einer Linie ansagen
+	{piece} on {square} picked up	{piece} auf {square} aufgenommen
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Die Pfeiltasten wählen ein Feld; Eingabe oder Leertaste nimmt eine Figur auf oder zieht sie dorthin.

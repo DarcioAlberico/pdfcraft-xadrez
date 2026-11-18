@@ -3734,3 +3734,9 @@ progress bar	Progress	Орындалу барысы
 	Nothing in the book as read has this material and these pawns.	Кітаптың оқылған бөлігінде бұл материал мен бұл пешкалар жоқ.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Позициялар: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Фигураларды айту
+	Say a rank's pieces	Көлденең қатардың фигураларын айту
+	Say a file's pieces	Тік қатардың фигураларын айту
+	{piece} on {square} picked up	Көтерілді: {square} шаршысындағы {piece}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Көрсеткілер шаршыны таңдайды; Enter не Space фигураны көтереді немесе оны сонда жүреді.

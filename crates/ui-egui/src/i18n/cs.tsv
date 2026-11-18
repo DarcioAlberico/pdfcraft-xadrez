@@ -3810,3 +3810,9 @@ progress bar	Progress	Průběh
 	Nothing in the book as read has this material and these pawns.	Nic v přečtené části knihy nemá tento materiál a tyto pěšce.
 	{first} to {last}	{first} až {last}
 	Positions: {n}	Pozice: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Říct figury
+	Say a rank's pieces	Říct figury na řadě
+	Say a file's pieces	Říct figury ve sloupci
+	{piece} on {square} picked up	Zvednuto: {piece} na {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Šipky vybírají pole; Enter nebo mezerník figuru zvedne nebo s ní táhne tam.

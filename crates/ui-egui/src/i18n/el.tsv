@@ -3729,3 +3729,9 @@ progress bar	Progress	Πρόοδος
 	Nothing in the book as read has this material and these pawns.	Τίποτα στο βιβλίο όπως διαβάστηκε δεν έχει αυτό το υλικό και αυτά τα πιόνια.
 	{first} to {last}	{first} έως {last}
 	Positions: {n}	Θέσεις: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Εκφώνηση κομματιών
+	Say a rank's pieces	Εκφώνηση κομματιών οριζόντιας
+	Say a file's pieces	Εκφώνηση κομματιών στήλης
+	{piece} on {square} picked up	Σηκώθηκε: {piece} στο {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Τα βέλη επιλέγουν τετράγωνο· το Enter ή το Space σηκώνει ένα κομμάτι ή το παίζει εκεί.
