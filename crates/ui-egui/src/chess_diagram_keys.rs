@@ -94,9 +94,6 @@ pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mu
     keys.tab_keys = on_tab;
 }
 
-/// Whether the board takes `key` pressed with `m`: the arrows, Delete, Backspace, Space and Enter
-/// alone, and the letters alone or with Shift (all of them, so none of the app's one-letter
-/// shortcuts fires while the board has the keyboard).
 /// Whether the diagram editor's board, with the keyboard, takes `key` pressed with `m` (plan
 /// A9-N7b's check: the analysis board's questions are none of its keys).
 #[cfg(test)]
@@ -104,6 +101,9 @@ pub(crate) fn editor_takes(key: Key, m: Modifiers) -> bool {
     board_key(key, m)
 }
 
+/// Whether the board takes `key` pressed with `m`: the arrows, Delete, Backspace, Space and Enter
+/// alone, and the letters alone or with Shift (all of them, so none of the app's one-letter
+/// shortcuts fires while the board has the keyboard).
 fn board_key(key: Key, m: Modifiers) -> bool {
     let plain = m.is_none();
     match key {
