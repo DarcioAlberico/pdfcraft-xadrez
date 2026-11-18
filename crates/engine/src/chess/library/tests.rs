@@ -611,12 +611,12 @@ fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
     use pdfcraft_chess::pattern::{Material, PawnQuery, Query};
     let base = fresh("find-pattern");
     let lib = two_books(&base);
-    // After 5...dxc6: White has no bishop pair, Black's c-pawns are doubled.
+    // After 5...dxc6: White has given its light bishop for a knight, Black's c-pawns are doubled.
     let q = |pattern: Query| lib.find(&FindQuery { pattern, ..FindQuery::default() }, 100).total;
     let doubled = |side| Query { pawns: PawnQuery { doubled: true, side, ..PawnQuery::default() }, ..Query::default() };
     assert_eq!(q(doubled(Some(Color::Black))), 1);
     assert_eq!(q(doubled(Some(Color::White))), 0);
-    let material = Material::parse("KQRRBNPPPPPPPP-KQRRBBNPPPPPPPP").unwrap();
+    let material = Material::parse("KQRRBNNPPPPPPPP-KQRRBBNPPPPPPPP").unwrap();
     assert_eq!(q(Query { material: Some(material), ..Query::default() }), 1, "after 5...dxc6");
     assert_eq!(q(Query { material: Some(material.mirrored()), ..Query::default() }), 0);
     assert_eq!(q(Query { material: Some(material.mirrored()), either_side: true, ..Query::default() }), 1);
