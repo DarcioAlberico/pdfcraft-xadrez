@@ -78,6 +78,34 @@ pub(crate) const ORIGINAL_SWITCH: Binding = Binding::key(Place::Diagram, ChessKe
 /// scope (off with the others, WCAG 2.1.4).
 pub(crate) const MOVE_FIELD: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::M), "move-field");
 
+/// The analysis board's questions (plan A9-N7b, findings A6-25 and A8-18), said as a status:
+/// Alt+Shift with P (the pieces), with a rank's digit or with a file's letter. Alt+Shift keeps them
+/// apart from the rail's letters (B, C, F, G, O, X), the groups' Shift+letter and the diagram
+/// editor's piece letters in every language, which take a letter alone or with Shift only.
+pub(crate) const SAY_PIECES: ChessKey = ChessKey::alt_shift(Key::P);
+pub(crate) const RANK_KEYS: [Key; 8] = [Key::Num1, Key::Num2, Key::Num3, Key::Num4, Key::Num5, Key::Num6, Key::Num7, Key::Num8];
+pub(crate) const FILE_KEYS: [Key; 8] = [Key::A, Key::B, Key::C, Key::D, Key::E, Key::F, Key::G, Key::H];
+
+/// The key to take for `key`, at `physical` on the keyboard, pressed with `m`: a rank's digit with
+/// Alt+Shift by where it is, since Shift makes most layouts' digits a sign (Alt+Shift+1 arrives as
+/// `!` on a US keyboard); any other key as it arrives.
+pub(crate) fn question_key(key: Key, physical: Option<Key>, m: egui::Modifiers) -> Key {
+    match physical {
+        Some(digit) if RANK_KEYS.contains(&digit) && ChessKey::alt_shift(digit).matches(digit, m) => digit,
+        _ => key,
+    }
+}
+
+/// The question `key` pressed with `m` asks the board, when it is one.
+pub(crate) fn question(key: Key, m: egui::Modifiers) -> Option<crate::chess_move_field::Typed> {
+    use crate::chess_move_field::Typed;
+    if SAY_PIECES.matches(key, m) {
+        return Some(Typed::Pieces);
+    }
+    let at = |keys: &[Key; 8]| keys.iter().position(|k| ChessKey::alt_shift(*k).matches(key, m)).and_then(|i| u8::try_from(i).ok());
+    at(&RANK_KEYS).map(Typed::Rank).or_else(|| at(&FILE_KEYS).map(Typed::File))
+}
+
 /// F6 leaves the chess surface the keyboard is in (`chess_tools::take_f6`).
 const LEAVE: Binding = Binding::key(Place::Scope, ChessKey::plain(Key::F6), "leave");
 
@@ -106,6 +134,9 @@ fn build() -> Vec<Binding> {
     map.push(LEAVE);
     map.push(SHORTCUT_SHEET);
     map.push(MOVE_FIELD);
+    map.push(Binding::key(Place::Scope, SAY_PIECES, "say-pieces"));
+    map.extend(RANK_KEYS.iter().map(|k| Binding::key(Place::Scope, ChessKey::alt_shift(*k), "say-rank")));
+    map.extend(FILE_KEYS.iter().map(|k| Binding::key(Place::Scope, ChessKey::alt_shift(*k), "say-file")));
     for (key, action) in crate::chess_diagram_keys::TAB_KEYS {
         map.push(Binding::key(Place::Diagram, key, action.action()));
     }
@@ -166,6 +197,47 @@ mod tests {
         assert!(!Trigger::Key(ChessKey::plain(Key::Escape)).is_character());
         assert!(!Trigger::Key(ChessKey::plain(Key::ArrowUp)).is_character());
         assert!(!Trigger::Key(ChessKey::command(Key::Z)).is_character() && !Trigger::Key(ChessKey::alt(Key::O)).is_character());
+    }
+
+    /// Plan A9-N7b: the board's questions are Alt+Shift with P, 1–8 and A–H, in the map with no
+    /// collision; none is a one-key shortcut, the diagram editor's board takes none of them (its
+    /// piece letters, in every language, go alone or with Shift), and each asks what it says.
+    #[test]
+    fn the_boards_questions_collide_with_nothing() {
+        use crate::chess_move_field::Typed;
+        let map = keymap();
+        assert_eq!(collisions(map), [], "one key, one meaning");
+        let questions: Vec<ChessKey> = map
+            .iter()
+            .filter(|b| b.action.starts_with("say-"))
+            .filter_map(|b| match b.trigger {
+                Trigger::Key(k) => Some(k),
+                Trigger::Text(_) => None,
+            })
+            .collect();
+        assert_eq!(questions.len(), 17);
+        let alt_shift = egui::Modifiers { alt: true, shift: true, ..egui::Modifiers::NONE };
+        for lang in crate::i18n::Lang::all() {
+            for key in std::iter::once(Key::P).chain(RANK_KEYS).chain(FILE_KEYS) {
+                assert!(!crate::chess_diagram_keys::editor_takes(key, alt_shift), "{}: {key:?}", lang.code());
+                // The editor's letter for a piece, in this language, alone or with Shift, is never one.
+                for shift in [false, true] {
+                    let m = egui::Modifiers { shift, ..egui::Modifiers::NONE };
+                    assert!(question(key, m).is_none(), "{}: {key:?}", lang.code());
+                }
+            }
+        }
+        assert!(questions.iter().all(|k| !Trigger::Key(*k).is_character()));
+        assert_eq!(question(Key::P, alt_shift), Some(Typed::Pieces));
+        assert_eq!(question(Key::Num4, alt_shift), Some(Typed::Rank(3)));
+        assert_eq!(question(Key::E, alt_shift), Some(Typed::File(4)));
+        assert_eq!(question(Key::E, egui::Modifiers::ALT), None, "Alt alone is not one");
+        assert!(scope_keys().any(|k| k == SAY_PIECES), "the scope takes them");
+        // A rank's digit by where it is: Alt+Shift+1 arrives as `!` on a US keyboard.
+        assert_eq!(question_key(Key::Exclamationmark, Some(Key::Num1), alt_shift), Key::Num1);
+        assert_eq!(question_key(Key::Exclamationmark, Some(Key::Num1), egui::Modifiers::SHIFT), Key::Exclamationmark, "Shift alone: the sign");
+        assert_eq!(question_key(Key::A, Some(Key::Q), alt_shift), Key::A, "a letter as the layout gives it (AZERTY)");
+        assert_eq!(question_key(Key::Num9, Some(Key::Num9), alt_shift), Key::Num9, "no ninth rank");
     }
 
     /// The keys the plan first gave the shortcut sheet (`?`) and the Original / Read switch (`O`)

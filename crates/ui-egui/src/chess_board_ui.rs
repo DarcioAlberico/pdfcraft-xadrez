@@ -238,6 +238,12 @@ pub struct BoardState {
     /// The square an Alt+click started an arrow from (plan A9-N7a), and the board it was clicked
     /// on ([`BoardState::arrow_start`]).
     arrow_from: Option<(Square, ArrowBoard)>,
+    /// The square the keyboard is on while the board has it (plan A9-N7b): the grid's value.
+    pub(crate) cursor: Square,
+    /// The boards drawn since the chess keys were last taken (their ids), and the keys taken for
+    /// the one with the keyboard ([`take_grid_keys`]), done when it is drawn next.
+    grid_ids: Vec<egui::Id>,
+    grid_keys: Vec<Key>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
     /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
@@ -368,6 +374,10 @@ impl Default for BoardState {
             revealed: None,
             announced: None,
             arrow_from: None,
+            // e2, where the first move most often starts.
+            cursor: Square::from_index(12).unwrap_or(Square::H1),
+            grid_ids: Vec::new(),
+            grid_keys: Vec::new(),
             comment_open: false,
             open_details: false,
             hovered_drawings: None,
@@ -1176,6 +1186,101 @@ fn turn_dot(painter: &egui::Painter, state: &BoardState, board: Rect) {
     painter.circle(at, radius, fill, Stroke::new(1.5, ring));
 }
 
+/// Most boards remembered between two takings of the keys, and most keys taken a frame.
+const MAX_GRIDS: usize = 4;
+const MAX_GRID_KEYS: usize = 16;
+
+/// Take the arrows, Enter and Space out of `events` while a board drawn since the last call has the
+/// keyboard (plan A9-N7b), before the chess scope would step through the game with them: the board
+/// moves its cursor and plays with them when it is drawn next. Only presses with no modifier.
+pub(crate) fn take_grid_keys(state: &mut BoardState, ctx: &egui::Context, events: &mut Vec<egui::Event>, free: bool) {
+    state.grid_keys.clear();
+    let ids = std::mem::take(&mut state.grid_ids);
+    if !free || !ids.iter().any(|id| ctx.memory(|m| m.has_focus(*id))) {
+        return;
+    }
+    let keys = &mut state.grid_keys;
+    events.retain(|event| match event {
+        egui::Event::Key {
+            key: key @ (Key::ArrowUp | Key::ArrowDown | Key::ArrowLeft | Key::ArrowRight | Key::Home | Key::End | Key::Enter | Key::Space),
+            pressed: true,
+            modifiers,
+            ..
+        } if modifiers.is_none() => {
+            if keys.len() < MAX_GRID_KEYS {
+                keys.push(*key);
+            }
+            false
+        }
+        _ => true,
+    });
+}
+
+/// What `key` does on the board that has the keyboard: the cursor moves as the board is shown
+/// (Home and End to the first and last square of its row), Enter and Space are a click on its
+/// square. What to say: the piece picked up.
+fn grid_key(state: &mut BoardState, key: Key) -> Option<String> {
+    let frame = BoardFrame::seen_from(state.flipped);
+    let (col, row) = frame.place_of(state.cursor);
+    let to = match key {
+        Key::ArrowUp => (col, row.saturating_sub(1)),
+        Key::ArrowDown => (col, row.saturating_add(1).min(7)),
+        Key::ArrowLeft => (col.saturating_sub(1), row),
+        Key::ArrowRight => (col.saturating_add(1).min(7), row),
+        Key::Home => (0, row),
+        Key::End => (7, row),
+        _ => {
+            let before = state.selected;
+            state.click(state.cursor);
+            return state.selected.filter(|sq| before != Some(*sq)).map(|sq| {
+                let piece = state.game.piece_on(sq).map(crate::chess_editor::piece_name).unwrap_or_default();
+                crate::i18n::fmt(tl!("{piece} on {square} picked up"), &[("piece", piece), ("square", &sq.to_string())])
+            });
+        }
+    };
+    if let Some(sq) = frame.square_of(to.0, to.1) {
+        state.cursor = sq;
+    }
+    None
+}
+
+/// The board `id` drawn in `rect` as screen readers find it (plan A9-N7b): a grid whose value is
+/// the square the keyboard is on, and under it its 64 squares, each a cell ("e4, White knight")
+/// with its row and column as shown and its place on the screen, for a magnifier that follows it.
+fn grid_cells(ui: &mut egui::Ui, state: &BoardState, id: egui::Id, rect: Rect) {
+    let placement = state.placement();
+    let frame = state.frame(rect);
+    let cell_id = |sq: Square| id.with(("square", sq.index()));
+    let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&placement, crate::chess_figurines::interface_lang());
+    let here = crate::chess_diagram_keys::square_said(&placement, state.cursor);
+    ui.ctx().accesskit_node_builder(id, |node| {
+        node.set_role(egui::accesskit::Role::Grid);
+        node.set_value(here);
+        node.set_description(format!("{in_words} {}", tl!("Arrow keys pick a square; Enter or Space picks a piece up or plays it there.")));
+        node.set_row_count(8);
+        node.set_column_count(8);
+        node.set_active_descendant(cell_id(state.cursor).accesskit_id());
+    });
+    ui.scope_builder(egui::UiBuilder::new().accessibility_parent(id), |ui| {
+        for row in 0..8u8 {
+            for col in 0..8u8 {
+                let Some(sq) = frame.square_of(col, row) else { continue };
+                let at = frame.square_rect(sq);
+                ui.interact(at, cell_id(sq), egui::Sense::hover());
+                let text = crate::chess_diagram_keys::square_said(&placement, sq);
+                ui.ctx().accesskit_node_builder(cell_id(sq), |node| {
+                    node.set_role(egui::accesskit::Role::GridCell);
+                    node.set_bounds(egui::accesskit::Rect { x0: at.min.x.into(), y0: at.min.y.into(), x1: at.max.x.into(), y1: at.max.y.into() });
+                    node.set_label(text);
+                    node.set_row_index(usize::from(row));
+                    node.set_column_index(usize::from(col));
+                    node.set_selected(sq == state.cursor);
+                });
+            }
+        }
+    });
+}
+
 /// The board itself, `side` points square (the Board tab's regions measure it first, plan
 /// A9-I0b), its picture within `sizing`'s limits, with its marks, taking clicks and drags.
 /// `overlay` is drawn under the hand-made drawings (the engine's best move).
@@ -1196,9 +1301,21 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     ui.painter().image(tex.id(), rect, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
     let board_name = board_name(state, t);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-    // The pieces in words, in the interface's letters (plan A9-I15; never the FEN).
-    let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&state.placement(), crate::chess_figurines::interface_lang());
-    ui.ctx().accesskit_node_builder(response.id, |node| node.set_description(in_words));
+    // The keys taken for it while it had the keyboard (plan A9-N7b), and what to say of them.
+    for key in std::mem::take(&mut state.grid_keys) {
+        if let Some(said) = grid_key(state, key) {
+            crate::notice::announce(ui.ctx(), crate::notice::Level::Info, said);
+        }
+    }
+    if state.grid_ids.len() >= MAX_GRIDS {
+        state.grid_ids.remove(0);
+    }
+    state.grid_ids.push(response.id);
+    // A grid of 64 squares (plan A9-N7b, findings A6-25 and A8-18): its value is the square the
+    // keyboard is on ("e4, White knight"), each square a cell with its place on the screen. The
+    // pieces in words stay its description, in the interface's letters (plan A9-I15; never the
+    // FEN).
+    grid_cells(ui, state, response.id, rect);
     let at = |state: &BoardState, p: Pos2| state.frame(rect).square_at(p);
     // Alt with the left button draws, a click at a time (plan A9-N7a): no piece is picked up. A
     // start left on a board that has changed since is forgotten as soon as it is drawn (plan
@@ -1223,6 +1340,8 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     } else if response.clicked()
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
+        // The keyboard goes on from the square clicked.
+        state.cursor = sq;
         if alt {
             let said = state.alt_click(sq);
             crate::notice::announce(ui.ctx(), crate::notice::Level::Info, said);
@@ -1309,6 +1428,13 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
                 );
             }
         }
+    }
+    // The cursor, while the board has the keyboard: the focus ring is on its square.
+    if response.has_focus() {
+        crate::widgets::own_ring(ui.ctx(), response.id);
+        let ring = grid.square_rect(state.cursor);
+        painter.rect_stroke(ring.shrink(1.0), 2.0, Stroke::new(3.0, t.accent), egui::StrokeKind::Inside);
+        painter.rect_stroke(ring.shrink(4.0), 1.0, Stroke::new(1.0, Color32::WHITE), egui::StrokeKind::Inside);
     }
     crate::chess_theme::paint_frame(ui, t, look, rect);
     if look.turn_dot && state.illegal.is_none() {
@@ -2878,6 +3004,35 @@ mod tests {
 
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()
+    }
+
+    /// Plan A9-N7b: the keyboard's square walks the board as it is shown, from either side, and
+    /// stops at its edges; Enter picks up the piece under it, then plays it.
+    #[test]
+    fn the_keyboard_walks_the_board_as_it_is_shown() {
+        let mut s = BoardState::default();
+        assert_eq!(s.cursor, sq("e2"));
+        let walk = |s: &mut BoardState, keys: &[Key]| {
+            for key in keys {
+                assert_eq!(grid_key(s, *key), None);
+            }
+            s.cursor.to_string()
+        };
+        assert_eq!(walk(&mut s, &[Key::ArrowUp, Key::ArrowLeft]), "d3");
+        assert_eq!(walk(&mut s, &[Key::Home, Key::ArrowLeft, Key::ArrowDown, Key::ArrowDown, Key::ArrowDown]), "a1", "the edges hold");
+        assert_eq!(walk(&mut s, &[Key::End]), "h1");
+        s.flipped = true;
+        s.cursor = sq("e2");
+        assert_eq!(walk(&mut s, &[Key::ArrowUp]), "e1", "from Black's side, up is towards White");
+        assert_eq!(walk(&mut s, &[Key::ArrowRight]), "d1");
+        assert_eq!(walk(&mut s, &[Key::End]), "a1");
+        assert_eq!(walk(&mut s, &[Key::Home, Key::ArrowDown]), "h2");
+        s.flipped = false;
+        s.cursor = sq("g1");
+        assert_eq!(grid_key(&mut s, Key::Enter).as_deref(), Some("White knight on g1 picked up"));
+        s.cursor = sq("f3");
+        assert_eq!(grid_key(&mut s, Key::Space), None, "played: the move shown says it");
+        assert_eq!(s.game.san(s.game.current()), "Nf3");
     }
 
     /// The PGN field loaded with the same game (a comment and a variation added) keeps the move

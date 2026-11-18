@@ -4030,6 +4030,12 @@ progress bar	Progress	Eiga
 	Nothing in the book as read has this material and these pawns.	Perskaitytoje knygoje nieko nėra su šia medžiaga ir šiais pėstininkais.
 	{first} to {last}	{first}–{last}
 	Positions: {n}	Pozicijų: {n}
+# A9-N7b: The analysis board square by square
+	Say the pieces	Pasakyti figūras
+	Say a rank's pieces	Pasakyti horizontalės figūras
+	Say a file's pieces	Pasakyti vertikalės figūras
+	{piece} on {square} picked up	Pakelta: {piece} langelyje {square}
+	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Rodyklės parenka langelį; Enter arba tarpas pakelia figūrą arba ja ten paeina.
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Knygoje ieškoti nepavyko: {e}
 	The diagrams read couldn't be looked at: {e}	Perskaitytų diagramų peržiūrėti nepavyko: {e}
