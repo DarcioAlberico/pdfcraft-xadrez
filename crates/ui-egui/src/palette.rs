@@ -52,7 +52,7 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let q = pdfcraft_render::text::fold_case(app.palette_query.trim());
     let mut hits: Vec<(usize, Hit)> = Vec::new();
     let active = app.active_ids().map(|(_, id)| id);
-    for spec in pdfcraft_engine::commands::COMMANDS {
+    for spec in pdfcraft_engine::commands::COMMANDS.iter().filter(|s| crate::commands::shown_here(s.id)) {
         // Undo and Redo name the chess game's step while they act on it (D12), not the document's.
         let chess = app.chess_command_label(spec);
         let label = if chess.is_some() { spec.label.to_owned() } else { pdfcraft_engine::commands::current_label(spec, &app.session, active) };

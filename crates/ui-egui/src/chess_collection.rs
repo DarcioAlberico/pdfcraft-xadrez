@@ -2781,6 +2781,9 @@ impl PdfCraftApp {
     /// became of them. A write still pending then counts as not kept.
     pub fn settle_chess_games(&mut self) {
         self.chess.games.settle(crate::chess_writer::SETTLE);
+        // What the engine's check found and has not written yet (plan A9-N17b).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.settle_engine_review(crate::chess_writer::SETTLE);
         self.chess_store_writes(Some(crate::chess_writer::SETTLE));
         self.show_chess_notes();
     }

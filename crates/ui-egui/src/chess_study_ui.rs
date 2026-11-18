@@ -323,6 +323,13 @@ impl StudyState {
         self.evals.take()
     }
 
+    /// Whether the board's analysis is on with an engine running: the batch check says it shares
+    /// the processor with it (plan A9-N17b).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn analysing(&self) -> bool {
+        self.analysis && self.engine.is_some()
+    }
+
     /// The program the engine runs from, or was last tried from (plan A9-I13).
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn program(&self) -> Option<&std::path::Path> {

@@ -3719,6 +3719,52 @@ progress bar	Progress	Progression
 	Open game {n} on the board at {move}	Ouvrir la partie {n} sur l'échiquier au coup {move}
 	Only the pieces were compared: the side to move isn't printed.	Seules les pièces ont été comparées : le trait n'est pas imprimé.
 	The first {n} are listed.	Les {n} premières sont listées.
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Vérifier avec le moteur…
+	Check with the engine	Vérifier avec le moteur
+	Count the positions	Compter les positions
+	Reading the pages: page {done} of {of}	Lecture des pages : page {done} sur {of}
+	Positions to check: {n} ({time})	Positions à vérifier : {n} ({time})
+	Checked before at this depth, left out: {n}	Déjà vérifiées à cette profondeur, laissées de côté : {n}
+	Nothing to check: the evaluations hold every position at this depth.	Rien à vérifier : les évaluations contiennent toutes les positions à cette profondeur.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Les pages contiennent plus de positions que les {max} que les évaluations gardent par document : seules les {max} premières sont vérifiées, et les évaluations les plus anciennes font de la place.
+	Search each position	Analyser chaque position
+	To depth	Jusqu'à la profondeur
+	Seconds each	Secondes par position
+	Start the check	Lancer la vérification
+	Continue the check ({n} left)	Poursuivre la vérification (reste {n})
+	≈ {m} min	≈ {m} min
+	≈ {h} h	≈ {h} h
+	≈ {h} h {m} min	≈ {h} h {m} min
+	Checking with the engine: position {done} of {of} ({time} left)	Vérification avec le moteur : position {done} sur {of} (reste {time})
+	A check with the engine is already running: stop it first.	Une vérification avec le moteur est déjà en cours : arrêtez-la d'abord.
+	The check is done. Positions checked: {n}. Divergences: {d}.	La vérification est terminée. Positions vérifiées : {n}. Divergences : {d}.
+	Positions the engine gave no answer for: {n}	Positions sans réponse du moteur : {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	La vérification a été arrêtée : {done} positions vérifiées sur {of}. Ce qui a été trouvé est conservé.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Ce que le moteur a trouvé est conservé : Poursuivre la vérification reprend à partir de là.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Le moteur n'a pas répondu pour {n} positions de suite, la vérification s'est donc arrêtée. Ce qu'il a trouvé est conservé.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	La vérification de {name} s'est arrêtée : le document a été fermé. Ce que le moteur a trouvé est conservé.
+	The engine's evaluations could not be kept: {why}	Les évaluations du moteur n'ont pas pu être conservées : {why}
+	Divergences ({n})	Divergences ({n})
+	‹ Text	‹ Texte
+	Back to the page's text (Esc)	Retour au texte de la page (Échap)
+	No divergence in what was checked.	Aucune divergence dans ce qui a été vérifié.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Non jugés : {none} sans évaluation, {shallow} analysés trop peu profondément.
+	The book says: {what}	Le livre dit : {what}
+	The calculation says: {what}	Le calcul dit : {what}
+	Engine	Moteur
+	Solver	Solveur
+	{value}: lets a mate go	{value} : laisse échapper un mat
+	{value}: loses {pawns} pawns to {best}	{value} : perd {pawns} pions face à {best}
+	{value}: loses {pawns} pawns	{value} : perd {pawns} pions
+	{value}: loses only {pawns} pawns	{value} : ne perd que {pawns} pions
+	{value}: the engine's best move	{value} : le meilleur coup du moteur
+	another solution: {move} {value}	autre solution : {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Interroger un moteur sur chaque coup annoté d'un signe et chaque diagramme des pages choisies, et lister les endroits où le livre et le calcul divergent.
+	Engine: {value} (depth {d})	Moteur : {value} (profondeur {d})
+	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Recherchée pendant un temps donné, une position peut rester moins profonde que la profondeur {d}, que le rapport ne juge pas ; une vérification jusqu'à la profondeur {d} la redemande.
+	The board's analysis is on too: while its engine searches, the two engines share the processor.	L'analyse de l'échiquier est active aussi : pendant que son moteur cherche, les deux moteurs se partagent le processeur.
 # A9-N16b: In the book by material and pawns
 	Find in the book by material…	Chercher dans le livre par matériel…
 	Look for	Chercher
