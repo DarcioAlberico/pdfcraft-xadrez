@@ -3661,3 +3661,23 @@ progress bar	Progress	Előrehaladás
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Nyíl innen: {from}. Alt+kattintson a célmezőre, vagy ismét erre egy körhöz.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Szabálytalan lépés: {move} nem egyértelmű, lehet {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Szabálytalan lépés: {move} esetén meg kell adni, mivé alakul a gyalog, például {example}.
+	exercises	feladatok
+	Exercise sheet (PDF)	Feladatlap (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	A könyv számozott diagramjai egy új, nyomtatható PDF-ben, oldalanként 4, 6 vagy 9, a végén a megoldásokkal.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Nincs feladat a lapra: a választott oldalak számozott diagramjainak nincs kiinduló állása ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Nincs feladat a lapra: a választott oldalakon nincs számozott diagram.
+	Exercises: counting…	Feladatok: számolás…
+	Exercises: counted when exported	Feladatok: exportáláskor számolva
+	Pages not read yet: {n} (counted when exported)	Még nem olvasott oldalak: {n} (exportáláskor számolva)
+	Exercises: {n}	Feladatok: {n}
+	solution not read: {n}	megoldás nincs beolvasva: {n}
+	no position to start from	nincs kiinduló állás
+	no solution read	nincs beolvasott megoldás
+	Left out: {n} ({why})	Kihagyva: {n} ({why})
+	past the sheet's {max}	a lap {max} feladatán túl
+	Per page	Oldalanként
+	Diagrams a page: {n} ({grid})	Diagram oldalanként: {n} ({grid})
+	With the solutions	A megoldásokkal
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	A megoldások a végén, a számok sorrendjében. Az a diagram, amelynek megoldását nem olvasta be, ezt jelzi.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	A feladatlap nem írható egy megnyitott PDF fölé: válasszon másik nevet.
+	No exercise sheet was written	Nem készült feladatlap

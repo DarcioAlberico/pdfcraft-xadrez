@@ -3627,3 +3627,23 @@ progress bar	Progress	进度
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	从 {from} 出发的箭头：按住 Alt 点击目标格，或再次点击此格画圆圈。
 	Illegal move: {move} is ambiguous, it could be {moves}.	不合规则的着法：{move} 有歧义，可能是 {moves}。
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	不合规则的着法：{move} 需要指明兵升变成的棋子，例如 {example}。
+	exercises	练习
+	Exercise sheet (PDF)	练习题单 (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	将书中带编号的棋图放入一个可打印的新 PDF，每页 4、6 或 9 个，解答附在最后。
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	题单上没有可放的练习：所选页面的带编号棋图没有起始局面（{n}）。
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	题单上没有可放的练习：所选页面没有带编号的棋图。
+	Exercises: counting…	练习：正在计数…
+	Exercises: counted when exported	练习：导出时计数
+	Pages not read yet: {n} (counted when exported)	尚未读取的页面：{n}（导出时计数）
+	Exercises: {n}	练习：{n}
+	solution not read: {n}	未读取解答：{n}
+	no position to start from	没有起始局面
+	no solution read	未读取到解答
+	Left out: {n} ({why})	未收录：{n}（{why}）
+	past the sheet's {max}	超出题单上限 {max}
+	Per page	每页
+	Diagrams a page: {n} ({grid})	每页棋图：{n}（{grid}）
+	With the solutions	附带解答
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	解答附在最后，按编号排列。未读取到解答的棋图会注明。
+	The exercise sheet can't be written over a PDF that is open: choose another name.	练习题单不能写入到已打开的 PDF 上：请换一个名称。
+	No exercise sheet was written	未写入练习题单

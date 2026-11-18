@@ -3913,3 +3913,23 @@ progress bar	Progress	Tiến độ
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Mũi tên từ {from}: Alt+nhấp ô đích, hoặc nhấp lại ô này để khoanh tròn.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Nước đi không hợp lệ: {move} chưa rõ ràng, có thể là {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nước đi không hợp lệ: {move} cần quân mà tốt phong thành, ví dụ {example}.
+	exercises	bài tập
+	Exercise sheet (PDF)	Tờ bài tập (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Các sơ đồ được đánh số của sách trong một PDF mới để in, 4, 6 hoặc 9 mỗi trang, kèm lời giải ở cuối.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Không có bài tập nào để đưa vào tờ: các sơ đồ được đánh số của các trang đã chọn không có thế cờ xuất phát ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Không có bài tập nào để đưa vào tờ: các trang đã chọn không có sơ đồ được đánh số.
+	Exercises: counting…	Bài tập: đang đếm…
+	Exercises: counted when exported	Bài tập: được đếm khi xuất
+	Pages not read yet: {n} (counted when exported)	Trang chưa đọc: {n} (được đếm khi xuất)
+	Exercises: {n}	Bài tập: {n}
+	solution not read: {n}	chưa đọc lời giải: {n}
+	no position to start from	không có thế cờ xuất phát
+	no solution read	không đọc được lời giải
+	Left out: {n} ({why})	Bị bỏ ra: {n} ({why})
+	past the sheet's {max}	vượt quá {max} của tờ
+	Per page	Mỗi trang
+	Diagrams a page: {n} ({grid})	Sơ đồ mỗi trang: {n} ({grid})
+	With the solutions	Kèm lời giải
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Lời giải ở cuối, theo thứ tự số. Sơ đồ chưa đọc được lời giải sẽ ghi rõ điều đó.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Không thể ghi tờ bài tập đè lên một PDF đang mở: hãy chọn tên khác.
+	No exercise sheet was written	Không có tờ bài tập nào được ghi

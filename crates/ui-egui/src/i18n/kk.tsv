@@ -3660,3 +3660,23 @@ progress bar	Progress	Орындалу барысы
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} шаршысынан бағыттауыш: баратын шаршыны Alt+шертіңіз немесе шеңбер үшін осыны қайта шертіңіз.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Ережеге сай емес жүріс: {move} бір мәнді емес, ол {moves} болуы мүмкін.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Ережеге сай емес жүріс: {move} үшін пешка айналатын фигура керек, мысалы {example}.
+	exercises	жаттығулар
+	Exercise sheet (PDF)	Жаттығулар парағы (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Кітаптың нөмірленген диаграммалары басып шығаруға арналған жаңа PDF-те, бетіне 4, 6 немесе 9, соңында шешімдерімен.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Параққа қоятын жаттығу жоқ: таңдалған беттердің нөмірленген диаграммаларында бастапқы позиция жоқ ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Параққа қоятын жаттығу жоқ: таңдалған беттерде нөмірленген диаграмма жоқ.
+	Exercises: counting…	Жаттығулар: саналуда…
+	Exercises: counted when exported	Жаттығулар: экспорттағанда саналады
+	Pages not read yet: {n} (counted when exported)	Әлі оқылмаған беттер: {n} (экспорттағанда саналады)
+	Exercises: {n}	Жаттығулар: {n}
+	solution not read: {n}	шешімі оқылмаған: {n}
+	no position to start from	бастапқы позиция жоқ
+	no solution read	оқылған шешім жоқ
+	Left out: {n} ({why})	Шығарылып тасталды: {n} ({why})
+	past the sheet's {max}	парақтың {max} шегінен тыс
+	Per page	Бетіне
+	Diagrams a page: {n} ({grid})	Бетіндегі диаграммалар: {n} ({grid})
+	With the solutions	Шешімдерімен
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Шешімдер соңында, нөмірлер ретімен. Шешімі оқылмаған диаграмма мұны айтады.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Жаттығулар парағын ашық PDF үстіне жазу мүмкін емес: басқа атау таңдаңыз.
+	No exercise sheet was written	Жаттығулар парағы жазылмады

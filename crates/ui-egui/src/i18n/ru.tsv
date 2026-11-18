@@ -3576,3 +3576,23 @@ progress bar	Progress	Ход выполнения
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрелка с {from}: Alt+щелчок по полю, куда она ведёт, или снова по этому, чтобы обвести его.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Недопустимый ход: {move} неоднозначен, это может быть {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Недопустимый ход: для {move} нужна фигура, в которую превращается пешка, например {example}.
+	exercises	упражнения
+	Exercise sheet (PDF)	Лист упражнений (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Пронумерованные диаграммы книги в новом PDF для печати, по 4, 6 или 9 на странице, с решениями в конце.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Нет упражнений для листа: у пронумерованных диаграмм выбранных страниц нет исходной позиции ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Нет упражнений для листа: на выбранных страницах нет пронумерованных диаграмм.
+	Exercises: counting…	Упражнения: подсчёт…
+	Exercises: counted when exported	Упражнения: будут подсчитаны при экспорте
+	Pages not read yet: {n} (counted when exported)	Ещё не прочитано страниц: {n} (будут подсчитаны при экспорте)
+	Exercises: {n}	Упражнения: {n}
+	solution not read: {n}	решение не прочитано: {n}
+	no position to start from	нет исходной позиции
+	no solution read	решение не прочитано
+	Left out: {n} ({why})	Пропущено: {n} ({why})
+	past the sheet's {max}	сверх {max} на листе
+	Per page	На странице
+	Diagrams a page: {n} ({grid})	Диаграмм на странице: {n} ({grid})
+	With the solutions	С решениями
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Решения в конце, в порядке номеров. Для диаграммы, решение которой не прочитано, это указано.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Лист упражнений нельзя записать поверх открытого PDF: выберите другое имя.
+	No exercise sheet was written	Лист упражнений не записан

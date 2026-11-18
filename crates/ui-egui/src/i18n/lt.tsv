@@ -3911,3 +3911,23 @@ progress bar	Progress	Eiga
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Rodyklė iš {from}: Alt+spustelėkite tikslo langelį arba šį dar kartą apskritimui.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Neleistinas ėjimas: {move} yra dviprasmiškas, tai gali būti {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Neleistinas ėjimas: {move} reikia nurodyti figūrą, kuria virsta pėstininkas, pvz., {example}.
+	exercises	pratimai
+	Exercise sheet (PDF)	Pratimų lapas (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Sunumeruotos knygos diagramos naujame spausdinti skirtame PDF, po 4, 6 arba 9 puslapyje, su sprendimais pabaigoje.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Nėra pratimo lapui: pasirinktų puslapių sunumeruotos diagramos neturi pradinės pozicijos ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Nėra pratimo lapui: pasirinktuose puslapiuose nėra sunumeruotos diagramos.
+	Exercises: counting…	Pratimai: skaičiuojama…
+	Exercises: counted when exported	Pratimai: suskaičiuojami eksportuojant
+	Pages not read yet: {n} (counted when exported)	Dar neperskaitytų puslapių: {n} (suskaičiuojami eksportuojant)
+	Exercises: {n}	Pratimų: {n}
+	solution not read: {n}	sprendimas neperskaitytas: {n}
+	no position to start from	nėra pradinės pozicijos
+	no solution read	neperskaitytas joks sprendimas
+	Left out: {n} ({why})	Praleista: {n} ({why})
+	past the sheet's {max}	virš lapo {max}
+	Per page	Puslapyje
+	Diagrams a page: {n} ({grid})	Diagramų puslapyje: {n} ({grid})
+	With the solutions	Su sprendimais
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Sprendimai pabaigoje, numerių tvarka. Diagrama, kurios sprendimas neperskaitytas, tai nurodo.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Pratimų lapo negalima įrašyti ant atidaryto PDF: pasirinkite kitą pavadinimą.
+	No exercise sheet was written	Pratimų lapas neįrašytas

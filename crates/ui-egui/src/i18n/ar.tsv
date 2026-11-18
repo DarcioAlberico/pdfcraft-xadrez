@@ -3935,3 +3935,23 @@ progress bar	Progress	التقدم
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	سهم من {from}: انقر مع Alt على المربع الذي يذهب إليه، أو على هذا مرة أخرى لرسم دائرة.
 	Illegal move: {move} is ambiguous, it could be {moves}.	نقلة غير قانونية: {move} ملتبسة، قد تكون {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	نقلة غير قانونية: {move} تحتاج إلى القطعة التي يصبحها البيدق، مثل {example}.
+	exercises	تمارين
+	Exercise sheet (PDF)	ورقة تمارين (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	مخططات الكتاب المرقّمة في ملف PDF جديد للطباعة، 4 أو 6 أو 9 في الصفحة، مع حلولها في النهاية.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	لا يوجد تمرين لوضعه في الورقة: المخططات المرقّمة في الصفحات المختارة ليس لها وضع بداية ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	لا يوجد تمرين لوضعه في الورقة: الصفحات المختارة لا تحتوي على مخطط مرقّم.
+	Exercises: counting…	التمارين: جارٍ العد…
+	Exercises: counted when exported	التمارين: تُعدّ عند التصدير
+	Pages not read yet: {n} (counted when exported)	صفحات لم تُقرأ بعد: {n} (تُعدّ عند التصدير)
+	Exercises: {n}	التمارين: {n}
+	solution not read: {n}	حل لم يُقرأ: {n}
+	no position to start from	لا يوجد وضع بداية
+	no solution read	لم يُقرأ أي حل
+	Left out: {n} ({why})	مستبعدة: {n} ({why})
+	past the sheet's {max}	بعد حد الورقة البالغ {max}
+	Per page	في الصفحة
+	Diagrams a page: {n} ({grid})	المخططات في الصفحة: {n} ({grid})
+	With the solutions	مع الحلول
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	الحلول في النهاية بترتيب الأرقام. المخطط الذي لم يُقرأ حله يذكر ذلك.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	لا يمكن كتابة ورقة التمارين فوق ملف PDF مفتوح: اختر اسمًا آخر.
+	No exercise sheet was written	لم تُكتب أي ورقة تمارين

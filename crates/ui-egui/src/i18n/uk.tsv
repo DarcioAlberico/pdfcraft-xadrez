@@ -3684,3 +3684,23 @@ progress bar	Progress	Хід виконання
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрілка з {from}: Alt+клацніть поле, куди вона веде, або знову це, щоб обвести його.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Неприпустимий хід: {move} неоднозначний, це може бути {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Неприпустимий хід: для {move} потрібна фігура, на яку перетворюється пішак, наприклад {example}.
+	exercises	вправи
+	Exercise sheet (PDF)	Аркуш вправ (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Пронумеровані діаграми книги в новому PDF для друку, по 4, 6 або 9 на сторінці, з розв'язками в кінці.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Немає вправ для аркуша: пронумеровані діаграми вибраних сторінок не мають вихідної позиції ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Немає вправ для аркуша: на вибраних сторінках немає пронумерованих діаграм.
+	Exercises: counting…	Вправи: підрахунок…
+	Exercises: counted when exported	Вправи: буде підраховано під час експорту
+	Pages not read yet: {n} (counted when exported)	Ще не прочитано сторінок: {n} (буде підраховано під час експорту)
+	Exercises: {n}	Вправи: {n}
+	solution not read: {n}	розв'язок не прочитано: {n}
+	no position to start from	немає вихідної позиції
+	no solution read	розв'язок не прочитано
+	Left out: {n} ({why})	Пропущено: {n} ({why})
+	past the sheet's {max}	понад {max} на аркуші
+	Per page	На сторінці
+	Diagrams a page: {n} ({grid})	Діаграм на сторінці: {n} ({grid})
+	With the solutions	З розв'язками
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Розв'язки в кінці, за порядком номерів. Для діаграми, розв'язок якої не прочитано, це вказано.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Аркуш вправ не можна записати поверх відкритого PDF: виберіть іншу назву.
+	No exercise sheet was written	Аркуш вправ не записано

@@ -3662,3 +3662,23 @@ progress bar	Progress	Progression
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flèche depuis {from} : Alt+clic sur la case d'arrivée, ou de nouveau sur celle-ci pour l'entourer.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Coup illégal : {move} est ambigu, ce peut être {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Coup illégal : {move} demande la pièce en laquelle le pion se transforme, comme dans {example}.
+	exercises	exercices
+	Exercise sheet (PDF)	Feuille d'exercices (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Les diagrammes numérotés du livre dans un nouveau PDF à imprimer, 4, 6 ou 9 par page, avec leurs solutions à la fin.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Aucun exercice à mettre sur la feuille : les diagrammes numérotés des pages choisies n'ont pas de position de départ ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Aucun exercice à mettre sur la feuille : les pages choisies n'ont aucun diagramme numéroté.
+	Exercises: counting…	Exercices : comptage…
+	Exercises: counted when exported	Exercices : comptés à l'export
+	Pages not read yet: {n} (counted when exported)	Pages pas encore lues : {n} (comptées à l'export)
+	Exercises: {n}	Exercices : {n}
+	solution not read: {n}	solution non lue : {n}
+	no position to start from	pas de position de départ
+	no solution read	aucune solution lue
+	Left out: {n} ({why})	Laissés de côté : {n} ({why})
+	past the sheet's {max}	au-delà des {max} de la feuille
+	Per page	Par page
+	Diagrams a page: {n} ({grid})	Diagrammes par page : {n} ({grid})
+	With the solutions	Avec les solutions
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Les solutions à la fin, dans l'ordre des numéros. Un diagramme dont la solution n'a pas été lue le dit.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	La feuille d'exercices ne peut pas être écrite sur un PDF ouvert : choisissez un autre nom.
+	No exercise sheet was written	Aucune feuille d'exercices n'a été écrite

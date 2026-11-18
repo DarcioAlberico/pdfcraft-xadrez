@@ -3736,3 +3736,23 @@ progress bar	Progress	Průběh
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Šipka z {from}: Alt+klikněte na cílové pole, nebo znovu na toto pro kruh.
 	Illegal move: {move} is ambiguous, it could be {moves}.	Nepřípustný tah: {move} je nejednoznačný, může to být {moves}.
 	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nepřípustný tah: {move} potřebuje kámen, v který se pěšec promění, například {example}.
+	exercises	cvičení
+	Exercise sheet (PDF)	List cvičení (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Číslované diagramy knihy v novém PDF k tisku, 4, 6 nebo 9 na stránku, s řešeními na konci.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Žádné cvičení na list: číslované diagramy zvolených stránek nemají výchozí pozici ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Žádné cvičení na list: zvolené stránky nemají žádný číslovaný diagram.
+	Exercises: counting…	Cvičení: počítá se…
+	Exercises: counted when exported	Cvičení: spočítají se při exportu
+	Pages not read yet: {n} (counted when exported)	Dosud nepřečtené stránky: {n} (spočítají se při exportu)
+	Exercises: {n}	Cvičení: {n}
+	solution not read: {n}	řešení nepřečteno: {n}
+	no position to start from	bez výchozí pozice
+	no solution read	žádné řešení nepřečteno
+	Left out: {n} ({why})	Vynecháno: {n} ({why})
+	past the sheet's {max}	nad {max} listu
+	Per page	Na stránku
+	Diagrams a page: {n} ({grid})	Diagramů na stránku: {n} ({grid})
+	With the solutions	S řešeními
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Řešení na konci, v pořadí čísel. Diagram, jehož řešení nebylo přečteno, to uvádí.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	List cvičení nelze zapsat přes otevřené PDF: zvolte jiný název.
+	No exercise sheet was written	Žádný list cvičení nebyl zapsán
