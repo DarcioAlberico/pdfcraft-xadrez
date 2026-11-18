@@ -2504,6 +2504,7 @@ animation effects	Off	Ανενεργά
 	Black knight	Μαύρος ίππος
 	Black pawn	Μαύρο πιόνι
 	White	Λευκά
+chess side	Black	Μαύρα
 	Board: {fen}	Σκακιέρα: {fen}
 	Board, {state}, move {n}	Σκακιέρα, {state}, κίνηση {n}
 	Board, {state}	Σκακιέρα, {state}

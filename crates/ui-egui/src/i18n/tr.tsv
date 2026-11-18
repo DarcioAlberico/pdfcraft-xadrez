@@ -2496,6 +2496,7 @@ animation effects	Off	Kapalı
 	Black knight	Siyah at
 	Black pawn	Siyah piyon
 	White	Beyaz
+chess side	Black	Siyah
 	Board: {fen}	Tahta: {fen}
 	Board, {state}, move {n}	Tahta, {state}, {n}. hamle
 	Board, {state}	Tahta, {state}
