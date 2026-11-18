@@ -1296,9 +1296,14 @@ impl PdfCraftApp {
                 self.chess.export_done = Some(crate::chess_export_ui::Done { path: None, said, notes: vec![why] });
             }
             #[cfg(not(target_arch = "wasm32"))]
-            (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
+            (JobKind::Export { format, path, image_dir }, JobDone::Export(made)) => {
                 if let Ok(m) = &made {
                     self.keep_chess_cipher(job.doc, m.read.cipher.clone());
+                }
+                // A PDF may have been opened at the sheet's path while the job ran (plan
+                // A9-N12b2): asked again just before the file is written.
+                if format == ExportFormat::Sheet && self.is_open_file(&path) {
+                    return self.refuse_sheet_over_open_file();
                 }
                 self.write_chess_export(made, &path, &image_dir);
             }
@@ -1503,6 +1508,13 @@ impl PdfCraftApp {
         self.session.docs().iter().filter_map(|d| d.path.as_deref()).any(|open| same(std::path::Path::new(open), path))
     }
 
+    /// Say that the exercise sheet is not written over a PDF that is open (plan A9-N12b), when the
+    /// export starts and again just before it writes (A9-N12b2).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn refuse_sheet_over_open_file(&mut self) {
+        self.post_error_for("export", tl!("The exercise sheet can't be written over a PDF that is open: choose another name.").to_string());
+    }
+
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn export_chess_to(&mut self, id: DocId, export: impl Into<ExportFormat>, path: &std::path::Path) {
@@ -1511,8 +1523,7 @@ impl PdfCraftApp {
             return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
         if export == ExportFormat::Sheet && self.is_open_file(path) {
-            return self
-                .post_error_for("export", tl!("The exercise sheet can't be written over a PDF that is open: choose another name.").to_string());
+            return self.refuse_sheet_over_open_file();
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = self.chess_export_base(id, export, &stem);

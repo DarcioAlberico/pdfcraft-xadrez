@@ -186,13 +186,18 @@ pub struct SheetCount {
     /// The pages chosen not counted: not read yet, or whose text the export reads with chess OCR.
     /// The export counts them.
     pub pages_not_read: usize,
+    /// Every page before the pages counted that the export looks at — the page before a page with
+    /// a diagram, not chosen with it, whose foot may number that diagram — was looked at for this
+    /// count, or there is none (plan A9-N12b2). Without it, a count of 0 may be a number the
+    /// export would find there: only the export can refuse the sheet then.
+    pub before_looked_at: bool,
 }
 
 impl Session {
     /// `pages` of document `id` read as every export reads them, with chess OCR as `ocr` says
     /// (and the pages before looked at as `look_before` says, [`Session::chess_document_of`]), the
-    /// book's language as the user says it and linked to `o`'s references; and the book they
-    /// make, as the sheet names it.
+    /// book's language as the user says it and linked to `o`'s references; the book they make, as
+    /// the sheet names it; and whether every page before the export looks at was looked at.
     fn sheet_reading(
         &mut self,
         id: DocId,
@@ -200,8 +205,8 @@ impl Session {
         o: &ChessExportOptions,
         ocr: &OcrOptions<'_>,
         look_before: bool,
-    ) -> Result<(ChessDocument, PgnBook), String> {
-        let mut read = self.chess_document_of(id, pages, &o.scan, o.lang, ocr, look_before)?;
+    ) -> Result<(ChessDocument, PgnBook, bool), String> {
+        let (mut read, every_before) = self.chess_document_of(id, pages, &o.scan, o.lang, ocr, look_before)?;
         // The book's language as the user says it (`text_lang`): the captions' and the key's,
         // page by page, and the sheet's `/Lang` (plan A9-N12a2; it was ignored).
         super::export::say_text_lang(&mut read, o);
@@ -210,7 +215,7 @@ impl Session {
             reference::link_all(&mut read.doc, &refs);
         }
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
-        Ok((read, PgnBook { title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()), labels }))
+        Ok((read, PgnBook { title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()), labels }, every_before))
     }
 
     /// The sheet of document `id`'s exercises (plan A9-N12a): the pages `o` names read as every
@@ -219,7 +224,7 @@ impl Session {
     /// not changed.
     pub fn chess_worksheet(&mut self, id: DocId, o: &ChessExportOptions, sheet: &SheetOptions) -> Result<MadeSheet, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
-        let (read, book) = self.sheet_reading(id, &o.pages, o, &ocr, true)?;
+        let (read, book, _) = self.sheet_reading(id, &o.pages, o, &ocr, true)?;
         let made = worksheet::worksheet(&read.doc, &book, &sheet.layout);
         let book_lang = if read.text_lang.is_empty() { read.lang.lang.code().to_owned() } else { read.text_lang.as_str().to_owned() };
         let (doc, key_pages, in_english, notes) = sheet_document(&made, sheet, o, &book_lang)?;
@@ -248,7 +253,7 @@ impl Session {
             return Ok(not_read(0));
         }
         let ocr = OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: o.book.as_ref() };
-        let (read, book) = self.sheet_reading(id, &held, o, &ocr, false)?;
+        let (read, book, before_looked_at) = self.sheet_reading(id, &held, o, &ocr, false)?;
         // A layer the export reads with chess OCR is not believed here.
         let poor: Vec<usize> = if o.ocr == OcrMode::Auto { read.needs_ocr.iter().map(|(p, _)| *p).collect() } else { Vec::new() };
         let made = worksheet::worksheet(&read.doc, &book, layout);
@@ -258,7 +263,8 @@ impl Session {
             exercises: items.len(),
             unsolved: items.iter().filter(|i| i.solution.is_none()).count(),
             no_position: made.left_out.iter().filter(|l| counted(l.at.page)).count(),
-            over: made.over,
+            over: made.over_at.iter().filter(|at| counted(at.page)).count(),
+            before_looked_at,
             ..not_read(held.iter().filter(|p| counted(**p)).count())
         })
     }
@@ -579,8 +585,7 @@ mod tests {
         let sheet = Worksheet {
             pages: vec![items.clone()],
             solutions: vec![("Nº 1 · p. 1: 1.e4".into(), "Nº 1 · p. 1: 1.e4".into())],
-            left_out: Vec::new(),
-            over: 0,
+            ..Worksheet::default()
         };
         let (doc, key_pages, in_english, notes) = sheet_document(&sheet, &SheetOptions::default(), &o, "en").unwrap();
         assert_eq!((pdfcraft_model::pages(&doc).len(), key_pages, in_english), (2, 1, 0), "{notes:?}");
@@ -615,7 +620,7 @@ mod tests {
             side_assumed: false,
             lang: pdfcraft_chess::san::Lang::Ru,
         };
-        let sheet = Worksheet { pages: vec![vec![item]], solutions: Vec::new(), left_out: Vec::new(), over: 0 };
+        let sheet = Worksheet { pages: vec![vec![item]], ..Worksheet::default() };
         let (doc, _, in_english, notes) = sheet_document(&sheet, &SheetOptions::default(), &o, "ru").unwrap();
         assert_eq!(pdfcraft_model::pages(&doc).len(), 1);
         // Without craft-fonts no font of the build writes Cyrillic; with them it depends on the faces.
@@ -661,7 +666,7 @@ mod tests {
             .iter()
             .map(|i| (format!("Nº {} · p. 1: 1.Rh6+ Kd5 2.Rxa2", i.number), format!("Nº {} · p. 1: 1.Rh6+ Kd5 2.Rxa2", i.number)))
             .collect();
-        Worksheet { pages: items.chunks(4).map(<[Item]>::to_vec).collect(), solutions, left_out: Vec::new(), over: 0 }
+        Worksheet { pages: items.chunks(4).map(<[Item]>::to_vec).collect(), solutions, ..Worksheet::default() }
     }
 
     /// Plan A9-N12a2: a sheet of 2,000 exercises (500 pages of boards and the key) is written in
@@ -751,6 +756,14 @@ mod tests {
     /// A PDF of a page per `(caption, solution)`: the caption in Helvetica, the start position in
     /// the Chess Merida font under it, and the solution under the board.
     fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
+        let pages: Vec<(Option<&str>, Option<&str>, Option<&str>)> = pages.iter().map(|(c, s)| (Some(*c), *s, None)).collect();
+        footed_book(&pages)
+    }
+
+    /// [`exercise_book`], a page per `(caption, solution, foot)`: the caption above the board
+    /// when there is one, and a caption at the page's foot, which numbers the next page's first
+    /// diagram.
+    fn footed_book(pages: &[(Option<&str>, Option<&str>, Option<&str>)]) -> Vec<u8> {
         const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
         let widths = vec!["1000"; 95].join(" ");
         let n = pages.len();
@@ -761,8 +774,9 @@ mod tests {
             format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into(),
         ];
-        for (i, (caption, solution)) in pages.iter().enumerate() {
-            let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\nBT /F1 20 Tf 60 724 Td ");
+        for (i, (caption, solution, foot)) in pages.iter().enumerate() {
+            let mut c = caption.map(|caption| format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\n")).unwrap_or_default();
+            c.push_str("BT /F1 20 Tf 60 724 Td ");
             for (k, line) in MERIDA_START.iter().enumerate() {
                 c.push_str(if k > 0 { "0 -20 Td " } else { "" });
                 c.push_str(&format!("({line}) Tj "));
@@ -770,6 +784,9 @@ mod tests {
             c.push_str("ET\n");
             if let Some(moves) = solution {
                 c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+            }
+            if let Some(foot) = foot {
+                c.push_str(&format!("BT /F2 11 Tf 60 60 Td ({foot}) Tj ET\n"));
             }
             objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i));
             objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()));
@@ -811,10 +828,10 @@ mod tests {
         let scanned = s.chess_scanned();
         let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
         assert_eq!(s.chess_scanned(), scanned, "the count scanned nothing");
-        assert_eq!(count, SheetCount { exercises: 2, pages_counted: 2, pages_not_read: 2, ..SheetCount::default() });
+        assert_eq!(count, SheetCount { exercises: 2, pages_counted: 2, pages_not_read: 2, ..SheetCount::default() }, "page 1 not looked at");
         s.chess_scan(id, &[], &o.scan, true).unwrap();
         let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
-        assert_eq!(count, SheetCount { exercises: 4, unsolved: 1, pages_counted: 4, ..SheetCount::default() });
+        assert_eq!(count, SheetCount { exercises: 4, unsolved: 1, pages_counted: 4, before_looked_at: true, ..SheetCount::default() });
         let made = s.chess_worksheet(id, &o, &SheetOptions::default()).unwrap();
         assert_eq!(made.sheet.items().count(), count.exercises, "the export puts on the sheet what the count said");
         let export = made.into_export();
@@ -824,10 +841,37 @@ mod tests {
         o.pages = vec![0, 3];
         assert_eq!(
             s.chess_worksheet_count(id, &o, &layout).unwrap(),
-            SheetCount { exercises: 2, unsolved: 1, pages_counted: 2, ..SheetCount::default() }
+            SheetCount { exercises: 2, unsolved: 1, pages_counted: 2, before_looked_at: true, ..SheetCount::default() }
         );
         o.ocr = OcrMode::All;
         assert_eq!(s.chess_worksheet_count(id, &o, &layout).unwrap(), SheetCount { pages_not_read: 2, ..SheetCount::default() });
+    }
+
+    /// Plan A9-N12b2: the number of the chosen page's diagram is a caption at the foot of the page
+    /// before, which nothing has looked at. The count scans nothing, so it finds no exercise, and
+    /// says that page was not looked at: the dialog must not refuse the sheet, since the export
+    /// looks at it and finds the exercise. Once that page is looked at, the count finds it too.
+    #[test]
+    fn a_number_at_the_foot_of_the_page_before_is_left_to_the_export() {
+        let pages = [(Some("Exercise 1"), Some("1.e4 e5 2.Nf3 Nc6"), Some("Exercise 2")), (None, Some("1.d4 d5 2.c4"), None)];
+        let mut s = Session::new();
+        let id = s.open("exercises.pdf", None, Arc::new(footed_book(&pages)), None).unwrap();
+        let mut o = ChessExportOptions::new("Exercises", None);
+        o.scan = crate::chess::tests::no_model();
+        o.lang = Some(pdfcraft_chess::san::Lang::En);
+        o.pages = vec![1];
+        let layout = Layout::default();
+        s.chess_scan(id, &[1], &o.scan, true).unwrap();
+        let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
+        assert_eq!(count, SheetCount { pages_counted: 1, before_looked_at: false, ..SheetCount::default() });
+        let made = s.chess_worksheet(id, &o, &SheetOptions::default()).unwrap();
+        assert_eq!(made.sheet.items().map(|i| i.number).collect::<Vec<_>>(), [2], "the export finds it");
+        let count = s.chess_worksheet_count(id, &o, &layout).unwrap();
+        assert_eq!(count, SheetCount { exercises: 1, pages_counted: 1, before_looked_at: true, ..SheetCount::default() });
+        // The first page, read, has no page before: nothing to look at.
+        s.chess_scan(id, &[0], &o.scan, true).unwrap();
+        o.pages = vec![0];
+        assert_eq!(s.chess_worksheet_count(id, &o, &layout).unwrap(), SheetCount { exercises: 1, pages_counted: 1, before_looked_at: true, ..SheetCount::default() });
     }
 
     #[test]
