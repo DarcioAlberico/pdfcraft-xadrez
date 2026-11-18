@@ -746,7 +746,7 @@ fn japanese_controls_and_search_keep_command_ids() {
     ok(&mut h, &c, "ui.command", json!({ "id": "app.preferences" }));
     let prefs = ok(&mut h, &c, "ui.inspect", json!({ "query": "表示言語" }));
     assert!(prefs["count"].as_u64().unwrap() > 0, "{prefs}");
-    ok(&mut h, &c, "ui.click", json!({ "label": "OK" }));
+    ok(&mut h, &c, "ui.click", json!({ "label": "閉じる" }));
 
     for (query, translated) in [("整理", "ページを整理"), ("Split document", "文書を分割…"), ("page.split", "文書を分割…")] {
         ok(&mut h, &c, "ui.command", json!({ "id": "view.palette" }));
@@ -781,7 +781,7 @@ fn german_preferences_and_search_keep_command_ids() {
     ok(&mut h, &c, "ui.click", json!({ "id": combo["id"] }));
     ok(&mut h, &c, "ui.click", json!({ "label": "Deutsch" }));
     assert_eq!(ok(&mut h, &c, "ui.state", json!({}))["language"], "de");
-    ok(&mut h, &c, "ui.click", json!({ "label": "OK" }));
+    ok(&mut h, &c, "ui.click", json!({ "label": "Schließen" }));
     for query in ["Dokument teilen", "Split document", "page.split"] {
         ok(&mut h, &c, "ui.command", json!({ "id": "view.palette" }));
         ok(&mut h, &c, "ui.type", json!({ "text": query }));
@@ -802,7 +802,7 @@ fn ukrainian_preferences_and_search_keep_command_ids() {
         let found = ok(&mut h, &c, "ui.inspect", json!({ "query": label }));
         assert!(found["count"].as_u64().unwrap() > 0, "{label}: {found}");
     }
-    ok(&mut h, &c, "ui.click", json!({ "label": "OK" }));
+    ok(&mut h, &c, "ui.click", json!({ "label": "Закрити" }));
     for query in ["Розділити", "Split document", "page.split"] {
         ok(&mut h, &c, "ui.command", json!({ "id": "view.palette" }));
         ok(&mut h, &c, "ui.type", json!({ "text": query }));
@@ -842,11 +842,11 @@ fn preferences_menu_and_shortcut_allow_switching_interface_languages() {
         ok(&mut h, &c, "ui.click", json!({ "label": next }));
         assert_eq!(ok(&mut h, &c, "ui.state", json!({}))["language"], code);
     }
-    ok(&mut h, &c, "ui.click", json!({ "label": "OK" }));
+    ok(&mut h, &c, "ui.click", json!({ "label": "閉じる" }));
     ok(&mut h, &c, "ui.key", json!({ "key": ",", "modifiers": ["command"] }));
     let prefs = ok(&mut h, &c, "ui.inspect", json!({ "query": "表示言語" }));
     assert!(prefs["count"].as_u64().unwrap() > 0, "{prefs}");
-    ok(&mut h, &c, "ui.click", json!({ "label": "OK" }));
+    ok(&mut h, &c, "ui.click", json!({ "label": "閉じる" }));
 
     ok(&mut h, &c, "ui.command", json!({ "id": "help.shortcuts" }));
     for label in ["キーボードショートカット", "開く", "環境設定", "次／前の検索結果", "ダブルクリック", "閉じる"]

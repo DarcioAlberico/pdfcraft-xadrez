@@ -2452,8 +2452,7 @@ animation effects	Off	Desativados
 	Page properties	Propriedades da página
 
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
-	Scan chess diagrams	Procurar diagramas de xadrez
-	Chess diagrams panel	Painel de diagramas de xadrez
+	Chess panel	Painel de xadrez
 	Chess	Xadrez
 	Diagrams	Diagramas
 	Chess diagrams	Diagramas de xadrez
@@ -2461,10 +2460,10 @@ animation effects	Off	Desativados
 	Scan all pages	Procurar em todas as páginas
 	Scanning for diagrams… page {d} of {t}	Procurando diagramas… página {d} de {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Procure nesta página ou em todas para encontrar os diagramas de xadrez deste documento.
-	The document changed since the scan. Scan again to update the diagrams.	O documento mudou depois da busca. Procure de novo para atualizar os diagramas.
+	The document changed since its diagrams were detected. Detect them again to update them.	O documento mudou depois da detecção dos diagramas. Detecte-os de novo para atualizá-los.
 	The piece model couldn't be loaded: {e}	Não foi possível carregar o modelo de peças: {e}
 	No diagrams found.	Nenhum diagrama encontrado.
-	This page couldn't be scanned: {e}	Não foi possível examinar esta página: {e}
+	The diagrams on this page couldn't be detected: {e}	Não foi possível detectar os diagramas desta página: {e}
 	Only the first {n} diagrams on this page are listed.	Só os primeiros {n} diagramas desta página estão listados.
 	Diagram {n}	Diagrama {n}
 	Position read	Posição lida
@@ -2539,7 +2538,7 @@ chess side	Black	Pretas
 	{n} to review	{n} a revisar
 	◀ Previous to review	◀ Anterior a revisar
 	Open in lichess	Abrir no lichess
-	Diagrams are already being scanned	Os diagramas já estão sendo procurados
+	Diagrams are already being detected	Os diagramas já estão sendo detectados
 	Diagrams found: {n}	Diagramas encontrados: {n}
 	FEN copied	FEN copiada
 # Chess ▸ Board: the analysis board panel.
@@ -2611,7 +2610,7 @@ chess side	Black	Pretas
 	That side can't be to move: the other king is in check.	Esse lado não pode ter a vez: o outro rei está em xeque.
 	The FEN couldn't be read: {e}	Não foi possível ler a FEN: {e}
 	The PGN couldn't be read: {e}	Não foi possível ler o PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama não foi lido: escaneie a página dele primeiro ou monte a posição no editor.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Este diagrama não foi lido: detecte primeiro os diagramas da página dele, ou defina a posição no editor.
 	White to move	Brancas jogam
 	White to move, in check	Brancas jogam, em xeque
 # Chess ▸ Board: variations, annotations and game details.
@@ -2878,8 +2877,8 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Capture sign	Sinal de captura
 	Check sign	Sinal de xeque
 	Double check sign	Sinal de xeque duplo
-	Glyph palette	Paleta de glifos
-	Close the glyph palette	Fechar a paleta de glifos
+	Glyph palette	Paleta de sinais
+	Close the glyph palette	Fechar a paleta de sinais
 	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Os sinais vão para o lance mostrado e os demais caracteres para o fim do comentário dele, ou tudo para o campo em que você estava digitando.
 	Figurines and signs	Figuras e sinais
 	Remove all glyphs	Remover todos os sinais
@@ -3189,7 +3188,7 @@ chess undo step	Clear drawings	remoção dos desenhos
 	{n} arrows	{n} setas
 	1 ring	1 anel
 	{n} rings	{n} anéis
-	The comment on the move shown, large under the board	O comentário do lance mostrado, grande sob o tabuleiro
+	Show the move's comment in large type under the board	Mostrar o comentário do lance, em letra grande, sob o tabuleiro
 	Running text	Texto corrido
 	Columns	Colunas
 	Text size	Tamanho do texto
@@ -3198,7 +3197,7 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Large	Grande
 	Previous variation (Page Up)	Variante anterior (Page Up)
 	Next variation (Page Down)	Próxima variante (Page Down)
-	A move the pointer rests on shows its position	Um lance em que o ponteiro para mostra a sua posição
+	Show a move's position when the pointer rests on it	Mostrar a posição ao passar o ponteiro sobre um lance
 	Position after {move}	Posição depois de {move}
 	To review	A revisar
 	With an error	Com erro
@@ -3423,7 +3422,6 @@ castling	long	longo
 	{name} (no page discusses it)	{name} (nenhuma página a discute)
 	Go to its page and put the game on the board.	Vai à página dela e põe a partida no tabuleiro.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	O livro está ligado ao PGN: {linked} de {moves} lances ({recovered} lidos do PGN), {conflict} em conflito.
-	Link the whole book to its PGN	Ligar o livro inteiro ao PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	O PGN do livro joga este lance a partir de outra posição: confira e então use o lance do PGN ou mantenha o do livro.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN do livro nesta página: {confirmed} confirmados, {recovered} lidos do PGN, {conflict} em conflito ({open} a revisar).
 	You kept the book's move.	Você manteve o lance do livro.
@@ -3444,7 +3442,7 @@ castling	long	longo
 	Corners	Cantos
 	Start outlined, end filled	Origem em contorno, destino pintado
 	Border and light fill	Borda e fundo leve
-	Last move	Último lance
+	Highlight the last move	Destacar o último lance
 	Strength	Intensidade
 	Import fonts…	Importar fontes…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia fontes de xadrez para a pasta de fontes ao lado do programa: cada fonte de diagramas é um conjunto de peças, e uma fonte de figurinos escreve os lances das exportações.
@@ -3699,3 +3697,16 @@ progress bar	Progress	Progresso
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	As soluções no fim, na ordem dos números. Um diagrama cuja solução não foi lida diz isso.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	A folha de exercícios não pode ser gravada sobre um PDF aberto: escolha outro nome.
 	No exercise sheet was written	Nenhuma folha de exercícios foi gravada
+	Filled squares	Casas pintadas
+	Classic	Clássico
+	Tokens	Fichas
+	Pixel Art	Pixel art
+	Facets	Facetas
+	Stained Glass	Vitral
+	Chubby	Rechonchudo
+	Gothic	Gótico
+	Sketch	Esboço
+	Shapes	Formas
+	Fantasy	Fantasia
+	Spatial	Espacial
+	Celtic	Celta

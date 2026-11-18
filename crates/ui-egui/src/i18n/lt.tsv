@@ -2688,8 +2688,7 @@ theme	Appearance	Išvaizda
 # Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
 	Replace diagram	Pakeisti diagramą
 	Add lichess links	Pridėti lichess nuorodas
-	Scan chess diagrams	Rasti šachmatų diagramas
-	Chess diagrams panel	Šachmatų diagramų skydelis
+	Chess panel	Šachmatų skydelis
 	Chess	Šachmatai
 	Diagrams	Diagramos
 	Chess diagrams	Šachmatų diagramos
@@ -2697,10 +2696,10 @@ theme	Appearance	Išvaizda
 	Scan all pages	Ieškoti visuose puslapiuose
 	Scanning for diagrams… page {d} of {t}	Ieškoma diagramų… puslapis {d} iš {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Ieškokite šiame puslapyje arba visuose puslapiuose, kad rastumėte šio dokumento šachmatų diagramas.
-	The document changed since the scan. Scan again to update the diagrams.	Dokumentas pasikeitė po paieškos. Ieškokite dar kartą, kad atnaujintumėte diagramas.
+	The document changed since its diagrams were detected. Detect them again to update them.	Dokumentas pasikeitė nuo diagramų aptikimo. Aptikite jas iš naujo, kad atnaujintumėte.
 	The piece model couldn't be loaded: {e}	Nepavyko įkelti figūrų modelio: {e}
 	No diagrams found.	Diagramų nerasta.
-	This page couldn't be scanned: {e}	Nepavyko patikrinti šio puslapio: {e}
+	The diagrams on this page couldn't be detected: {e}	Nepavyko aptikti šio puslapio diagramų: {e}
 	Only the first {n} diagrams on this page are listed.	Rodomos tik pirmosios šio puslapio diagramos: {n}.
 	Diagram {n}	Diagrama {n}
 	Position read	Pozicija nuskaityta
@@ -2775,7 +2774,7 @@ chess side	Black	Juodieji
 	{n} to review	Tikrintinų: {n}
 	◀ Previous to review	◀ Ankstesnė tikrintina
 	Open in lichess	Atverti lichess
-	Diagrams are already being scanned	Diagramų jau ieškoma
+	Diagrams are already being detected	Diagramos jau aptinkamos
 	Diagrams found: {n}	Rasta diagramų: {n}
 	FEN copied	FEN nukopijuotas
 # Chess ▸ Board: the analysis board panel.
@@ -2847,7 +2846,7 @@ chess side	Black	Juodieji
 	That side can't be to move: the other king is in check.	Ši pusė negali eiti: kitam karaliui skelbiamas šachas.
 	The FEN couldn't be read: {e}	Nepavyko perskaityti FEN: {e}
 	The PGN couldn't be read: {e}	Nepavyko perskaityti PGN: {e}
-	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ši diagrama neperskaityta: pirmiausia nuskenuokite jos puslapį arba nustatykite poziciją rengyklėje.
+	This diagram hasn't been read: detect the diagrams on its page first, or set its position in the editor.	Ši diagrama neperskaityta: pirmiausia aptikite jos puslapio diagramas arba nustatykite poziciją redaktoriuje.
 	White to move	Ėjimas baltųjų
 	White to move, in check	Ėjimas baltųjų, šachas
 # Chess ▸ Board: variations, annotations and game details.
@@ -3424,7 +3423,7 @@ chess undo step	Clear drawings	piešinių valymą
 	{n} arrows	{n} rodyklės
 	1 ring	1 žiedas
 	{n} rings	{n} žiedai
-	The comment on the move shown, large under the board	Rodomo ėjimo komentaras dideliu šriftu po lenta
+	Show the move's comment in large type under the board	Rodyti ėjimo komentarą didelėmis raidėmis po lenta
 	Running text	Ištisinis tekstas
 	Columns	Stulpeliai
 	Text size	Teksto dydis
@@ -3433,7 +3432,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Large	Didelis
 	Previous variation (Page Up)	Ankstesnis variantas (Page Up)
 	Next variation (Page Down)	Kitas variantas (Page Down)
-	A move the pointer rests on shows its position	Ėjimas, ant kurio sustoja žymeklis, parodo savo poziciją
+	Show a move's position when the pointer rests on it	Rodyti ėjimo poziciją, kai žymeklis ant jo sustoja
 	Position after {move}	Pozicija po {move}
 	To review	Peržiūrėti
 	With an error	Su klaida
@@ -3657,7 +3656,6 @@ castling	long	ilgoji
 	{name} (no page discusses it)	{name} (jos neaptaria nė vienas puslapis)
 	Go to its page and put the game on the board.	Eiti į jos puslapį ir padėti partiją ant lentos.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Knyga susieta su jos PGN: {linked} iš {moves} ėjimų (paimta iš PGN {recovered}), prieštarauja {conflict}.
-	Link the whole book to its PGN	Susieti visą knygą su jos PGN
 	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Knygos PGN šį ėjimą žaidžia iš kitos pozicijos: patikrinkite ir tada naudokite PGN ėjimą arba palikite knygos ėjimą.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	Knygos PGN šiame puslapyje: patvirtinta {confirmed}, paimta iš PGN {recovered}, prieštarauja {conflict} (tikrintina {open}).
 	You kept the book's move.	Palikote knygos ėjimą.
@@ -3678,7 +3676,7 @@ castling	long	ilgoji
 	Corners	Kampai
 	Start outlined, end filled	Pradžia apvesta, pabaiga užpildyta
 	Border and light fill	Rėmelis ir šviesus užpildas
-	Last move	Paskutinis ėjimas
+	Highlight the last move	Paryškinti paskutinį ėjimą
 	Strength	Stiprumas
 	Import fonts…	Importuoti šriftus…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Nukopijuoja šachmatų šriftus į šriftų aplanką šalia programos: kiekvienas diagramų šriftas yra figūrų rinkinys, o figūrėlių šriftas rašo eksportų ėjimus.
@@ -3931,3 +3929,16 @@ progress bar	Progress	Eiga
 	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Sprendimai pabaigoje, numerių tvarka. Diagrama, kurios sprendimas neperskaitytas, tai nurodo.
 	The exercise sheet can't be written over a PDF that is open: choose another name.	Pratimų lapo negalima įrašyti ant atidaryto PDF: pasirinkite kitą pavadinimą.
 	No exercise sheet was written	Pratimų lapas neįrašytas
+	Filled squares	Užpildyti langeliai
+	Classic	Klasikinis
+	Tokens	Žetonai
+	Pixel Art	Pikselių menas
+	Facets	Briaunos
+	Stained Glass	Vitražas
+	Chubby	Apvalainos
+	Gothic	Gotikinis
+	Sketch	Eskizas
+	Shapes	Formos
+	Fantasy	Fantastika
+	Spatial	Erdviniai
+	Celtic	Keltų

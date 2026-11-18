@@ -991,7 +991,7 @@ fn preferences_selects_default_workspace_for_next_open() {
     h.run_steps(2);
     assert_eq!(h.state().default_mode, Mode::Read);
     assert_eq!(h.state().mode, Mode::AllTools);
-    h.get_by_label("OK").click();
+    h.get_by_label("Close").click();
     h.run_steps(2);
     h.state_mut().open_bytes("fixture.pdf", None, FIXTURE.to_vec()).unwrap();
     assert_eq!(h.state().mode, Mode::Read);
