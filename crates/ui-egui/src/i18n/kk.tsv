@@ -3692,3 +3692,47 @@ progress bar	Progress	Орындалу барысы
 	Fantasy	Қиял
 	Spatial	Кеңістіктік
 	Celtic	Кельт
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Қозғалтқышпен тексеру…
+	Check with the engine	Қозғалтқышпен тексеру
+	Count the positions	Позицияларды санау
+	Reading the pages: page {done} of {of}	Беттер оқылуда: {of} беттің {done}-сі
+	Positions to check: {n} ({time})	Тексерілетін позициялар: {n} ({time})
+	Checked before at this depth, left out: {n}	Осы тереңдікте бұрын тексерілген, қалдырылды: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Тексеретін ештеңе жоқ: бағалауларда осы тереңдіктегі әр позиция бар.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Беттерде бағалаулар бір құжат үшін сақтайтын {max} позициядан көп позиция бар: тек алғашқы {max} тексеріледі, ал ескі бағалаулар орын босатады.
+	Search each position	Әр позицияны талдау
+	To depth	Тереңдікке дейін
+	Seconds each	Позицияға секунд
+	Start the check	Тексеруді бастау
+	Continue the check ({n} left)	Тексеруді жалғастыру ({n} қалды)
+	≈ {m} min	≈ {m} мин
+	≈ {h} h	≈ {h} сағ
+	≈ {h} h {m} min	≈ {h} сағ {m} мин
+	Checking with the engine: position {done} of {of} ({time} left)	Қозғалтқышпен тексеру: {of} позицияның {done}-сі ({time} қалды)
+	A check with the engine is already running: stop it first.	Қозғалтқышпен тексеру жүріп жатыр: алдымен оны тоқтатыңыз.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Тексеру аяқталды. Тексерілген позициялар: {n}. Алшақтықтар: {d}.
+	Positions the engine gave no answer for: {n}	Қозғалтқыш жауап бермеген позициялар: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Тексеру тоқтатылды: {of} позицияның {done}-сі тексерілді. Табылғаны сақталды.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Қозғалтқыш тапқаны сақталды: «Тексеруді жалғастыру» сол жерден жалғастырады.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Қозғалтқыш қатарынан {n} позицияға жауап бермеді, сондықтан тексеру тоқтады. Оның тапқаны сақталды.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	{name} тексеруі тоқтады: құжат жабылды. Қозғалтқыш тапқаны сақталды.
+	The engine's evaluations could not be kept: {why}	Қозғалтқыштың бағалауларын сақтау мүмкін болмады: {why}
+	Divergences ({n})	Алшақтықтар ({n})
+	‹ Text	‹ Мәтін
+	Back to the page's text (Esc)	Беттің мәтініне оралу (Esc)
+	No divergence in what was checked.	Тексерілгенде алшақтық жоқ.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Бағаланбады: {none} бағалаусыз, {shallow} тым таяз ізделді.
+	The book says: {what}	Кітап айтады: {what}
+	The calculation says: {what}	Есеп айтады: {what}
+	Engine	Қозғалтқыш
+	Solver	Шешуші
+	{value}: lets a mate go	{value}: матты жіберіп алады
+	{value}: loses {pawns} pawns to {best}	{value}: {best} жүрісімен салыстырғанда {pawns} пешка жоғалтады
+	{value}: loses {pawns} pawns	{value}: {pawns} пешка жоғалтады
+	{value}: loses only {pawns} pawns	{value}: тек {pawns} пешка жоғалтады
+	{value}: the engine's best move	{value}: қозғалтқыштың ең жақсы жүрісі
+	another solution: {move} {value}	басқа шешім: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Таңдалған беттердегі белгісі бар әр жүріс пен әр диаграмма туралы қозғалтқыштан сұрап, кітап пен есеп алшақтайтын жерлерді тізеді.
+	Engine: {value} (depth {d})	Қозғалтқыш: {value} (тереңдік {d})

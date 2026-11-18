@@ -1822,11 +1822,12 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
         assert!(y(&h, "Align again") < y(&h, "Export book…") && y(&h, "Export book…") < y(&h, "Remove the book's PGN"), "{theme}");
         h.get_by_label("Align again").focus();
         h.run_steps(1);
-        h.key_press(egui::Key::Tab);
-        h.run_steps(1);
-        h.key_press(egui::Key::Tab);
-        h.run_steps(1);
-        assert!(h.get_by_label("Remove the book's PGN").is_focused(), "{theme}: Align again → Export book… → Remove");
+        // Then the engine's check and its list (plan A9-N17b), before Remove.
+        for next in ["Export book…", "Check with the engine…", "Divergences (0)", "Remove the book's PGN"] {
+            h.key_press(egui::Key::Tab);
+            h.run_steps(1);
+            assert!(h.get_by_label(next).is_focused(), "{theme}: {next} next");
+        }
         shot(&mut h, &format!("book-pgn-1366-{theme}.png"));
     }
     let _ = std::fs::remove_dir_all(dir);

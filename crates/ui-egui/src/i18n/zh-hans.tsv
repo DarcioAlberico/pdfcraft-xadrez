@@ -3659,3 +3659,47 @@ progress bar	Progress	进度
 	Fantasy	奇幻
 	Spatial	立体
 	Celtic	凯尔特
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	用引擎核对…
+	Check with the engine	用引擎核对
+	Count the positions	统计局面
+	Reading the pages: page {done} of {of}	正在读取页面：第 {done} 页，共 {of} 页
+	Positions to check: {n} ({time})	待核对的局面：{n}（{time}）
+	Checked before at this depth, left out: {n}	已在此深度核对过，略过：{n}
+	Nothing to check: the evaluations hold every position at this depth.	无需核对：评估已包含此深度下的每个局面。
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	这些页面的局面多于评估为每个文档保留的 {max} 个：只核对前 {max} 个，较旧的评估会让出位置。
+	Search each position	分析每个局面
+	To depth	到深度
+	Seconds each	每个局面的秒数
+	Start the check	开始核对
+	Continue the check ({n} left)	继续核对（剩余 {n}）
+	≈ {m} min	≈ {m} 分钟
+	≈ {h} h	≈ {h} 小时
+	≈ {h} h {m} min	≈ {h} 小时 {m} 分钟
+	Checking with the engine: position {done} of {of} ({time} left)	正在用引擎核对：第 {done} 个局面，共 {of} 个（剩余 {time}）
+	A check with the engine is already running: stop it first.	已有一次引擎核对在进行：请先停止它。
+	The check is done. Positions checked: {n}. Divergences: {d}.	核对完成。已核对的局面：{n}。分歧：{d}。
+	Positions the engine gave no answer for: {n}	引擎未作答的局面：{n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	核对已停止：已核对 {done} / {of} 个局面。已找到的结果会保留。
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} 引擎找到的结果会保留：“继续核对”会从那里接着进行。
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	引擎连续 {n} 个局面未作答，因此核对已停止。它找到的结果会保留。
+	The check of {name} stopped: the document was closed. What the engine found is kept.	{name} 的核对已停止：文档已关闭。引擎找到的结果会保留。
+	The engine's evaluations could not be kept: {why}	无法保存引擎的评估：{why}
+	Divergences ({n})	分歧（{n}）
+	‹ Text	‹ 文本
+	Back to the page's text (Esc)	返回页面文本（Esc）
+	No divergence in what was checked.	已核对的内容中没有分歧。
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	未判定：{none} 个没有评估，{shallow} 个搜索过浅。
+	The book says: {what}	书中说：{what}
+	The calculation says: {what}	计算结果：{what}
+	Engine	引擎
+	Solver	解题器
+	{value}: lets a mate go	{value}：错失一个将杀
+	{value}: loses {pawns} pawns to {best}	{value}：相比 {best} 损失 {pawns} 个兵
+	{value}: loses {pawns} pawns	{value}：损失 {pawns} 个兵
+	{value}: loses only {pawns} pawns	{value}：只损失 {pawns} 个兵
+	{value}: the engine's best move	{value}：引擎的最佳着法
+	another solution: {move} {value}	另一种解法：{move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	就所选页面中每个带符号的着法和每个棋图询问引擎，并列出书与计算结果不一致之处。
+	Engine: {value} (depth {d})	引擎：{value}（深度 {d}）

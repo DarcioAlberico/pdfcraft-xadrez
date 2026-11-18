@@ -399,6 +399,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.review.import", "Import a book's review…", CHESS, None, Copying, "folder-open"),
     // The book's outline from its reading, shown before it is made (plan A9-N6).
     c("chess.bookmarks", "Make the book's bookmarks…", CHESS, None, Assembly, "bookmark"),
+    // The book's signs and goals checked by an engine the app runs, in a batch (plan A9-N17b):
+    // desktop only, so the web's menus and palette leave it out.
+    c("chess.engine_review", "Check with the engine…", CHESS, None, Copying, "gauge"),
     // Found by name in the palette and the Chess menu (plan A9-I16, R4-02): the board, an
     // engine's analysis of the position, the export dialog (plan A9-X2) and the sheet of the
     // chess keys (F1 in the chess panels).

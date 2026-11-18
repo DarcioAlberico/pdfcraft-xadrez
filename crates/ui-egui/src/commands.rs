@@ -99,6 +99,15 @@ pub(crate) fn key_tip(ctx: &egui::Context, template: &str, s: Shortcut) -> Strin
     crate::i18n::fmt(template, &[("key", &shortcut_label(ctx, s))])
 }
 
+/// The registered commands this build has nothing to run for, left out of its menus and palette:
+/// on the web, the ones that need a process (plan A9-N17b: Check with the engine…).
+const DESKTOP_ONLY: [&str; 1] = ["chess.engine_review"];
+
+/// Whether command `id` is offered in this build's menus and palette ([`DESKTOP_ONLY`]).
+pub(crate) fn shown_here(id: &str) -> bool {
+    !(cfg!(target_arch = "wasm32") && DESKTOP_ONLY.contains(&id))
+}
+
 /// [`key_tip`] with a registered command's shortcut, so the tooltip names the real binding.
 pub(crate) fn command_tip(ctx: &egui::Context, template: &str, id: &str) -> String {
     crate::i18n::fmt(template, &[("key", &command_shortcut_label(ctx, id))])
@@ -512,6 +521,9 @@ impl PdfCraftApp {
             "chess.review.export" => self.export_chess_review(),
             "chess.review.import" => self.import_chess_review(),
             "chess.bookmarks" => self.read_book_for_bookmarks(),
+            // Plan A9-N17b: the book checked by an engine (desktop only; never shown on the web).
+            #[cfg(not(target_arch = "wasm32"))]
+            "chess.engine_review" => self.open_engine_review(),
             // Plan A9-I16 (R4-02): the chess tools by name, without the panel.
             "chess.board.show" => self.show_chess_board(),
             "chess.analyze" => self.analyze_chess_position(),
@@ -903,7 +915,7 @@ fn tab_after(current: Option<usize>, count: usize, forward: bool) -> Option<usiz
 
 /// Render a top-level menu's registered commands (with live labels, shortcuts and enablement).
 pub(crate) fn registry_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, menu: &str) {
-    for spec in commands::menu(menu) {
+    for spec in commands::menu(menu).filter(|s| shown_here(s.id)) {
         let label = app.chess_command_label(spec).unwrap_or_else(|| {
             let label = commands::current_label(spec, &app.session, app.active_ids().map(|(_, id)| id));
             crate::i18n::menu_label(spec.id, &label)

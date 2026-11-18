@@ -312,13 +312,48 @@ pub enum TextAction {
     PgnGameAt { game: usize, page: Option<usize> },
     /// The user's choice for a move in conflict with the PGN (R6e).
     Decide { at: MoveAt, san: String, san_read: String, choice: pdfcraft_engine::chess::reference_store::Choice },
+    /// Chess ▸ Check with the engine… (plan A9-N17b; desktop only).
+    CheckWithEngine,
+    /// Continue the document's check that stopped: only the positions it had not asked.
+    ContinueCheck,
+    /// Stop the check running.
+    StopCheck,
+    /// Show (`true`) or leave the Divergences list in the page text's place.
+    Divergences(bool),
+    /// Show divergence `n` of the list on its page, outlined.
+    ShowDivergence(usize),
+}
+
+/// What the Text tab shows of the engine's check of the document (plan A9-N17b): the evaluations
+/// beside the moves, the divergences found, the batch running and a batch stopped. The web has no
+/// engine: there it is empty, and nothing of it shows.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct CheckView {
+    /// The check is offered (the desktop app).
+    pub(crate) available: bool,
+    /// The evaluations kept and found, for the moves' positions.
+    pub(crate) evals: Option<Arc<pdfcraft_engine::chess::evals::EvalFile>>,
+    /// Changes with `evals`: the paragraphs are laid out again.
+    pub(crate) generation: u64,
+    /// The divergences found.
+    pub(crate) divergences: usize,
+    /// The batch running on this document: its row, with Stop.
+    pub(crate) running: Option<LongRow>,
+    /// The positions a stopped batch has left (Continue).
+    pub(crate) left: Option<usize>,
 }
 
 /// The Text tab's menu (⋯; plan A9-I9, sketch c): where the book's pages came from, its PGN
 /// (load one, or the one beside the PDF; align the book to it) and the export, with Remove the
 /// book's PGN last, in the danger colour. While a PGN is being indexed (`pgn.indexing`, plan
 /// A9-I3b) none is offered.
-fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
+fn text_menu(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    origin: BookOrigin,
+    pgn: &crate::chess_reference_ui::BookPgnView,
+    check: &CheckView,
+) -> Option<TextAction> {
     let mut action = None;
     let entry = |ui: &mut egui::Ui, text: egui::WidgetText| crate::widgets::menu_entry(ui, true, egui::Button::new(text));
     // A submenu, not a list: egui keeps one popup open, so a list would close the menu.
@@ -375,6 +410,27 @@ fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::che
     if let Some(a) = crate::chess_export_ui::entry(ui) {
         action = Some(a);
     }
+    // The engine's check of the book and its list (plan A9-N17b; desktop only).
+    if check.available {
+        ui.separator();
+        if check.running.is_none() {
+            let tip = tl!(
+                "Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree."
+            );
+            if entry(ui, tl!("Check with the engine…").into()).on_hover_text(tip).clicked() {
+                action = Some(TextAction::CheckWithEngine);
+            }
+            if let Some(n) = check.left
+                && entry(ui, crate::i18n::fmt(tl!("Continue the check ({n} left)"), &[("n", &crate::i18n::number(n))]).into()).clicked()
+            {
+                action = Some(TextAction::ContinueCheck);
+            }
+        }
+        let list = crate::i18n::fmt(tl!("Divergences ({n})"), &[("n", &crate::i18n::number(check.divergences))]);
+        if entry(ui, list.into()).clicked() {
+            action = Some(TextAction::Divergences(true));
+        }
+    }
     if book_pgn.is_some() {
         ui.separator();
         if entry(ui, egui::RichText::new(tl!("Remove the book's PGN")).color(t.danger_text).into()).clicked() {
@@ -383,6 +439,29 @@ fn text_menu(ui: &mut egui::Ui, t: &Tokens, origin: BookOrigin, pgn: &crate::che
     }
     action
 }
+
+/// The head row's chip of the divergences found (plan A9-N17b): "Divergences (n)", measured before
+/// it is drawn and cut with "…" so that the page's heading keeps [`HEADING_ROOM`]; not drawn when
+/// even its "…" would not fit (the ⋯ menu always has the list).
+fn divergences_chip(ui: &mut egui::Ui, t: &Tokens, n: usize) -> Option<TextAction> {
+    let label = crate::i18n::fmt(tl!("Divergences ({n})"), &[("n", &crate::i18n::number(n))]);
+    let font = egui::TextStyle::Small.resolve(ui.style());
+    let pad = ui.spacing().button_padding.x * 2.0;
+    let room = ui.available_width() - HEADING_ROOM - pad;
+    if room < crate::widgets::text_width(ui, "…", &font) + 8.0 {
+        return None;
+    }
+    let shown = crate::widgets::fit_line(&label, room, |s| crate::widgets::text_width(ui, s, &font));
+    let r = ui
+        .add(egui::Button::new(egui::RichText::new(&shown).small().color(t.warning_text)).min_size(egui::vec2(0.0, crate::widgets::MIN_TARGET)))
+        // Whole in its tooltip and its name when cut.
+        .on_hover_text(&label);
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));
+    r.clicked().then_some(TextAction::Divergences(true))
+}
+
+/// The width the Text tab's heading keeps beside the head row's chip.
+const HEADING_ROOM: f32 = 96.0;
 
 /// What the document keeps of the book's PGN, in a line.
 fn book_pgn_line(ui: &mut egui::Ui, t: &Tokens, s: &crate::chess_reference_ui::BookPgnSummary) {
@@ -482,11 +561,44 @@ struct MoveView {
     /// In conflict with the book's PGN, and the user's choice there (R6e).
     conflict: bool,
     choice: Option<Choice>,
+    /// The engine's evaluation of the position after it, for White ("+0.50"), when the check kept
+    /// one (plan A9-N17b).
+    eval: Option<String>,
+}
+
+/// The engine's evaluation of the position after move `m`, for White as a book writes it, and its
+/// depth, from `evals` (plan A9-N17b): where the book's PGN plays it when the reader could not, as
+/// the report judges it. A bound (a search stopped mid-way) is not shown.
+fn engine_value(m: &MoveInline, evals: &pdfcraft_engine::chess::evals::EvalFile) -> Option<(String, u32)> {
+    use pdfcraft_engine::chess::pdfcraft_chess::judge::Value;
+    use pdfcraft_engine::chess::pdfcraft_chess::placement::Color;
+    let by_pgn = m.reference.as_ref().filter(|r| matches!(r.kind, LinkKind::Recovered | LinkKind::Conflict)).and_then(|r| r.fen.as_deref());
+    let fen = by_pgn.or(m.fen.as_deref())?;
+    let e = evals.get(fen).filter(|e| e.bound.is_none())?;
+    let value = match (e.cp, e.mate) {
+        (Some(cp), _) => Value::Cp(cp),
+        (None, Some(n)) if n > 0 => Value::Mates(n.unsigned_abs()),
+        (None, Some(n)) if n < 0 => Value::Mated(n.unsigned_abs()),
+        // Mate 0: the side to move is mated.
+        (None, Some(_)) => {
+            let white = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(fen).ok().and_then(|f| f.side()) != Some(Color::Black);
+            if white { Value::Mated(0) } else { Value::Mates(0) }
+        }
+        (None, None) => return None,
+    };
+    Some((pdfcraft_engine::chess::review::value_text(value), e.depth))
 }
 
 /// [`MoveView`] of move `m`, at `at`, with the choices made on its page (`chosen`); `caption`:
 /// the font has the caption's shape (▸), else a plain one stands in.
-fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::reference_store::OnPage, t: &Tokens, caption: bool) -> MoveView {
+fn move_view(
+    m: &MoveInline,
+    at: MoveAt,
+    chosen: &pdfcraft_engine::chess::reference_store::OnPage,
+    t: &Tokens,
+    caption: bool,
+    evals: Option<&pdfcraft_engine::chess::evals::EvalFile>,
+) -> MoveView {
     let mut tip = status_label(m.status).to_string();
     let linked = reference_note(m);
     // A conflict the user decided says what they chose (R6e).
@@ -523,7 +635,14 @@ fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::refere
     };
     let number = m.number.map(|n| n.text());
     let san = if m.san.is_empty() { m.read_san() } else { m.san.as_str() };
-    let name = crate::chess_text_para::move_name(number.as_deref(), san, m.status, said);
+    let mut name = crate::chess_text_para::move_name(number.as_deref(), san, m.status, said);
+    // The engine's evaluation, said and in the tooltip (plan A9-N17b).
+    let engine = evals.and_then(|e| engine_value(m, e));
+    if let Some((value, depth)) = &engine {
+        let said = crate::i18n::fmt(tl!("Engine: {value} (depth {d})"), &[("value", value), ("d", &depth.to_string())]);
+        tip = format!("{tip}\n{said}");
+        name = format!("{name}, {said}");
+    }
     let marker = match crate::chess_text_para::marker(m.status) {
         "▸" if !caption => ">",
         shape => shape,
@@ -534,7 +653,7 @@ fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::refere
         underline: matches!((kind, choice), (Some(LinkKind::Recovered), _) | (Some(LinkKind::Conflict), Some(Choice::Pgn))),
         italics: matches!((kind, choice), (Some(LinkKind::Conflict), None)),
     };
-    MoveView { at, look, name, tip, opens, in_pgn, conflict, choice }
+    MoveView { at, look, name, tip, opens, in_pgn, conflict, choice, eval: engine.map(|(value, _)| value) }
 }
 
 /// A move's context menu: open its game (the book's PGN's, or the page's) and, in conflict with
@@ -596,18 +715,19 @@ fn frame_key(ctx: &egui::Context, figurines: Figurines, caption: bool) -> u64 {
 }
 
 /// The key of paragraph `inlines`' layout: its text, its moves' states, links and the choices made
-/// on them (`chosen`, at `at_of`), the width it wraps at and the frame's (`frame`). No string is
-/// made for it.
+/// on them (`chosen`, at `at_of`), the width it wraps at, the frame's (`frame`) and the engine's
+/// evaluations' generation (`evals`, plan A9-N17b). No string is made for it.
 fn paragraph_key(
     inlines: &[Inline],
     chosen: &pdfcraft_engine::chess::reference_store::OnPage,
     at_of: impl Fn(usize) -> MoveAt,
     width: f32,
     frame: &u64,
+    evals: u64,
 ) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
-    (frame, width.to_bits(), inlines.len()).hash(&mut h);
+    (frame, width.to_bits(), inlines.len(), evals).hash(&mut h);
     for (k, inline) in inlines.iter().enumerate() {
         std::mem::discriminant(inline).hash(&mut h);
         match inline {
@@ -637,16 +757,26 @@ fn lay_out_paragraph(
     caption: bool,
     width: f32,
     key: u64,
+    evals: Option<&pdfcraft_engine::chess::evals::EvalFile>,
 ) -> Paragraph {
     let font = egui::TextStyle::Body.resolve(ui.style());
     let mut views: Vec<Option<MoveView>> = inlines
         .iter()
         .enumerate()
         .map(|(k, inline)| match inline {
-            Inline::Move(m) => Some(move_view(m, at_of(k), chosen, tokens, caption)),
+            Inline::Move(m) => Some(move_view(m, at_of(k), chosen, tokens, caption, evals)),
             _ => None,
         })
         .collect();
+    // Each move's evaluation goes after its signs (plan A9-N17b): by the inline it follows.
+    let mut after: Vec<Option<String>> = vec![None; inlines.len()];
+    for (k, v) in views.iter().enumerate() {
+        let Some(value) = v.as_ref().and_then(|v| v.eval.clone()) else { continue };
+        let signs = inlines.iter().skip(k.saturating_add(1)).take_while(|i| matches!(i, Inline::Nag { .. })).count();
+        if let Some(slot) = after.get_mut(k.saturating_add(signs)) {
+            *slot = Some(value);
+        }
+    }
     let laid = crate::chess_text_para::paragraph(
         inlines,
         &font,
@@ -654,6 +784,7 @@ fn lay_out_paragraph(
         width,
         |i| plain_text_with(std::slice::from_ref(i), figurines),
         |k, _| views.get(k).and_then(|v| v.as_ref()).map(|v| v.look),
+        |k| after.get(k).cloned().flatten().map(|text| (text, tokens.text_muted)),
     );
     let galley = ui.painter().layout_job(laid.job);
     let moves = laid
@@ -690,6 +821,7 @@ pub fn text_tab(
     busy: Option<&'static str>,
     long: Option<&LongRow>,
     pgn: &crate::chess_reference_ui::BookPgnView,
+    check: &CheckView,
 ) -> Option<TextAction> {
     let book_pgn = pgn.summary.as_ref();
     let mut action = None;
@@ -697,6 +829,12 @@ pub fn text_tab(
         && crate::chess_panel_head::long_job(ui, t, row)
     {
         action = Some(TextAction::Stop);
+    }
+    // The engine's check running on the book (plan A9-N17b), with Stop.
+    if let Some(row) = &check.running
+        && crate::chess_panel_head::long_job(ui, t, row)
+    {
+        action = Some(TextAction::StopCheck);
     }
     let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
     // With no page shown yet, the work under way is the heading, said once (plan A9-I14, A6-26).
@@ -718,7 +856,7 @@ pub fn text_tab(
             let menu = egui::containers::menu::MenuButton::from_button(
                 egui::Button::image(crate::icons::image("ellipsis", 16.0, t.icon)).min_size(egui::vec2(28.0, 24.0)),
             );
-            let (r, picked) = menu.ui(ui, |ui| text_menu(ui, t, origin, pgn));
+            let (r, picked) = menu.ui(ui, |ui| text_menu(ui, t, origin, pgn, check));
             r.on_hover_text(name).widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
             if let Some(a) = picked.and_then(|p| p.inner) {
                 action = Some(a);
@@ -729,6 +867,13 @@ pub fn text_tab(
                 .clicked()
             {
                 action = Some(TextAction::Read(true));
+            }
+            // The divergences found, a chip while there are some (plan A9-N17b): measured first,
+            // and cut with "…" before it would leave the heading no room (§2.8.1).
+            if check.divergences > 0
+                && let Some(a) = divergences_chip(ui, t, check.divergences)
+            {
+                action = Some(a);
             }
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                 if current.is_none() && busy.is_some() {
@@ -847,11 +992,12 @@ pub fn text_tab(
                 let tokens = Tokens::get(ui.ctx());
                 let width = ui.available_width();
                 let at_of = |k: usize| MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k);
-                let key = paragraph_key(inlines, &chosen, at_of, width, &frame);
+                let key = paragraph_key(inlines, &chosen, at_of, width, &frame, check.generation);
                 let id = ui.id().with("chess-paragraph");
                 let cached = ui.ctx().data(|d| d.get_temp::<Arc<Paragraph>>(id)).filter(|p| p.key == key);
                 let para = cached.unwrap_or_else(|| {
-                    let made = Arc::new(lay_out_paragraph(ui, inlines, figurines, &chosen, at_of, &tokens, caption, width, key));
+                    let made =
+                        Arc::new(lay_out_paragraph(ui, inlines, figurines, &chosen, at_of, &tokens, caption, width, key, check.evals.as_deref()));
                     ui.ctx().data_mut(|d| d.insert_temp(id, Arc::clone(&made)));
                     made
                 });
@@ -1424,6 +1570,27 @@ impl PdfCraftApp {
                     self.put_book_pgn_game(id, game, node);
                 }
             }
+            // The engine's check (plan A9-N17b): desktop only, never offered on the web.
+            #[cfg(not(target_arch = "wasm32"))]
+            TextAction::CheckWithEngine => self.open_engine_review(),
+            #[cfg(not(target_arch = "wasm32"))]
+            TextAction::ContinueCheck => {
+                if let Some((_, id)) = self.active_ids() {
+                    self.continue_check(id);
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            TextAction::StopCheck => self.stop_check(),
+            #[cfg(not(target_arch = "wasm32"))]
+            TextAction::Divergences(shown) => self.show_divergences(shown),
+            #[cfg(not(target_arch = "wasm32"))]
+            TextAction::ShowDivergence(i) => self.show_divergence(i),
+            #[cfg(target_arch = "wasm32")]
+            TextAction::CheckWithEngine
+            | TextAction::ContinueCheck
+            | TextAction::StopCheck
+            | TextAction::Divergences(_)
+            | TextAction::ShowDivergence(_) => {}
         }
     }
 
@@ -1600,7 +1767,7 @@ mod tests {
         let mut h = Harness::builder().with_size(egui::vec2(420.0, 240.0)).build_ui(|ui| {
             let t = Tokens::get(ui.ctx());
             let pgn = crate::chess_reference_ui::BookPgnView::default();
-            let _ = text_tab(ui, &t, None, DocId(1), 0, None, BookOrigin::Auto, Some(tl!("Reading the page…")), None, &pgn);
+            let _ = text_tab(ui, &t, None, DocId(1), 0, None, BookOrigin::Auto, Some(tl!("Reading the page…")), None, &pgn, &CheckView::default());
         });
         // The spinner asks for frames all the time: a few, not until it settles.
         h.run_steps(3);

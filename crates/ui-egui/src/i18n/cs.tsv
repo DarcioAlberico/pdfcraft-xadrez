@@ -3768,3 +3768,47 @@ progress bar	Progress	Průběh
 	Fantasy	Fantastické
 	Spatial	Prostorové
 	Celtic	Keltské
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Ověřit enginem…
+	Check with the engine	Ověřit enginem
+	Count the positions	Spočítat pozice
+	Reading the pages: page {done} of {of}	Čtení stránek: stránka {done} z {of}
+	Positions to check: {n} ({time})	Pozice k ověření: {n} ({time})
+	Checked before at this depth, left out: {n}	Už ověřené v této hloubce, vynechané: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Není co ověřovat: hodnocení obsahují každou pozici v této hloubce.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Stránky obsahují víc pozic než {max}, které hodnocení uchovávají pro dokument: ověří se jen prvních {max} a starší hodnocení uvolní místo.
+	Search each position	Analyzovat každou pozici
+	To depth	Do hloubky
+	Seconds each	Sekund na pozici
+	Start the check	Spustit ověření
+	Continue the check ({n} left)	Pokračovat v ověření (zbývá {n})
+	≈ {m} min	≈ {m} min
+	≈ {h} h	≈ {h} h
+	≈ {h} h {m} min	≈ {h} h {m} min
+	Checking with the engine: position {done} of {of} ({time} left)	Ověřování enginem: pozice {done} z {of} (zbývá {time})
+	A check with the engine is already running: stop it first.	Ověřování enginem už běží: nejdřív ho zastavte.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Ověření skončilo. Ověřené pozice: {n}. Rozdíly: {d}.
+	Positions the engine gave no answer for: {n}	Pozice, na které engine neodpověděl: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Ověřování bylo zastaveno: ověřeno {done} z {of} pozic. Co se našlo, zůstává uloženo.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Co engine našel, zůstává uloženo: Pokračovat v ověření naváže odtud.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Engine neodpověděl na {n} pozic za sebou, a tak se ověřování zastavilo. Co našel, zůstává uloženo.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Ověřování dokumentu {name} se zastavilo: dokument byl zavřen. Co engine našel, zůstává uloženo.
+	The engine's evaluations could not be kept: {why}	Hodnocení enginu se nepodařilo uložit: {why}
+	Divergences ({n})	Rozdíly ({n})
+	‹ Text	‹ Text
+	Back to the page's text (Esc)	Zpět na text stránky (Esc)
+	No divergence in what was checked.	V ověřeném není žádný rozdíl.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Neposouzeno: {none} bez hodnocení, {shallow} prohledáno příliš mělce.
+	The book says: {what}	Kniha říká: {what}
+	The calculation says: {what}	Výpočet říká: {what}
+	Engine	Engine
+	Solver	Řešitel
+	{value}: lets a mate go	{value}: nechá uniknout mat
+	{value}: loses {pawns} pawns to {best}	{value}: ztrácí {pawns} pěšce oproti {best}
+	{value}: loses {pawns} pawns	{value}: ztrácí {pawns} pěšce
+	{value}: loses only {pawns} pawns	{value}: ztrácí jen {pawns} pěšce
+	{value}: the engine's best move	{value}: nejlepší tah enginu
+	another solution: {move} {value}	jiné řešení: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Zeptá se enginu na každý tah se znaménkem a každý diagram vybraných stránek a vypíše, kde se kniha a výpočet rozcházejí.
+	Engine: {value} (depth {d})	Engine: {value} (hloubka {d})

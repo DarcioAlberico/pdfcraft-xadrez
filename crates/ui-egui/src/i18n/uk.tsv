@@ -3716,3 +3716,47 @@ progress bar	Progress	Хід виконання
 	Fantasy	Фентезі
 	Spatial	Об'ємні
 	Celtic	Кельтські
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Перевірити рушієм…
+	Check with the engine	Перевірити рушієм
+	Count the positions	Порахувати позиції
+	Reading the pages: page {done} of {of}	Читання сторінок: сторінка {done} з {of}
+	Positions to check: {n} ({time})	Позицій для перевірки: {n} ({time})
+	Checked before at this depth, left out: {n}	Уже перевірено на цій глибині, пропущено: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Немає чого перевіряти: в оцінках є всі позиції на цій глибині.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	На сторінках більше позицій, ніж {max}, які оцінки зберігають для документа: перевіряються лише перші {max}, а старіші оцінки звільняють місце.
+	Search each position	Аналізувати кожну позицію
+	To depth	До глибини
+	Seconds each	Секунд на позицію
+	Start the check	Почати перевірку
+	Continue the check ({n} left)	Продовжити перевірку (лишилося {n})
+	≈ {m} min	≈ {m} хв
+	≈ {h} h	≈ {h} год
+	≈ {h} h {m} min	≈ {h} год {m} хв
+	Checking with the engine: position {done} of {of} ({time} left)	Перевірка рушієм: позиція {done} з {of} (лишилося {time})
+	A check with the engine is already running: stop it first.	Перевірка рушієм уже триває: спершу зупиніть її.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Перевірку завершено. Перевірено позицій: {n}. Розбіжностей: {d}.
+	Positions the engine gave no answer for: {n}	Позицій без відповіді рушія: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Перевірку зупинено: перевірено {done} з {of} позицій. Знайдене збережено.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Знайдене рушієм збережено: «Продовжити перевірку» продовжить з цього місця.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Рушій не відповів на {n} позицій поспіль, тож перевірку зупинено. Знайдене ним збережено.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Перевірку документа {name} зупинено: документ закрито. Знайдене рушієм збережено.
+	The engine's evaluations could not be kept: {why}	Не вдалося зберегти оцінки рушія: {why}
+	Divergences ({n})	Розбіжності ({n})
+	‹ Text	‹ Текст
+	Back to the page's text (Esc)	Назад до тексту сторінки (Esc)
+	No divergence in what was checked.	У перевіреному немає розбіжностей.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Не оцінено: {none} без оцінки, {shallow} із надто мілким пошуком.
+	The book says: {what}	Книга каже: {what}
+	The calculation says: {what}	Розрахунок каже: {what}
+	Engine	Рушій
+	Solver	Розв'язувач
+	{value}: lets a mate go	{value}: упускає мат
+	{value}: loses {pawns} pawns to {best}	{value}: втрачає {pawns} пішака порівняно з {best}
+	{value}: loses {pawns} pawns	{value}: втрачає {pawns} пішака
+	{value}: loses only {pawns} pawns	{value}: втрачає лише {pawns} пішака
+	{value}: the engine's best move	{value}: найкращий хід рушія
+	another solution: {move} {value}	інший розв'язок: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Запитує рушій про кожен хід зі знаком і кожну діаграму вибраних сторінок і перелічує місця, де книга й розрахунок розходяться.
+	Engine: {value} (depth {d})	Рушій: {value} (глибина {d})

@@ -3693,3 +3693,47 @@ progress bar	Progress	Előrehaladás
 	Fantasy	Fantázia
 	Spatial	Térbeli
 	Celtic	Kelta
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Ellenőrzés a motorral…
+	Check with the engine	Ellenőrzés a motorral
+	Count the positions	Állások megszámolása
+	Reading the pages: page {done} of {of}	Oldalak olvasása: {done}. oldal / {of}
+	Positions to check: {n} ({time})	Ellenőrizendő állások: {n} ({time})
+	Checked before at this depth, left out: {n}	Ezen a mélységen már ellenőrizve, kihagyva: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Nincs mit ellenőrizni: az értékelések ezen a mélységen minden állást tartalmaznak.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Az oldalakon több állás van, mint az a {max}, amennyit az értékelések dokumentumonként megőriznek: csak az első {max} ellenőrizhető, és a régebbi értékelések adnak helyet.
+	Search each position	Minden állás elemzése
+	To depth	Mélységig
+	Seconds each	Másodperc állásonként
+	Start the check	Ellenőrzés indítása
+	Continue the check ({n} left)	Ellenőrzés folytatása ({n} maradt)
+	≈ {m} min	≈ {m} perc
+	≈ {h} h	≈ {h} óra
+	≈ {h} h {m} min	≈ {h} óra {m} perc
+	Checking with the engine: position {done} of {of} ({time} left)	Ellenőrzés a motorral: {done}. állás / {of} ({time} van hátra)
+	A check with the engine is already running: stop it first.	Már fut egy ellenőrzés a motorral: előbb állítsa le.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Az ellenőrzés kész. Ellenőrzött állások: {n}. Eltérések: {d}.
+	Positions the engine gave no answer for: {n}	Állások, amelyekre a motor nem felelt: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Az ellenőrzés leállt: {of} állásból {done} ellenőrizve. A talált értékelések megmaradnak.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Amit a motor talált, megmarad: az Ellenőrzés folytatása onnan folytatja.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	A motor {n} egymást követő állásra nem felelt, ezért az ellenőrzés leállt. Amit talált, megmarad.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	A(z) {name} ellenőrzése leállt: a dokumentumot bezárták. Amit a motor talált, megmarad.
+	The engine's evaluations could not be kept: {why}	A motor értékeléseit nem sikerült megőrizni: {why}
+	Divergences ({n})	Eltérések ({n})
+	‹ Text	‹ Szöveg
+	Back to the page's text (Esc)	Vissza az oldal szövegéhez (Esc)
+	No divergence in what was checked.	Az ellenőrzöttekben nincs eltérés.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Nem értékelt: {none} értékelés nélkül, {shallow} túl sekélyen keresve.
+	The book says: {what}	A könyv szerint: {what}
+	The calculation says: {what}	A számítás szerint: {what}
+	Engine	Motor
+	Solver	Megoldó
+	{value}: lets a mate go	{value}: elszalaszt egy mattot
+	{value}: loses {pawns} pawns to {best}	{value}: {pawns} gyalogot veszít {best} mellett
+	{value}: loses {pawns} pawns	{value}: {pawns} gyalogot veszít
+	{value}: loses only {pawns} pawns	{value}: csak {pawns} gyalogot veszít
+	{value}: the engine's best move	{value}: a motor legjobb lépése
+	another solution: {move} {value}	másik megoldás: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Megkérdez egy motort a kiválasztott oldalak minden jellel ellátott lépéséről és minden diagramjáról, és felsorolja, hol tér el a könyv és a számítás.
+	Engine: {value} (depth {d})	Motor: {value} ({d} mélység)

@@ -3696,3 +3696,47 @@ progress bar	Progress	進行状況
 	Fantasy	ファンタジー
 	Spatial	立体
 	Celtic	ケルト
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	エンジンで検証…
+	Check with the engine	エンジンで検証
+	Count the positions	局面を数える
+	Reading the pages: page {done} of {of}	ページを読み込み中: {of} ページ中 {done} ページ目
+	Positions to check: {n} ({time})	検証する局面: {n}（{time}）
+	Checked before at this depth, left out: {n}	この深さで検証済みのため除外: {n}
+	Nothing to check: the evaluations hold every position at this depth.	検証するものはありません: 評価はこの深さですべての局面を保持しています。
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	ページの局面数が、評価が文書ごとに保持する {max} を超えています: 最初の {max} だけを検証し、古い評価から順に場所を空けます。
+	Search each position	各局面の検討
+	To depth	深さまで
+	Seconds each	1局面あたりの秒数
+	Start the check	検証を開始
+	Continue the check ({n} left)	検証を続ける（残り {n}）
+	≈ {m} min	≈ {m} 分
+	≈ {h} h	≈ {h} 時間
+	≈ {h} h {m} min	≈ {h} 時間 {m} 分
+	Checking with the engine: position {done} of {of} ({time} left)	エンジンで検証中: {of} 局面中 {done} 局面目（残り {time}）
+	A check with the engine is already running: stop it first.	エンジンによる検証がすでに実行中です。先に停止してください。
+	The check is done. Positions checked: {n}. Divergences: {d}.	検証が完了しました。検証した局面: {n}。相違: {d}。
+	Positions the engine gave no answer for: {n}	エンジンが答えなかった局面: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	検証を停止しました: {of} 局面中 {done} 局面を検証。見つかったものは保持されます。
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} エンジンが見つけたものは保持されます。「検証を続ける」でそこから再開します。
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	エンジンが {n} 局面続けて応答しなかったため、検証を停止しました。見つかったものは保持されます。
+	The check of {name} stopped: the document was closed. What the engine found is kept.	{name} の検証を停止しました: 文書が閉じられました。エンジンが見つけたものは保持されます。
+	The engine's evaluations could not be kept: {why}	エンジンの評価を保持できませんでした: {why}
+	Divergences ({n})	相違（{n}）
+	‹ Text	‹ テキスト
+	Back to the page's text (Esc)	ページのテキストに戻る（Esc）
+	No divergence in what was checked.	検証した範囲に相違はありません。
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	判定なし: 評価なし {none}、探索が浅すぎるもの {shallow}。
+	The book says: {what}	本の記述: {what}
+	The calculation says: {what}	計算結果: {what}
+	Engine	エンジン
+	Solver	ソルバー
+	{value}: lets a mate go	{value}: メイトを逃す
+	{value}: loses {pawns} pawns to {best}	{value}: {best} と比べて {pawns} ポーン損
+	{value}: loses {pawns} pawns	{value}: {pawns} ポーン損
+	{value}: loses only {pawns} pawns	{value}: わずか {pawns} ポーン損
+	{value}: the engine's best move	{value}: エンジンの最善手
+	another solution: {move} {value}	別解: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	選んだページの記号付きのすべての手とすべての図をエンジンに問い合わせ、本と計算が食い違う箇所を一覧にします。
+	Engine: {value} (depth {d})	エンジン: {value}（深さ {d}）

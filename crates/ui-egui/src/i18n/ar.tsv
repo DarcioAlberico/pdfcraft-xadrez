@@ -3967,3 +3967,47 @@ progress bar	Progress	التقدم
 	Fantasy	خيال
 	Spatial	مجسّم
 	Celtic	سلتي
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	التحقق بالمحرك…
+	Check with the engine	التحقق بالمحرك
+	Count the positions	عدّ المواقف
+	Reading the pages: page {done} of {of}	قراءة الصفحات: الصفحة {done} من {of}
+	Positions to check: {n} ({time})	مواقف للتحقق: {n} ({time})
+	Checked before at this depth, left out: {n}	تم التحقق منها سابقًا بهذا العمق، فاستُبعدت: {n}
+	Nothing to check: the evaluations hold every position at this depth.	لا شيء للتحقق: التقييمات تحوي كل موقف بهذا العمق.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	في الصفحات مواقف أكثر من {max} التي تحتفظ بها التقييمات لكل مستند: يُتحقق من أول {max} فقط، وتُفسح التقييمات الأقدم المجال.
+	Search each position	تحليل كل موقف
+	To depth	حتى العمق
+	Seconds each	ثوانٍ لكل موقف
+	Start the check	بدء التحقق
+	Continue the check ({n} left)	متابعة التحقق (يتبقى {n})
+	≈ {m} min	≈ {m} دقيقة
+	≈ {h} h	≈ {h} ساعة
+	≈ {h} h {m} min	≈ {h} ساعة {m} دقيقة
+	Checking with the engine: position {done} of {of} ({time} left)	التحقق بالمحرك: الموقف {done} من {of} (يتبقى {time})
+	A check with the engine is already running: stop it first.	هناك تحقق بالمحرك قيد التشغيل: أوقفه أولًا.
+	The check is done. Positions checked: {n}. Divergences: {d}.	انتهى التحقق. المواقف المتحقق منها: {n}. الاختلافات: {d}.
+	Positions the engine gave no answer for: {n}	مواقف لم يجب عنها المحرك: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	أُوقف التحقق: تم التحقق من {done} من {of} موقفًا. ما وُجد محفوظ.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} ما وجده المحرك محفوظ: «متابعة التحقق» يكمل من هناك.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	لم يجب المحرك عن {n} مواقف متتالية، فتوقف التحقق. ما وجده محفوظ.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	توقف التحقق من {name}: أُغلق المستند. ما وجده المحرك محفوظ.
+	The engine's evaluations could not be kept: {why}	تعذّر حفظ تقييمات المحرك: {why}
+	Divergences ({n})	الاختلافات ({n})
+	‹ Text	‹ النص
+	Back to the page's text (Esc)	العودة إلى نص الصفحة (Esc)
+	No divergence in what was checked.	لا اختلاف فيما تم التحقق منه.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	لم يُحكم عليها: {none} بلا تقييم، {shallow} بحثها ضحل جدًا.
+	The book says: {what}	يقول الكتاب: {what}
+	The calculation says: {what}	يقول الحساب: {what}
+	Engine	المحرك
+	Solver	الحلّال
+	{value}: lets a mate go	{value}: يفوّت كش مات
+	{value}: loses {pawns} pawns to {best}	{value}: يخسر {pawns} بيادق مقارنةً بـ {best}
+	{value}: loses {pawns} pawns	{value}: يخسر {pawns} بيادق
+	{value}: loses only {pawns} pawns	{value}: يخسر {pawns} بيادق فقط
+	{value}: the engine's best move	{value}: أفضل نقلة للمحرك
+	another solution: {move} {value}	حل آخر: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	يسأل محركًا عن كل نقلة تحمل علامة وكل مخطط في الصفحات التي تختارها، ويسرد المواضع التي يختلف فيها الكتاب والحساب.
+	Engine: {value} (depth {d})	المحرك: {value} (العمق {d})

@@ -110,6 +110,10 @@ pub struct ChessState {
     /// The engine's evaluations, and where they are kept (plan A9-N8).
     #[cfg(not(target_arch = "wasm32"))]
     pub evals: crate::chess_evals_ui::Evals,
+    /// Chess ▸ Check with the engine… (plan A9-N17b): its dialog, the batch running and what each
+    /// document's check found.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub engine_review: crate::chess_engine_review::EngineReview,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,
@@ -1086,9 +1090,19 @@ pub(crate) fn tab_contents(
     // The document's long job (Export, Align the book), with Stop (plan A9-I2).
     let long = state.long.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::long_row);
     if text {
+        // The engine's check of the book (plan A9-N17b; desktop only): its Divergences list in the
+        // page text's place while it is shown.
+        #[cfg(not(target_arch = "wasm32"))]
+        let check = state.engine_review.view(id);
+        #[cfg(target_arch = "wasm32")]
+        let check = crate::chess_text_ui::CheckView::default();
+        #[cfg(not(target_arch = "wasm32"))]
+        if state.engine_review.list_shown(id) {
+            return crate::chess_engine_review::list(ui, t, &state.engine_review, id, check.running.as_ref()).map(PanelAction::Text);
+        }
         let busy = state.reading.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let doc = state.doc_mut(id);
-        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, long.as_ref(), pgn)
+        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, long.as_ref(), pgn, &check)
             .map(PanelAction::Text);
     }
     let mut action = None;
@@ -1292,6 +1306,8 @@ impl PdfCraftApp {
     fn poll_chess_scan(&mut self) {
         self.chess_games_tick();
         self.poll_chess_job();
+        #[cfg(not(target_arch = "wasm32"))]
+        self.poll_engine_review();
         self.poll_chess_capture();
         self.chess_source_tick();
         // A closed document takes its view with it.

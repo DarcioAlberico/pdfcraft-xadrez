@@ -3942,3 +3942,47 @@ progress bar	Progress	Eiga
 	Fantasy	Fantastika
 	Spatial	Erdviniai
 	Celtic	Keltų
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Patikrinti varikliu…
+	Check with the engine	Patikrinti varikliu
+	Count the positions	Suskaičiuoti pozicijas
+	Reading the pages: page {done} of {of}	Skaitomi puslapiai: {done} puslapis iš {of}
+	Positions to check: {n} ({time})	Tikrintinos pozicijos: {n} ({time})
+	Checked before at this depth, left out: {n}	Jau patikrinta šiame gylyje, praleista: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Nėra ką tikrinti: įvertinimuose yra visos pozicijos šiame gylyje.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	Puslapiuose yra daugiau pozicijų nei {max}, kiek įvertinimai saugo vienam dokumentui: tikrinamos tik pirmosios {max}, o senesni įvertinimai užleidžia vietą.
+	Search each position	Analizuoti kiekvieną poziciją
+	To depth	Iki gylio
+	Seconds each	Sekundžių pozicijai
+	Start the check	Pradėti tikrinimą
+	Continue the check ({n} left)	Tęsti tikrinimą (liko {n})
+	≈ {m} min	≈ {m} min.
+	≈ {h} h	≈ {h} val.
+	≈ {h} h {m} min	≈ {h} val. {m} min.
+	Checking with the engine: position {done} of {of} ({time} left)	Tikrinama varikliu: pozicija {done} iš {of} (liko {time})
+	A check with the engine is already running: stop it first.	Tikrinimas varikliu jau vyksta: pirmiausia jį sustabdykite.
+	The check is done. Positions checked: {n}. Divergences: {d}.	Tikrinimas baigtas. Patikrinta pozicijų: {n}. Neatitikimų: {d}.
+	Positions the engine gave no answer for: {n}	Pozicijos, į kurias variklis neatsakė: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	Tikrinimas sustabdytas: patikrinta {done} iš {of} pozicijų. Tai, kas rasta, išsaugota.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} Tai, ką variklis rado, išsaugota: „Tęsti tikrinimą“ tęs nuo ten.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	Variklis neatsakė į {n} pozicijas iš eilės, todėl tikrinimas sustojo. Tai, ką jis rado, išsaugota.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	Dokumento {name} tikrinimas sustojo: dokumentas uždarytas. Tai, ką variklis rado, išsaugota.
+	The engine's evaluations could not be kept: {why}	Nepavyko išsaugoti variklio įvertinimų: {why}
+	Divergences ({n})	Neatitikimai ({n})
+	‹ Text	‹ Tekstas
+	Back to the page's text (Esc)	Atgal į puslapio tekstą (Esc)
+	No divergence in what was checked.	Patikrintoje dalyje neatitikimų nėra.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Neįvertinta: {none} be įvertinimo, {shallow} ieškota per negiliai.
+	The book says: {what}	Knyga sako: {what}
+	The calculation says: {what}	Skaičiavimas sako: {what}
+	Engine	Variklis
+	Solver	Sprendiklis
+	{value}: lets a mate go	{value}: praleidžia matą
+	{value}: loses {pawns} pawns to {best}	{value}: praranda {pawns} pėstininkų, palyginti su {best}
+	{value}: loses {pawns} pawns	{value}: praranda {pawns} pėstininkų
+	{value}: loses only {pawns} pawns	{value}: praranda tik {pawns} pėstininkų
+	{value}: the engine's best move	{value}: geriausias variklio ėjimas
+	another solution: {move} {value}	kitas sprendimas: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Paklausia variklio apie kiekvieną ženklu pažymėtą ėjimą ir kiekvieną pasirinktų puslapių diagramą ir išvardija, kur knyga ir skaičiavimas nesutampa.
+	Engine: {value} (depth {d})	Variklis: {value} (gylis {d})

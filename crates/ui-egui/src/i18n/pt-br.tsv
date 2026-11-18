@@ -3710,3 +3710,47 @@ progress bar	Progress	Progresso
 	Fantasy	Fantasia
 	Spatial	Espacial
 	Celtic	Celta
+
+# A9-N17b: Check with the engine… — the book says × the calculation says (the batch, its estimate, its row and the Divergences list).
+	Check with the engine…	Conferir com o motor…
+	Check with the engine	Conferir com o motor
+	Count the positions	Contar as posições
+	Reading the pages: page {done} of {of}	Lendo as páginas: página {done} de {of}
+	Positions to check: {n} ({time})	Posições a conferir: {n} ({time})
+	Checked before at this depth, left out: {n}	Já conferidas nesta profundidade, deixadas de fora: {n}
+	Nothing to check: the evaluations hold every position at this depth.	Nada a conferir: as avaliações têm todas as posições nesta profundidade.
+	The pages hold more positions than the {max} the evaluations keep for a document: only the first {max} are checked, and older evaluations make room.	As páginas têm mais posições do que as {max} que as avaliações guardam por documento: só as primeiras {max} são conferidas, e avaliações mais antigas dão lugar.
+	Search each position	Analisar cada posição
+	To depth	Até a profundidade
+	Seconds each	Segundos por posição
+	Start the check	Começar a conferência
+	Continue the check ({n} left)	Continuar a conferência (faltam {n})
+	≈ {m} min	≈ {m} min
+	≈ {h} h	≈ {h} h
+	≈ {h} h {m} min	≈ {h} h {m} min
+	Checking with the engine: position {done} of {of} ({time} left)	Conferindo com o motor: posição {done} de {of} (faltam {time})
+	A check with the engine is already running: stop it first.	Já há uma conferência com o motor em andamento: pare-a antes.
+	The check is done. Positions checked: {n}. Divergences: {d}.	A conferência terminou. Posições conferidas: {n}. Divergências: {d}.
+	Positions the engine gave no answer for: {n}	Posições sem resposta do motor: {n}
+	The check was stopped: {done} of {of} positions checked. What was found is kept.	A conferência foi parada: {done} de {of} posições conferidas. O que foi achado está guardado.
+	{why} What the engine found is kept: Continue the check goes on from there.	{why} O que o motor achou está guardado: Continuar a conferência segue de onde parou.
+	The engine gave no answer for {n} positions in a row, so the check stopped. What it found is kept.	O motor não respondeu a {n} posições seguidas, e a conferência parou. O que ele achou está guardado.
+	The check of {name} stopped: the document was closed. What the engine found is kept.	A conferência de {name} parou: o documento foi fechado. O que o motor achou está guardado.
+	The engine's evaluations could not be kept: {why}	Não foi possível guardar as avaliações do motor: {why}
+	Divergences ({n})	Divergências ({n})
+	‹ Text	‹ Texto
+	Back to the page's text (Esc)	Voltar ao texto da página (Esc)
+	No divergence in what was checked.	Nenhuma divergência no que foi conferido.
+	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Não julgados: {none} sem avaliação, {shallow} com busca rasa demais.
+	The book says: {what}	O livro diz: {what}
+	The calculation says: {what}	O cálculo diz: {what}
+	Engine	Motor
+	Solver	Solucionador
+	{value}: lets a mate go	{value}: deixa escapar um mate
+	{value}: loses {pawns} pawns to {best}	{value}: perde {pawns} peões para {best}
+	{value}: loses {pawns} pawns	{value}: perde {pawns} peões
+	{value}: loses only {pawns} pawns	{value}: perde só {pawns} peões
+	{value}: the engine's best move	{value}: o melhor lance do motor
+	another solution: {move} {value}	outra solução: {move} {value}
+	Ask an engine about every move with a sign and every diagram of the pages you choose, and list where the book and the calculation disagree.	Pergunta a um motor sobre todo lance com sinal e todo diagrama das páginas escolhidas, e lista onde o livro e o cálculo divergem.
+	Engine: {value} (depth {d})	Motor: {value} (profundidade {d})
