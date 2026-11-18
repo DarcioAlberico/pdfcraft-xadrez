@@ -71,6 +71,7 @@ mod chess_redraw;
 mod chess_reference_ui;
 mod chess_review_ui;
 mod chess_samples;
+mod chess_sibling;
 mod chess_theme;
 mod chess_widgets;
 pub use chess_ocr_area::AreaQuery;

@@ -80,17 +80,17 @@ impl PdfCraftApp {
 
     /// Whether document `id` looks like a chess book before anything was detected in it: a font
     /// named as the diagram and figurine fonts are (`looks_like_chess_font`: Chess Merida,
-    /// DiagramTTF…), or a PGN beside it with its name (`chess_reference_ui::find_sibling_pgn`; not
-    /// on the web). Found once per document, as the rail asks every frame (plan A9-I16).
+    /// DiagramTTF…), or a PGN beside it (`chess_sibling`; not on the web), which its folder is
+    /// looked through for off the interface thread (plan A9-I7b) and turns the hint on when it is
+    /// found. Found once per document, as the rail asks every frame (plan A9-I16).
     pub(crate) fn chess_book_hint(&mut self, id: pdfcraft_engine::DocId) -> bool {
         if let Some(hint) = self.chess.doc(id).and_then(|d| d.chess_hint) {
             return hint;
         }
         let Some(doc) = self.session.get(id) else { return false };
         let font = doc.info.fonts.iter().any(|f| pdfcraft_engine::chess::pdfcraft_chess::catalog::looks_like_chess_font(&f.name));
-        let hint = font
-            || self.chess.doc(id).is_some_and(|d| d.pgn_sibling.is_some())
-            || crate::chess_reference_ui::find_sibling_pgn(&doc.doc_keys()).is_some();
+        self.look_for_sibling_pgn(id, false);
+        let hint = font || self.chess.doc(id).is_some_and(|d| d.pgn_sibling.is_some());
         self.chess.doc_mut(id).chess_hint = Some(hint);
         hint
     }

@@ -49,9 +49,11 @@ pub struct DocChess {
     pub export: crate::chess_export_ui::DocExport,
     /// The corrections kept and forgotten in it, as steps Undo and Redo take (plan A9-G10).
     pub(crate) fixes: crate::chess_history::History<crate::chess_fixes::FixState>,
-    /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered while the document
-    /// keeps none (R6c; desktop only).
+    /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), or the only one of its
+    /// folder, offered while the document keeps none (R6c; desktop only).
     pub(crate) pgn_sibling: Option<std::path::PathBuf>,
+    /// The search for it in the PDF's folder, off the interface thread (plan A9-I7b).
+    pub(crate) pgn_look: crate::chess_sibling::Look,
     /// What Link the whole book found, for the session (R6d).
     pub(crate) book_link: Option<crate::chess_reference_ui::BookLink>,
     /// What it was linked to before the last Align, for that notice's Undo (plan A9-I17).
