@@ -249,6 +249,13 @@ fn shown(h: &Harness<'static, PdfCraftApp>, part: &str) -> bool {
     h.query_all_by_label_contains(part).next().is_some()
 }
 
+/// Click the batch row's Stop, and take the click in a frame before anything else: an answer the
+/// test lets the engine give next comes after Stop was asked.
+fn stop(h: &mut Harness<'static, PdfCraftApp>) {
+    h.get_by_label("Stop").click();
+    h.run_steps(1);
+}
+
 /// The FEN after `sans` from the start.
 fn after(sans: &[&str]) -> String {
     let mut g = Game::standard();
@@ -303,7 +310,7 @@ fn stop_continue_and_check_again_never_ask_a_position_twice() {
     h.get_by_label("Start the check").click();
     engine.answer(2);
     assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 3 of 5").is_some()), "two answered");
-    h.get_by_label("Stop").click();
+    stop(&mut h);
     engine.answer(1);
     assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped");
     h.run_steps(2);
@@ -317,7 +324,7 @@ fn stop_continue_and_check_again_never_ask_a_position_twice() {
     text_menu_item(&mut h, "Continue the check (2 left)");
     engine.answer(1);
     assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 5 of 5").is_some()), "one more answered");
-    h.get_by_label("Stop").click();
+    stop(&mut h);
     engine.answer(1);
     assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped again");
     // A new count: what the evaluations hold (written or still on their way) is left out.
@@ -504,7 +511,7 @@ fn an_engine_that_cannot_start_loses_no_batch() {
     h.get_by_label("Start the check").click();
     engine.answer(2);
     assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 3 of 5").is_some()), "two answered");
-    h.get_by_label("Stop").click();
+    stop(&mut h);
     engine.answer(1);
     assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped");
     let id = h.state().views[0].id;
@@ -541,7 +548,7 @@ fn a_stop_cut_short_asks_again_only_the_position_it_cut() {
     h.get_by_label("Start the check").click();
     first.answer(2);
     assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 3 of 5").is_some()), "two answered");
-    h.get_by_label("Stop").click();
+    stop(&mut h);
     // No answer: Stop cuts the third position short.
     assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "stopped");
     h.run_steps(2);
@@ -688,7 +695,7 @@ fn a_check_for_a_time_leaves_out_what_is_held_and_says_it_may_stay_shallow() {
     let shallow = Eval::new(12, Score::Centipawns(30), Bound::Exact, &["e7e5".to_owned()], Some("Stockfish 17"), 1).unwrap();
     DirStore::new(data.join("evals")).keep(&keys, pages, &[(after(&["e4"]), shallow)]).unwrap();
     text_menu_item(&mut h, "Check with the engine…");
-    h.get_by_label("Seconds each").click();
+    h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Seconds each").click();
     h.run_steps(2);
     assert!(shown(&h, "Searched for a time, a position may stay shallower than depth 18"), "said");
     h.get_by_label("Count the positions").click();
