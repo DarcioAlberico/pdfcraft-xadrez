@@ -3859,3 +3859,75 @@ progress bar	Progress	Průběh
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	V knize nebylo možné hledat: {e}
 	The diagrams read couldn't be looked at: {e}	Přečtené diagramy nebylo možné projít: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Přeskočeno: kopírování není povoleno
+	Encrypted: read it into the Library?	Šifrováno: načíst do knihovny?
+	Skipped: does not open	Přeskočeno: nelze otevřít
+	Skipped: larger than 1 GB	Přeskočeno: větší než 1 GB
+	Skipped: can't be read	Přeskočeno: nelze přečíst
+	Skipped: reading failed	Přeskočeno: čtení selhalo
+	Skipped: now in the cloud	Přeskočeno: nyní v cloudu
+	Skipped: a link, never followed	Přeskočeno: odkaz, nikdy se nesleduje
+	Skipped: no longer there	Přeskočeno: už tam není
+	Left as it was: its index can't be read now	Ponecháno beze změny: jeho rejstřík teď nelze přečíst
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Přečtené stránky: {pages} · diagramy: {diagrams} · ke kontrole: {review} · partie: {games}
+	no piece model: picture diagrams not read	bez modelu figur: diagramy v obrázcích nepřečteny
+	Stopped partway: Continue goes on from there	Zastaveno uprostřed: Pokračovat naváže odtud
+	Not read yet	Ještě nepřečteno
+	In the cloud: never opened	V cloudu: nikdy neotevřeno
+	Not kept: the Library is full (128 MB)	Neuloženo: knihovna je plná (128 MB)
+	Encrypted: you said yes	Šifrováno: řekli jste ano
+	The Library needs the app's data folder, and there is none.	Knihovna potřebuje datovou složku aplikace, a žádná není.
+	Choose a folder of chess books	Vyberte složku se šachovými knihami
+	Books left out of the Library: {n}	Knihy vyřazené z knihovny: {n}
+	This folder is in the Library already, through {dir}.	Tato složka už je v knihovně, přes {dir}.
+	The Library has {n} folders already.	Knihovna už má složek: {n}.
+	The Library's folders couldn't be changed: {e}	Složky knihovny nelze změnit: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Sestavení knihovny bylo zastaveno: zbývající knihy: {n}. Pokračovat naváže odtud.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Knihovna je sestavena: nyní přečtené knihy: {read}; knihy v knihovně: {indexed}.
+	The Library couldn't be built: {e}	Knihovnu nelze sestavit: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} je v cloudu, ne v tomto počítači: neotevře se.
+	{path} is no longer there: build the Library again to forget it.	{path} už tam není: sestavte knihovnu znovu, aby na něj zapomněla.
+	This move is in the book's PGN, which gives no page for it.	Tento tah je v PGN knihy, které pro něj neuvádí stránku.
+	The move couldn't be outlined: page {page} reads differently now.	Tah nelze orámovat: stránka {page} se teď čte jinak.
+	Library	Knihovna
+	Books	Knihy
+	Stopping after this page…	Zastaví se po této stránce…
+	Building the Library: looking at the folders…	Sestavování knihovny: prochází se složky…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Sestavování knihovny: kniha {n} z {m} ({name}), stránka {p} z {q}
+	Building the Library: book {n} of {m} ({name})	Sestavování knihovny: kniha {n} z {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Knihy ze složek, které vyberete, jednou přečtené, aby se pozice, tah nebo hráč našli ve všech. Nic se nečte, dokud knihovnu nesestavíte.
+	No folder yet: add the folders where your chess books are.	Zatím žádná složka: přidejte složky, kde máte šachové knihy.
+	Its books leave the Library; the files stay where they are.	Její knihy opustí knihovnu; soubory zůstanou, kde jsou.
+	Add a folder…	Přidat složku…
+	The folders can't change while the Library is being built.	Složky nelze měnit, dokud se knihovna sestavuje.
+	Books in the Library: {n}	Knihy v knihovně: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Neprohledáno: odkazy {links}, složky v cloudu {cloud}, složky, které nelze vypsat {unlisted}.
+	The folders hold more than a build looks at.	Složky obsahují víc, než jedno sestavení projde.
+	Build	Sestavit
+	Reads on {n} of the {all} cores of this computer.	Čte na {n} z {all} jader tohoto počítače.
+	Counting the pages: book {n} of {m}…	Počítání stránek: kniha {n} z {m}…
+	Every book is read: a build only looks for new or changed ones.	Všechny knihy jsou přečtené: sestavení hledá jen nové nebo změněné.
+	To read: {books} books, {pages} pages, {time} (an estimate)	K přečtení: knihy {books}, stránky {pages}, {time} (odhad)
+	Books whose pages could not be counted: {n}	Knihy, jejichž stránky nešlo spočítat: {n}
+	Leave out	Vynechat
+	Position (FEN)	Pozice (FEN)
+	Move (SAN)	Tah (SAN)
+	Player	Hráč
+	Opening (ECO)	Zahájení (ECO)
+	From the board	Ze šachovnice
+	The position the Board tab shows	Pozice, kterou ukazuje karta Šachovnice
+	Either side to move	Na tahu kterákoli strana
+	Not a FEN: {e}	Není to FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Napište pozici (FEN), tah jako Bxh7+, hráče, turnaj nebo kód zahájení jako B90.
+	Looking in the Library…	Hledá se v knihovně…
+	The Library couldn't be searched: {e}	V knihovně nelze hledat: {e}
+	No book of the Library is read yet: build it first, in Books.	Žádná kniha knihovny zatím není přečtená: nejdřív ji sestavte, v části Knihy.
+	Books not read yet, not looked in: {n}	Knihy zatím nepřečtené, neprohledané: {n}
+	Books whose index could not be read: {n}	Knihy, jejichž rejstřík nešlo přečíst: {n}
+	Nothing in the Library matches.	V knihovně nic neodpovídá.
+	Open the Library	Otevřít knihovnu
+	Look in the Library	Hledat v knihovně
+	Find this position in every book of the Library	Hledat tuto pozici ve všech knihách knihovny
+	Library…	Knihovna…

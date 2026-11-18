@@ -4035,3 +4035,75 @@ progress bar	Progress	Tiến độ
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
 	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Bỏ qua: không cho phép sao chép
+	Encrypted: read it into the Library?	Đã mã hóa: đọc vào Thư viện?
+	Skipped: does not open	Bỏ qua: không mở được
+	Skipped: larger than 1 GB	Bỏ qua: lớn hơn 1 GB
+	Skipped: can't be read	Bỏ qua: không đọc được
+	Skipped: reading failed	Bỏ qua: đọc thất bại
+	Skipped: now in the cloud	Bỏ qua: giờ đang trên đám mây
+	Skipped: a link, never followed	Bỏ qua: một liên kết, không bao giờ đi theo
+	Skipped: no longer there	Bỏ qua: không còn ở đó
+	Left as it was: its index can't be read now	Giữ nguyên: chỉ mục của nó hiện không đọc được
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Trang đã đọc: {pages} · sơ đồ: {diagrams} · cần xem lại: {review} · ván: {games}
+	no piece model: picture diagrams not read	không có mô hình quân: sơ đồ dạng hình chưa được đọc
+	Stopped partway: Continue goes on from there	Dừng giữa chừng: Tiếp tục sẽ đi tiếp từ đó
+	Not read yet	Chưa đọc
+	In the cloud: never opened	Trên đám mây: không bao giờ mở
+	Not kept: the Library is full (128 MB)	Không giữ: Thư viện đã đầy (128 MB)
+	Encrypted: you said yes	Đã mã hóa: bạn đã đồng ý
+	The Library needs the app's data folder, and there is none.	Thư viện cần thư mục dữ liệu của ứng dụng, nhưng không có.
+	Choose a folder of chess books	Chọn một thư mục sách cờ vua
+	Books left out of the Library: {n}	Sách đã bỏ khỏi Thư viện: {n}
+	This folder is in the Library already, through {dir}.	Thư mục này đã có trong Thư viện, qua {dir}.
+	The Library has {n} folders already.	Thư viện đã có {n} thư mục.
+	The Library's folders couldn't be changed: {e}	Không thể thay đổi các thư mục của Thư viện: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Việc xây dựng Thư viện đã dừng: số sách còn lại: {n}. Tiếp tục sẽ đi tiếp từ đó.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Thư viện đã xây xong: sách vừa đọc: {read}; sách trong Thư viện: {indexed}.
+	The Library couldn't be built: {e}	Không thể xây dựng Thư viện: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} đang trên đám mây, không có trên máy này: không được mở.
+	{path} is no longer there: build the Library again to forget it.	{path} không còn ở đó: hãy xây lại Thư viện để quên nó.
+	This move is in the book's PGN, which gives no page for it.	Nước đi này nằm trong PGN của sách, nơi không ghi trang của nó.
+	The move couldn't be outlined: page {page} reads differently now.	Không thể viền nước đi: trang {page} giờ được đọc khác đi.
+	Library	Thư viện
+	Books	Sách
+	Stopping after this page…	Dừng sau trang này…
+	Building the Library: looking at the folders…	Đang xây dựng Thư viện: xem các thư mục…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Đang xây dựng Thư viện: sách {n}/{m} ({name}), trang {p}/{q}
+	Building the Library: book {n} of {m} ({name})	Đang xây dựng Thư viện: sách {n}/{m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Sách trong các thư mục bạn chọn được đọc một lần, để tìm một thế cờ, một nước đi hay một kỳ thủ trong tất cả. Không gì được đọc cho đến khi bạn xây dựng.
+	No folder yet: add the folders where your chess books are.	Chưa có thư mục: hãy thêm các thư mục chứa sách cờ vua của bạn.
+	Its books leave the Library; the files stay where they are.	Sách của nó rời Thư viện; các tệp vẫn ở nguyên chỗ.
+	Add a folder…	Thêm thư mục…
+	The folders can't change while the Library is being built.	Không thể thay đổi thư mục khi Thư viện đang được xây dựng.
+	Books in the Library: {n}	Sách trong Thư viện: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Chưa xem: liên kết {links}, thư mục trên đám mây {cloud}, thư mục không liệt kê được {unlisted}.
+	The folders hold more than a build looks at.	Các thư mục chứa nhiều hơn mức một lần xây dựng xem xét.
+	Build	Xây dựng
+	Reads on {n} of the {all} cores of this computer.	Đọc trên {n} trong {all} nhân của máy này.
+	Counting the pages: book {n} of {m}…	Đang đếm trang: sách {n}/{m}…
+	Every book is read: a build only looks for new or changed ones.	Mọi sách đã được đọc: việc xây dựng chỉ tìm sách mới hoặc đã thay đổi.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Cần đọc: {books} sách, {pages} trang, {time} (ước tính)
+	Books whose pages could not be counted: {n}	Sách không đếm được số trang: {n}
+	Leave out	Bỏ ra
+	Position (FEN)	Thế cờ (FEN)
+	Move (SAN)	Nước đi (SAN)
+	Player	Kỳ thủ
+	Opening (ECO)	Khai cuộc (ECO)
+	From the board	Từ bàn cờ
+	The position the Board tab shows	Thế cờ mà thẻ Bàn cờ đang hiển thị
+	Either side to move	Bên nào đi cũng được
+	Not a FEN: {e}	Không phải FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Hãy nhập một thế cờ (FEN), một nước đi như Bxh7+, một kỳ thủ, một giải đấu hoặc một mã khai cuộc như B90.
+	Looking in the Library…	Đang tìm trong Thư viện…
+	The Library couldn't be searched: {e}	Không thể tìm trong Thư viện: {e}
+	No book of the Library is read yet: build it first, in Books.	Chưa có sách nào của Thư viện được đọc: hãy xây dựng trước, trong Sách.
+	Books not read yet, not looked in: {n}	Sách chưa đọc, chưa được xem: {n}
+	Books whose index could not be read: {n}	Sách không đọc được chỉ mục: {n}
+	Nothing in the Library matches.	Không có gì trong Thư viện khớp.
+	Open the Library	Mở Thư viện
+	Look in the Library	Tìm trong Thư viện
+	Find this position in every book of the Library	Tìm thế cờ này trong mọi sách của Thư viện
+	Library…	Thư viện…

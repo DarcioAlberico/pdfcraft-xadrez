@@ -63,6 +63,8 @@ mod chess_in_book;
 mod chess_job;
 mod chess_keep;
 mod chess_keymap;
+#[cfg(not(target_arch = "wasm32"))]
+mod chess_library;
 mod chess_list;
 mod chess_models;
 mod chess_move_field;
@@ -3492,6 +3494,9 @@ impl eframe::App for PdfCraftApp {
         self.poll_export();
         self.poll_ocr();
         self.poll_chess();
+        // The Library's build, search and catalog (plan A9-N15c).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.poll_library();
         self.poll_optimize();
         self.poll_action();
         self.process_file_requests();
@@ -3551,6 +3556,8 @@ impl eframe::App for PdfCraftApp {
             chess_bookmarks_ui::prompt(self, &ctx);
             #[cfg(not(target_arch = "wasm32"))]
             chess_engine_review::prompt(self, &ctx);
+            #[cfg(not(target_arch = "wasm32"))]
+            chess_library::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
             widgets::settle_dialogs(&ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
@@ -3636,6 +3643,9 @@ impl eframe::App for PdfCraftApp {
         chess_bookmarks_ui::prompt(self, &ctx);
         #[cfg(not(target_arch = "wasm32"))]
         chess_engine_review::prompt(self, &ctx);
+        // The Library (plan A9-N15c), or its build's row while it is closed.
+        #[cfg(not(target_arch = "wasm32"))]
+        chess_library::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
         // A dialog no longer shown gives the keyboard back to where it was (plan A9-I11a).
         widgets::settle_dialogs(&ctx);

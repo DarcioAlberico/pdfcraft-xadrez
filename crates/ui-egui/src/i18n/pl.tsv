@@ -3750,3 +3750,75 @@ progress bar	Progress	Postęp
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Nie udało się przeszukać książki: {e}
 	The diagrams read couldn't be looked at: {e}	Nie udało się przejrzeć przeczytanych diagramów: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Pominięto: kopiowanie niedozwolone
+	Encrypted: read it into the Library?	Zaszyfrowana: wczytać do Biblioteki?
+	Skipped: does not open	Pominięto: nie otwiera się
+	Skipped: larger than 1 GB	Pominięto: większa niż 1 GB
+	Skipped: can't be read	Pominięto: nie można odczytać
+	Skipped: reading failed	Pominięto: odczyt nie powiódł się
+	Skipped: now in the cloud	Pominięto: teraz w chmurze
+	Skipped: a link, never followed	Pominięto: łącze, nigdy nie jest śledzone
+	Skipped: no longer there	Pominięto: już jej tam nie ma
+	Left as it was: its index can't be read now	Pozostawiono bez zmian: jej indeksu nie można teraz odczytać
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Odczytane strony: {pages} · diagramy: {diagrams} · do sprawdzenia: {review} · partie: {games}
+	no piece model: picture diagrams not read	brak modelu bierek: diagramy w obrazach nieodczytane
+	Stopped partway: Continue goes on from there	Zatrzymano w połowie: Kontynuuj podejmie od tego miejsca
+	Not read yet	Jeszcze nieodczytana
+	In the cloud: never opened	W chmurze: nigdy nie otwierana
+	Not kept: the Library is full (128 MB)	Nie zachowano: Biblioteka jest pełna (128 MB)
+	Encrypted: you said yes	Zaszyfrowana: powiedziano tak
+	The Library needs the app's data folder, and there is none.	Biblioteka potrzebuje folderu danych aplikacji, a żadnego nie ma.
+	Choose a folder of chess books	Wybierz folder z książkami szachowymi
+	Books left out of the Library: {n}	Książki usunięte z Biblioteki: {n}
+	This folder is in the Library already, through {dir}.	Ten folder już jest w Bibliotece, przez {dir}.
+	The Library has {n} folders already.	Biblioteka ma już folderów: {n}.
+	The Library's folders couldn't be changed: {e}	Nie można zmienić folderów Biblioteki: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Budowanie Biblioteki zatrzymano: pozostałe książki: {n}. Kontynuuj podejmie od tego miejsca.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Biblioteka jest zbudowana: książki odczytane teraz: {read}; książki w Bibliotece: {indexed}.
+	The Library couldn't be built: {e}	Nie można zbudować Biblioteki: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} jest w chmurze, nie na tym komputerze: nie zostanie otwarty.
+	{path} is no longer there: build the Library again to forget it.	{path} już nie istnieje: zbuduj Bibliotekę ponownie, aby o nim zapomniała.
+	This move is in the book's PGN, which gives no page for it.	Ten ruch jest w PGN książki, który nie podaje jego strony.
+	The move couldn't be outlined: page {page} reads differently now.	Nie można obrysować ruchu: strona {page} odczytuje się teraz inaczej.
+	Library	Biblioteka
+	Books	Książki
+	Stopping after this page…	Zatrzymanie po tej stronie…
+	Building the Library: looking at the folders…	Budowanie Biblioteki: przeglądanie folderów…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Budowanie Biblioteki: książka {n} z {m} ({name}), strona {p} z {q}
+	Building the Library: book {n} of {m} ({name})	Budowanie Biblioteki: książka {n} z {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Książki z wybranych folderów, odczytane raz, aby pozycję, ruch lub gracza znaleźć we wszystkich. Nic nie jest odczytywane, dopóki nie zbudujesz.
+	No folder yet: add the folders where your chess books are.	Brak folderów: dodaj foldery, w których są twoje książki szachowe.
+	Its books leave the Library; the files stay where they are.	Jego książki opuszczają Bibliotekę; pliki zostają na miejscu.
+	Add a folder…	Dodaj folder…
+	The folders can't change while the Library is being built.	Folderów nie można zmieniać podczas budowania Biblioteki.
+	Books in the Library: {n}	Książki w Bibliotece: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Nieprzeszukane: łącza {links}, foldery w chmurze {cloud}, foldery, których nie można wylistować {unlisted}.
+	The folders hold more than a build looks at.	Foldery zawierają więcej, niż przegląda jedno budowanie.
+	Build	Zbuduj
+	Reads on {n} of the {all} cores of this computer.	Odczytuje na {n} z {all} rdzeni tego komputera.
+	Counting the pages: book {n} of {m}…	Liczenie stron: książka {n} z {m}…
+	Every book is read: a build only looks for new or changed ones.	Wszystkie książki są odczytane: budowanie szuka tylko nowych lub zmienionych.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Do odczytu: książek {books}, stron {pages}, {time} (szacunek)
+	Books whose pages could not be counted: {n}	Książki, których stron nie udało się policzyć: {n}
+	Leave out	Pomiń
+	Position (FEN)	Pozycja (FEN)
+	Move (SAN)	Ruch (SAN)
+	Player	Gracz
+	Opening (ECO)	Otwarcie (ECO)
+	From the board	Z szachownicy
+	The position the Board tab shows	Pozycja pokazana na karcie Szachownica
+	Either side to move	Dowolna strona na posunięciu
+	Not a FEN: {e}	To nie jest FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Wpisz pozycję (FEN), ruch taki jak Bxh7+, gracza, turniej lub kod otwarcia taki jak B90.
+	Looking in the Library…	Szukanie w Bibliotece…
+	The Library couldn't be searched: {e}	Nie można przeszukać Biblioteki: {e}
+	No book of the Library is read yet: build it first, in Books.	Żadna książka Biblioteki nie jest jeszcze odczytana: najpierw ją zbuduj, w Książkach.
+	Books not read yet, not looked in: {n}	Książki jeszcze nieodczytane, nieprzeszukane: {n}
+	Books whose index could not be read: {n}	Książki, których indeksu nie udało się odczytać: {n}
+	Nothing in the Library matches.	Nic w Bibliotece nie pasuje.
+	Open the Library	Otwórz Bibliotekę
+	Look in the Library	Szukaj w Bibliotece
+	Find this position in every book of the Library	Szukaj tej pozycji we wszystkich książkach Biblioteki
+	Library…	Biblioteka…

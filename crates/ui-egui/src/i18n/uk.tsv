@@ -3807,3 +3807,75 @@ progress bar	Progress	Хід виконання
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Не вдалося виконати пошук у книзі: {e}
 	The diagrams read couldn't be looked at: {e}	Не вдалося переглянути прочитані діаграми: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Пропущено: копіювання заборонено
+	Encrypted: read it into the Library?	Зашифрована: прочитати до Бібліотеки?
+	Skipped: does not open	Пропущено: не відкривається
+	Skipped: larger than 1 GB	Пропущено: більша за 1 ГБ
+	Skipped: can't be read	Пропущено: не читається
+	Skipped: reading failed	Пропущено: читання не вдалося
+	Skipped: now in the cloud	Пропущено: тепер у хмарі
+	Skipped: a link, never followed	Пропущено: посилання, за ними не переходимо
+	Skipped: no longer there	Пропущено: її більше немає
+	Left as it was: its index can't be read now	Залишено як є: її індекс зараз не читається
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Прочитано сторінок: {pages} · діаграм: {diagrams} · на перевірку: {review} · партій: {games}
+	no piece model: picture diagrams not read	немає моделі фігур: діаграми-зображення не прочитано
+	Stopped partway: Continue goes on from there	Зупинено посередині: «Продовжити» продовжить звідси
+	Not read yet	Ще не прочитано
+	In the cloud: never opened	У хмарі: не відкривається
+	Not kept: the Library is full (128 MB)	Не збережено: Бібліотека заповнена (128 МБ)
+	Encrypted: you said yes	Зашифрована: ви сказали «так»
+	The Library needs the app's data folder, and there is none.	Бібліотеці потрібна папка даних застосунку, а її немає.
+	Choose a folder of chess books	Виберіть папку з шаховими книгами
+	Books left out of the Library: {n}	Книг прибрано з Бібліотеки: {n}
+	This folder is in the Library already, through {dir}.	Ця папка вже в Бібліотеці, через {dir}.
+	The Library has {n} folders already.	У Бібліотеці вже папок: {n}.
+	The Library's folders couldn't be changed: {e}	Не вдалося змінити папки Бібліотеки: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Збирання Бібліотеки зупинено: залишилося книг: {n}. «Продовжити» продовжить звідси.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Бібліотеку зібрано: прочитано книг зараз: {read}; книг у Бібліотеці: {indexed}.
+	The Library couldn't be built: {e}	Не вдалося зібрати Бібліотеку: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} у хмарі, а не на цьому комп'ютері: не відкривається.
+	{path} is no longer there: build the Library again to forget it.	{path} більше немає: зберіть Бібліотеку знову, щоб забути його.
+	This move is in the book's PGN, which gives no page for it.	Цей хід є в PGN книги, де його сторінку не вказано.
+	The move couldn't be outlined: page {page} reads differently now.	Не вдалося обвести хід: сторінка {page} тепер читається інакше.
+	Library	Бібліотека
+	Books	Книги
+	Stopping after this page…	Зупинка після цієї сторінки…
+	Building the Library: looking at the folders…	Збирання Бібліотеки: перегляд папок…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Збирання Бібліотеки: книга {n} з {m} ({name}), сторінка {p} з {q}
+	Building the Library: book {n} of {m} ({name})	Збирання Бібліотеки: книга {n} з {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Книги з вибраних папок, прочитані один раз, щоб позицію, хід або гравця можна було знайти в усіх. Нічого не читається, доки ви не зберете.
+	No folder yet: add the folders where your chess books are.	Папок ще немає: додайте папки з вашими шаховими книгами.
+	Its books leave the Library; the files stay where they are.	Її книги вийдуть із Бібліотеки; файли залишаться на місці.
+	Add a folder…	Додати папку…
+	The folders can't change while the Library is being built.	Папки не можна змінювати, поки збирається Бібліотека.
+	Books in the Library: {n}	Книг у Бібліотеці: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Не переглянуто: посилань {links}, папок у хмарі {cloud}, папок, які не можна перелічити {unlisted}.
+	The folders hold more than a build looks at.	У папках більше, ніж переглядає одне збирання.
+	Build	Зібрати
+	Reads on {n} of the {all} cores of this computer.	Читає на {n} з {all} ядер цього комп'ютера.
+	Counting the pages: book {n} of {m}…	Підрахунок сторінок: книга {n} з {m}…
+	Every book is read: a build only looks for new or changed ones.	Усі книги прочитано: збирання шукає лише нові або змінені.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Прочитати: книг {books}, сторінок {pages}, {time} (оцінка)
+	Books whose pages could not be counted: {n}	Книг, сторінки яких не вдалося підрахувати: {n}
+	Leave out	Не включати
+	Position (FEN)	Позиція (FEN)
+	Move (SAN)	Хід (SAN)
+	Player	Гравець
+	Opening (ECO)	Дебют (ECO)
+	From the board	З дошки
+	The position the Board tab shows	Позиція на вкладці «Дошка»
+	Either side to move	Черга ходу будь-якої сторони
+	Not a FEN: {e}	Це не FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Введіть позицію (FEN), хід на кшталт Bxh7+, гравця, турнір або код дебюту на кшталт B90.
+	Looking in the Library…	Пошук у Бібліотеці…
+	The Library couldn't be searched: {e}	Не вдалося виконати пошук у Бібліотеці: {e}
+	No book of the Library is read yet: build it first, in Books.	Жодну книгу Бібліотеки ще не прочитано: спершу зберіть її, у розділі «Книги».
+	Books not read yet, not looked in: {n}	Книг ще не прочитано, не переглянуто: {n}
+	Books whose index could not be read: {n}	Книг, індекс яких не вдалося прочитати: {n}
+	Nothing in the Library matches.	У Бібліотеці нічого не знайдено.
+	Open the Library	Відкрити Бібліотеку
+	Look in the Library	Шукати в Бібліотеці
+	Find this position in every book of the Library	Шукати цю позицію в усіх книгах Бібліотеки
+	Library…	Бібліотека…

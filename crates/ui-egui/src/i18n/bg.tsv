@@ -3749,3 +3749,75 @@ progress bar	Progress	Напредък
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Книгата не можа да бъде претърсена: {e}
 	The diagrams read couldn't be looked at: {e}	Прочетените диаграми не можаха да бъдат прегледани: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Пропусната: копирането не е разрешено
+	Encrypted: read it into the Library?	Шифрована: да се прочете ли в Библиотеката?
+	Skipped: does not open	Пропусната: не се отваря
+	Skipped: larger than 1 GB	Пропусната: по-голяма от 1 ГБ
+	Skipped: can't be read	Пропусната: не може да се прочете
+	Skipped: reading failed	Пропусната: четенето не успя
+	Skipped: now in the cloud	Пропусната: вече е в облака
+	Skipped: a link, never followed	Пропусната: връзка, никога не се следва
+	Skipped: no longer there	Пропусната: вече я няма
+	Left as it was: its index can't be read now	Оставена както беше: индексът ѝ не може да се прочете сега
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Прочетени страници: {pages} · диаграми: {diagrams} · за проверка: {review} · партии: {games}
+	no piece model: picture diagrams not read	без модел на фигурите: диаграмите-изображения не са прочетени
+	Stopped partway: Continue goes on from there	Спряна по средата: „Продължи“ продължава оттам
+	Not read yet	Още не е прочетена
+	In the cloud: never opened	В облака: никога не се отваря
+	Not kept: the Library is full (128 MB)	Не е запазена: Библиотеката е пълна (128 МБ)
+	Encrypted: you said yes	Шифрована: казахте да
+	The Library needs the app's data folder, and there is none.	Библиотеката се нуждае от папката с данни на приложението, а такава няма.
+	Choose a folder of chess books	Изберете папка с шахматни книги
+	Books left out of the Library: {n}	Книги, извадени от Библиотеката: {n}
+	This folder is in the Library already, through {dir}.	Тази папка вече е в Библиотеката, чрез {dir}.
+	The Library has {n} folders already.	Библиотеката вече има папки: {n}.
+	The Library's folders couldn't be changed: {e}	Папките на Библиотеката не могат да бъдат променени: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Изграждането на Библиотеката е спряно: оставащи книги: {n}. „Продължи“ продължава оттам.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Библиотеката е изградена: прочетени книги сега: {read}; книги в Библиотеката: {indexed}.
+	The Library couldn't be built: {e}	Библиотеката не може да бъде изградена: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} е в облака, не на този компютър: не се отваря.
+	{path} is no longer there: build the Library again to forget it.	{path} вече го няма: изградете Библиотеката отново, за да го забрави.
+	This move is in the book's PGN, which gives no page for it.	Този ход е в PGN на книгата, който не посочва страницата му.
+	The move couldn't be outlined: page {page} reads differently now.	Ходът не може да бъде очертан: страница {page} сега се чете различно.
+	Library	Библиотека
+	Books	Книги
+	Stopping after this page…	Спиране след тази страница…
+	Building the Library: looking at the folders…	Изграждане на Библиотеката: преглед на папките…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Изграждане на Библиотеката: книга {n} от {m} ({name}), страница {p} от {q}
+	Building the Library: book {n} of {m} ({name})	Изграждане на Библиотеката: книга {n} от {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Книгите от папките, които изберете, прочетени веднъж, така че позиция, ход или играч да се намира във всички. Нищо не се чете, докато не изградите.
+	No folder yet: add the folders where your chess books are.	Още няма папки: добавете папките с вашите шахматни книги.
+	Its books leave the Library; the files stay where they are.	Книгите ѝ напускат Библиотеката; файловете остават, където са.
+	Add a folder…	Добавяне на папка…
+	The folders can't change while the Library is being built.	Папките не могат да се променят, докато Библиотеката се изгражда.
+	Books in the Library: {n}	Книги в Библиотеката: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Непрегледани: връзки {links}, папки в облака {cloud}, папки, които не могат да се изброят {unlisted}.
+	The folders hold more than a build looks at.	Папките съдържат повече, отколкото преглежда едно изграждане.
+	Build	Изграждане
+	Reads on {n} of the {all} cores of this computer.	Чете на {n} от {all} ядра на този компютър.
+	Counting the pages: book {n} of {m}…	Преброяване на страниците: книга {n} от {m}…
+	Every book is read: a build only looks for new or changed ones.	Всички книги са прочетени: изграждането търси само нови или променени.
+	To read: {books} books, {pages} pages, {time} (an estimate)	За четене: книги {books}, страници {pages}, {time} (оценка)
+	Books whose pages could not be counted: {n}	Книги, чиито страници не можаха да бъдат преброени: {n}
+	Leave out	Изключване
+	Position (FEN)	Позиция (FEN)
+	Move (SAN)	Ход (SAN)
+	Player	Играч
+	Opening (ECO)	Откриване (ECO)
+	From the board	От дъската
+	The position the Board tab shows	Позицията, която показва разделът Дъска
+	Either side to move	Ход на която и да е страна
+	Not a FEN: {e}	Не е FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Напишете позиция (FEN), ход като Bxh7+, играч, турнир или код на откриване като B90.
+	Looking in the Library…	Търсене в Библиотеката…
+	The Library couldn't be searched: {e}	Търсенето в Библиотеката не успя: {e}
+	No book of the Library is read yet: build it first, in Books.	Още няма прочетена книга в Библиотеката: първо я изградете, в Книги.
+	Books not read yet, not looked in: {n}	Книги, още непрочетени, непрегледани: {n}
+	Books whose index could not be read: {n}	Книги, чийто индекс не можа да бъде прочетен: {n}
+	Nothing in the Library matches.	Нищо в Библиотеката не съвпада.
+	Open the Library	Отваряне на Библиотеката
+	Look in the Library	Търсене в Библиотеката
+	Find this position in every book of the Library	Търсене на тази позиция във всички книги на Библиотеката
+	Library…	Библиотека…

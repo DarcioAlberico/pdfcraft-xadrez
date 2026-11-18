@@ -32,6 +32,7 @@
 
 pub mod find;
 pub mod index;
+pub mod plan;
 pub mod walk;
 
 #[cfg(test)]
@@ -61,6 +62,8 @@ pub const MAX_PAGE_BYTES: u64 = 128 << 20;
 pub const MAX_BOOK_BYTES: usize = 1 << 30;
 /// The version of what makes an index: raised when the index made of the same reading changes.
 pub const KEY_VERSION: u32 = 1;
+/// Most folders chosen (plan A9-N15c).
+pub const MAX_FOLDERS: usize = 64;
 
 const CATALOG: &str = "catalog.json";
 const CATALOG_FORMAT: &str = "pdfcraft-chess-library";
@@ -201,6 +204,10 @@ pub struct Catalog {
     /// The folders chosen.
     pub dirs: Vec<String>,
     pub books: Vec<CatalogBook>,
+    /// The encrypted books the person said yes to, by hash (D31 A; plan A9-N15c): every build
+    /// reads them, whoever asks for it. A build before this field ignores it.
+    #[serde(default)]
+    pub allowed: Vec<String>,
     #[serde(default)]
     pub walk: WalkNote,
     /// When it was last written, in seconds since 1970.
@@ -538,8 +545,11 @@ impl Library {
                 chosen.push(d);
             }
         }
+        // The yeses kept in the catalog and those given now, each once (plan A9-N15c).
+        let allowed = allowed_of(&before.allowed, &opts.allowed);
         let mut catalog = Catalog {
             dirs: chosen,
+            allowed: allowed.clone(),
             walk: WalkNote {
                 entries: walked.entries,
                 capped: walked.capped.clone(),
@@ -596,7 +606,7 @@ impl Library {
                 continue;
             }
             let book = Book { pdf, path: &path, hash: &hash, content: &content, n, books };
-            let wants = Wants { settings: &settings, models: &models, general: general.as_ref(), opts };
+            let wants = Wants { settings: &settings, models: &models, general: general.as_ref(), opts, allowed: &allowed };
             let (entry, run, outcome) = self.book(&book, bytes, &wants, progress);
             if outcome == Outcome::Read || outcome == Outcome::Stopped {
                 read = read.saturating_add(1);
@@ -668,7 +678,7 @@ impl Library {
         let keys = doc.doc_keys();
         match super::store::persist_policy(doc) {
             super::store::Persist::Never => return (skip(entry, Skip::Never, None), run, Outcome::Skipped),
-            super::store::Persist::Ask if !wants.opts.allowed.iter().any(|h| h.eq_ignore_ascii_case(book.hash)) => {
+            super::store::Persist::Ask if !wants.allowed.iter().any(|h| h.eq_ignore_ascii_case(book.hash)) => {
                 return (skip(entry, Skip::Ask, None), run, Outcome::Skipped);
             }
             super::store::Persist::Ask => session.set_chess_keep(id, true),
@@ -862,6 +872,136 @@ struct Wants<'a> {
     models: &'a ChessModels,
     general: Option<&'a [u8; 32]>,
     opts: &'a BuildOptions,
+    /// The encrypted books said yes to: the catalog's and the options', in lower case.
+    allowed: &'a [String],
+}
+
+/// The hashes of `kept` and of `given`, each once, in lower case: only hashes, at most
+/// [`walk::MAX_BOOKS`] (the catalog is untrusted input).
+fn allowed_of(kept: &[String], given: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for h in kept.iter().chain(given) {
+        let h = h.to_ascii_lowercase();
+        if out.len() < walk::MAX_BOOKS && is_hash(&h) && !out.contains(&h) {
+            out.push(h);
+        }
+    }
+    out
+}
+
+/// Why the folders or the yeses of a Library could not be changed (plan A9-N15c).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ChangeError {
+    /// The folder is in the Library already: it is this chosen folder, or inside it.
+    Within(String),
+    /// [`MAX_FOLDERS`] are chosen already.
+    TooMany,
+    /// Not a book's hash.
+    NotAHash,
+    /// The catalog could not be written, and why.
+    Write(String),
+}
+
+impl std::fmt::Display for ChangeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChangeError::Within(dir) => write!(f, "the folder is in the Library already, through {dir}"),
+            ChangeError::TooMany => write!(f, "the Library has {MAX_FOLDERS} folders already"),
+            ChangeError::NotAHash => write!(f, "not a book's hash"),
+            ChangeError::Write(why) => write!(f, "the Library's catalog can't be written: {why}"),
+        }
+    }
+}
+
+/// What [`Library::remove_folder`] took out: the books that were only there, and the indexes no
+/// book names any more (their hashes, and the bytes freed).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Removed {
+    pub books: usize,
+    pub orphans: Vec<String>,
+    pub orphan_bytes: u64,
+}
+
+impl Library {
+    /// Choose folder `dir` (plan A9-N15c): only the catalog changes; nothing is walked or read
+    /// until a build is asked for (D31 B). A folder that is a chosen one or inside one is refused
+    /// (its books are in the Library already); chosen folders inside `dir` give way to it. At most
+    /// [`MAX_FOLDERS`]. The catalog as written.
+    pub fn add_folder(&self, dir: &Path) -> Result<Catalog, ChangeError> {
+        let mut catalog = self.catalog();
+        if let Some(within) = catalog.dirs.iter().find(|d| dir.starts_with(Path::new(d.as_str()))) {
+            return Err(ChangeError::Within(within.clone()));
+        }
+        catalog.dirs.retain(|d| !Path::new(d.as_str()).starts_with(dir));
+        if catalog.dirs.len() >= MAX_FOLDERS {
+            return Err(ChangeError::TooMany);
+        }
+        catalog.dirs.push(dir.to_string_lossy().into_owned());
+        std::fs::create_dir_all(&self.dir).map_err(|e| ChangeError::Write(e.to_string()))?;
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        Ok(catalog)
+    }
+
+    /// Leave folder `dir` (as the catalog writes it) out of the Library (plan A9-N15c): its books
+    /// leave the catalog — a book with a path in another chosen folder keeps that path — and so
+    /// do the walk's notes of it; the indexes no book names any more are taken out. The files of
+    /// the folder are never touched. A folder not chosen changes nothing.
+    pub fn remove_folder(&self, dir: &str) -> Result<Removed, ChangeError> {
+        let mut catalog = self.catalog();
+        let count = catalog.dirs.len();
+        catalog.dirs.retain(|d| d != dir);
+        if catalog.dirs.len() == count {
+            return Ok(Removed::default());
+        }
+        let gone = Path::new(dir);
+        let chosen: Vec<PathBuf> = catalog.dirs.iter().map(PathBuf::from).collect();
+        let stays = |p: &str| {
+            let p = Path::new(p);
+            !p.starts_with(gone) || chosen.iter().any(|d| p.starts_with(d))
+        };
+        let mut books = 0usize;
+        catalog.books.retain_mut(|b| {
+            b.paths.retain(|p| stays(p));
+            let kept = !b.paths.is_empty();
+            if !kept {
+                books = books.saturating_add(1);
+            }
+            kept
+        });
+        catalog.walk.links.retain(|p| stays(p));
+        catalog.walk.cloud_folders.retain(|p| stays(p));
+        catalog.walk.unlisted.retain(|(p, _)| stays(p));
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        let (orphans, orphan_bytes, _) = self.sweep(&catalog);
+        Ok(Removed { books, orphans, orphan_bytes })
+    }
+
+    /// Say yes (`yes`) or no to the encrypted book `hash` (D31 A; plan A9-N15c): with a yes, every
+    /// build reads it. The catalog as written.
+    pub fn allow(&self, hash: &str, yes: bool) -> Result<Catalog, ChangeError> {
+        if !is_hash(hash) {
+            return Err(ChangeError::NotAHash);
+        }
+        let hash = hash.to_ascii_lowercase();
+        let mut catalog = self.catalog();
+        let mut allowed = allowed_of(&catalog.allowed, &[]);
+        allowed.retain(|h| *h != hash);
+        if yes {
+            allowed.push(hash);
+        }
+        catalog.allowed = allowed_of(&allowed, &[]);
+        std::fs::create_dir_all(&self.dir).map_err(|e| ChangeError::Write(e.to_string()))?;
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        Ok(catalog)
+    }
+}
+
+/// Whether the PDF at `path` is on this computer to be opened (plan A9-N15c: a result of the
+/// search, just before it opens): the entry is looked at without following a link, and a link,
+/// a file whose data is in the cloud (opening it would download it) or one no longer there is
+/// not opened, and why.
+pub fn on_this_computer(path: &Path) -> Result<(), Skip> {
+    still_a_book(path, u64::MAX)
 }
 
 /// What became of a book in a build.

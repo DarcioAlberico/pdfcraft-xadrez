@@ -3750,3 +3750,75 @@ progress bar	Progress	进度
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	无法在书中查找：{e}
 	The diagrams read couldn't be looked at: {e}	无法查看已读取的局面图：{e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why}（{e}）
+	Skipped: copying not allowed	已跳过：不允许复制
+	Encrypted: read it into the Library?	已加密：要读入书库吗？
+	Skipped: does not open	已跳过：无法打开
+	Skipped: larger than 1 GB	已跳过：大于 1 GB
+	Skipped: can't be read	已跳过：无法读取
+	Skipped: reading failed	已跳过：读取失败
+	Skipped: now in the cloud	已跳过：现在在云端
+	Skipped: a link, never followed	已跳过：链接，从不跟随
+	Skipped: no longer there	已跳过：已不在原处
+	Left as it was: its index can't be read now	保持原样：其索引现在无法读取
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	已读页数：{pages} · 棋图：{diagrams} · 待复核：{review} · 对局：{games}
+	no piece model: picture diagrams not read	无棋子模型：图片棋图未读取
+	Stopped partway: Continue goes on from there	中途停止：“继续”从那里接着读
+	Not read yet	尚未读取
+	In the cloud: never opened	在云端：从不打开
+	Not kept: the Library is full (128 MB)	未保存：书库已满（128 MB）
+	Encrypted: you said yes	已加密：你已同意
+	The Library needs the app's data folder, and there is none.	书库需要应用的数据文件夹，但没有。
+	Choose a folder of chess books	选择一个国际象棋书籍文件夹
+	Books left out of the Library: {n}	移出书库的书：{n}
+	This folder is in the Library already, through {dir}.	此文件夹已通过 {dir} 在书库中。
+	The Library has {n} folders already.	书库已有 {n} 个文件夹。
+	The Library's folders couldn't be changed: {e}	无法更改书库的文件夹：{e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	书库构建已停止：剩余的书：{n}。“继续”从那里接着读。
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	书库已构建：本次读取的书：{read}；书库中的书：{indexed}。
+	The Library couldn't be built: {e}	无法构建书库：{e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} 在云端，不在这台电脑上：不会打开。
+	{path} is no longer there: build the Library again to forget it.	{path} 已不在原处：重新构建书库即可将其忘记。
+	This move is in the book's PGN, which gives no page for it.	这步棋在本书的 PGN 中，但其中没有给出页码。
+	The move couldn't be outlined: page {page} reads differently now.	无法框出这步棋：第 {page} 页现在的读取结果不同。
+	Library	书库
+	Books	书籍
+	Stopping after this page…	将在本页之后停止…
+	Building the Library: looking at the folders…	正在构建书库：查看文件夹…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	正在构建书库：第 {n}/{m} 本（{name}），第 {p}/{q} 页
+	Building the Library: book {n} of {m} ({name})	正在构建书库：第 {n}/{m} 本（{name}）
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	你选择的文件夹中的书只读取一次，之后就能在所有书中找到某个局面、某步棋或某位棋手。在你构建之前不会读取任何内容。
+	No folder yet: add the folders where your chess books are.	还没有文件夹：添加存放你的国际象棋书籍的文件夹。
+	Its books leave the Library; the files stay where they are.	其中的书会移出书库；文件保留在原处。
+	Add a folder…	添加文件夹…
+	The folders can't change while the Library is being built.	构建书库期间不能更改文件夹。
+	Books in the Library: {n}	书库中的书：{n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	未查看：链接 {links}，云端文件夹 {cloud}，无法列出的文件夹 {unlisted}。
+	The folders hold more than a build looks at.	这些文件夹包含的内容超出了一次构建的查看范围。
+	Build	构建
+	Reads on {n} of the {all} cores of this computer.	使用本机 {all} 个核心中的 {n} 个读取。
+	Counting the pages: book {n} of {m}…	正在计算页数：第 {n}/{m} 本…
+	Every book is read: a build only looks for new or changed ones.	所有书都已读取：构建只查找新的或已更改的书。
+	To read: {books} books, {pages} pages, {time} (an estimate)	待读取：{books} 本、{pages} 页、{time}（估计）
+	Books whose pages could not be counted: {n}	无法计算页数的书：{n}
+	Leave out	排除
+	Position (FEN)	局面（FEN）
+	Move (SAN)	着法（SAN）
+	Player	棋手
+	Opening (ECO)	开局（ECO）
+	From the board	从棋盘
+	The position the Board tab shows	棋盘标签页显示的局面
+	Either side to move	任一方走棋
+	Not a FEN: {e}	不是 FEN：{e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	输入一个局面（FEN）、一步棋（如 Bxh7+）、一位棋手、一项赛事或一个开局代码（如 B90）。
+	Looking in the Library…	正在书库中查找…
+	The Library couldn't be searched: {e}	无法在书库中查找：{e}
+	No book of the Library is read yet: build it first, in Books.	书库中还没有已读取的书：请先在“书籍”中构建。
+	Books not read yet, not looked in: {n}	尚未读取、未查看的书：{n}
+	Books whose index could not be read: {n}	索引无法读取的书：{n}
+	Nothing in the Library matches.	书库中没有匹配项。
+	Open the Library	打开书库
+	Look in the Library	在书库中查找
+	Find this position in every book of the Library	在书库的所有书中查找此局面
+	Library…	书库…

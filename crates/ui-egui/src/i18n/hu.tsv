@@ -3784,3 +3784,75 @@ progress bar	Progress	Előrehaladás
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
 	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	Kihagyva: a másolás nem engedélyezett
+	Encrypted: read it into the Library?	Titkosítva: beolvassa a Könyvtárba?
+	Skipped: does not open	Kihagyva: nem nyílik meg
+	Skipped: larger than 1 GB	Kihagyva: nagyobb 1 GB-nál
+	Skipped: can't be read	Kihagyva: nem olvasható
+	Skipped: reading failed	Kihagyva: a beolvasás nem sikerült
+	Skipped: now in the cloud	Kihagyva: most a felhőben van
+	Skipped: a link, never followed	Kihagyva: hivatkozás, sosem követjük
+	Skipped: no longer there	Kihagyva: már nincs ott
+	Left as it was: its index can't be read now	Változatlanul hagyva: az indexe most nem olvasható
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Beolvasott oldalak: {pages} · diagramok: {diagrams} · ellenőrizendő: {review} · játszmák: {games}
+	no piece model: picture diagrams not read	nincs bábumodell: a képként rajzolt diagramok nincsenek beolvasva
+	Stopped partway: Continue goes on from there	Félúton leállítva: a Tovább innen folytatja
+	Not read yet	Még nincs beolvasva
+	In the cloud: never opened	A felhőben: sosem nyitjuk meg
+	Not kept: the Library is full (128 MB)	Nincs megtartva: a Könyvtár megtelt (128 MB)
+	Encrypted: you said yes	Titkosítva: igent mondott
+	The Library needs the app's data folder, and there is none.	A Könyvtárnak szüksége van az alkalmazás adatmappájára, de nincs ilyen.
+	Choose a folder of chess books	Válasszon egy mappát sakk-könyvekkel
+	Books left out of the Library: {n}	A Könyvtárból kivett könyvek: {n}
+	This folder is in the Library already, through {dir}.	Ez a mappa már a Könyvtárban van, ezen keresztül: {dir}.
+	The Library has {n} folders already.	A Könyvtárnak már {n} mappája van.
+	The Library's folders couldn't be changed: {e}	A Könyvtár mappáit nem sikerült módosítani: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	A Könyvtár építése leállt: hátralévő könyvek: {n}. A Tovább innen folytatja.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	A Könyvtár elkészült: most beolvasott könyvek: {read}; könyvek a Könyvtárban: {indexed}.
+	The Library couldn't be built: {e}	A Könyvtárat nem sikerült felépíteni: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} a felhőben van, nem ezen a számítógépen: nem nyitjuk meg.
+	{path} is no longer there: build the Library again to forget it.	{path} már nincs ott: építse fel újra a Könyvtárat, hogy elfelejtse.
+	This move is in the book's PGN, which gives no page for it.	Ez a lépés a könyv PGN-jében van, amely nem ad meg hozzá oldalt.
+	The move couldn't be outlined: page {page} reads differently now.	A lépést nem sikerült bekeretezni: a(z) {page}. oldal most másként olvasható.
+	Library	Könyvtár
+	Books	Könyvek
+	Stopping after this page…	Leállás ezután az oldal után…
+	Building the Library: looking at the folders…	A Könyvtár építése: a mappák átnézése…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	A Könyvtár építése: {n}. könyv / {m} ({name}), {p}. oldal / {q}
+	Building the Library: book {n} of {m} ({name})	A Könyvtár építése: {n}. könyv / {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	A választott mappák könyvei egyszer beolvasva, hogy egy állás, lépés vagy játékos mindegyikben megtalálható legyen. Semmit nem olvasunk be, amíg nem épít.
+	No folder yet: add the folders where your chess books are.	Még nincs mappa: adja hozzá a sakk-könyveit tartalmazó mappákat.
+	Its books leave the Library; the files stay where they are.	A könyvei kikerülnek a Könyvtárból; a fájlok maradnak, ahol vannak.
+	Add a folder…	Mappa hozzáadása…
+	The folders can't change while the Library is being built.	A mappák nem módosíthatók, amíg a Könyvtár épül.
+	Books in the Library: {n}	Könyvek a Könyvtárban: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Nem átnézve: hivatkozások {links}, felhőbeli mappák {cloud}, nem listázható mappák {unlisted}.
+	The folders hold more than a build looks at.	A mappákban több van, mint amennyit egy építés átnéz.
+	Build	Építés
+	Reads on {n} of the {all} cores of this computer.	{n} magon olvas a számítógép {all} magjából.
+	Counting the pages: book {n} of {m}…	Oldalak számolása: {n}. könyv / {m}…
+	Every book is read: a build only looks for new or changed ones.	Minden könyv be van olvasva: az építés csak az újakat vagy változottakat keresi.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Beolvasandó: {books} könyv, {pages} oldal, {time} (becslés)
+	Books whose pages could not be counted: {n}	Könyvek, amelyek oldalait nem sikerült megszámolni: {n}
+	Leave out	Kihagyás
+	Position (FEN)	Állás (FEN)
+	Move (SAN)	Lépés (SAN)
+	Player	Játékos
+	Opening (ECO)	Megnyitás (ECO)
+	From the board	A tábláról
+	The position the Board tab shows	A Tábla lapon látható állás
+	Either side to move	Bármelyik fél lép
+	Not a FEN: {e}	Nem FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Írjon be egy állást (FEN), egy lépést, például Bxh7+, egy játékost, egy eseményt vagy egy megnyitáskódot, például B90.
+	Looking in the Library…	Keresés a Könyvtárban…
+	The Library couldn't be searched: {e}	A Könyvtárban nem sikerült keresni: {e}
+	No book of the Library is read yet: build it first, in Books.	A Könyvtár egy könyve sincs még beolvasva: előbb építse fel, a Könyvek részben.
+	Books not read yet, not looked in: {n}	Még be nem olvasott, át nem nézett könyvek: {n}
+	Books whose index could not be read: {n}	Könyvek, amelyek indexét nem sikerült beolvasni: {n}
+	Nothing in the Library matches.	Semmi sem egyezik a Könyvtárban.
+	Open the Library	A Könyvtár megnyitása
+	Look in the Library	Keresés a Könyvtárban
+	Find this position in every book of the Library	Ennek az állásnak a keresése a Könyvtár összes könyvében
+	Library…	Könyvtár…

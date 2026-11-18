@@ -886,6 +886,15 @@ pub(crate) fn list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
     let mut mode = chess.in_book.mode;
     crate::widgets::segmented(ui, tl!("Look for"), &mut mode, &[(Mode::Position, tl!("This position")), (Mode::Pattern, tl!("By material"))]);
     chess.in_book.mode = mode;
+    // The position in every book of the Library (plan A9-N15c; desktop only).
+    #[cfg(not(target_arch = "wasm32"))]
+    if mode == Mode::Position {
+        let r = ui.add(egui::Button::new(tl!("Look in the Library")).min_size(vec2(24.0, 24.0)));
+        if r.on_hover_text(tl!("Find this position in every book of the Library")).clicked() {
+            let fen = crate::chess_library::board_fen(chess);
+            chess.library.ask_position(fen);
+        }
+    }
     ui.add_space(4.0);
     match mode {
         Mode::Position => position_list(ui, t, chess),

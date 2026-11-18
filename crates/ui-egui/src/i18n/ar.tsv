@@ -4058,3 +4058,75 @@ progress bar	Progress	التقدم
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	تعذّر البحث في الكتاب: {e}
 	The diagrams read couldn't be looked at: {e}	تعذّر النظر في المخططات المقروءة: {e}
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	{why} ({e})	{why} ({e})
+	Skipped: copying not allowed	تم التخطي: النسخ غير مسموح
+	Encrypted: read it into the Library?	مشفّر: هل يُقرأ في المكتبة؟
+	Skipped: does not open	تم التخطي: لا يُفتح
+	Skipped: larger than 1 GB	تم التخطي: أكبر من 1 غيغابايت
+	Skipped: can't be read	تم التخطي: تتعذر قراءته
+	Skipped: reading failed	تم التخطي: فشلت القراءة
+	Skipped: now in the cloud	تم التخطي: صار الآن في السحابة
+	Skipped: a link, never followed	تم التخطي: رابط، لا يُتبع أبدًا
+	Skipped: no longer there	تم التخطي: لم يعد موجودًا
+	Left as it was: its index can't be read now	تُرك كما كان: يتعذر قراءة فهرسه الآن
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	الصفحات المقروءة: {pages} · المخططات: {diagrams} · للمراجعة: {review} · المباريات: {games}
+	no piece model: picture diagrams not read	لا يوجد نموذج القطع: لم تُقرأ المخططات المرسومة كصور
+	Stopped partway: Continue goes on from there	توقف في المنتصف: متابعة تكمل من هناك
+	Not read yet	لم يُقرأ بعد
+	In the cloud: never opened	في السحابة: لا يُفتح أبدًا
+	Not kept: the Library is full (128 MB)	لم يُحفظ: المكتبة ممتلئة (128 ميغابايت)
+	Encrypted: you said yes	مشفّر: قلت نعم
+	The Library needs the app's data folder, and there is none.	تحتاج المكتبة إلى مجلد بيانات التطبيق، ولا يوجد واحد.
+	Choose a folder of chess books	اختر مجلدًا لكتب الشطرنج
+	Books left out of the Library: {n}	الكتب التي أُخرجت من المكتبة: {n}
+	This folder is in the Library already, through {dir}.	هذا المجلد موجود في المكتبة بالفعل، عبر {dir}.
+	The Library has {n} folders already.	في المكتبة بالفعل مجلدات عددها: {n}.
+	The Library's folders couldn't be changed: {e}	تعذّر تغيير مجلدات المكتبة: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	أُوقف بناء المكتبة: الكتب المتبقية: {n}. متابعة تكمل من هناك.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	بُنيت المكتبة: الكتب المقروءة الآن: {read}؛ الكتب في المكتبة: {indexed}.
+	The Library couldn't be built: {e}	تعذّر بناء المكتبة: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} في السحابة، وليس على هذا الحاسوب: لن يُفتح.
+	{path} is no longer there: build the Library again to forget it.	{path} لم يعد موجودًا: أعد بناء المكتبة لتنساه.
+	This move is in the book's PGN, which gives no page for it.	هذه النقلة في PGN الكتاب، الذي لا يذكر صفحتها.
+	The move couldn't be outlined: page {page} reads differently now.	تعذّر تحديد النقلة: الصفحة {page} تُقرأ الآن بشكل مختلف.
+	Library	المكتبة
+	Books	الكتب
+	Stopping after this page…	التوقف بعد هذه الصفحة…
+	Building the Library: looking at the folders…	بناء المكتبة: فحص المجلدات…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	بناء المكتبة: الكتاب {n} من {m} ({name})، الصفحة {p} من {q}
+	Building the Library: book {n} of {m} ({name})	بناء المكتبة: الكتاب {n} من {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	كتب المجلدات التي تختارها، تُقرأ مرة واحدة، ليُعثر على موضع أو نقلة أو لاعب فيها كلها. لا يُقرأ شيء حتى تبني.
+	No folder yet: add the folders where your chess books are.	لا يوجد مجلد بعد: أضف المجلدات التي فيها كتب الشطرنج الخاصة بك.
+	Its books leave the Library; the files stay where they are.	تخرج كتبه من المكتبة؛ وتبقى الملفات في مكانها.
+	Add a folder…	إضافة مجلد…
+	The folders can't change while the Library is being built.	لا يمكن تغيير المجلدات أثناء بناء المكتبة.
+	Books in the Library: {n}	الكتب في المكتبة: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	لم يُفحص: الروابط {links}، المجلدات في السحابة {cloud}، المجلدات التي يتعذر سردها {unlisted}.
+	The folders hold more than a build looks at.	تحوي المجلدات أكثر مما يفحصه بناء واحد.
+	Build	بناء
+	Reads on {n} of the {all} cores of this computer.	يقرأ على {n} من {all} أنوية هذا الحاسوب.
+	Counting the pages: book {n} of {m}…	عدّ الصفحات: الكتاب {n} من {m}…
+	Every book is read: a build only looks for new or changed ones.	كل الكتب مقروءة: البناء يبحث فقط عن الجديد أو المتغير.
+	To read: {books} books, {pages} pages, {time} (an estimate)	للقراءة: الكتب {books}، الصفحات {pages}، {time} (تقدير)
+	Books whose pages could not be counted: {n}	الكتب التي تعذّر عدّ صفحاتها: {n}
+	Leave out	استبعاد
+	Position (FEN)	الموضع (FEN)
+	Move (SAN)	النقلة (SAN)
+	Player	اللاعب
+	Opening (ECO)	الافتتاح (ECO)
+	From the board	من الرقعة
+	The position the Board tab shows	الموضع الذي يعرضه تبويب الرقعة
+	Either side to move	الدور لأي طرف
+	Not a FEN: {e}	ليس FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	اكتب موضعًا (FEN)، أو نقلة مثل Bxh7+، أو لاعبًا، أو بطولة، أو رمز افتتاح مثل B90.
+	Looking in the Library…	البحث في المكتبة…
+	The Library couldn't be searched: {e}	تعذّر البحث في المكتبة: {e}
+	No book of the Library is read yet: build it first, in Books.	لم يُقرأ أي كتاب من المكتبة بعد: ابنها أولًا، في الكتب.
+	Books not read yet, not looked in: {n}	كتب لم تُقرأ بعد، لم تُفحص: {n}
+	Books whose index could not be read: {n}	كتب تعذّرت قراءة فهرسها: {n}
+	Nothing in the Library matches.	لا شيء في المكتبة يطابق.
+	Open the Library	فتح المكتبة
+	Look in the Library	البحث في المكتبة
+	Find this position in every book of the Library	البحث عن هذا الموضع في كل كتب المكتبة
+	Library…	المكتبة…
