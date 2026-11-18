@@ -2711,6 +2711,7 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Black knight	Cavallo nero
 	Black pawn	Pedone nero
 	White	Bianco
+chess side	Black	Nero
 	Board: {fen}	Scacchiera: {fen}
 	Board, {state}, move {n}	Scacchiera, {state}, mossa {n}
 	Board, {state}	Scacchiera, {state}

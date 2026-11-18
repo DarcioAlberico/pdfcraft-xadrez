@@ -683,17 +683,18 @@ fn asks_for_executable(name: &str, text: &str) -> Vec<String> {
         .collect()
 }
 
-/// The chess texts of `crates/ui-egui/src/chess*.rs` in every catalogue (all 22, plan A9-I14b).
+/// The chess texts of `crates/ui-egui/src/chess*.rs` in every catalogue (all 22, plan A9-I14b),
+/// a `tl_ctx!` text under its own context (plan A9-I14c).
 fn chess_catalogues(root: &Path) -> Result<String, String> {
     let src = root.join("crates/ui-egui/src");
-    let mut literals = BTreeSet::new();
+    let mut texts = BTreeSet::new();
     let entries = std::fs::read_dir(&src).map_err(|e| format!("{}: {e}", src.display()))?;
     for entry in entries.flatten() {
         let path = entry.path();
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         if chess_i18n_scan::is_chess_source(&name) {
             let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            literals.extend(chess_i18n_scan::tl_literals(&text.replace("\r\n", "\n")));
+            texts.extend(chess_i18n_scan::tl_texts(&text.replace("\r\n", "\n")));
         }
     }
     let i18n = src.join("i18n");
@@ -706,13 +707,18 @@ fn chess_catalogues(root: &Path) -> Result<String, String> {
             catalogues.push((code, std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?));
         }
     }
-    let missing = chess_i18n_scan::missing(&literals, &catalogues);
+    let missing = chess_i18n_scan::missing(&texts, &catalogues);
     if missing.is_empty() {
-        Ok(format!("{} chess texts", literals.len()))
+        Ok(format!("{} chess texts", texts.len()))
     } else {
-        let lines: Vec<String> =
-            missing.iter().map(|(code, texts)| format!("{code}.tsv lacks {}: {:?}", texts.len(), texts.iter().take(5).collect::<Vec<_>>())).collect();
-        Err(format!("add each new chess text to every catalogue:\n{}", lines.join("\n")))
+        let lines: Vec<String> = missing
+            .iter()
+            .map(|(code, lacks)| {
+                let first: Vec<String> = lacks.iter().take(5).map(chess_i18n_scan::shown).collect();
+                format!("{code}.tsv lacks {}: {}", lacks.len(), first.join(", "))
+            })
+            .collect();
+        Err(format!("add each new chess text to every catalogue (a contextual one under its context):\n{}", lines.join("\n")))
     }
 }
 

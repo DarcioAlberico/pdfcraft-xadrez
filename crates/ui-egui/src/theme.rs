@@ -254,6 +254,67 @@ pub fn install_fonts_for(ctx: &egui::Context, cjk: CjkPreference) {
     ctx.set_fonts(installed_font_definitions(cjk));
 }
 
+/// The fonts egui laid text out with when [`fonts_generation`] last looked (plan A9-I9c).
+struct FontsSeen {
+    /// Each face by name, its `Arc` held: a face installed since is another `Arc`, never at the
+    /// address of one still held, so fonts installed anew are never taken for the ones seen.
+    faces: Vec<(String, Arc<FontData>)>,
+    families: std::collections::BTreeMap<FontFamily, Vec<String>>,
+    options: egui::epaint::text::TextOptions,
+    generation: u64,
+}
+
+impl FontsSeen {
+    fn of(fonts: &egui::epaint::text::FontsView<'_>, generation: u64) -> Self {
+        let defs = fonts.definitions();
+        Self {
+            faces: defs.font_data.iter().map(|(name, data)| (name.clone(), Arc::clone(data))).collect(),
+            families: defs.families.clone(),
+            options: *fonts.options(),
+            generation,
+        }
+    }
+
+    /// Whether egui lays text out with these faces, in this order, with these options.
+    fn is(&self, fonts: &egui::epaint::text::FontsView<'_>) -> bool {
+        let defs = fonts.definitions();
+        self.options == *fonts.options()
+            && self.families == defs.families
+            && self.faces.len() == defs.font_data.len()
+            && self.faces.iter().zip(&defs.font_data).all(|((name, data), (now_name, now))| name == now_name && Arc::ptr_eq(data, now))
+    }
+}
+
+/// Which fonts egui lays text out with in this pass, as a number that changes when they do (plan
+/// A9-I9c): other faces or another order of them (a language's fonts, `set_fonts` anywhere), other
+/// text options (the theme's) or a new atlas (egui starts one when the old one is 80 % full, and
+/// an atlas only grows while it lives). A galley kept from an earlier pass draws its glyphs from
+/// the atlas it was laid out with, so it is right only while this number holds. It is read from
+/// egui's fonts, not from the call that asks for new ones, so it changes on the very pass the new
+/// fonts are used. The app looks every pass, so fonts changed and changed back while nothing else
+/// asked (dark, light, dark again) still count.
+pub(crate) fn fonts_generation(ctx: &egui::Context) -> u64 {
+    let id = egui::Id::new("pdfcraft fonts seen");
+    let height_id = id.with("atlas height");
+    let seen = ctx.data(|d| d.get_temp::<Arc<FontsSeen>>(id));
+    let last_height = ctx.data(|d| d.get_temp::<usize>(height_id)).unwrap_or(0);
+    let (same, height) = ctx.fonts(|f| {
+        let height = f.font_image_size()[1];
+        (height >= last_height && seen.as_ref().is_some_and(|s| s.is(f)), height)
+    });
+    let generation = match seen {
+        Some(s) if same => s.generation,
+        other => {
+            let generation = other.map_or(0, |s| s.generation.wrapping_add(1));
+            let now = ctx.fonts(|f| FontsSeen::of(f, generation));
+            ctx.data_mut(|d| d.insert_temp(id, Arc::new(now)));
+            generation
+        }
+    };
+    ctx.data_mut(|d| d.insert_temp(height_id, height));
+    generation
+}
+
 /// The name of the installed face [`installed_font_definitions`] may add after the embedded ones.
 pub const SYSTEM_FALLBACK: &str = "system-fallback";
 /// The name of the installed Devanagari (Hindi) face [`installed_font_definitions`] may add.

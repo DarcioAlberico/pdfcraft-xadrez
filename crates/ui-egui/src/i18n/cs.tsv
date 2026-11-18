@@ -2573,6 +2573,7 @@ animation effects	Off	Vypnuto
 	Black knight	Černý jezdec
 	Black pawn	Černý pěšec
 	White	Bílý
+chess side	Black	Černý
 	Board: {fen}	Šachovnice: {fen}
 	Board, {state}, move {n}	Šachovnice, {state}, tah {n}
 	Board, {state}	Šachovnice, {state}

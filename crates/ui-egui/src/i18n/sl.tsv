@@ -2504,6 +2504,7 @@ animation effects	Off	Izklopljeni
 	Black knight	Črni skakač
 	Black pawn	Črni kmet
 	White	Beli
+chess side	Black	Črni
 	Board: {fen}	Šahovnica: {fen}
 	Board, {state}, move {n}	Šahovnica, {state}, poteza {n}
 	Board, {state}	Šahovnica, {state}

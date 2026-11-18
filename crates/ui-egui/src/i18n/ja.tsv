@@ -2501,6 +2501,7 @@ animation effects	Off	オフ
 	Black knight	黒のナイト
 	Black pawn	黒のポーン
 	White	白
+chess side	Black	黒
 	Board: {fen}	盤面: {fen}
 	Board, {state}, move {n}	盤面、{state}、{n} 手目
 	Board, {state}	盤面、{state}

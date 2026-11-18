@@ -2640,6 +2640,7 @@ animation effects	Off	Desactivados
 	Black knight	Caballo negro
 	Black pawn	Peón negro
 	White	Blancas
+chess side	Black	Negras
 	Board: {fen}	Tablero: {fen}
 	Board, {state}, move {n}	Tablero, {state}, jugada {n}
 	Board, {state}	Tablero, {state}

@@ -2776,6 +2776,7 @@ certificate	Version	الإصدار
 	Black knight	حصان أسود
 	Black pawn	بيدق أسود
 	White	الأبيض
+chess side	Black	الأسود
 	Board: {fen}	الرقعة: {fen}
 	Board, {state}, move {n}	الرقعة، {state}، النقلة {n}
 	Board, {state}	الرقعة، {state}

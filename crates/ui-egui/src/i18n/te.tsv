@@ -2406,6 +2406,7 @@ animation effects	Off	ఆఫ్
 	Black knight	నల్ల గుర్రం
 	Black pawn	నల్ల బంటు
 	White	తెలుపు
+chess side	Black	నలుపు
 	Board: {fen}	బోర్డు: {fen}
 	Board, {state}, move {n}	బోర్డు, {state}, ఎత్తు {n}
 	Board, {state}	బోర్డు, {state}

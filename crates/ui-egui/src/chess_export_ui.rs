@@ -525,7 +525,12 @@ impl PdfCraftApp {
             d.count = Some(Counted { pages, stamp, count: None });
             return;
         }
-        let Some(source) = self.chess_job_source(d.doc) else { return };
+        // A document that can't be read here (closed meanwhile) is counted by the export: said
+        // once, not tried again every frame (plan A9-N12b2).
+        let Some(source) = self.chess_job_source(d.doc) else {
+            d.count = Some(Counted { pages, stamp, count: None });
+            return;
+        };
         let mut options = self.chess_export_base(d.doc, ExportFormat::Sheet, "");
         // The dialog's pages, not those it was last answered with.
         options.pages = d.pages.pages(d.page_count);
@@ -576,12 +581,14 @@ impl PdfCraftApp {
     }
 
     /// Why the exercise sheet of dialog `d` is refused (plan A9-N12b; the engine refuses it too):
-    /// every page chosen is read and none holds an exercise.
+    /// every page chosen is read and none holds an exercise — and the pages before them the
+    /// export looks at for a caption were looked at too (plan A9-N12b2). Otherwise the export may
+    /// find a number the count could not, and only it refuses.
     fn sheet_refused(&self, d: &ExportDialog) -> Option<String> {
         if d.choices.format != ExportFormat::Sheet {
             return None;
         }
-        let c = self.sheet_counted(d).flatten().filter(|c| c.pages_not_read == 0 && c.exercises == 0)?;
+        let c = self.sheet_counted(d).flatten().filter(|c| c.pages_not_read == 0 && c.exercises == 0 && c.before_looked_at)?;
         Some(if c.no_position > 0 {
             crate::i18n::fmt(
                 tl!("No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n})."),
@@ -980,5 +987,96 @@ mod tests {
         assert_eq!(ExportChoices::from_json(&sheet.to_json()), sheet);
         assert_eq!(ExportChoices::from_json(&serde_json::json!({ "per_page": 5 })).sheet, SheetChoices::default());
         assert!(SheetChoices::default().solutions, "with the solutions unless the user says otherwise");
+    }
+
+    /// The export dialog on document `doc`, the exercise sheet chosen, page 2 of 3 (1-based).
+    fn sheet_dialog(doc: DocId) -> ExportDialog {
+        let choices = ExportChoices { format: ExportFormat::Sheet, ..ExportChoices::default() };
+        ExportDialog { doc, choices, pages: Pages { all: false, from: 2, to: 2 }, lang: None, page_count: 3, says: BookSays::FromText, count: None }
+    }
+
+    /// A blank PDF of `n` pages.
+    fn blank_pdf(n: usize) -> Vec<u8> {
+        let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 3 + i)).collect();
+        let mut objs = vec![
+            "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
+            format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 200 300] >>", kids.join(" ")),
+        ];
+        objs.extend((0..n).map(|_| "<< /Type /Page /Parent 2 0 R >>".to_owned()));
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objs.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+        out
+    }
+
+    /// Plan A9-N12b2 (the review of #406): every page chosen read and no exercise found refuses
+    /// the sheet in the dialog only when the page before, which the export looks at for a caption
+    /// at its foot, was looked at by the count too; otherwise the export says whether there is one.
+    #[test]
+    fn the_sheet_is_refused_only_when_the_page_before_was_looked_at() {
+        let app = PdfCraftApp::new();
+        let mut d = sheet_dialog(DocId(9));
+        let pages = d.pages.key(d.page_count);
+        let none = SheetCount { pages_counted: 1, ..SheetCount::default() };
+        d.count = Some(Counted { pages, stamp: None, count: Some(none) });
+        assert_eq!(app.sheet_refused(&d), None, "the page before not looked at: left to the export");
+        d.count = Some(Counted { pages, stamp: None, count: Some(SheetCount { before_looked_at: true, ..none }) });
+        assert!(app.sheet_refused(&d).is_some_and(|why| why.contains("no numbered diagram")), "{:?}", app.sheet_refused(&d));
+    }
+
+    /// Plan A9-N12b2: a dialog whose document can't be read for a count (closed meanwhile) is
+    /// counted by the export, said so once; it is not tried again every frame ("counting…" for
+    /// ever).
+    #[test]
+    fn a_document_that_cannot_be_counted_is_left_to_the_export() {
+        let mut app = PdfCraftApp::new();
+        app.run_inline = true;
+        let mut d = sheet_dialog(DocId(9));
+        app.count_sheet(&mut d);
+        assert!(app.chess.sheet_count.is_none(), "nothing runs");
+        assert_eq!(app.sheet_counted(&d), Some(None), "it could not count: the export will");
+        app.count_sheet(&mut d);
+        assert_eq!(app.sheet_counted(&d), Some(None), "and it is not tried again");
+    }
+
+    /// Plan A9-N12b2: the pages are changed while a count runs. The count that ends is of the pages
+    /// it was started for: the dialog never takes it for the new ones ("counting…" until they are
+    /// counted), and the next frame counts them.
+    #[test]
+    fn a_count_of_pages_since_changed_is_not_taken_for_the_new_ones() {
+        let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+        pdfcraft_engine::chess::install_models(Some(none));
+        let mut app = PdfCraftApp::new();
+        app.run_inline = true;
+        app.open_bytes("book.pdf", None, blank_pdf(3)).expect("opens");
+        let doc = app.views[0].id;
+        let mut d = sheet_dialog(doc);
+        let started_for = d.pages.key(d.page_count);
+        let stamp = app.session.chess_stamp(doc);
+        let (go, gate) = std::sync::mpsc::channel::<()>();
+        let stale = SheetCount { exercises: 5, pages_counted: 1, before_looked_at: true, ..SheetCount::default() };
+        let job = crate::chess_job::Job::spawn("pdfcraft-chess-sheet-count-test", false, move |_| {
+            gate.recv().map_err(|e| e.to_string())?;
+            Ok((Some(stale), pdfcraft_engine::chess::ChessCached::default()))
+        });
+        app.chess.sheet_count = Some(Counting { doc, pages: started_for, stamp, job });
+        // Page 3 chosen while page 2 is counted.
+        d.pages = Pages { all: false, from: 3, to: 3 };
+        app.count_sheet(&mut d);
+        assert_eq!(app.sheet_counted(&d), None, "counting…");
+        go.send(()).expect("the count waits");
+        assert!(app.chess.sheet_count.as_ref().is_some_and(|c| c.job.wait(std::time::Duration::from_secs(60))), "the count ended");
+        app.count_sheet(&mut d);
+        assert!(app.chess.sheet_count.is_none(), "the new pages counted, here (inline)");
+        assert_eq!(app.sheet_counted(&d), Some(Some(SheetCount { pages_not_read: 1, ..SheetCount::default() })), "page 3's count, not page 2's");
     }
 }

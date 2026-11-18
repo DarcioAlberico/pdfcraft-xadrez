@@ -2412,6 +2412,7 @@ animation effects	Off	Выкл
 	Black knight	Чёрный конь
 	Black pawn	Чёрная пешка
 	White	Белые
+chess side	Black	Чёрные
 	Board: {fen}	Доска: {fen}
 	Board, {state}, move {n}	Доска, {state}, ход {n}
 	Board, {state}	Доска, {state}

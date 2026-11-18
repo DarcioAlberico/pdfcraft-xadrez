@@ -649,30 +649,38 @@ mod tests {
     use super::catalog::{Entry, parse_entries, placeholders};
     use super::*;
 
-    /// Every `tl!` literal of the chess source files.
-    fn chess_literals() -> std::collections::BTreeSet<String> {
+    /// Every `tl!` and `tl_ctx!` text of the chess source files, as the scan keys them.
+    fn chess_texts() -> std::collections::BTreeSet<super::chess_scan::Text> {
         let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let mut literals = std::collections::BTreeSet::new();
+        let mut texts = std::collections::BTreeSet::new();
         for entry in std::fs::read_dir(&src).expect("UI source directory") {
             let path = entry.expect("UI source entry").path();
             let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             if super::chess_scan::is_chess_source(&name) {
-                literals.extend(super::chess_scan::tl_literals(&std::fs::read_to_string(&path).expect("chess source").replace("\r\n", "\n")));
+                texts.extend(super::chess_scan::tl_texts(&std::fs::read_to_string(&path).expect("chess source").replace("\r\n", "\n")));
             }
         }
-        literals
+        texts
     }
 
-    /// Plan A9-Q1a: every chess text is in every catalogue, all 22 since plan A9-I14b (the scan
-    /// `chess_scan`, which `cargo xtask chess-gate` runs too).
+    /// Plan A9-Q1a: every chess text is in every catalogue, all 22 since plan A9-I14b, and a
+    /// `tl_ctx!` text under its own context since plan A9-I14c (the scan `chess_scan`, which
+    /// `cargo xtask chess-gate` runs too).
     #[test]
     fn every_catalogue_has_every_chess_text() {
-        let literals = chess_literals();
-        assert!(literals.len() > 500 && literals.contains("Detect diagrams"), "the scan found the chess texts: {}", literals.len());
+        let texts = chess_texts();
+        let has = |context: &str, source: &str| texts.contains(&(context.to_owned(), source.to_owned()));
+        assert!(texts.len() > 500 && has("", "Detect diagrams") && has("chess side", "Black"), "the scan found the chess texts: {}", texts.len());
         let catalogues: Vec<(String, String)> =
             LANGUAGES.iter().filter(|l| !l.source.is_empty()).map(|l| (l.code.to_owned(), l.source.to_owned())).collect();
-        let missing = super::chess_scan::missing(&literals, &catalogues);
-        assert!(missing.is_empty(), "chess texts missing from catalogues: {missing:#?}");
+        let missing = super::chess_scan::missing(&texts, &catalogues);
+        let named: Vec<String> = missing
+            .iter()
+            .map(|(code, lacks)| {
+                format!("{code} lacks {}: {}", lacks.len(), lacks.iter().map(super::chess_scan::shown).collect::<Vec<_>>().join(", "))
+            })
+            .collect();
+        assert!(missing.is_empty(), "chess texts missing from catalogues:\n{}", named.join("\n"));
     }
 
     /// Plan A9-I14 (§2.1, §2.8.2; findings A6-21, R10-06): one word per concept, checked by root and

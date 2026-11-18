@@ -2499,6 +2499,7 @@ animation effects	Off	Désactivés
 	Black knight	Cavalier noir
 	Black pawn	Pion noir
 	White	Blancs
+chess side	Black	Noirs
 	Board: {fen}	Échiquier : {fen}
 	Board, {state}, move {n}	Échiquier, {state}, coup {n}
 	Board, {state}	Échiquier, {state}

@@ -1103,6 +1103,86 @@ fn measure_the_text_tab_on_a_300_move_page() {
     println!("TEXT TAB FRAME, {count} moves: {best:?}");
 }
 
+/// The galley the Text tab drew [`chapter`]'s paragraph of moves with on the last pass: the one
+/// text shape holding its first and last moves.
+#[track_caller]
+fn drawn_paragraph(h: &Harness<'static, PdfCraftApp>) -> Arc<egui::Galley> {
+    fn find(shape: &egui::Shape, out: &mut Vec<Arc<egui::Galley>>) {
+        match shape {
+            egui::Shape::Text(t) if t.galley.text().contains("e4") && t.galley.text().contains("a6") => out.push(Arc::clone(&t.galley)),
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| find(s, out)),
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for clipped in &h.output().shapes {
+        find(&clipped.shape, &mut found);
+    }
+    assert_eq!(found.len(), 1, "one paragraph of moves drawn");
+    found.remove(0)
+}
+
+/// Each glyph of `galley` (its character, its place and its spot in the font atlas) is where the
+/// fonts egui has now put it: the galley was laid out with the fonts it is drawn with.
+#[track_caller]
+fn assert_laid_out_with_the_fonts_drawn(h: &Harness<'static, PdfCraftApp>, galley: &egui::Galley, when: &str) {
+    let fresh = h.ctx.fonts_mut(|f| f.layout_job((*galley.job).clone()));
+    // The glyph's spot in the atlas: its corners in texels.
+    let glyphs = |g: &egui::Galley| -> Vec<(char, Pos2, [[u16; 2]; 2])> {
+        g.rows.iter().flat_map(|r| r.row.glyphs.iter().map(move |gl| (gl.chr, r.pos + gl.pos.to_vec2(), [gl.uv_rect.min, gl.uv_rect.max]))).collect()
+    };
+    let (drawn, now) = (glyphs(galley), glyphs(&fresh));
+    assert!(!drawn.is_empty() && drawn.len() == now.len(), "{when}: {} glyphs drawn, {} laid out now", drawn.len(), now.len());
+    let wrong = drawn.iter().zip(&now).filter(|(a, b)| a != b).count();
+    assert_eq!(wrong, 0, "{when}: {wrong} of the {} glyphs drawn are not where the fonts in use have them", drawn.len());
+}
+
+/// Plan A9-I9c: the Text tab keeps each paragraph's layout from pass to pass (A9-I9b) and lays it
+/// out again when the fonts egui draws with change. A change of language installs other fonts
+/// (Chinese puts its faces first), which egui uses from the next pass: the paragraph laid out on
+/// the pass of the change, with the old fonts, was kept, and drawn with glyphs from an atlas that
+/// no longer existed (the moves came out scrambled). The theme's text options make egui build its
+/// fonts anew as well.
+#[test]
+fn the_text_tab_lays_its_paragraphs_out_again_when_the_fonts_change() {
+    let mut h = harness_sized(chapter(), egui::vec2(1366.0, 768.0));
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "in English");
+    h.state_mut().set_option("language", "zh-hant").unwrap();
+    h.run_steps(4);
+    shot(&mut h, "i9c-text-tab-zh-hant.png");
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "after the switch to Chinese");
+    h.state_mut().set_option("theme", "dark").unwrap();
+    h.run_steps(4);
+    shot(&mut h, "i9c-text-tab-zh-hant-dark.png");
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "after the switch to the dark theme");
+}
+
+/// Plan A9-I9c: fonts changed and changed back while the Text tab is hidden (the dark theme and
+/// the light one again: egui builds its fonts anew each time) still lay its paragraph out again
+/// when it shows, though the theme, the language and the faces are the ones it was laid out with.
+#[test]
+fn fonts_changed_and_changed_back_behind_the_text_tab_still_count() {
+    let mut h = harness_on(chapter(), 0.25);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "in the light theme");
+    h.get_by_label("Diagrams").click();
+    h.run_steps(2);
+    h.state_mut().set_option("theme", "dark").unwrap();
+    h.run_steps(3);
+    h.state_mut().set_option("theme", "light").unwrap();
+    h.run_steps(3);
+    h.get_by_label("Text").click();
+    h.run_steps(2);
+    assert_laid_out_with_the_fonts_drawn(&h, &drawn_paragraph(&h), "back in the light theme");
+}
+
 /// The book's PGN of [`chapter`]'s line, the Ruy Lopez to 3...a6.
 const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
 
@@ -6222,6 +6302,13 @@ fn the_export_dialog_is_a_dialog_whose_fields_are_named() {
 /// A PDF of a page per `(caption, solution)`: the caption in Helvetica above the start position in
 /// the Chess Merida font, and the solution under the board — a book of numbered exercises.
 fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
+    let pages: Vec<(Option<&str>, Option<&str>, Option<&str>)> = pages.iter().map(|(c, s)| (Some(*c), *s, None)).collect();
+    footed_book(&pages)
+}
+
+/// [`exercise_book`], a page per `(caption, solution, foot)`: the caption above the board when
+/// there is one, and a caption at the page's foot, which numbers the next page's first diagram.
+fn footed_book(pages: &[(Option<&str>, Option<&str>, Option<&str>)]) -> Vec<u8> {
     let widths = vec!["1000"; 95].join(" ");
     let n = pages.len();
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
@@ -6231,11 +6318,14 @@ fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
         format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into(),
     ];
-    for (i, (caption, solution)) in pages.iter().enumerate() {
-        let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\n");
+    for (i, (caption, solution, foot)) in pages.iter().enumerate() {
+        let mut c = caption.map(|caption| format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\n")).unwrap_or_default();
         c.push_str(&font_board(&MERIDA_START.map(String::from)));
         if let Some(moves) = solution {
             c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+        }
+        if let Some(foot) = foot {
+            c.push_str(&format!("BT /F2 11 Tf 60 60 Td ({foot}) Tj ET\n"));
         }
         objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i));
         objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()));
@@ -6435,6 +6525,123 @@ fn a_sheet_with_no_exercise_is_refused_saying_why() {
         }
         assert!(!out.exists(), "nothing written");
     }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N12b2 (the review of #406): the number of page 2's diagram is a caption at the foot of
+/// page 1. Page 2 was detected in an earlier session, whose reading the data folder kept; opened
+/// again, page 2 is read from there and page 1 is not looked at. With page 2 alone chosen,
+/// the count finds no exercise, but the dialog does not refuse the sheet (it used to): the export
+/// looks at page 1, and Nº 2 is on the sheet.
+#[test]
+fn a_number_at_the_foot_of_the_page_before_is_not_refused_in_the_dialog() {
+    let dir = corrections_dir("n12b2-foot");
+    std::fs::create_dir_all(&dir).unwrap();
+    let data = dir.join("data").join("chess");
+    let book = footed_book(&[(Some("Exercise 1"), Some("1.e4 e5 2.Nf3 Nc6"), Some("Exercise 2")), (None, Some("1.d4 d5 2.c4"), None)]);
+    let open = || {
+        let mut h = harness_with(book.clone(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+        h.state_mut().use_chess_data(data.clone(), None);
+        h
+    };
+    // Page 2 alone detected (and read) in the earlier session: the data folder keeps it.
+    {
+        let mut h = open();
+        h.state_mut().views[0].go_to_page(1);
+        h.state_mut().start_chess_scan(false);
+        h.run_steps(3);
+        assert!(h.state().session.chess_disk().kept > 0, "page 2 kept");
+    }
+    let mut h = open();
+    open_sheet_dialog(&mut h);
+    h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Pages from").click();
+    h.run_steps(2);
+    set_spin(&mut h, "Pages from", "2");
+    set_spin(&mut h, "to", "2");
+    let summary = export_summary(&h);
+    assert!(summary.starts_with("Pages: 1 ·") && summary.contains("Exercises: 0") && !summary.contains("not read yet"), "{summary}");
+    assert!(h.query_by_label("No exercise to put on the sheet: the pages chosen have no numbered diagram.").is_none(), "not refused");
+    assert!(!h.get_by_label("Export…").accesskit_node().is_disabled(), "Export… is on");
+    let pages = export_sheet(&mut h, &dir.join("sheet.pdf"));
+    assert!(pages.first().is_some_and(|p| p.contains("Nº 2 · p. 2")), "{pages:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The harness on [`FIVE_EXERCISES`] opened from `pdf`, written there first, its corrections kept
+/// beside it.
+fn exercises_harness_at(pdf: &std::path::Path) -> Harness<'static, PdfCraftApp> {
+    no_piece_model();
+    let bytes = exercise_book(&FIVE_EXERCISES);
+    std::fs::write(pdf, &bytes).unwrap();
+    let (path, store) = (pdf.to_string_lossy().into_owned(), pdf.with_file_name("store"));
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.25).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.chess.corrections.use_folder(store);
+        app.open_bytes("book.pdf", Some(path), bytes).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h
+}
+
+/// What the export says of a sheet that would be written over a PDF that is open.
+const SHEET_OVER_OPEN: &str = "The exercise sheet can't be written over a PDF that is open: choose another name.";
+
+/// Plan A9-N12b2: the exercise sheet is never written over the PDF it is made from — named as it
+/// is, and on Windows in another case or with `/` for `\`: the export says why and the book is as
+/// it was.
+#[test]
+fn the_sheet_is_not_written_over_the_open_book() {
+    let dir = corrections_dir("n12b2-own-path");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let mut h = exercises_harness_at(&pdf);
+    let book = std::fs::read(&pdf).unwrap();
+    let own = pdf.to_string_lossy().into_owned();
+    let mut names = vec![own.clone()];
+    if cfg!(windows) {
+        names.push(own.to_uppercase());
+        names.push(own.replace('\\', "/"));
+    }
+    for name in names {
+        open_sheet_dialog(&mut h);
+        h.state_mut().save_override = Some(name.clone());
+        h.get_by_label("Export…").click();
+        h.run_steps(4);
+        assert_eq!(h.state().said(), Some(SHEET_OVER_OPEN), "{name}");
+        assert!(h.state().chess.long.is_none() && h.state().chess.export_done.is_none(), "{name}: nothing exported");
+        assert_eq!(std::fs::read(&pdf).unwrap(), book, "{name}: the book is as it was");
+        h.state_mut().take_said();
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N12b2: a PDF opened at the sheet's path while the sheet is being made is not written
+/// over — the path is asked again just before the file is written (it was asked only when the
+/// export started).
+#[test]
+fn a_pdf_opened_at_the_sheets_path_while_it_is_made_is_not_written_over() {
+    let dir = corrections_dir("n12b2-opened-meanwhile");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = exercises_harness_at(&dir.join("book.pdf"));
+    let out = dir.join("sheet.pdf");
+    let other = exercise_book(&FIVE_EXERCISES[..1]);
+    std::fs::write(&out, &other).unwrap();
+    open_sheet_dialog(&mut h);
+    h.state_mut().run_inline = false;
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.get_by_label("Export…").click();
+    h.run_steps(1);
+    assert!(h.state().chess.long.is_some(), "the sheet is being made on a worker");
+    h.state_mut().open_bytes("sheet.pdf", Some(out.to_string_lossy().into_owned()), other.clone()).unwrap();
+    assert!(h.state().chess.long.as_ref().is_none_or(|job| job.wait(NET)), "the sheet was made");
+    h.run_steps(2);
+    assert!(h.state().chess.long.is_none(), "taken by a frame");
+    assert!(h.state().all_said().any(|s| s == SHEET_OVER_OPEN), "{:?}", h.state().all_said().collect::<Vec<_>>());
+    assert!(h.state().chess.export_done.is_none(), "no window saying it was exported");
+    assert_eq!(std::fs::read(&out).unwrap(), other, "the PDF opened there is as it was");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

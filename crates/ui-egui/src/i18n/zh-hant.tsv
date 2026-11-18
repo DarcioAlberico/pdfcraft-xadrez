@@ -2447,6 +2447,7 @@ animation effects	Off	關
 	Black knight	黑馬
 	Black pawn	黑兵
 	White	白方
+chess side	Black	黑方
 	Board: {fen}	棋盤：{fen}
 	Board, {state}, move {n}	棋盤，{state}，第 {n} 回合
 	Board, {state}	棋盤，{state}

@@ -2462,6 +2462,7 @@ animation effects	Off	Изключени
 	Black knight	Черен кон
 	Black pawn	Черна пешка
 	White	Белите
+chess side	Black	Черните
 	Board: {fen}	Дъска: {fen}
 	Board, {state}, move {n}	Дъска, {state}, ход {n}
 	Board, {state}	Дъска, {state}

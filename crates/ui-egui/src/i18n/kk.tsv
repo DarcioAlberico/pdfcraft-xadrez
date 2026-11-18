@@ -2497,6 +2497,7 @@ animation effects	Off	Өшірулі
 	Black knight	Қара ат
 	Black pawn	Қара пешка
 	White	Ақтар
+chess side	Black	Қаралар
 	Board: {fen}	Тақта: {fen}
 	Board, {state}, move {n}	Тақта, {state}, {n}-жүріс
 	Board, {state}	Тақта, {state}
