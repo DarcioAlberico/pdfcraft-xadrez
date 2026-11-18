@@ -3658,6 +3658,8 @@ progress bar	Progress	Орындалу барысы
 	Illegal move: {move} can't be played here.	Ережеге сай емес жүріс: {move} мұнда жүруге болмайды.
 	{move} is not a move.	{move} жүріс емес.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} шаршысынан бағыттауыш: баратын шаршыны Alt+шертіңіз немесе шеңбер үшін осыны қайта шертіңіз.
+	Illegal move: {move} is ambiguous, it could be {moves}.	Ережеге сай емес жүріс: {move} бір мәнді емес, ол {moves} болуы мүмкін.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Ережеге сай емес жүріс: {move} үшін пешка айналатын фигура керек, мысалы {example}.
 	exercises	жаттығулар
 	Exercise sheet (PDF)	Жаттығулар парағы (PDF)
 	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Кітаптың нөмірленген диаграммалары басып шығаруға арналған жаңа PDF-те, бетіне 4, 6 немесе 9, соңында шешімдерімен.
