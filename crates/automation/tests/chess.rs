@@ -4933,3 +4933,38 @@ fn the_library_is_built_listed_and_cleared_inside_the_root() {
     assert!(!app.exists(), "the app's folder was not made");
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-N15b: `chess_library_find` looks through every book of the Library: a position by its
+/// FEN or by its moves, a SAN, a player's games; by book, with the page as it numbers it, the move
+/// as numbered and the game; at most `max` listed, all counted; confined like the other tools.
+#[test]
+fn chess_library_find_looks_through_every_book() {
+    let (base, root) = workdir("library-find");
+    let books = root.join("books");
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chess_pdf_with(&MERIDA_START, Some("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6"))).unwrap();
+    std::fs::write(books.join("b.pdf"), chess_pdf_with(&MERIDA_START, Some("1.e4 e5 2.Nf3 Nc6 3.Bb5 Nf6"))).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let built = ok(&mut a, "chess_library_build", json!({ "dirs": ["books"], "library": "lib", "models_dir": "models", "workers": 1 }));
+    assert_eq!(built["read"], 2, "{built:#}");
+    let fen = "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+    let by_fen = ok(&mut a, "chess_library_find", json!({ "library": "lib", "fen": fen }));
+    assert_eq!((by_fen["total"].as_u64(), by_fen["indexes_read"].as_u64()), (Some(2), Some(2)), "{by_fen:#}");
+    let first = &by_fen["books"][0]["found"][0];
+    assert_eq!((first["page"].as_u64(), first["page_label"].as_str(), first["move"].as_str()), (Some(1), Some("1"), Some("3.Bb5")), "{by_fen:#}");
+    let by_moves = ok(&mut a, "chess_library_find", json!({ "library": "lib", "moves": ["e4", "e5", "Nf3", "Nc6", "Bb5"] }));
+    assert_eq!(by_moves["total"], 2);
+    assert_eq!(by_moves["fen"], by_fen["fen"]);
+    assert_eq!(ok(&mut a, "chess_library_find", json!({ "library": "lib", "san": "Nf6" }))["total"], 1);
+    assert_eq!(ok(&mut a, "chess_library_find", json!({ "library": "lib", "san": "Bb5", "max": 1 }))["listed"], 1);
+    // Nothing asked, a bad material or a move that cannot be played: refused.
+    for bad in [json!({ "library": "lib" }), json!({ "library": "lib", "material": "KPR-K" }), json!({ "library": "lib", "moves": ["e5"] })] {
+        assert!(a.call("chess_library_find", &bad).is_err(), "{bad}");
+    }
+    // Confined; the app's Library outside the root is said.
+    let outside = base.join("outside").to_string_lossy().into_owned();
+    assert!(a.call("chess_library_find", &json!({ "library": outside, "san": "e4" })).is_err());
+    let mut confined = Automation::new().with_chess_data(Some(base.join("app-data")), None).with_root(&root).unwrap();
+    assert_eq!(ok(&mut confined, "chess_library_find", json!({ "san": "e4" }))["outside_root"], true);
+    let _ = std::fs::remove_dir_all(base);
+}

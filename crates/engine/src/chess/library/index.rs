@@ -632,10 +632,10 @@ pub fn key_of(path: &Path) -> Option<IndexKey> {
     Some(IndexKey(rest.get(..32)?.try_into().ok()?))
 }
 
-/// Read the index at `path`, made under `key` (`None`: any key), giving each position to `each`
-/// as it is inflated, and then its JSON part. The positions given are checked only once the
-/// whole file is: on an error, drop whatever `each` was given.
-pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPosition)) -> Result<IndexMeta, ReadError> {
+/// Read the index at `path`, made under `key` (`None`: any key): its JSON part, read first, and
+/// each position given to `each` with it as it is inflated. What `each` is given is checked only
+/// once the whole file is: on an error, drop it.
+pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexMeta, &IndexedPosition)) -> Result<IndexMeta, ReadError> {
     let bytes = match super::super::corrections::read_capped(path, MAX_FILE_BYTES) {
         Ok(b) => b,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(ReadError::Missing),
@@ -676,6 +676,7 @@ pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPo
         return Err(ReadError::Damaged("its data is cut short".into()));
     }
     hash.update(&meta);
+    let meta = serde_json::from_slice::<IndexMeta>(&meta).map_err(|e| ReadError::Damaged(format!("its list can't be read: {e}")))?;
     z.read_exact(&mut word).map_err(damaged)?;
     hash.update(word);
     let count = usize::try_from(u32::from_le_bytes(word)).map_err(|_| short())?;
@@ -691,7 +692,7 @@ pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPo
         z.read_exact(buf).map_err(damaged)?;
         hash.update(&*buf);
         for record in buf.as_chunks::<RECORD>().0 {
-            each(&IndexedPosition::from_bytes(record).ok_or_else(|| ReadError::Damaged("a record of an unknown kind".into()))?);
+            each(&meta, &IndexedPosition::from_bytes(record).ok_or_else(|| ReadError::Damaged("a record of an unknown kind".into()))?);
         }
         left -= n;
     }
@@ -702,7 +703,7 @@ pub fn read(path: &Path, key: Option<&IndexKey>, each: &mut dyn FnMut(&IndexedPo
     if hash.finalize().as_slice() != digest {
         return Err(ReadError::Damaged("its data is damaged".into()));
     }
-    serde_json::from_slice::<IndexMeta>(&meta).map_err(|e| ReadError::Damaged(format!("its list can't be read: {e}")))
+    Ok(meta)
 }
 
 #[cfg(test)]
@@ -768,21 +769,21 @@ mod tests {
         let path = dir.join("a.lib");
         std::fs::write(&path, &bytes).unwrap();
         let mut got = Vec::new();
-        let meta = read(&path, Some(&key), &mut |p| got.push(*p)).unwrap();
+        let meta = read(&path, Some(&key), &mut |_, p| got.push(*p)).unwrap();
         assert_eq!(BookIndex { meta, positions: got }, index);
         assert_eq!(key_of(&path), Some(key));
-        assert_eq!(read(&path, Some(&IndexKey([8; 32])), &mut |_| {}), Err(ReadError::Stale));
-        assert!(read(&path, None, &mut |_| {}).is_ok());
-        assert_eq!(read(&dir.join("none.lib"), None, &mut |_| {}), Err(ReadError::Missing));
+        assert_eq!(read(&path, Some(&IndexKey([8; 32])), &mut |_, _| {}), Err(ReadError::Stale));
+        assert!(read(&path, None, &mut |_, _| {}).is_ok());
+        assert_eq!(read(&dir.join("none.lib"), None, &mut |_, _| {}), Err(ReadError::Missing));
         for at in [HEADER - 1, HEADER + 3, bytes.len() / 2, bytes.len() - 1] {
             let mut b = bytes.clone();
             b[at] ^= 0x41;
             std::fs::write(&path, &b).unwrap();
-            assert!(matches!(read(&path, Some(&key), &mut |_| {}), Err(ReadError::Damaged(_))), "byte {at}");
+            assert!(matches!(read(&path, Some(&key), &mut |_, _| {}), Err(ReadError::Damaged(_))), "byte {at}");
         }
         for b in [bytes[..bytes.len() - 10].to_vec(), bytes[..HEADER + 20].to_vec(), bytes[..HEADER - 5].to_vec()] {
             std::fs::write(&path, &b).unwrap();
-            assert!(matches!(read(&path, Some(&key), &mut |_| {}), Err(ReadError::Damaged(_))), "{} bytes", b.len());
+            assert!(matches!(read(&path, Some(&key), &mut |_, _| {}), Err(ReadError::Damaged(_))), "{} bytes", b.len());
         }
         let _ = std::fs::remove_dir_all(&dir);
     }

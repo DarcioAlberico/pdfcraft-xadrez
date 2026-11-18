@@ -23,6 +23,16 @@ const MAX_MAX: usize = 1000;
 
 /// The query `a` asks for: `material`, `either_side` and `pawns`; at least one of them.
 fn query_arg(a: &Args) -> Result<Query> {
+    let query = pattern_arg(a)?;
+    if query.is_empty() {
+        return Err(ToolError::InvalidArgs("give material, pawns or both: what to look for".into()));
+    }
+    Ok(query)
+}
+
+/// The material and the pawns `a` asks for, as `chess_pattern_find` takes them (plan A9-N16a);
+/// empty when it asks for neither (the Library's search takes them among other things, N15b).
+pub(crate) fn pattern_arg(a: &Args) -> Result<Query> {
     let material = match a.opt_str("material")? {
         None => None,
         Some(text) => Some(Material::parse(text).map_err(|e| ToolError::InvalidArgs(format!("material: {e}")))?),
@@ -47,11 +57,7 @@ fn query_arg(a: &Args) -> Result<Query> {
             Some(_) => return Err(Args::wrong("pawns", "side white, black or either")),
         };
     }
-    let query = Query { material, either_side: a.opt_bool("either_side")?.unwrap_or(false), pawns };
-    if query.is_empty() {
-        return Err(ToolError::InvalidArgs("give material, pawns or both: what to look for".into()));
-    }
-    Ok(query)
+    Ok(Query { material, either_side: a.opt_bool("either_side")?.unwrap_or(false), pawns })
 }
 
 fn query_reply(q: &Query) -> Value {

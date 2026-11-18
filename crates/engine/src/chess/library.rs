@@ -30,6 +30,7 @@
 //! ([`crate::Session::set_chess_peek`]): a book read in the app is not read again, and nothing the
 //! person opens is pushed out of the 512 MiB of D21.
 
+pub mod find;
 pub mod index;
 pub mod walk;
 
@@ -576,7 +577,7 @@ impl Library {
         let key = index_key(book.content, wants.settings, &digests);
         let lib = self.index_path(book.hash);
         entry.no_piece_model = wants.models.pieces.loaded().is_none();
-        match index::read(&lib, Some(&key), &mut |_| {}) {
+        match index::read(&lib, Some(&key), &mut |_, _| {}) {
             Ok(meta) => {
                 run.current = true;
                 entry.state = State::Indexed;
