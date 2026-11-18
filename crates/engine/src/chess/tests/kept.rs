@@ -111,7 +111,7 @@ fn an_entry_that_cant_be_trusted_is_read_again_not_served() {
     let (mut again, other) = open(bytes);
     let second = again.chess_scan(other, &[], &kept(&dir), true).unwrap();
     assert_eq!(again.chess_scanned(), 1, "the damaged page alone");
-    assert_eq!(again.chess_disk(), DiskUse { read: 3, kept: 1, set_aside: 1, not_kept: 0 });
+    assert_eq!(again.chess_disk(), DiskUse { read: 3, kept: 1, set_aside: 1, not_kept: 0, peeked: 0 });
     assert_eq!(second.iter().map(|p| (**p).clone()).collect::<Vec<_>>(), first.iter().map(|p| (**p).clone()).collect::<Vec<_>>());
     let mut aside = damaged.into_os_string();
     aside.push(".bad");
