@@ -4003,7 +4003,7 @@ progress bar	Progress	Tiến độ
 	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Chưa đánh giá: {none} không có đánh giá, {shallow} tìm quá nông.
 	The book says: {what}	Sách nói: {what}
 	The calculation says: {what}	Tính toán nói: {what}
-	Engine	Engine
+	Engine	Engine cờ vua
 	Solver	Bộ giải
 	{value}: lets a mate go	{value}: bỏ lỡ một nước chiếu hết
 	{value}: loses {pawns} pawns to {best}	{value}: mất {pawns} tốt so với {best}

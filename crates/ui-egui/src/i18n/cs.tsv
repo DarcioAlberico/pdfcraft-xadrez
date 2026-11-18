@@ -3827,7 +3827,7 @@ progress bar	Progress	Průběh
 	Not judged: {none} with no evaluation, {shallow} searched too shallow.	Neposouzeno: {none} bez hodnocení, {shallow} prohledáno příliš mělce.
 	The book says: {what}	Kniha říká: {what}
 	The calculation says: {what}	Výpočet říká: {what}
-	Engine	Engine
+	Engine	Šachový engine
 	Solver	Řešitel
 	{value}: lets a mate go	{value}: nechá uniknout mat
 	{value}: loses {pawns} pawns to {best}	{value}: ztrácí {pawns} pěšce oproti {best}
