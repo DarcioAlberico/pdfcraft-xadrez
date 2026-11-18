@@ -560,8 +560,8 @@ mod tests {
     #[test]
     fn esc_is_taken_only_while_a_preview_shows() {
         let ctx = egui::Context::default();
-        let _ = ctx.run_ui(egui::RawInput::default(), |_| {});
-        let _ = ctx.run_ui(egui::RawInput::default(), |_| {});
+        ctx.run_ui(egui::RawInput::default(), |_| {}).textures_delta.clear();
+        ctx.run_ui(egui::RawInput::default(), |_| {}).textures_delta.clear();
         let last = ctx.cumulative_pass_nr() - 1;
         let esc = |modifiers| egui::RawInput {
             events: vec![Event::Key { key: Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers }],
