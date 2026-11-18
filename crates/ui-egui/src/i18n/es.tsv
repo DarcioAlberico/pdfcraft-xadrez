@@ -3860,3 +3860,20 @@ progress bar	Progress	Progreso
 	Open game {n} on the board at {move}	Abrir la partida {n} en el tablero en {move}
 	Only the pieces were compared: the side to move isn't printed.	Solo se compararon las piezas: no está impreso quién juega.
 	The first {n} are listed.	Se listan las primeras {n}.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Buscar en el libro por material…
+	Look for	Buscar
+	This position	Esta posición
+	By material	Por material
+	Material	Material
+	Either side	Cualquier bando
+	The material with the colours swapped is found too.	También se encuentra el material con los colores cambiados.
+	Pawns:	Peones:
+	Doubled	Doblados
+	Isolated	Aislados
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	No es una firma de material: las piezas de cada bando en el orden K Q R B N P, las blancas primero, como KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Escriba un material, como KRP-KR, o elija un tipo de peón.
+	Looking in the book…	Buscando en el libro…
+	Nothing in the book as read has this material and these pawns.	Nada en el libro leído tiene este material y estos peones.
+	{first} to {last}	{first} a {last}
+	Positions: {n}	Posiciones: {n}
