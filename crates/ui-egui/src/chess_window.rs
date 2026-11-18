@@ -590,6 +590,8 @@ fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
                 pass.panic = Some(m);
             }
             crate::chess_tools::end_window_keys(&mut app.chess, main);
+            // The window's own pass: its keyboard's control ringed (plan A9-I11b).
+            crate::widgets::paint_focus_ring(ui.ctx());
         });
     });
     if let Err(m) = shown {
@@ -789,6 +791,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         app.chess.enter_scope();
     }
     app.chess.mark_surface(ui);
+    crate::widgets::ring_zone(ui.ctx(), ui.max_rect());
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
     let editor_here = app.chess_editor_in_panel();
@@ -820,6 +823,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                             crate::widgets::dock_tabs(
                                 ui,
+                                tl!("Chess"),
                                 &mut tab,
                                 &[
                                     (ChessWindowTab::Board, tl!("Board")),
@@ -852,6 +856,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 ui.scope_builder(egui::UiBuilder::new().max_rect(strip), |ui| {
                     crate::widgets::dock_tabs(
                         ui,
+                        tl!("Chess"),
                         &mut tab,
                         &[(ChessWindowTab::Board, tl!("Moves")), (ChessWindowTab::Diagrams, tl!("Diagrams")), (ChessWindowTab::Text, tl!("Text"))],
                     );
@@ -937,6 +942,7 @@ fn side_tab(
                 return;
             };
             asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.origin, d.page, d.editor_here, &d.pgn);
+            crate::widgets::follow_focus(ui);
         });
     });
 }
