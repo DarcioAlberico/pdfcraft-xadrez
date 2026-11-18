@@ -3699,3 +3699,28 @@ progress bar	Progress	Napredek
 	Fantasy	Fantazija
 	Spatial	Prostorsko
 	Celtic	Keltski
+# A9-N3: the Board tab's In the book (n)
+	In the book	V knjigi
+	In the book ({n})	V knjigi ({n})
+	Where the position shown is in the book, and what the book plays from it	Kje v knjigi je prikazana pozicija in kaj knjiga igra iz nje
+	Looking for the position in the book…	Iskanje pozicije v knjigi…
+	Read the book (Detect diagrams or Text) to search.	Preberite knjigo (Zaznaj diagrame ali Besedilo), da lahko iščete.
+	This position does not appear in the book as read.	Te pozicije ni v prebranem delu knjige.
+	The book's PGN	PGN knjige
+	Pages read: {r} of {p}	Prebrane strani: {r} od {p}
+	Found: {n}	Najdeno: {n}
+	transpositions: {n}	transpozicije: {n}
+	The book plays here	Knjiga tu igra
+	Variation	Varianta
+	Games: {n}	Partije: {n}
+	from p. {page}	od str. {page}
+	Play {move} on the board	Odigraj {move} na šahovnici
+	Castling isn't allowed on this board.	Rokada na tej šahovnici ni dovoljena.
+	En passant isn't possible on this board.	Jemanje en passant na tej šahovnici ni mogoče.
+	Not legal on this board.	Na tej šahovnici ni dovoljeno.
+	Counted in the first {n} games that reach it.	Prešteto v prvih {n} partijah, ki pridejo do nje.
+	Where in the book	Kje v knjigi
+	transposition	transpozicija
+	Open game {n} on the board at {move}	Odpri partijo {n} na šahovnici pri potezi {move}
+	Only the pieces were compared: the side to move isn't printed.	Primerjane so bile samo figure: kdo je na potezi, ni natisnjeno.
+	The first {n} are listed.	Navedenih je prvih {n}.

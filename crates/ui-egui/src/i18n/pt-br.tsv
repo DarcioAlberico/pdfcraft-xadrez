@@ -3710,3 +3710,28 @@ progress bar	Progress	Progresso
 	Fantasy	Fantasia
 	Spatial	Espacial
 	Celtic	Celta
+# A9-N3: the Board tab's In the book (n)
+	In the book	No livro
+	In the book ({n})	No livro ({n})
+	Where the position shown is in the book, and what the book plays from it	Onde a posição mostrada está no livro, e o que o livro joga a partir dela
+	Looking for the position in the book…	Procurando a posição no livro…
+	Read the book (Detect diagrams or Text) to search.	Leia o livro (Detectar diagramas ou Texto) para encontrar a posição nele.
+	This position does not appear in the book as read.	Esta posição não aparece no livro lido.
+	The book's PGN	O PGN do livro
+	Pages read: {r} of {p}	Páginas lidas: {r} de {p}
+	Found: {n}	Ocorrências: {n}
+	transpositions: {n}	transposições: {n}
+	The book plays here	O livro joga aqui
+	Variation	Variante
+	Games: {n}	Partidas: {n}
+	from p. {page}	a partir da p. {page}
+	Play {move} on the board	Jogar {move} no tabuleiro
+	Castling isn't allowed on this board.	O roque não é permitido neste tabuleiro.
+	En passant isn't possible on this board.	A captura en passant não é possível neste tabuleiro.
+	Not legal on this board.	Não é legal neste tabuleiro.
+	Counted in the first {n} games that reach it.	Contado nas primeiras {n} partidas que chegam a ela.
+	Where in the book	Onde no livro
+	transposition	transposição
+	Open game {n} on the board at {move}	Abrir a partida {n} no tabuleiro no lance {move}
+	Only the pieces were compared: the side to move isn't printed.	Só as peças foram comparadas: quem joga não está impresso.
+	The first {n} are listed.	As primeiras {n} estão listadas.

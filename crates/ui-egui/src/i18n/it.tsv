@@ -3906,3 +3906,28 @@ progress bar	Progress	Avanzamento
 	Fantasy	Fantasia
 	Spatial	Spaziale
 	Celtic	Celtico
+# A9-N3: the Board tab's In the book (n)
+	In the book	Nel libro
+	In the book ({n})	Nel libro ({n})
+	Where the position shown is in the book, and what the book plays from it	Dove si trova nel libro la posizione mostrata e cosa gioca il libro da lì
+	Looking for the position in the book…	Ricerca della posizione nel libro…
+	Read the book (Detect diagrams or Text) to search.	Leggi il libro (Rileva diagrammi o Testo) per cercare.
+	This position does not appear in the book as read.	Questa posizione non compare nel libro letto.
+	The book's PGN	Il PGN del libro
+	Pages read: {r} of {p}	Pagine lette: {r} di {p}
+	Found: {n}	Occorrenze: {n}
+	transpositions: {n}	trasposizioni: {n}
+	The book plays here	Qui il libro gioca
+	Variation	Variante
+	Games: {n}	Partite: {n}
+	from p. {page}	da p. {page}
+	Play {move} on the board	Gioca {move} sulla scacchiera
+	Castling isn't allowed on this board.	L'arrocco non è consentito su questa scacchiera.
+	En passant isn't possible on this board.	La presa en passant non è possibile su questa scacchiera.
+	Not legal on this board.	Non legale su questa scacchiera.
+	Counted in the first {n} games that reach it.	Contato nelle prime {n} partite che ci arrivano.
+	Where in the book	Dove nel libro
+	transposition	trasposizione
+	Open game {n} on the board at {move}	Apri la partita {n} sulla scacchiera a {move}
+	Only the pieces were compared: the side to move isn't printed.	Sono stati confrontati solo i pezzi: chi muove non è stampato.
+	The first {n} are listed.	Sono elencate le prime {n}.

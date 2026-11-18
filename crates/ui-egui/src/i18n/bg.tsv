@@ -3658,3 +3658,28 @@ progress bar	Progress	Напредък
 	Fantasy	Фентъзи
 	Spatial	Пространствени
 	Celtic	Келтски
+# A9-N3: the Board tab's In the book (n)
+	In the book	В книгата
+	In the book ({n})	В книгата ({n})
+	Where the position shown is in the book, and what the book plays from it	Къде е показаната позиция в книгата и какво играе книгата от нея
+	Looking for the position in the book…	Търсене на позицията в книгата…
+	Read the book (Detect diagrams or Text) to search.	Прочетете книгата (Откриване на диаграми или Текст), за да търсите.
+	This position does not appear in the book as read.	Тази позиция не се среща в прочетеното от книгата.
+	The book's PGN	PGN на книгата
+	Pages read: {r} of {p}	Прочетени страници: {r} от {p}
+	Found: {n}	Намерени: {n}
+	transpositions: {n}	транспозиции: {n}
+	The book plays here	Книгата играе тук
+	Variation	Вариант
+	Games: {n}	Партии: {n}
+	from p. {page}	от с. {page}
+	Play {move} on the board	Изиграване на {move} на дъската
+	Castling isn't allowed on this board.	Рокадата не е разрешена на тази дъска.
+	En passant isn't possible on this board.	Вземането ан пасан не е възможно на тази дъска.
+	Not legal on this board.	Не е допустимо на тази дъска.
+	Counted in the first {n} games that reach it.	Преброено в първите {n} партии, които стигат до нея.
+	Where in the book	Къде в книгата
+	transposition	транспозиция
+	Open game {n} on the board at {move}	Отваряне на партия {n} на дъската при {move}
+	Only the pieces were compared: the side to move isn't printed.	Сравнени са само фигурите: кой е на ход, не е отпечатано.
+	The first {n} are listed.	Изброени са първите {n}.

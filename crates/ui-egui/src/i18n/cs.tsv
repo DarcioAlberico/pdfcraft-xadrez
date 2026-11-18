@@ -3768,3 +3768,28 @@ progress bar	Progress	Průběh
 	Fantasy	Fantastické
 	Spatial	Prostorové
 	Celtic	Keltské
+# A9-N3: the Board tab's In the book (n)
+	In the book	V knize
+	In the book ({n})	V knize ({n})
+	Where the position shown is in the book, and what the book plays from it	Kde je zobrazená pozice v knize a co z ní kniha hraje
+	Looking for the position in the book…	Hledání pozice v knize…
+	Read the book (Detect diagrams or Text) to search.	Přečtěte knihu (Najít diagramy nebo Text), abyste mohli hledat.
+	This position does not appear in the book as read.	Tato pozice se v přečtené části knihy nevyskytuje.
+	The book's PGN	PGN knihy
+	Pages read: {r} of {p}	Přečtené stránky: {r} z {p}
+	Found: {n}	Nalezeno: {n}
+	transpositions: {n}	transpozice: {n}
+	The book plays here	Kniha zde hraje
+	Variation	Varianta
+	Games: {n}	Partie: {n}
+	from p. {page}	od s. {page}
+	Play {move} on the board	Zahrát {move} na šachovnici
+	Castling isn't allowed on this board.	Rošáda na této šachovnici není dovolena.
+	En passant isn't possible on this board.	Braní mimochodem na této šachovnici není možné.
+	Not legal on this board.	Na této šachovnici není přípustné.
+	Counted in the first {n} games that reach it.	Spočítáno v prvních {n} partiích, které k ní vedou.
+	Where in the book	Kde v knize
+	transposition	transpozice
+	Open game {n} on the board at {move}	Otevřít partii {n} na šachovnici u tahu {move}
+	Only the pieces were compared: the side to move isn't printed.	Porovnány byly jen figury: kdo je na tahu, není vytištěno.
+	The first {n} are listed.	Je uvedeno prvních {n}.
