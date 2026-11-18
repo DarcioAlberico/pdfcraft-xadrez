@@ -280,6 +280,9 @@ type EvalsWriter = crate::chess_writer::StoreWriter<EvalsJob, Result<usize, Stri
 #[derive(Default)]
 struct Writes {
     keys: Option<(DocKeys, usize)>,
+    /// What may be kept of the document, as of the batch's start and each write while it is
+    /// open; `None` (never seen) keeps nothing. A closed document is held to it (plan A9-N17b).
+    keep: Option<Keeping>,
     /// Found since the last time they were handed on.
     new: Vec<(String, Eval)>,
     /// Handed to the writer and not known written yet, oldest first: each write asks for all of
@@ -552,10 +555,12 @@ impl PdfCraftApp {
             c.stopped = None;
         }
         let keys = self.session.get(id).map(|d| (d.doc_keys(), d.info.pages.len()));
+        let keep = self.chess_keeping(id);
         let w = self.chess.engine_review.writes.entry(id).or_default();
         if w.keys.is_none() {
             w.keys = keys;
         }
+        w.keep = Some(keep);
         w.last = Some(Instant::now());
         let name = self.session.get(id).map(|d| d.name.clone()).unwrap_or_default();
         let found: Arc<Mutex<Vec<(String, Eval)>>> = Arc::default();
@@ -724,8 +729,15 @@ impl PdfCraftApp {
             }
             c.generation = c.generation.wrapping_add(1);
         }
-        // Never asked about for an evaluation, as the board's (plan A9-N8).
-        if self.chess_keeping(id) != Keeping::Yes && self.session.get(id).is_some() {
+        // Never asked about for an evaluation, as the board's (plan A9-N8). While the document is
+        // open its rule now holds (an answer given meanwhile counts); once it is closed, the last
+        // one seen: a document whose chess was not kept never has it written after it closes.
+        let keeping = if self.session.get(id).is_some() { Some(self.chess_keeping(id)) } else { None };
+        let Some(w) = self.chess.engine_review.writes.get_mut(&id) else { return };
+        if keeping.is_some() {
+            w.keep = keeping;
+        }
+        if w.keep != Some(Keeping::Yes) {
             return;
         }
         let Some((keys, pages)) = keys else { return };

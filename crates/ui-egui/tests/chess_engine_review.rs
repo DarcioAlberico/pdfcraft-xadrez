@@ -423,7 +423,9 @@ fn evaluations_that_cannot_be_written_are_said_and_kept_for_the_session() {
 }
 
 /// Never a panic (plan A9-N17b): the document closed while its batch runs stops the batch, says
-/// so, and what the engine found is written under the document's name all the same.
+/// so, and what the engine found is written under the document's name all the same: its chess
+/// is kept ([`a_document_whose_chess_is_not_kept_has_nothing_written_even_closed_mid_batch`] is the
+/// other side).
 #[test]
 fn a_document_closed_while_its_batch_runs_stops_it_and_keeps_what_was_found() {
     let data = temp_dir("closed");
@@ -441,6 +443,46 @@ fn a_document_closed_while_its_batch_runs_stops_it_and_keeps_what_was_found() {
     assert!(shown(&h, "The check of chapter.pdf stopped: the document was closed. What the engine found is kept."), "said");
     h.state_mut().settle_chess_games();
     assert_eq!(DirStore::new(data.join("evals")).load(&keys, pages).unwrap().file.evals.len(), 1);
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// [`book`], encrypted, its permissions allowing printing and copying: its chess is written only
+/// once the user says so (plan A9-I1c, `persist_policy` = Ask).
+fn encrypted_book(pages: &[&str]) -> Vec<u8> {
+    let mut doc = pdfcraft_cos::Document::open(Arc::new(book(pages))).unwrap();
+    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+        algorithm: pdfcraft_cos::Algorithm::Aes256,
+        user_password: "",
+        owner_password: "owner",
+        // Print and copy.
+        permissions: 0b1_0100,
+        encrypt_metadata: true,
+        seed: [7; 32],
+    })
+    .unwrap();
+    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+}
+
+/// Plan A9-N17b (the review of #420): a document whose chess may not be kept (encrypted, the user
+/// not asked yet) has no evaluation written, while its batch runs or after it is closed mid-batch:
+/// the rule seen while it was open holds once it is gone. Nothing is asked for an evaluation.
+#[test]
+fn a_document_whose_chess_is_not_kept_has_nothing_written_even_closed_mid_batch() {
+    let data = temp_dir("not-kept");
+    let mut h = harness(encrypted_book(&[MOVES]), &data);
+    let (keys, pages) = keys(&h);
+    let (analyser, engine) = engine(Answers::Gated { wait: NET }, 100);
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    count(&mut h);
+    h.get_by_label("Start the check").click();
+    engine.answer(1);
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 2 of 5").is_some()), "one answered");
+    assert!(h.state_mut().execute("file.close"));
+    assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "the job ends");
+    h.run_steps(2);
+    h.state_mut().settle_chess_games();
+    let kept = DirStore::new(data.join("evals")).load(&keys, pages).unwrap().file.evals.len();
+    assert_eq!(kept, 0, "nothing written for a document whose chess is not kept");
     let _ = std::fs::remove_dir_all(data);
 }
 
