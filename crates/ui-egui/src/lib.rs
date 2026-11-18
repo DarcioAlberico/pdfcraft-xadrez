@@ -52,6 +52,8 @@ mod chess_editor;
 #[cfg(not(target_arch = "wasm32"))]
 mod chess_engine_prefs;
 #[cfg(not(target_arch = "wasm32"))]
+mod chess_engine_review;
+#[cfg(not(target_arch = "wasm32"))]
 mod chess_evals_ui;
 mod chess_export_ui;
 mod chess_figurines;
@@ -3549,6 +3551,8 @@ impl eframe::App for PdfCraftApp {
             chess_commands::sheet(self, &ctx);
             chess_review_ui::prompt(self, &ctx);
             chess_bookmarks_ui::prompt(self, &ctx);
+            #[cfg(not(target_arch = "wasm32"))]
+            chess_engine_review::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
             widgets::settle_dialogs(&ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
@@ -3632,6 +3636,8 @@ impl eframe::App for PdfCraftApp {
         chess_commands::sheet(self, &ctx);
         chess_review_ui::prompt(self, &ctx);
         chess_bookmarks_ui::prompt(self, &ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        chess_engine_review::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);
         // A dialog no longer shown gives the keyboard back to where it was (plan A9-I11a).
         widgets::settle_dialogs(&ctx);
