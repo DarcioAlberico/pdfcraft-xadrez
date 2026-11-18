@@ -4,7 +4,7 @@
 
 | Data | Mudança |
 |---|---|
-| 2026-11-18 | A9-E1: a ajuda refeita para o build `5e2ae7b`, com a fonte no repositório. |
+| 2026-11-18 | A9-E1: a ajuda refeita para o build `f720627`, com a fonte no repositório. |
 
 ## O que fica onde
 
