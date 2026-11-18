@@ -3722,3 +3722,6 @@ progress bar	Progress	進度
 	Nothing in the book as read has this material and these pawns.	已讀取的書中沒有具有此子力和這些兵的局面。
 	{first} to {last}	{first} 至 {last}
 	Positions: {n}	局面：{n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	無法在書中尋找：{e}
+	The diagrams read couldn't be looked at: {e}	無法查看已讀取的局面圖：{e}

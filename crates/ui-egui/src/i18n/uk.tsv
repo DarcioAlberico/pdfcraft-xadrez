@@ -3804,3 +3804,6 @@ progress bar	Progress	Хід виконання
 	Nothing in the book as read has this material and these pawns.	У прочитаній частині книги немає такого матеріалу й таких пішаків.
 	{first} to {last}	{first} — {last}
 	Positions: {n}	Позицій: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Не вдалося виконати пошук у книзі: {e}
+	The diagrams read couldn't be looked at: {e}	Не вдалося переглянути прочитані діаграми: {e}

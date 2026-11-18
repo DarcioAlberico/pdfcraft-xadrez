@@ -3696,3 +3696,6 @@ progress bar	Progress	Ход выполнения
 	Nothing in the book as read has this material and these pawns.	В прочитанной части книги нет такого материала и таких пешек.
 	{first} to {last}	{first} — {last}
 	Positions: {n}	Позиций: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Не удалось выполнить поиск в книге: {e}
+	The diagrams read couldn't be looked at: {e}	Не удалось просмотреть прочитанные диаграммы: {e}

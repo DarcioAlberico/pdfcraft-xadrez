@@ -3775,3 +3775,6 @@ progress bar	Progress	Πρόοδος
 	Nothing in the book as read has this material and these pawns.	Τίποτα στο βιβλίο όπως διαβάστηκε δεν έχει αυτό το υλικό και αυτά τα πιόνια.
 	{first} to {last}	{first} έως {last}
 	Positions: {n}	Θέσεις: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Δεν ήταν δυνατή η αναζήτηση στο βιβλίο: {e}
+	The diagrams read couldn't be looked at: {e}	Δεν ήταν δυνατός ο έλεγχος των διαγραμμάτων που διαβάστηκαν: {e}

@@ -564,17 +564,7 @@ impl Session {
                         let key = super::reading::alone_key(&content, OCR_DPI, &boxes, &g.digest()?, general.as_ref());
                         Some((d, key))
                     });
-                    let kept = entry.as_ref().and_then(|(d, key)| match d.store.get::<text_ocr::PageAlone>(&d.doc, key) {
-                        super::reading::Found::Hit(alone) => {
-                            super::DiskCounts::add(&d.used.read);
-                            Some(alone)
-                        }
-                        super::reading::Found::SetAside(_) => {
-                            super::DiskCounts::add(&d.used.set_aside);
-                            None
-                        }
-                        super::reading::Found::Miss => None,
-                    });
+                    let kept = entry.as_ref().and_then(|(d, key)| d.take::<text_ocr::PageAlone>(key));
                     let alone = match kept {
                         Some(alone) => Ok(alone),
                         None => match super::render_gray(&mut renderer, page.page, info, OCR_DPI) {

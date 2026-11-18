@@ -3780,3 +3780,6 @@ progress bar	Progress	Орындалу барысы
 	Nothing in the book as read has this material and these pawns.	Кітаптың оқылған бөлігінде бұл материал мен бұл пешкалар жоқ.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Позициялар: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Кітаптан іздеу мүмкін болмады: {e}
+	The diagrams read couldn't be looked at: {e}	Оқылған диаграммаларды қарау мүмкін болмады: {e}

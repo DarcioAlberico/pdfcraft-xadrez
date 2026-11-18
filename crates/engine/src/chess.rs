@@ -254,7 +254,8 @@ struct DocCache {
     by_key: std::collections::HashMap<page_key::PageKey, std::collections::BTreeSet<usize>>,
     /// Results held, at most [`MAX_CACHED_PAGES`].
     len: usize,
-    /// Moves each time a result it did not hold comes in ([`Session::chess_cache_revision`]).
+    /// The session's clock ([`ChessCache::clock`]) when a result it did not hold last came in
+    /// ([`Session::chess_cache_revision`]).
     revision: u64,
 }
 
@@ -392,6 +393,14 @@ pub(crate) struct ChessCache {
     books: std::collections::HashMap<DocId, BookState>,
     /// The books' PGNs indexed, by their text (plan A9-I3b): [`Session::chess_book_indexes`].
     indexes: Arc<pdfcraft_chessvision::doc::reference::IndexMemo>,
+    /// Another folder of readings the scans also look in, never changing it
+    /// ([`Session::set_chess_peek`], plan A9-N15a).
+    peek: Option<Arc<reading::ReadingStore>>,
+    /// The budget of the folder [`ChessScanSettings::cache`] names, when not D21's
+    /// ([`Session::set_chess_disk_budget`]).
+    budget: Option<u64>,
+    /// How many workers [`Session::chess_scan`] scans on; `None`: [`ChessScanJob::default_workers`].
+    workers: Option<usize>,
 }
 
 /// One document's book cipher, as its reads and exports taught it, and its book origin, as the
@@ -460,8 +469,10 @@ impl ChessCache {
             e.params.same_state(&params) || (same_scan && key.is_some() && e.key == key)
         });
         d.insert(CacheEntry { page, key, params, result }, tick);
+        // The session's clock, not a count of the document's own: a document's cache dropped and
+        // made again never repeats an earlier value (plan A9-N3b).
         if !held {
-            d.revision = d.revision.wrapping_add(1);
+            d.revision = tick;
         }
         d.evict(page);
     }
@@ -689,13 +700,34 @@ struct JobDisk {
     pages: usize,
     /// Only take readings from it: the document's reading may not be kept.
     take_only: bool,
+    /// Another folder looked in when `store` has nothing, never changed ([`Session::set_chess_peek`]).
+    peek: Option<Arc<reading::ReadingStore>>,
     used: DiskCounts,
+}
+
+impl JobDisk {
+    /// The reading kept under `key`: from `store` (counted as read, or set aside), else looked at
+    /// in `peek` (counted as peeked).
+    fn take<T: serde::de::DeserializeOwned>(&self, key: &reading::EntryKey) -> Option<T> {
+        match self.store.get::<T>(&self.doc, key) {
+            reading::Found::Hit(value) => {
+                DiskCounts::add(&self.used.read);
+                return Some(value);
+            }
+            reading::Found::SetAside(_) => DiskCounts::add(&self.used.set_aside),
+            reading::Found::Miss => {}
+        }
+        let value = self.peek.as_ref()?.peek::<T>(&self.doc, key)?;
+        DiskCounts::add(&self.used.peeked);
+        Some(value)
+    }
 }
 
 /// What a job took from the disk and kept there, counted across its workers.
 #[derive(Default)]
 struct DiskCounts {
     read: AtomicUsize,
+    peeked: AtomicUsize,
     kept: AtomicUsize,
     not_kept: AtomicUsize,
     set_aside: AtomicUsize,
@@ -709,6 +741,7 @@ impl DiskCounts {
     fn report(&self) -> DiskUse {
         DiskUse {
             read: self.read.load(Ordering::Relaxed),
+            peeked: self.peeked.load(Ordering::Relaxed),
             kept: self.kept.load(Ordering::Relaxed),
             not_kept: self.not_kept.load(Ordering::Relaxed),
             set_aside: self.set_aside.load(Ordering::Relaxed),
@@ -721,6 +754,9 @@ impl DiskCounts {
 pub struct DiskUse {
     /// Pages taken from the disk: not read.
     pub read: usize,
+    /// Pages taken from the other folder the session looks in ([`Session::set_chess_peek`]): not
+    /// read either.
+    pub peeked: usize,
     /// Pages read and kept there.
     pub kept: usize,
     /// Pages read and not kept: the disk nearly full, the book alone past the budget, the folder
@@ -734,6 +770,7 @@ impl DiskUse {
     fn plus(self, o: DiskUse) -> DiskUse {
         DiskUse {
             read: self.read.saturating_add(o.read),
+            peeked: self.peeked.saturating_add(o.peeked),
             kept: self.kept.saturating_add(o.kept),
             not_kept: self.not_kept.saturating_add(o.not_kept),
             set_aside: self.set_aside.saturating_add(o.set_aside),
@@ -928,15 +965,8 @@ impl ChessScanJob {
             .as_ref()
             .zip(input.disk)
             .and_then(|(disk, content)| Some((disk, reading::scan_key_of(&content, settings, self.params.model.as_ref())?)));
-        if let Some((disk, key)) = &entry {
-            match disk.store.get::<ChessPage>(&disk.doc, key) {
-                reading::Found::Hit(page) => {
-                    DiskCounts::add(&disk.used.read);
-                    return ChessPage { page: input.page, ..page };
-                }
-                reading::Found::SetAside(_) => DiskCounts::add(&disk.used.set_aside),
-                reading::Found::Miss => {}
-            }
+        if let Some(page) = entry.as_ref().and_then(|(disk, key)| disk.take::<ChessPage>(key)) {
+            return ChessPage { page: input.page, ..page };
         }
         let scanned = catch_unwind(AssertUnwindSafe(|| scan_page(renderer, input, settings, self.read, model)));
         let page = scanned.unwrap_or_else(|_| {
@@ -1506,12 +1536,35 @@ impl Session {
         let cache = settings.cache.as_ref()?;
         let doc = self.get(id)?;
         Some(JobDisk {
-            store: reading::store_for(&cache.dir),
+            store: reading::store_within(&cache.dir, self.chess.budget.unwrap_or(reading::MAX_BYTES)),
             doc: doc.doc_keys(),
             pages: doc.info.pages.len(),
             take_only: !self.chess_may_keep(id, cache.encrypted),
+            peek: self.chess.peek.clone(),
             used: DiskCounts::default(),
         })
+    }
+
+    /// Also look in the readings kept in `dir` (`None`: nowhere else) when the folder of
+    /// [`ChessScanSettings::cache`] has none for a page, never changing it: no use recorded, an
+    /// entry that can't be trusted left where it is ([`reading::ReadingStore::peek`]). For the rest
+    /// of the session. Plan A9-N15a: the Library looks in the app's readings, and keeps its own
+    /// apart (decision D31 C).
+    pub fn set_chess_peek(&mut self, dir: Option<&Path>) {
+        self.chess.peek = dir.map(|d| Arc::new(reading::ReadingStore::new(d)));
+    }
+
+    /// Keep at most `max` bytes in the folder of [`ChessScanSettings::cache`] (`None`: D21's
+    /// [`reading::MAX_BYTES`]), for the rest of the session (plan A9-N15a: the Library's pages in
+    /// progress have their own budget).
+    pub fn set_chess_disk_budget(&mut self, max: Option<u64>) {
+        self.chess.budget = max;
+    }
+
+    /// Scan on `workers` threads (`None`: [`ChessScanJob::default_workers`]) in
+    /// [`Self::chess_scan`], for the rest of the session (plan A9-N15a: the Library's core cap).
+    pub fn set_chess_scan_workers(&mut self, workers: Option<usize>) {
+        self.chess.workers = workers;
     }
 
     /// Whether document `id`'s reading may be kept on disk ([`store::persist_policy`]): never for
@@ -1682,12 +1735,13 @@ impl Session {
         self.chess.scanned
     }
 
-    /// A count that moves each time this session's cache takes a result for document `id` that it
+    /// A value that moves each time this session's cache takes a result for document `id` that it
     /// did not hold: a scan's, or one a job's session read and gave back
     /// ([`Self::prime_chess_cache`]). Answering from the cache, or keeping what it holds as made in
     /// another state, leaves it. What was read of the document may have grown when it moved: the
-    /// app lists the diagrams read once per count (plan A9-N3, the Board's In the book). 0 for a
-    /// document the cache holds nothing of.
+    /// app lists the diagrams read once per value (plan A9-N3, the Board's In the book). It is the
+    /// session's clock at that moment (plan A9-N3b), so it never comes back to an earlier value,
+    /// for this document or another. 0 for a document the cache holds nothing of.
     pub fn chess_cache_revision(&self, id: DocId) -> u64 {
         self.chess.docs.get(&id).map_or(0, |d| d.revision)
     }
@@ -1719,6 +1773,20 @@ impl Session {
     /// diagrams with the user's models, not only find them. Fails when the document does not
     /// exist or its permissions do not allow copying its content.
     pub fn chess_scan(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings, read: bool) -> Result<Vec<Arc<ChessPage>>, String> {
+        self.chess_scan_with(id, pages, settings, read, &mut |_, _| true).map(|(found, _)| found)
+    }
+
+    /// [`Self::chess_scan`], told `progress(done, total)` of the pages it scans now as
+    /// [`ChessScanJob::run_parallel`] tells it (returning `false` stops between two pages: plan
+    /// A9-N15a, the Library's Stop). The pages found, and whether every page asked for was.
+    pub fn chess_scan_with(
+        &mut self,
+        id: DocId,
+        pages: &[usize],
+        settings: &ChessScanSettings,
+        read: bool,
+        progress: &mut dyn FnMut(usize, usize) -> bool,
+    ) -> Result<(Vec<Arc<ChessPage>>, bool), String> {
         let doc = self.get(id).ok_or("no such document")?;
         doc.check_copying().map_err(|e| e.to_string())?;
         // In the book's order, each once (plan A9-G7b, A2-16): every reading and export scans so.
@@ -1731,13 +1799,15 @@ impl Session {
         if !missing.is_empty() {
             let job = self.chess_scan_job_keyed(id, &missing, &missing_keys, &settings, read).ok_or("no such document")?;
             // On the cores (plan A9-V10a): the command line and the agents scan whole books here.
-            let workers = ChessScanJob::default_workers();
+            let workers = self.chess.workers.unwrap_or_else(ChessScanJob::default_workers);
             let scan = match &models {
-                Some(m) => job.run_parallel(m, workers, |_, _| true),
-                None => job.run_parallel_with(None, workers, |_, _| true),
+                Some(m) => job.run_parallel(m, workers, &mut *progress),
+                None => job.run_parallel_with(None, workers, &mut *progress),
             };
             // What was read now, not what the disk gave (plan A9-N5b).
-            self.chess.scanned = self.chess.scanned.saturating_add(missing.len().saturating_sub(scan.disk.read));
+            // What was read now, of the pages scanned before a stop.
+            let scanned = scan.pages.len().saturating_sub(scan.disk.read).saturating_sub(scan.disk.peeked);
+            self.chess.scanned = self.chess.scanned.saturating_add(scanned);
             self.store_chess_scan(&scan);
             for page in scan.pages {
                 if let Some(slot) = pages.iter().position(|p| *p == page.page).and_then(|i| found.get_mut(i)) {
@@ -1745,7 +1815,8 @@ impl Session {
                 }
             }
         }
-        Ok(found.into_iter().flatten().collect())
+        let whole = found.iter().all(Option::is_some);
+        Ok((found.into_iter().flatten().collect(), whole))
     }
 
     /// What the cache holds for `pages` of document `id` as a scan with `settings` (sanitized)
@@ -2088,6 +2159,8 @@ pub mod evals;
 pub mod export;
 pub mod games_store;
 pub mod keys;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod library;
 pub mod links;
 pub mod notes;
 pub mod office;
