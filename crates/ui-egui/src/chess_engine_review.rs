@@ -225,7 +225,6 @@ pub(crate) struct Checked {
 /// What a running batch ended with.
 struct Ended {
     ran: Ran,
-    batch: Batch,
     review: Review,
 }
 
@@ -237,6 +236,9 @@ struct Running {
     job: Job<Ended>,
     /// The evaluations the engine handed back and the interface has not taken yet.
     found: Arc<Mutex<Vec<(String, Eval)>>>,
+    /// The batch, which the job holds locked while it runs and leaves here however it ends (a
+    /// panic in it included): the interface takes it once the job is done, for Continue.
+    batch: Arc<Mutex<Batch>>,
     limit: Limit,
     /// The batch's size when it first started, and how many of it were asked before this run.
     all: usize,
@@ -592,8 +594,11 @@ impl PdfCraftApp {
         let halt = Arc::new(AtomicBool::new(false));
         let halted = Arc::clone(&halt);
         // Never inline: the batch takes as long as the engine does (plan A9-N17b).
+        let shared = Arc::new(Mutex::new(batch));
+        let held = Arc::clone(&shared);
         let job = Job::spawn("pdfcraft-chess-engine-check", false, move |ctl| {
-            let (mut batch, mut evals) = (batch, evals);
+            let mut evals = evals;
+            let mut batch = lock(&held);
             ctl.progress(0, batch.len());
             let ran = review::run(&analyser, &mut batch, &budget, &halted, |p| {
                 ctl.progress(p.done, p.total);
@@ -606,15 +611,28 @@ impl PdfCraftApp {
                     halted.store(true, Ordering::Relaxed);
                 }
             });
+            drop(batch);
             // The engine is closed before the report is made.
             drop(analyser);
             let linked: Vec<&ReferenceIndex> = refs.iter().map(|r| &**r).collect();
             let review = review::divergences(&doc, &linked, &evals, &Limits::default());
-            Ok(Ended { ran, batch, review })
+            Ok(Ended { ran, review })
         });
         self.chess.engine_review.last = Some(limit);
-        self.chess.engine_review.running =
-            Some(Running { doc: id, name, job, found, limit, all, before, started: Instant::now(), halt, stop_asked: None, closed: false });
+        self.chess.engine_review.running = Some(Running {
+            doc: id,
+            name,
+            job,
+            found,
+            batch: shared,
+            limit,
+            all,
+            before,
+            started: Instant::now(),
+            halt,
+            stop_asked: None,
+            closed: false,
+        });
         Ok(())
     }
 
@@ -681,22 +699,29 @@ impl PdfCraftApp {
         };
         let Some(run) = self.chess.engine_review.running.take() else { return };
         let rest = std::mem::take(&mut *lock(&run.found));
+        // The job is done: the batch is free, as the job left it (a panic in it too).
+        let batch = std::mem::take(&mut *lock(&run.batch));
         let (name, limit, all, closed) = (run.name.clone(), run.limit, run.all, run.closed);
         // Ended: dropping it waits for nothing.
         drop(run);
         self.take_found(doc, rest);
         self.flush_check(doc, true);
-        let asked = |batch: &Batch| all.saturating_sub(batch.len());
+        let done = all.saturating_sub(batch.len());
+        let left = batch.len();
         let ended = match out {
             Ok(e) => e,
-            Err(why) => return self.post_error(why),
+            // The job panicked: what it had not asked stays, for Continue.
+            Err(why) => {
+                if let Some(c) = self.chess.engine_review.docs.get_mut(&doc) {
+                    c.stopped = (left > 0).then_some(Stopped { batch, limit, all, asked: done });
+                }
+                return self.post_error(why);
+            }
         };
-        let done = asked(&ended.batch);
-        let left = ended.batch.len();
         if let Some(c) = self.chess.engine_review.docs.get_mut(&doc) {
             c.review = ended.review;
             c.generation = c.generation.wrapping_add(1);
-            c.stopped = (left > 0).then_some(Stopped { batch: ended.batch, limit, all, asked: done });
+            c.stopped = (left > 0).then_some(Stopped { batch, limit, all, asked: done });
         }
         let n = |v: usize| crate::i18n::number(v);
         let divergences = self.chess.engine_review.docs.get(&doc).map_or(0, |c| c.review.divergences.len());
@@ -1305,6 +1330,83 @@ fn summary(ui: &mut egui::Ui, t: &Tokens, p: &Prepared, limit: Limit) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A one-page book whose line is `moves`, in Helvetica.
+    fn book(moves: &str) -> Vec<u8> {
+        let content = format!("BT /F1 11 Tf 60 730 Td ({moves}) Tj ET");
+        let objs = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+            format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
+        ];
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objs.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+        out
+    }
+
+    /// Plan A9-N17b (the review of #420): a batch whose job panics keeps what it had not asked,
+    /// so Continue is offered; the panic is said.
+    #[test]
+    fn a_batch_whose_job_panics_keeps_its_positions_for_continue() {
+        let mut s = pdfcraft_engine::Session::new();
+        let id = s.open("book.pdf", None, Arc::new(book("1.e4 e5 2.Nf3! Nc6")), None).unwrap();
+        let read = s.chess_document(id, &[], &pdfcraft_engine::chess::ChessScanSettings::default(), None).unwrap();
+        let empty = EvalFile::empty(pdfcraft_engine::chess::corrections::DocRecord::default());
+        let batch = Batch::new(&read.doc, &[], &empty, DEFAULT_DEPTH);
+        let all = batch.len();
+        assert!(all > 0, "a batch to keep");
+        let mut app = PdfCraftApp::default();
+        let doc = DocId(7);
+        app.chess.engine_review.docs.insert(
+            doc,
+            Checked {
+                doc: Arc::new(read.doc),
+                refs: None,
+                evals: Arc::new(empty),
+                generation: 0,
+                review: Review::default(),
+                labels: Vec::new(),
+                stopped: None,
+                list: false,
+            },
+        );
+        let shared = Arc::new(Mutex::new(batch));
+        let held = Arc::clone(&shared);
+        let job: Job<Ended> = Job::spawn("test-check", false, move |_| {
+            let _batch = lock(&held);
+            panic!("a bug in the batch");
+        });
+        assert!(job.wait(Duration::from_secs(60)), "the job ends");
+        app.chess.engine_review.running = Some(Running {
+            doc,
+            name: "book.pdf".into(),
+            job,
+            found: Arc::default(),
+            batch: shared,
+            limit: Limit::Depth(DEFAULT_DEPTH),
+            all,
+            before: 0,
+            started: Instant::now(),
+            halt: Arc::default(),
+            stop_asked: None,
+            closed: false,
+        });
+        app.poll_running();
+        assert!(!app.chess.engine_review.running(), "ended");
+        assert_eq!(app.chess.engine_review.left(doc), Some(all), "Continue has every position it had not asked");
+    }
 
     /// The estimate is said in hours and minutes, rounded up, never "0 min".
     #[test]
