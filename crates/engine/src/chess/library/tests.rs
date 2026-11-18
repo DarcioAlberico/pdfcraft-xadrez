@@ -548,7 +548,7 @@ fn the_catalog_keeps_other_folders_and_orphan_indexes_go() {
     let changed = build(&lib, std::slice::from_ref(&a), &options());
     let again = hash_of(&changed, "1.pdf");
     assert_ne!(again, one);
-    assert_eq!(changed.orphans, [one.clone()]);
+    assert_eq!(changed.orphans, std::slice::from_ref(&one));
     assert!(changed.orphan_bytes > 0);
     let mut left: Vec<String> = lib.files().indexes.into_iter().map(|(h, _)| h).collect();
     left.sort();
