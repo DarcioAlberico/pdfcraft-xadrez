@@ -1081,9 +1081,13 @@ pub(crate) fn list(ui: &mut egui::Ui, t: &Tokens, review: &EngineReview, id: Doc
         let title = crate::i18n::fmt(tl!("Divergences ({n})"), &[("n", &crate::i18n::number(count))]);
         ui.add(egui::Label::new(RichText::new(title).font(theme::semibold(13.0))).truncate());
     });
-    // Esc goes back while the keyboard is in the list (or nowhere), never from a menu or dialog.
-    let focus_here = crate::widgets::focused_response(ui.ctx()).is_none_or(|r| area.contains_rect(r.rect));
-    if focus_here && !egui::Popup::is_any_open(ui.ctx()) && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+    // Esc goes back while the keyboard is in the list or the pointer is over it; never ahead of
+    // a menu's or a dialog's own Esc.
+    let ctx = ui.ctx().clone();
+    let focus_here = crate::widgets::focused_response(&ctx).is_some_and(|r| area.contains_rect(r.rect));
+    let pointer_here = ctx.pointer_hover_pos().is_some_and(|p| area.contains(p));
+    let covered = egui::Popup::is_any_open(&ctx) || ctx.memory(|m| m.top_modal_layer().is_some());
+    if (focus_here || pointer_here) && !covered && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
         action = Some(TextAction::Divergences(false));
     }
     let Some(c) = checked.filter(|c| !c.labels.is_empty() || !c.review.divergences.is_empty()) else {

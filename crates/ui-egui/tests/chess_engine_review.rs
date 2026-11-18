@@ -610,6 +610,41 @@ fn quitting_stops_the_batch_before_its_finds_are_written() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): Esc leaves the Divergences list only while the keyboard is
+/// in it or the pointer is over it: with the pointer on the page and the keyboard nowhere, Esc
+/// leaves the list as it is.
+#[test]
+fn esc_leaves_the_list_only_from_the_list() {
+    let data = temp_dir("esc");
+    let mut h = harness(book(&[MOVES]), &data);
+    let (keys, pages) = keys(&h);
+    let eval = |cp: i32, best: &str| Eval::new(22, Score::Centipawns(cp), Bound::Exact, &[best.to_owned()], Some("Stockfish 17"), 1).unwrap();
+    DirStore::new(data.join("evals"))
+        .keep(&keys, pages, &[(after(&["e4", "e5"]), eval(50, "d2d4")), (after(&["e4", "e5", "Nf3"]), eval(-150, "b8c6"))])
+        .unwrap();
+    count(&mut h);
+    h.get_by_label("Cancel").click();
+    h.run_steps(3);
+    h.get_by_label("Divergences (1)").click();
+    h.run_steps(3);
+    let id = h.state().views[0].id;
+    let back = h.get_by_label("‹ Text").rect();
+    // The pointer on the page, the keyboard nowhere.
+    h.hover_at(egui::pos2(300.0, 400.0));
+    h.run_steps(2);
+    h.key_press(egui::Key::Escape);
+    h.run_steps(3);
+    assert!(h.query_by_label("‹ Text").is_some(), "the list stays: Esc was not the list's");
+    // The pointer over the list: Esc goes back.
+    h.hover_at(back.center());
+    h.run_steps(2);
+    h.key_press(egui::Key::Escape);
+    h.run_steps(3);
+    assert!(h.query_by_label("‹ Text").is_none(), "back to the text");
+    assert!(h.state().chess.engine_review.divergences(id).is_some());
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.
