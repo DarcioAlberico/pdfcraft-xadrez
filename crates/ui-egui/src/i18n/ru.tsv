@@ -3679,3 +3679,20 @@ progress bar	Progress	Ход выполнения
 	Engine: {value} (depth {d})	Движок: {value} (глубина {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	При поиске по времени позиция может остаться мельче глубины {d}, которую отчёт не оценивает; проверка до глубины {d} запросит её снова.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Анализ на доске тоже включён: пока его движок ищет, два движка делят процессор.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Найти в книге по материалу…
+	Look for	Искать
+	This position	Эта позиция
+	By material	По материалу
+	Material	Материал
+	Either side	Любая сторона
+	The material with the colours swapped is found too.	Материал с переставленными цветами тоже находится.
+	Pawns:	Пешки:
+	Doubled	Сдвоенные
+	Isolated	Изолированные
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Это не запись материала: фигуры каждой стороны в порядке K Q R B N P, сначала белые, например KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Введите материал, например KRP-KR, или выберите вид пешек.
+	Looking in the book…	Поиск в книге…
+	Nothing in the book as read has this material and these pawns.	В прочитанной части книги нет такого материала и таких пешек.
+	{first} to {last}	{first} — {last}
+	Positions: {n}	Позиций: {n}

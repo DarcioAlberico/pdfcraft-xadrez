@@ -3765,3 +3765,20 @@ progress bar	Progress	Progression
 	Engine: {value} (depth {d})	Moteur : {value} (profondeur {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Recherchée pendant un temps donné, une position peut rester moins profonde que la profondeur {d}, que le rapport ne juge pas ; une vérification jusqu'à la profondeur {d} la redemande.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	L'analyse de l'échiquier est active aussi : pendant que son moteur cherche, les deux moteurs se partagent le processeur.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Chercher dans le livre par matériel…
+	Look for	Chercher
+	This position	Cette position
+	By material	Par matériel
+	Material	Matériel
+	Either side	Un camp ou l'autre
+	The material with the colours swapped is found too.	Le matériel aux couleurs inversées est trouvé aussi.
+	Pawns:	Pions :
+	Doubled	Doublés
+	Isolated	Isolés
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Pas une signature de matériel : les pièces de chaque camp dans l'ordre K Q R B N P, les Blancs d'abord, comme KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Écrivez un matériel, comme KRP-KR, ou choisissez un type de pion.
+	Looking in the book…	Recherche dans le livre…
+	Nothing in the book as read has this material and these pawns.	Rien dans le livre tel qu'il a été lu n'a ce matériel et ces pions.
+	{first} to {last}	{first} à {last}
+	Positions: {n}	Positions : {n}

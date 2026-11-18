@@ -3766,3 +3766,20 @@ progress bar	Progress	Fortschritt
 	Engine: {value} (depth {d})	Engine: {value} (Tiefe {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Bei einer Suche nach Zeit kann eine Stellung flacher als Tiefe {d} bleiben, die der Bericht nicht beurteilt; eine Prüfung bis Tiefe {d} fragt sie erneut ab.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Die Analyse des Bretts läuft auch: Während ihre Engine sucht, teilen sich die beiden Engines den Prozessor.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Im Buch nach Material suchen…
+	Look for	Suchen nach
+	This position	Diese Stellung
+	By material	Nach Material
+	Material	Material
+	Either side	Beide Seiten
+	The material with the colours swapped is found too.	Das Material mit vertauschten Farben wird auch gefunden.
+	Pawns:	Bauern:
+	Doubled	Doppelt
+	Isolated	Isoliert
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Keine Materialsignatur: die Figuren jeder Seite in der Reihenfolge K Q R B N P, Weiß zuerst, wie KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Schreiben Sie ein Material wie KRP-KR oder wählen Sie eine Bauernart.
+	Looking in the book…	Im Buch wird gesucht…
+	Nothing in the book as read has this material and these pawns.	Nichts im gelesenen Buch hat dieses Material und diese Bauern.
+	{first} to {last}	{first} bis {last}
+	Positions: {n}	Stellungen: {n}

@@ -3730,3 +3730,20 @@ progress bar	Progress	进度
 	Engine: {value} (depth {d})	引擎：{value}（深度 {d}）
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	按时间搜索时，局面可能达不到深度 {d}，报告不会判定它；到深度 {d} 的核对会再次询问它。
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	棋盘的分析也已开启：其引擎搜索时，两个引擎共用处理器。
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	按子力在书中查找…
+	Look for	查找
+	This position	此局面
+	By material	按子力
+	Material	子力
+	Either side	任一方
+	The material with the colours swapped is found too.	颜色互换的子力也会找到。
+	Pawns:	兵：
+	Doubled	叠兵
+	Isolated	孤兵
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	不是子力写法：每方的棋子按 K Q R B N P 的顺序，白方在前，如 KRP-KR。
+	Write a material, such as KRP-KR, or choose a kind of pawn.	请写一个子力，如 KRP-KR，或选择一种兵型。
+	Looking in the book…	正在书中查找…
+	Nothing in the book as read has this material and these pawns.	已读取的书中没有具有此子力和这些兵的局面。
+	{first} to {last}	{first} 至 {last}
+	Positions: {n}	局面：{n}

@@ -3839,3 +3839,20 @@ progress bar	Progress	Průběh
 	Engine: {value} (depth {d})	Engine: {value} (hloubka {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Při hledání po určitý čas může pozice zůstat mělčí než hloubka {d}, kterou zpráva neposuzuje; ověření do hloubky {d} si ji vyžádá znovu.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Analýza na šachovnici běží také: zatímco její engine hledá, oba enginy se dělí o procesor.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Najít v knize podle materiálu…
+	Look for	Hledat
+	This position	Tato pozice
+	By material	Podle materiálu
+	Material	Materiál
+	Either side	Kterákoli strana
+	The material with the colours swapped is found too.	Najde se i materiál s prohozenými barvami.
+	Pawns:	Pěšci:
+	Doubled	Zdvojení
+	Isolated	Izolovaní
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Není to zápis materiálu: kameny každé strany v pořadí K Q R B N P, napřed bílé, jako KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Napište materiál, např. KRP-KR, nebo zvolte druh pěšců.
+	Looking in the book…	Hledání v knize…
+	Nothing in the book as read has this material and these pawns.	Nic v přečtené části knihy nemá tento materiál a tyto pěšce.
+	{first} to {last}	{first} až {last}
+	Positions: {n}	Pozice: {n}

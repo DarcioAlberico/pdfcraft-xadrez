@@ -4015,3 +4015,20 @@ progress bar	Progress	Tiến độ
 	Engine: {value} (depth {d})	Engine: {value} (độ sâu {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Khi tìm theo thời gian, một thế cờ có thể chưa đạt độ sâu {d}, mức mà báo cáo không đánh giá; kiểm tra đến độ sâu {d} sẽ hỏi lại thế cờ đó.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Phân tích trên bàn cờ cũng đang bật: khi engine của nó tìm, hai engine dùng chung bộ xử lý.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Tìm trong sách theo lực lượng…
+	Look for	Tìm
+	This position	Thế cờ này
+	By material	Theo lực lượng
+	Material	Lực lượng
+	Either side	Bên nào cũng được
+	The material with the colours swapped is found too.	Cũng tìm lực lượng có màu quân đổi ngược.
+	Pawns:	Tốt:
+	Doubled	Tốt chồng
+	Isolated	Tốt cô lập
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Không phải ký hiệu lực lượng: quân mỗi bên theo thứ tự K Q R B N P, Trắng trước, như KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Hãy viết một lực lượng, như KRP-KR, hoặc chọn một loại tốt.
+	Looking in the book…	Đang tìm trong sách…
+	Nothing in the book as read has this material and these pawns.	Không có gì trong phần sách đã đọc có lực lượng và các tốt này.
+	{first} to {last}	{first} đến {last}
+	Positions: {n}	Thế cờ: {n}

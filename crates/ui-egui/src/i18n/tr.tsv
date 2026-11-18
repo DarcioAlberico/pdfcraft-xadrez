@@ -3761,3 +3761,20 @@ progress bar	Progress	İlerleme
 	Engine: {value} (depth {d})	Motor: {value} (derinlik {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Süreyle aranınca bir konum {d} derinliğinden sığ kalabilir, rapor bunu yargılamaz; {d} derinliğine kadar bir denetim onu yeniden sorar.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Tahtanın çözümlemesi de açık: onun motoru ararken iki motor işlemciyi paylaşır.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Kitapta malzemeye göre bul…
+	Look for	Ara
+	This position	Bu konum
+	By material	Malzemeye göre
+	Material	Malzeme
+	Either side	Her iki taraf
+	The material with the colours swapped is found too.	Renkleri değiştirilmiş malzeme de bulunur.
+	Pawns:	Piyonlar:
+	Doubled	Çift
+	Isolated	Yalnız
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Bir malzeme imzası değil: her tarafın taşları K Q R B N P sırasıyla, önce beyaz, KRP-KR gibi.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	KRP-KR gibi bir malzeme yazın ya da bir piyon türü seçin.
+	Looking in the book…	Kitapta aranıyor…
+	Nothing in the book as read has this material and these pawns.	Okunan kitapta bu malzemeye ve bu piyonlara sahip bir şey yok.
+	{first} to {last}	{first} – {last}
+	Positions: {n}	Konumlar: {n}

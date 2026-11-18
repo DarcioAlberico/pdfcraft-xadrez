@@ -3764,3 +3764,20 @@ progress bar	Progress	Előrehaladás
 	Engine: {value} (depth {d})	Motor: {value} ({d} mélység)
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Időre keresve egy állás sekélyebb maradhat a(z) {d} mélységnél, amit a jelentés nem értékel; a(z) {d} mélységig tartó ellenőrzés újra lekéri.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	A tábla elemzése is be van kapcsolva: amíg a motorja keres, a két motor osztozik a processzoron.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Keresés a könyvben anyag szerint…
+	Look for	Keresés
+	This position	Ez az állás
+	By material	Anyag szerint
+	Material	Anyag
+	Either side	Bármelyik fél
+	The material with the colours swapped is found too.	A felcserélt színű anyag is megtalálható.
+	Pawns:	Gyalogok:
+	Doubled	Dupla
+	Isolated	Elszigetelt
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Ez nem anyagjelölés: mindkét fél bábjai K Q R B N P sorrendben, előbb a világos, például KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Írjon be egy anyagot, például KRP-KR, vagy válasszon gyalogtípust.
+	Looking in the book…	Keresés a könyvben…
+	Nothing in the book as read has this material and these pawns.	A beolvasott könyvben nincs ilyen anyagú és ilyen gyalogú állás.
+	{first} to {last}	{first} – {last}
+	Positions: {n}	Állások: {n}

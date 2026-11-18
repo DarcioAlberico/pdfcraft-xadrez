@@ -3787,3 +3787,20 @@ progress bar	Progress	Хід виконання
 	Engine: {value} (depth {d})	Рушій: {value} (глибина {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Під час пошуку за часом позиція може лишитися мілкішою за глибину {d}, яку звіт не оцінює; перевірка до глибини {d} запитає її знову.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Аналіз на дошці теж увімкнено: поки його рушій шукає, два рушії ділять процесор.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Знайти в книзі за матеріалом…
+	Look for	Шукати
+	This position	Ця позиція
+	By material	За матеріалом
+	Material	Матеріал
+	Either side	Будь-яка сторона
+	The material with the colours swapped is found too.	Матеріал із переставленими кольорами теж знаходиться.
+	Pawns:	Пішаки:
+	Doubled	Здвоєні
+	Isolated	Ізольовані
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Це не запис матеріалу: фігури кожної сторони в порядку K Q R B N P, спершу білі, як KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Введіть матеріал, як-от KRP-KR, або виберіть вид пішаків.
+	Looking in the book…	Пошук у книзі…
+	Nothing in the book as read has this material and these pawns.	У прочитаній частині книги немає такого матеріалу й таких пішаків.
+	{first} to {last}	{first} — {last}
+	Positions: {n}	Позицій: {n}

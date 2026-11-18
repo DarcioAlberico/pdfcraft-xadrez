@@ -4038,3 +4038,20 @@ progress bar	Progress	التقدم
 	Engine: {value} (depth {d})	المحرك: {value} (العمق {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	عند البحث لمدة محددة، قد يبقى موقف أقل من العمق {d}، ولا يحكم عليه التقرير؛ والتحقق حتى العمق {d} يعيد طلبه.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	تحليل اللوحة يعمل أيضًا: أثناء بحث محركه، يتقاسم المحركان المعالج.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	البحث في الكتاب حسب المادة…
+	Look for	البحث عن
+	This position	هذا الوضع
+	By material	حسب المادة
+	Material	المادة
+	Either side	أي طرف
+	The material with the colours swapped is found too.	يُعثر أيضًا على المادة مع تبديل الألوان.
+	Pawns:	البيادق:
+	Doubled	مزدوجة
+	Isolated	معزولة
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	ليست صيغة مادة: قطع كل طرف بالترتيب K Q R B N P، الأبيض أولًا، مثل KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	اكتب مادة مثل KRP-KR، أو اختر نوعًا من البيادق.
+	Looking in the book…	جارٍ البحث في الكتاب…
+	Nothing in the book as read has this material and these pawns.	لا شيء فيما قُرئ من الكتاب له هذه المادة وهذه البيادق.
+	{first} to {last}	{first} إلى {last}
+	Positions: {n}	الأوضاع: {n}

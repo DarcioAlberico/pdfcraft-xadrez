@@ -3770,3 +3770,20 @@ progress bar	Progress	Napredek
 	Engine: {value} (depth {d})	Šahovski program: {value} (globina {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Pri iskanju po času lahko pozicija ostane plitvejša od globine {d}, ki je poročilo ne ocenjuje; preverjanje do globine {d} jo zahteva znova.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Analiza na šahovnici je tudi vklopljena: medtem ko njen šahovski program išče, si oba programa delita procesor.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Najdi v knjigi po materialu…
+	Look for	Išči
+	This position	Ta pozicija
+	By material	Po materialu
+	Material	Material
+	Either side	Katera koli stran
+	The material with the colours swapped is found too.	Najde se tudi material z zamenjanimi barvami.
+	Pawns:	Kmeti:
+	Doubled	Podvojeni
+	Isolated	Osamljeni
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	To ni zapis materiala: figure vsake strani v vrstnem redu K Q R B N P, najprej bele, kot KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Vpišite material, na primer KRP-KR, ali izberite vrsto kmetov.
+	Looking in the book…	Iskanje v knjigi…
+	Nothing in the book as read has this material and these pawns.	Nič v prebranem delu knjige nima tega materiala in teh kmetov.
+	{first} to {last}	{first} do {last}
+	Positions: {n}	Pozicije: {n}

@@ -409,6 +409,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.analyze", "Analyze the position", CHESS, None, Nothing, "gauge"),
     c("chess.export", "Export chess book…", CHESS, None, Copying, "file-output"),
     c("chess.shortcuts", "Chess shortcuts", CHESS, None, Nothing, "circle-help"),
+    // The Board tab's In the book list by material and pawn structure (plan A9-N16b).
+    c("chess.find_material", "Find in the book by material…", CHESS, None, Nothing, "search"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),

@@ -28,6 +28,11 @@ fn positions_in_a_row_are_one_stretch_and_a_variation_another() {
         ]
     );
     assert_eq!((found.total, found.per_game.clone(), found.played, found.unreadable), (3, vec![(0, 2), (1, 1)], 3, 0), "each game played once");
+    // Each stretch's node is its first move in its game (plan A9-N16b opens the game there).
+    for s in &found.found {
+        let game = index.game(s.game).unwrap();
+        assert_eq!(game.san(s.node), s.first.san, "{s:?}");
+    }
     // Without the colours swapped, the twin is not found; at most one is listed, all are counted.
     let white = index.stretches(&Query { either_side: false, ..query }, 1);
     assert_eq!((white.found.len(), white.total, white.per_game), (1, 2, vec![(0, 2)]));

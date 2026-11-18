@@ -3758,3 +3758,20 @@ progress bar	Progress	Πρόοδος
 	Engine: {value} (depth {d})	Μηχανή: {value} (βάθος {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Με αναζήτηση για ορισμένο χρόνο, μια θέση μπορεί να μείνει πιο ρηχή από βάθος {d}, που η αναφορά δεν κρίνει· ένας έλεγχος έως βάθος {d} τη ζητά ξανά.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Η ανάλυση της σκακιέρας είναι επίσης ενεργή: όσο η μηχανή της ψάχνει, οι δύο μηχανές μοιράζονται τον επεξεργαστή.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Εύρεση στο βιβλίο κατά υλικό…
+	Look for	Αναζήτηση
+	This position	Αυτή η θέση
+	By material	Κατά υλικό
+	Material	Υλικό
+	Either side	Οποιαδήποτε πλευρά
+	The material with the colours swapped is found too.	Βρίσκεται και το υλικό με ανεστραμμένα χρώματα.
+	Pawns:	Πιόνια:
+	Doubled	Διπλά
+	Isolated	Απομονωμένα
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Δεν είναι υπογραφή υλικού: τα κομμάτια κάθε πλευράς με τη σειρά K Q R B N P, πρώτα τα λευκά, όπως KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Γράψτε ένα υλικό, όπως KRP-KR, ή επιλέξτε είδος πιονιού.
+	Looking in the book…	Αναζήτηση στο βιβλίο…
+	Nothing in the book as read has this material and these pawns.	Τίποτα στο βιβλίο όπως διαβάστηκε δεν έχει αυτό το υλικό και αυτά τα πιόνια.
+	{first} to {last}	{first} έως {last}
+	Positions: {n}	Θέσεις: {n}

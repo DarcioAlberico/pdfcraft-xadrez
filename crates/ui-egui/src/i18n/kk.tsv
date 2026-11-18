@@ -3763,3 +3763,20 @@ progress bar	Progress	Орындалу барысы
 	Engine: {value} (depth {d})	Қозғалтқыш: {value} (тереңдік {d})
 	Searched for a time, a position may stay shallower than depth {d}, which the report does not judge; a check to depth {d} asks it again.	Уақыт бойынша іздегенде позиция {d} тереңдіктен таяз қалуы мүмкін, оны есеп бағаламайды; {d} тереңдікке дейінгі тексеру оны қайта сұрайды.
 	The board's analysis is on too: while its engine searches, the two engines share the processor.	Тақтаның талдауы да қосулы: оның қозғалтқышы іздеп жатқанда екі қозғалтқыш процессорды бөліседі.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Кітаптан материал бойынша табу…
+	Look for	Іздеу
+	This position	Бұл позиция
+	By material	Материал бойынша
+	Material	Материал
+	Either side	Кез келген жақ
+	The material with the colours swapped is found too.	Түстері ауыстырылған материал да табылады.
+	Pawns:	Пешкалар:
+	Doubled	Қосарланған
+	Isolated	Оқшау
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Бұл материал жазбасы емес: әр жақтың фигуралары K Q R B N P ретімен, алдымен ақтар, мысалы KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	KRP-KR сияқты материалды жазыңыз немесе пешка түрін таңдаңыз.
+	Looking in the book…	Кітаптан ізделуде…
+	Nothing in the book as read has this material and these pawns.	Кітаптың оқылған бөлігінде бұл материал мен бұл пешкалар жоқ.
+	{first} to {last}	{first} – {last}
+	Positions: {n}	Позициялар: {n}

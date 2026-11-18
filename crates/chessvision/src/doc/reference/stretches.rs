@@ -38,6 +38,9 @@ pub struct Stretch {
     /// The move that reached its first position, and the one that reached its last.
     pub first: NumberedMove,
     pub last: NumberedMove,
+    /// The first move's node in its game ([`ReferenceIndex::game`]): where the game opens on a
+    /// board (plan A9-N16b).
+    pub node: NodeId,
     /// On the game's main line, or in a variation.
     pub main_line: bool,
     /// How many positions it holds.
@@ -75,6 +78,7 @@ fn numbered(game: &PgnGame, node: NodeId, fen: &Fen) -> NumberedMove {
 
 /// The run of matching positions a line is in, while it lasts.
 struct Run {
+    node: NodeId,
     first: NumberedMove,
     last: NumberedMove,
     positions: usize,
@@ -136,7 +140,7 @@ pub(super) fn game_stretches(game: &PgnGame, k: usize, query: &Query, max: usize
                 }
                 (Some(fen), None) => {
                     let m = numbered(game, node, &fen);
-                    run = Some(Run { first: m.clone(), last: m, positions: 1 });
+                    run = Some(Run { node, first: m.clone(), last: m, positions: 1 });
                 }
                 (None, _) => flush(&mut run, k, main_line, max, out),
             }
@@ -156,7 +160,7 @@ fn flush(run: &mut Option<Run>, game: usize, main_line: bool, max: usize, out: &
     let Some(r) = run.take() else { return };
     out.total = out.total.saturating_add(1);
     if out.found.len() < max {
-        out.found.push(Stretch { game, first: r.first, last: r.last, main_line, positions: r.positions });
+        out.found.push(Stretch { game, first: r.first, last: r.last, node: r.node, main_line, positions: r.positions });
     }
 }
 
