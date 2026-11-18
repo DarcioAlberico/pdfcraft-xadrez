@@ -645,6 +645,38 @@ fn esc_leaves_the_list_only_from_the_list() {
     let _ = std::fs::remove_dir_all(data);
 }
 
+/// Plan A9-N17b (the review of #420): a save during the batch changes the document's keys (here
+/// its path and its name); what the batch finds afterwards is written under the keys it has now,
+/// in the file named for them, never under the old ones.
+#[test]
+fn a_save_mid_batch_writes_under_the_documents_keys_now() {
+    use pdfcraft_engine::chess::store::file_name;
+    let data = temp_dir("saved");
+    let mut h = harness(book(&[MOVES]), &data);
+    let id = h.state().views[0].id;
+    let (old, _) = keys(&h);
+    let (analyser, engine) = engine(Answers::Gated { wait: NET }, 100);
+    h.state_mut().chess.engine_review.use_engine(analyser);
+    count(&mut h);
+    h.get_by_label("Start the check").click();
+    engine.answer(1);
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 2 of 5").is_some()), "one answered");
+    let bytes = h.state().session.save_bytes(id).unwrap();
+    let path = data.join("saved.pdf").to_string_lossy().into_owned();
+    h.state_mut().session.mark_saved(id, bytes, Some(path)).unwrap();
+    let (new, pages) = keys(&h);
+    let (old_file, new_file) = (file_name(&old, "evals").unwrap(), file_name(&new, "evals").unwrap());
+    assert_ne!(old_file, new_file, "the save changed the keys");
+    engine.answer(4);
+    assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "done");
+    h.state_mut().settle_chess_games();
+    let dir = data.join("evals");
+    assert!(dir.join(&new_file).is_file(), "written under the keys it has now");
+    assert!(!dir.join(&old_file).exists(), "never under the old ones");
+    assert_eq!(DirStore::new(&dir).load(&new, pages).unwrap().file.evals.len(), 5);
+    let _ = std::fs::remove_dir_all(data);
+}
+
 /// Plan A9-N17b at the reference screen (1366 × 768), light and dark, in English and in German
 /// (longer words): the menu item, the dialog's estimate, the batch's row and the list are on
 /// screen; the head row's chip is measured and cut before it would push the menu out of view.

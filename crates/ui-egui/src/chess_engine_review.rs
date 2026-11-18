@@ -601,9 +601,7 @@ impl PdfCraftApp {
         let keys = self.session.get(id).map(|d| (d.doc_keys(), d.info.pages.len()));
         let keep = self.chess_keeping(id);
         let w = self.chess.engine_review.writes.entry(id).or_default();
-        if w.keys.is_none() {
-            w.keys = keys;
-        }
+        w.keys = keys;
         w.keep = Some(keep);
         w.last = Some(Instant::now());
         let name = self.session.get(id).map(|d| d.name.clone()).unwrap_or_default();
@@ -795,7 +793,6 @@ impl PdfCraftApp {
         }
         w.last = Some(Instant::now());
         let new = std::mem::take(&mut w.new);
-        let keys = w.keys.clone();
         if let Some(c) = self.chess.engine_review.docs.get_mut(&id) {
             let evals = Arc::make_mut(&mut c.evals);
             for (fen, e) in &new {
@@ -807,14 +804,23 @@ impl PdfCraftApp {
         // open its rule now holds (an answer given meanwhile counts); once it is closed, the last
         // one seen: a document whose chess was not kept never has it written after it closes.
         let keeping = if self.session.get(id).is_some() { Some(self.chess_keeping(id)) } else { None };
+        // The document's keys, under which its evaluations are written: an edit does not change
+        // them (its first /ID, its path, its name and the size of the file as last opened or
+        // saved), a save does (the size; Save As the path and the name). Taken again at each write
+        // while it is open, so a save mid-batch writes under the keys it has now; once it is
+        // closed, the last ones.
+        let now = self.session.get(id).map(|d| (d.doc_keys(), d.info.pages.len()));
         let Some(w) = self.chess.engine_review.writes.get_mut(&id) else { return };
         if keeping.is_some() {
             w.keep = keeping;
         }
+        if now.is_some() {
+            w.keys = now;
+        }
         if w.keep != Some(Keeping::Yes) {
             return;
         }
-        let Some((keys, pages)) = keys else { return };
+        let Some((keys, pages)) = w.keys.clone() else { return };
         match self.chess.evals.folder() {
             Some(dir) => {
                 let review = &mut self.chess.engine_review;
