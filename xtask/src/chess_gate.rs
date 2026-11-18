@@ -5,7 +5,7 @@
 //!
 //! 0. **Text**: no CRLF in a changed text file; `cargo fmt --check` of the changed crates.
 //! 1. **Scans**, in seconds: the tools' file access (`automation/src/file_access_scan.rs`), the
-//!    chess texts in every complete catalogue (`ui-egui/src/i18n/chess_scan.rs`; both files are
+//!    chess texts in every catalogue (`ui-egui/src/i18n/chess_scan.rs`; both files are
 //!    included here as they are, so the crate's own tests run the same code), the parity
 //!    manifest (no TOML 1.1 escape, so TOML 1.0 tools read it, then `xtask parity`'s
 //!    validation), no crate below L7 asking where the executable is (plan A9-T3), `xtask layers`,
@@ -683,7 +683,7 @@ fn asks_for_executable(name: &str, text: &str) -> Vec<String> {
         .collect()
 }
 
-/// The chess texts of `crates/ui-egui/src/chess*.rs` in every catalogue complete for chess.
+/// The chess texts of `crates/ui-egui/src/chess*.rs` in every catalogue (all 22, plan A9-I14b).
 fn chess_catalogues(root: &Path) -> Result<String, String> {
     let src = root.join("crates/ui-egui/src");
     let mut literals = BTreeSet::new();
@@ -712,10 +712,7 @@ fn chess_catalogues(root: &Path) -> Result<String, String> {
     } else {
         let lines: Vec<String> =
             missing.iter().map(|(code, texts)| format!("{code}.tsv lacks {}: {:?}", texts.len(), texts.iter().take(5).collect::<Vec<_>>())).collect();
-        Err(format!(
-            "add each new chess text to every catalogue (or to the four of chess_scan::INCOMPLETE only through A9-I14):\n{}",
-            lines.join("\n")
-        ))
+        Err(format!("add each new chess text to every catalogue:\n{}", lines.join("\n")))
     }
 }
 
