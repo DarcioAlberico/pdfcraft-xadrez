@@ -71,6 +71,23 @@ fn boards(pages: &[Arc<ChessPage>]) -> Vec<(usize, String)> {
         .collect()
 }
 
+/// Plan A9-N12b: a page read stays read when a detection-only scan looks at it — what a page's
+/// reading does to the page before it, for a caption at its foot. That look put the reading back
+/// as detection only, and the next reading (the export, the exercise sheet's count) read the page
+/// again.
+#[test]
+fn a_detection_look_leaves_a_page_read() {
+    let (mut s, id) = open(book(6));
+    s.chess_scan(id, &[4], &quick(), true).unwrap();
+    let before = s.chess.scanned;
+    let looked = s.chess_scan(id, &[4], &quick(), false).unwrap();
+    assert!(looked.first().is_some_and(|p| p.readings.is_some()), "the look is answered by the reading");
+    let read = s.chess_scan(id, &[4], &quick(), true).unwrap();
+    assert_eq!(s.chess.scanned - before, 0, "nothing scanned again");
+    assert_eq!(boards(&read).len(), 1);
+    assert_eq!(s.chess_held(id, &[], &quick()), [4], "and it is held as read");
+}
+
 #[test]
 fn an_edit_reads_again_only_the_pages_it_touched() {
     edits_read_again_only_the_pages_they_touched(48);
@@ -478,7 +495,7 @@ fn each_document_keeps_its_own_pages() {
     assert_eq!(cache.len_of(a), MAX_CACHED_PAGES);
     assert!(cache.get(a, 1, key(1), &params).is_none() && cache.get(a, 0, key(0), &params).is_some());
     // A page that moved is found by its content key at its new index.
-    let moved = cache.get(a, 5000, key(7), &params).unwrap();
+    let (moved, _) = cache.get(a, 5000, key(7), &params).unwrap();
     assert_eq!(moved.page, 5000);
     assert_eq!(cache.len_of(b), 10);
     cache.forget(a);

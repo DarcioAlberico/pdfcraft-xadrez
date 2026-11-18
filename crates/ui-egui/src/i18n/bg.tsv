@@ -3624,3 +3624,23 @@ progress bar	Progress	Напредък
 	Illegal move: {move} can't be played here.	Непозволен ход: {move} не може да се изиграе тук.
 	{move} is not a move.	{move} не е ход.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Стрелка от {from}: Alt+щракнете полето, към което сочи, или пак това, за да го оградите.
+	exercises	упражнения
+	Exercise sheet (PDF)	Лист с упражнения (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Номерираните диаграми на книгата в нов PDF за печат, по 4, 6 или 9 на страница, с решенията накрая.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Няма упражнение за листа: номерираните диаграми на избраните страници нямат изходна позиция ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Няма упражнение за листа: избраните страници нямат номерирана диаграма.
+	Exercises: counting…	Упражнения: преброяване…
+	Exercises: counted when exported	Упражнения: ще се преброят при експортиране
+	Pages not read yet: {n} (counted when exported)	Още непрочетени страници: {n} (ще се преброят при експортиране)
+	Exercises: {n}	Упражнения: {n}
+	solution not read: {n}	непрочетено решение: {n}
+	no position to start from	няма изходна позиция
+	no solution read	няма прочетено решение
+	Left out: {n} ({why})	Пропуснати: {n} ({why})
+	past the sheet's {max}	над {max} на листа
+	Per page	На страница
+	Diagrams a page: {n} ({grid})	Диаграми на страница: {n} ({grid})
+	With the solutions	С решенията
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Решенията накрая, по реда на номерата. Диаграма, чието решение не е прочетено, го казва.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	Листът с упражнения не може да се запише върху отворен PDF: изберете друго име.
+	No exercise sheet was written	Не беше записан лист с упражнения

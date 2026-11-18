@@ -19,8 +19,9 @@
 //! interface's fonts have them, else the moves as printed.
 //!
 //! **Export…** writes the whole document as PGN, EPUB, HTML, Word, RTF or Markdown (with its
-//! diagram images in a folder beside it), through the engine's `chess_export`; the menu, the
-//! notice about diagrams still to review and what the export said are `chess_export_ui`.
+//! diagram images in a folder beside it), through the engine's `chess_export`, or its exercises
+//! as a sheet to print (`chess_worksheet`); the dialog, the notice about diagrams still to review
+//! and what the export said are `chess_export_ui`.
 
 use std::sync::Arc;
 
@@ -28,7 +29,7 @@ use egui::{FontId, TextureHandle};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::ScanStamp;
 use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
-use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
+use pdfcraft_engine::chess::export::ChessExportOptions;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
@@ -36,6 +37,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline,
 use pdfcraft_engine::chess::reference_store::Choice;
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
+use crate::chess_export_ui::ExportFormat;
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
 
@@ -83,6 +85,26 @@ pub struct ChessJob {
     job: crate::chess_job::Job<(JobDone, JobRead)>,
 }
 
+/// Where a job reads a document from ([`PdfCraftApp::chess_job_source`]).
+pub(crate) struct JobSource {
+    name: String,
+    bytes: Arc<Vec<u8>>,
+    password: Option<String>,
+    corrections: Option<pdfcraft_engine::chess::corrections::CorrectionFile>,
+    cached: pdfcraft_engine::chess::ChessCached,
+}
+
+impl JobSource {
+    /// The document opened in a session of its own, given its corrections and what was read.
+    pub(crate) fn open(self) -> Result<(pdfcraft_engine::Session, DocId), String> {
+        let mut s = pdfcraft_engine::Session::new();
+        let id = s.open(self.name, None, self.bytes, self.password.as_deref()).map_err(|e| e.to_string())?;
+        s.set_chess_corrections(id, self.corrections);
+        s.prime_chess_cache(id, self.cached);
+        Ok((s, id))
+    }
+}
+
 /// What a job's session holds when it is done, to give back to the app's session.
 struct JobRead {
     cached: pdfcraft_engine::chess::ChessCached,
@@ -114,13 +136,13 @@ pub enum JobKind {
     },
     #[cfg(not(target_arch = "wasm32"))]
     Export {
-        format: ChessFormat,
+        format: ExportFormat,
         path: std::path::PathBuf,
         image_dir: String,
     },
     #[cfg(target_arch = "wasm32")]
     Export {
-        format: ChessFormat,
+        format: ExportFormat,
         name: String,
     },
 }
@@ -190,8 +212,8 @@ impl ChessJob {
 }
 
 /// The most pages Export and Align the book read on the web, where they run inside one frame
-/// (plan A9-I2).
-const WEB_WHOLE_BOOK_PAGES: usize = 20;
+/// (plan A9-I2); the exercise sheet's count too (plan A9-N12b).
+pub(crate) const WEB_WHOLE_BOOK_PAGES: usize = 20;
 
 /// A long job of the document shown, as its row says it: pages done of the total (plan A9-I2).
 #[derive(Clone, Debug, PartialEq)]
@@ -201,40 +223,47 @@ pub struct LongRow {
     pub total: usize,
 }
 
-/// Export document `id` as `format` with its own games, `games` (a PGN), read into an index
-/// first (plan A9-N2): in the export's job, off the interface's thread. Games that can't be
-/// indexed are left out of it, said in the export's notes, the book's PGN and the reading still
-/// linked.
+/// The document's own games, `games` (a PGN), read into an index that `options` links to first
+/// (plan A9-N2), off the interface's thread; what to note when they can't be indexed (they are
+/// left out, the book's PGN and the reading still linked).
+pub(crate) fn link_games(options: &mut ChessExportOptions, games: Option<&str>) -> Option<String> {
+    let pgn = games?;
+    match pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex::from_pgn(pgn) {
+        Ok(index) => {
+            options.games = Some(Arc::new(index));
+            None
+        }
+        Err(e) => Some(format!("the document's games were not linked: {e}")),
+    }
+}
+
+/// Export document `id` as `export` (the exercise sheet laid out as `sheet` says) with its own
+/// games, `games` (a PGN), read into an index first (plan A9-N2): in the export's job, off the
+/// interface's thread. Games that can't be indexed are left out of it, said in the export's notes.
 fn export_with_games(
     s: &mut pdfcraft_engine::Session,
     id: DocId,
-    format: ChessFormat,
+    export: ExportFormat,
     mut options: ChessExportOptions,
+    sheet: pdfcraft_engine::chess::worksheet::SheetOptions,
     games: Option<&str>,
     ctl: &crate::chess_job::JobCtl,
 ) -> Result<pdfcraft_engine::chess::export::ChessExport, String> {
-    let mut left_out = None;
-    if let Some(pgn) = games {
-        match pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex::from_pgn(pgn) {
-            Ok(index) => options.games = Some(Arc::new(index)),
-            Err(e) => left_out = Some(format!("the document's games were not linked: {e}")),
-        }
-    }
-    let mut made = export_in_steps(s, id, format, &options, ctl)?;
+    let left_out = link_games(&mut options, games);
+    scan_in_steps(s, id, &options, ctl)?;
+    let mut made = match export.engine() {
+        Some(format) => s.chess_export(id, format, &options)?,
+        // The exercise sheet, a PDF of its own (plan A9-N12b), said as the other exports are.
+        None => s.chess_worksheet(id, &options, &sheet)?.into_export(),
+    };
     made.notes.extend(left_out);
     Ok(made)
 }
 
-/// Export document `id` as `format` (plan A9-I2): its pages' diagrams are scanned first, a block
-/// at a time, so the job says how far it is and stops between two blocks; the export then finds
-/// them scanned. Reading their text and writing come after the last page, and are not counted.
-fn export_in_steps(
-    s: &mut pdfcraft_engine::Session,
-    id: DocId,
-    format: ChessFormat,
-    options: &ChessExportOptions,
-    ctl: &crate::chess_job::JobCtl,
-) -> Result<pdfcraft_engine::chess::export::ChessExport, String> {
+/// Scan the pages an export of document `id` reads (plan A9-I2), a block at a time, so the job
+/// says how far it is and stops between two blocks; the export then finds them scanned. Reading
+/// their text and writing come after the last page, and are not counted.
+fn scan_in_steps(s: &mut pdfcraft_engine::Session, id: DocId, options: &ChessExportOptions, ctl: &crate::chess_job::JobCtl) -> Result<(), String> {
     /// Pages scanned at a time.
     const BLOCK: usize = 16;
     let pages: Vec<usize> = if options.pages.is_empty() { (0..s.get(id).map_or(0, |d| d.info.pages.len())).collect() } else { options.pages.clone() };
@@ -249,7 +278,7 @@ fn export_in_steps(
         done = done.saturating_add(block.len());
         ctl.progress(done, pages.len());
     }
-    s.chess_export(id, format, options)
+    Ok(())
 }
 
 /// What the text tab asks for.
@@ -1129,18 +1158,10 @@ impl PdfCraftApp {
                 &[("n", &n)],
             ));
         }
-        // The diagram corrections go with the document: the job reads in a session of its own.
-        let corrections = self.chess_corrections_file(id);
-        // So does what this session read for the document as it is: the job reads none of it again.
-        let cached = self.session.chess_cached(id, &[]);
         let stamp = self.session.chess_stamp(id);
-        let Some(doc) = self.session.get(id) else { return };
-        let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
+        let Some(source) = self.chess_job_source(id) else { return };
         let job = crate::chess_job::Job::spawn("pdfcraft-chess-job", self.run_inline, move |ctl| {
-            let mut s = pdfcraft_engine::Session::new();
-            let job_id = s.open(name, None, bytes, password.as_deref()).map_err(|e| e.to_string())?;
-            s.set_chess_corrections(job_id, corrections);
-            s.prime_chess_cache(job_id, cached);
+            let (mut s, job_id) = source.open()?;
             let done = work(&mut s, job_id, ctl);
             Ok((done, JobRead { cached: s.chess_cached(job_id, &[]), scanned: s.chess_scanned() }))
         });
@@ -1151,6 +1172,16 @@ impl PdfCraftApp {
             self.chess.reading = job;
         }
         self.poll_chess_job();
+    }
+
+    /// What a job needs to read document `id` in a session of its own: its working bytes, and the
+    /// diagram corrections and what this session read for it as it is, so the job reads none of
+    /// it again (plan A9, G11). `None` for a document that is not open.
+    pub(crate) fn chess_job_source(&mut self, id: DocId) -> Option<JobSource> {
+        let corrections = self.chess_corrections_file(id);
+        let cached = self.session.chess_cached(id, &[]);
+        let doc = self.session.get(id)?;
+        Some(JobSource { name: doc.name.clone(), bytes: doc.bytes.clone(), password: doc.password.clone(), corrections, cached })
     }
 
     /// Stop the long job running (Export, Align the book; plan A9-I2): dropped at once, so
@@ -1259,6 +1290,13 @@ impl PdfCraftApp {
                     Some(node) => self.put_book_game(job.doc, &read.span.doc, node),
                     None => self.inform(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
                 }
+            }
+            // A sheet refused (no exercise on the pages read, plan A9-N12b) is said in the window
+            // the export ends with, with the engine's reason.
+            (JobKind::Export { format: ExportFormat::Sheet, .. }, JobDone::Export(Err(why))) if !why.is_empty() => {
+                self.settle_error("export");
+                let said = tl!("No exercise sheet was written").to_owned();
+                self.chess.export_done = Some(crate::chess_export_ui::Done { path: None, said, notes: vec![why] });
             }
             #[cfg(not(target_arch = "wasm32"))]
             (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
@@ -1412,14 +1450,26 @@ impl PdfCraftApp {
         (!text.is_empty()).then(|| text.join("\n"))
     }
 
+    /// The options an export of document `id` as `export` reads and writes with, titled `stem`:
+    /// the scan the app made, so the job finds what it read (plan A9, G11), the diagrams' pieces,
+    /// the book's cipher and origin, and what the export dialog chose (plan A9-X2).
+    pub(crate) fn chess_export_base(&mut self, id: DocId, export: ExportFormat, stem: &str) -> ChessExportOptions {
+        let mut options = ChessExportOptions::new(stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
+        options.scan = self.chess_scan_settings();
+        options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
+        options.book = self.chess_cipher(id);
+        options.ocr = self.chess_origin(id).ocr_mode();
+        self.chess_export_options(id, export, &mut options);
+        options
+    }
+
     /// Ask where (`save_override` in tests), then read document `id` and write it as `export`.
-    pub(crate) fn export_chess_save(&mut self, id: DocId, export: crate::chess_export_ui::ExportFormat) {
+    pub(crate) fn export_chess_save(&mut self, id: DocId, export: ExportFormat) {
         if !self.may_copy(id) {
             return;
         }
         let Some(doc) = self.session.get(id) else { return };
         let stem = doc.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string();
-        let ext = export.extension();
         #[cfg(not(target_arch = "wasm32"))]
         {
             let write = move |app: &mut Self, path: std::path::PathBuf| app.export_chess_to(id, export, &path);
@@ -1428,52 +1478,53 @@ impl PdfCraftApp {
                 None => {
                     let dialog = rfd::AsyncFileDialog::new()
                         .set_title(tl!("Export").to_string())
-                        .add_filter(export.name(), &[ext])
-                        .set_file_name(format!("{stem}.{ext}"));
+                        .add_filter(export.name(), &[export.extension()])
+                        .set_file_name(export.file_name(&stem));
                     self.ask_one(crate::pickers::Ask::Save(dialog), None, write);
                 }
             }
         }
         #[cfg(target_arch = "wasm32")]
         {
-            let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
-            // The scan the app made, so the job finds what it read (plan A9, G11).
-            options.scan = self.chess_scan_settings();
-            options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
-            options.book = self.chess_cipher(id);
-            options.ocr = self.chess_origin(id).ocr_mode();
-            // What the export dialog chose (plan A9-X2).
-            self.chess_export_options(id, export, &mut options);
+            let options = self.chess_export_base(id, export, &stem);
             let games = self.export_games(id);
-            let format = export.engine();
-            self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id, ctl| {
-                JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl))
+            let sheet = self.chess.export.sheet.options();
+            self.start_chess_job(id, JobKind::Export { format: export, name: export.file_name(&stem) }, move |s, id, ctl| {
+                JobDone::Export(export_with_games(s, id, export, options, sheet, games.as_deref(), ctl))
             });
         }
     }
 
+    /// Whether `path` is the file of a document open in this session: an exercise sheet, a PDF,
+    /// is never written over one (plan A9-N12b; the engine's tool refuses the same, G7a).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn is_open_file(&self, path: &std::path::Path) -> bool {
+        let same = |a: &std::path::Path, b: &std::path::Path| match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+            (Ok(a), Ok(b)) => a == b,
+            _ => a == b,
+        };
+        self.session.docs().iter().filter_map(|d| d.path.as_deref()).any(|open| same(std::path::Path::new(open), path))
+    }
+
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn export_chess_to(&mut self, id: DocId, export: impl Into<crate::chess_export_ui::ExportFormat>, path: &std::path::Path) {
+    pub fn export_chess_to(&mut self, id: DocId, export: impl Into<ExportFormat>, path: &std::path::Path) {
         let export = export.into();
-        let format = export.engine();
         if self.chess.long.is_some() {
             return self.inform(tl!("A chess document is already being read or exported").to_string());
         }
+        if export == ExportFormat::Sheet && self.is_open_file(path) {
+            return self
+                .post_error_for("export", tl!("The exercise sheet can't be written over a PDF that is open: choose another name.").to_string());
+        }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
-        let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
-        // The scan the app made, so the job finds what it read (plan A9, G11).
-        options.scan = self.chess_scan_settings();
+        let mut options = self.chess_export_base(id, export, &stem);
         options.image_dir = pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::image_folder(&stem);
-        options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
-        options.book = self.chess_cipher(id);
-        options.ocr = self.chess_origin(id).ocr_mode();
-        // What the export dialog chose (plan A9-X2).
-        self.chess_export_options(id, export, &mut options);
         let games = self.export_games(id);
-        let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
+        let sheet = self.chess.export.sheet.options();
+        let kind = JobKind::Export { format: export, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.inform(tl!("Exporting the chess document…").to_string());
-        self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_with_games(s, id, format, options, games.as_deref(), ctl)));
+        self.start_chess_job(id, kind, move |s, id, ctl| JobDone::Export(export_with_games(s, id, export, options, sheet, games.as_deref(), ctl)));
     }
 
     /// Write a finished export to `path`, Markdown's images in `image_dir` beside it.

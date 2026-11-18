@@ -3801,3 +3801,23 @@ progress bar	Progress	Progreso
 	Illegal move: {move} can't be played here.	Jugada ilegal: {move} no se puede jugar aquí.
 	{move} is not a move.	{move} no es una jugada.
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	Flecha desde {from}: Alt+clic en la casilla de destino, o de nuevo en esta para un círculo.
+	exercises	ejercicios
+	Exercise sheet (PDF)	Hoja de ejercicios (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	Los diagramas numerados del libro en un PDF nuevo para imprimir, 4, 6 o 9 por página, con sus soluciones al final.
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	Ningún ejercicio para poner en la hoja: los diagramas numerados de las páginas elegidas no tienen una posición de partida ({n}).
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	Ningún ejercicio para poner en la hoja: las páginas elegidas no tienen ningún diagrama numerado.
+	Exercises: counting…	Ejercicios: contando…
+	Exercises: counted when exported	Ejercicios: se cuentan al exportar
+	Pages not read yet: {n} (counted when exported)	Páginas aún no leídas: {n} (se cuentan al exportar)
+	Exercises: {n}	Ejercicios: {n}
+	solution not read: {n}	solución no leída: {n}
+	no position to start from	sin posición de partida
+	no solution read	ninguna solución leída
+	Left out: {n} ({why})	Excluidos: {n} ({why})
+	past the sheet's {max}	más allá de los {max} de la hoja
+	Per page	Por página
+	Diagrams a page: {n} ({grid})	Diagramas por página: {n} ({grid})
+	With the solutions	Con las soluciones
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	Las soluciones al final, en el orden de los números. Un diagrama cuya solución no se leyó lo indica.
+	The exercise sheet can't be written over a PDF that is open: choose another name.	La hoja de ejercicios no se puede escribir sobre un PDF abierto: elige otro nombre.
+	No exercise sheet was written	No se escribió ninguna hoja de ejercicios

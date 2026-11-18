@@ -8,19 +8,33 @@
 //! speech), and for the PGN of games which diagrams get a game of their own and, when the document
 //! keeps a book's PGN, where the games come from. Under them, what will come out ("Pages: 748 ·
 //! Diagrams: 999 (not checked: 12) · Games from the book's PGN: 120 · Language: English"), and the
-//! diagrams not checked yet, with Review first. The format, the PGN's choices and the descriptions
-//! are remembered (the `chess_export` setting); the pages and the language are the document's, for
-//! the session.
+//! diagrams not checked yet, with Review first. The format, the PGN's choices, the sheet's and the
+//! descriptions are remembered (the `chess_export` setting); the pages and the language are the
+//! document's, for the session.
+//!
+//! **The exercise sheet** (plan A9-N12b, A8-14): a new PDF of the book's numbered diagrams, 4, 6 or
+//! 9 a page, with the solutions at the end or not ([`Session::chess_worksheet`]). Its summary
+//! counts the exercises of the pages chosen **already read** — in this session or on disk —, off
+//! the interface's thread and scanning nothing ([`Session::chess_worksheet_count`]: choosing the
+//! format never reads an unread book), says how many are left out and why, and that the pages not
+//! read yet are counted by the export. When every page chosen is read and none holds an exercise,
+//! it says why and Export… is off.
+//!
+//! [`Session::chess_worksheet`]: pdfcraft_engine::Session::chess_worksheet
+//! [`Session::chess_worksheet_count`]: pdfcraft_engine::Session::chess_worksheet_count
 //!
 //! Once the file is written, a window says where, with what the export noted (a diagram not
 //! read, a font only named) and Open folder.
 
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::ScanStamp;
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::describe::Naming;
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::LangTag;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::worksheet::{Layout, PerPage};
+use pdfcraft_engine::chess::worksheet::{Paper, SheetCount, SheetOptions};
 
 use crate::PdfCraftApp;
 use crate::chess_text_ui::TextAction;
@@ -36,14 +50,16 @@ pub enum PgnSource {
     Text,
 }
 
-/// What an export writes: the engine's formats, and the book's exercises as a PGN of problems or
-/// as Anki's cards (plan A9-N10, N10b), which are a PGN export to the engine.
+/// What an export writes: the engine's formats, the book's exercises as a PGN of problems or as
+/// Anki's cards (plan A9-N10, N10b), which are a PGN export to the engine, and as a sheet to print
+/// (plan A9-N12b), a PDF of its own.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ExportFormat {
     #[default]
     Pgn,
     Exercises,
     Anki,
+    Sheet,
     Epub,
     Html,
     Docx,
@@ -66,10 +82,11 @@ impl From<ChessFormat> for ExportFormat {
 
 impl ExportFormat {
     /// The formats, in the dialog's order.
-    pub const ALL: [ExportFormat; 8] = [
+    pub const ALL: [ExportFormat; 9] = [
         ExportFormat::Pgn,
         ExportFormat::Exercises,
         ExportFormat::Anki,
+        ExportFormat::Sheet,
         ExportFormat::Epub,
         ExportFormat::Html,
         ExportFormat::Docx,
@@ -77,32 +94,50 @@ impl ExportFormat {
         ExportFormat::Markdown,
     ];
 
-    /// The engine's format: the exercises are a PGN export.
-    pub fn engine(self) -> ChessFormat {
+    /// The engine's export format: the exercises are a PGN export; none for the sheet, which the
+    /// engine draws apart (`Session::chess_worksheet`).
+    pub fn engine(self) -> Option<ChessFormat> {
         match self {
-            ExportFormat::Pgn | ExportFormat::Exercises | ExportFormat::Anki => ChessFormat::Pgn,
-            ExportFormat::Epub => ChessFormat::Epub,
-            ExportFormat::Html => ChessFormat::Html,
-            ExportFormat::Docx => ChessFormat::Docx,
-            ExportFormat::Rtf => ChessFormat::Rtf,
-            ExportFormat::Markdown => ChessFormat::Markdown,
+            ExportFormat::Pgn | ExportFormat::Exercises | ExportFormat::Anki => Some(ChessFormat::Pgn),
+            ExportFormat::Sheet => None,
+            ExportFormat::Epub => Some(ChessFormat::Epub),
+            ExportFormat::Html => Some(ChessFormat::Html),
+            ExportFormat::Docx => Some(ChessFormat::Docx),
+            ExportFormat::Rtf => Some(ChessFormat::Rtf),
+            ExportFormat::Markdown => Some(ChessFormat::Markdown),
         }
     }
 
-    /// The file's extension: Anki imports a text file.
+    /// The file's extension: Anki imports a text file; the sheet is a PDF.
     pub fn extension(self) -> &'static str {
-        match self {
-            ExportFormat::Anki => "txt",
-            other => other.engine().extension(),
+        match (self, self.engine()) {
+            (ExportFormat::Anki, _) => "txt",
+            (_, Some(format)) => format.extension(),
+            (_, None) => "pdf",
         }
     }
 
     /// The format's name, as the save dialog's filter shows it.
     pub fn name(self) -> &'static str {
-        match self {
-            ExportFormat::Anki => "Anki",
-            other => other.engine().name(),
+        match (self, self.engine()) {
+            (ExportFormat::Anki, _) => "Anki",
+            (_, Some(format)) => format.name(),
+            (_, None) => "PDF",
         }
+    }
+
+    /// The file's name the save dialog proposes, from the book's `stem`: the sheet's never the
+    /// book's own (`book.pdf`), which writing over would lose.
+    pub fn file_name(self, stem: &str) -> String {
+        match self {
+            ExportFormat::Sheet => format!("{stem} - {}.{}", tl!("exercises"), self.extension()),
+            _ => format!("{stem}.{}", self.extension()),
+        }
+    }
+
+    /// Whether it writes the book's exercises (plan A9-N10, N10b, N12b).
+    pub fn exercises(self) -> bool {
+        matches!(self, ExportFormat::Exercises | ExportFormat::Anki | ExportFormat::Sheet)
     }
 
     /// The format as the dialog names it: what it makes.
@@ -111,6 +146,7 @@ impl ExportFormat {
             ExportFormat::Pgn => tl!("PGN — games"),
             ExportFormat::Exercises => tl!("PGN — exercises"),
             ExportFormat::Anki => tl!("Anki — cards"),
+            ExportFormat::Sheet => tl!("Exercise sheet (PDF)"),
             ExportFormat::Epub => tl!("EPUB — e-book"),
             ExportFormat::Html => tl!("HTML — web page"),
             // A program's and formats' own names, the same in every language.
@@ -125,6 +161,9 @@ impl ExportFormat {
         match self {
             ExportFormat::Exercises => Some(tl!("The book's numbered diagrams with their solutions, as a standard PGN of problems.")),
             ExportFormat::Anki => Some(tl!("A text file Anki imports, a card per exercise, with the diagrams' pictures in a folder beside it.")),
+            ExportFormat::Sheet => {
+                Some(tl!("The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end."))
+            }
             _ => None,
         }
     }
@@ -141,6 +180,7 @@ impl ExportFormat {
             ExportFormat::Pgn => "pgn",
             ExportFormat::Exercises => "exercises",
             ExportFormat::Anki => "anki",
+            ExportFormat::Sheet => "sheet",
             ExportFormat::Epub => "epub",
             ExportFormat::Html => "html",
             ExportFormat::Docx => "docx",
@@ -154,15 +194,39 @@ impl ExportFormat {
     }
 }
 
+/// How the exercise sheet is laid out (plan A9-N12b): 4, 6 or 9 diagrams a page, and the solutions
+/// at the end or not (they are, unless the user says otherwise).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SheetChoices {
+    pub per_page: PerPage,
+    pub solutions: bool,
+}
+
+impl Default for SheetChoices {
+    fn default() -> SheetChoices {
+        SheetChoices { per_page: PerPage::default(), solutions: true }
+    }
+}
+
+impl SheetChoices {
+    /// The engine's options: the captions in the book's language, page by page (the dialog's
+    /// language reaches them as the export's `text_lang`), on A4.
+    pub fn options(self) -> SheetOptions {
+        SheetOptions { layout: Layout { per_page: self.per_page, solutions: self.solutions, lang: None }, paper: Paper::A4 }
+    }
+}
+
 /// The export dialog's choices that are remembered (plan A9-X2; the PGN's, P9c's open item): the
-/// format, which diagrams the PGN gives a game of their own, where the PGN's games come from and
-/// how the diagrams' descriptions name the pieces.
+/// format, which diagrams the PGN gives a game of their own, where the PGN's games come from, how
+/// the diagrams' descriptions name the pieces and how the exercise sheet is laid out (plan
+/// A9-N12b).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ExportChoices {
     pub format: ExportFormat,
     pub positions: PgnPositions,
     pub source: PgnSource,
     pub naming: Naming,
+    pub sheet: SheetChoices,
 }
 
 impl ExportChoices {
@@ -174,17 +238,29 @@ impl ExportChoices {
             PgnPositions::None => "none",
         };
         let source = if self.source == PgnSource::Text { "text" } else { "book" };
-        serde_json::json!({ "format": self.format.token(), "positions": positions, "source": source, "descriptions": self.naming.name() })
+        serde_json::json!({
+            "format": self.format.token(),
+            "positions": positions,
+            "source": source,
+            "descriptions": self.naming.name(),
+            "per_page": self.sheet.per_page.count(),
+            "solutions": self.sheet.solutions,
+        })
     }
 
     /// Read back, each choice on its own: one this build does not know keeps its default.
     pub fn from_json(value: &serde_json::Value) -> ExportChoices {
         let text = |key: &str| value.get(key).and_then(serde_json::Value::as_str).unwrap_or_default();
+        let sheet = SheetChoices::default();
         ExportChoices {
             format: ExportFormat::from_token(text("format")).unwrap_or_default(),
             positions: PgnPositions::from_name(text("positions")).unwrap_or_default(),
             source: if text("source") == "text" { PgnSource::Text } else { PgnSource::Book },
             naming: Naming::from_name(text("descriptions")).unwrap_or_default(),
+            sheet: SheetChoices {
+                per_page: value.get("per_page").and_then(serde_json::Value::as_u64).and_then(PerPage::of).unwrap_or(sheet.per_page),
+                solutions: value.get("solutions").and_then(serde_json::Value::as_bool).unwrap_or(sheet.solutions),
+            },
         }
     }
 }
@@ -220,6 +296,13 @@ impl Pages {
             return Vec::new();
         }
         (from..=to).map(|p| p.saturating_sub(1)).collect()
+    }
+
+    /// The range as it reads: all of them, or its first and last page (1-based) — two ranges with
+    /// the same key read the same pages.
+    fn key(self, count: usize) -> (bool, usize, usize) {
+        let (from, to) = self.bounds(count);
+        if self.all || (from == 1 && to >= count) { (true, 1, count) } else { (false, from, to) }
     }
 
     /// How many pages that is.
@@ -277,6 +360,26 @@ pub struct ExportDialog {
     /// The document's page count when it opened.
     page_count: usize,
     says: BookSays,
+    /// The exercise sheet's last count (plan A9-N12b).
+    count: Option<Counted>,
+}
+
+/// What the exercise sheet's count found (plan A9-N12b): for which pages, in which state of the
+/// document, and what it counted (`None`: it could not count, and the export will).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Counted {
+    pages: (bool, usize, usize),
+    stamp: Option<ScanStamp>,
+    count: Option<SheetCount>,
+}
+
+/// The exercise sheet's count running off the interface's thread (plan A9-N12b): one at a time,
+/// in a session of its own given what this session read, scanning nothing.
+pub(crate) struct Counting {
+    doc: DocId,
+    pages: (bool, usize, usize),
+    stamp: Option<ScanStamp>,
+    job: crate::chess_job::Job<(Option<SheetCount>, pdfcraft_engine::chess::ChessCached)>,
 }
 
 /// An answer to the dialog.
@@ -331,12 +434,15 @@ impl PdfCraftApp {
             (None, true, Some(lang)) => BookSays::Lang(lang),
             (None, true, None) => BookSays::FromText,
         };
-        self.chess.export_dialog = Some(ExportDialog { doc: id, choices: self.chess.export, pages: kept.pages, lang: kept.lang, page_count, says });
+        self.chess.export_dialog =
+            Some(ExportDialog { doc: id, choices: self.chess.export, pages: kept.pages, lang: kept.lang, page_count, says, count: None });
     }
 
     /// Answer the export dialog. Its choices are kept whatever the answer but Cancel.
     pub fn answer_chess_export(&mut self, answer: DialogAnswer) {
         let Some(d) = self.chess.export_dialog.take() else { return };
+        // The sheet's count is the dialog's: dropping it asks it to stop.
+        self.chess.sheet_count = None;
         if answer == DialogAnswer::Cancel {
             return;
         }
@@ -386,8 +492,104 @@ impl PdfCraftApp {
         if unread > 0 {
             notes.push(crate::i18n::fmt(tl!("Diagrams not read: {n}"), &[("n", &unread.to_string())]));
         }
+        // The exercises written, and those left out and why (plan A9-N12b): a sheet's exercise
+        // whose solution was not read has no moves (D30).
+        if let Some(e) = made.exercises.as_deref() {
+            use pdfcraft_engine::chess::pdfcraft_chessvision::doc::exercises::LeftOutReason;
+            let reason = |r: LeftOutReason| e.left_out.iter().filter(|l| l.reason == r).count();
+            let unsolved = e.exercises.iter().filter(|x| x.moves == 0).count();
+            let found =
+                SheetCount { exercises: e.exercises.len(), unsolved, no_position: reason(LeftOutReason::NoPosition), ..SheetCount::default() };
+            notes.extend(exercise_parts(&found, reason(LeftOutReason::NoSolution)));
+        }
         notes.extend(made.notes.iter().cloned());
         self.chess.export_done = Some(Done { path, said, notes });
+    }
+
+    /// The exercise sheet's count for dialog `d` (plan A9-N12b): pick up the one that ended, and
+    /// start one for the pages chosen when none counted them in the document's state — one at a
+    /// time (the newest pages are counted when it ends). Off the interface's thread, from what is
+    /// already read, scanning nothing: choosing the format never reads an unread book. In the
+    /// browser, where it would run inside the frame, only for as many pages as the export reads
+    /// there.
+    fn count_sheet(&mut self, d: &mut ExportDialog) {
+        if !self.poll_sheet_count(d) {
+            return;
+        }
+        let stamp = self.session.chess_stamp(d.doc);
+        let pages = d.pages.key(d.page_count);
+        if d.choices.format != ExportFormat::Sheet || d.count.is_some_and(|k| k.pages == pages && k.stamp == stamp) {
+            return;
+        }
+        if self.chess_frame_budget().is_some() && d.pages.count(d.page_count) > crate::chess_text_ui::WEB_WHOLE_BOOK_PAGES {
+            d.count = Some(Counted { pages, stamp, count: None });
+            return;
+        }
+        let Some(source) = self.chess_job_source(d.doc) else { return };
+        let mut options = self.chess_export_base(d.doc, ExportFormat::Sheet, "");
+        // The dialog's pages, not those it was last answered with.
+        options.pages = d.pages.pages(d.page_count);
+        let games = self.export_games(d.doc);
+        let layout = d.choices.sheet.options().layout;
+        let job = crate::chess_job::Job::spawn("pdfcraft-chess-sheet-count", self.run_inline, move |_| {
+            let (mut s, id) = source.open()?;
+            crate::chess_text_ui::link_games(&mut options, games.as_deref());
+            let count = s.chess_worksheet_count(id, &options, &layout).ok();
+            Ok((count, s.chess_cached(id, &[])))
+        });
+        self.chess.sheet_count = Some(Counting { doc: d.doc, pages, stamp, job });
+        // Inline (tests, the web) it has ended already.
+        self.poll_sheet_count(d);
+    }
+
+    /// Pick up the exercise sheet's count when it ended, into dialog `d` when it counted the
+    /// dialog's document in the state it is in. Whether none is running now.
+    fn poll_sheet_count(&mut self, d: &mut ExportDialog) -> bool {
+        let Some(c) = self.chess.sheet_count.as_mut() else { return true };
+        let Some(out) = c.job.poll() else {
+            if let Some(ctx) = &self.ctx {
+                ctx.request_repaint_after(std::time::Duration::from_millis(200));
+            }
+            return false;
+        };
+        let Some(c) = self.chess.sheet_count.take() else { return true };
+        let (count, cached) = match out {
+            Ok((count, cached)) => (count, Some(cached)),
+            Err(_) => (None, None),
+        };
+        let stamp = self.session.chess_stamp(c.doc);
+        // What it read is this session's too, while the document is in the state it read.
+        if let Some(cached) = cached.filter(|_| c.stamp.is_some() && c.stamp == stamp) {
+            self.session.prime_chess_cache(c.doc, cached);
+        }
+        if c.doc == d.doc && c.stamp == stamp {
+            d.count = Some(Counted { pages: c.pages, stamp: c.stamp, count });
+        }
+        true
+    }
+
+    /// The exercise sheet's count of dialog `d`, when it counted the pages chosen in the
+    /// document's state now: `Some(None)` when it could not.
+    fn sheet_counted(&self, d: &ExportDialog) -> Option<Option<SheetCount>> {
+        let stamp = self.session.chess_stamp(d.doc);
+        d.count.filter(|k| k.pages == d.pages.key(d.page_count) && k.stamp == stamp).map(|k| k.count)
+    }
+
+    /// Why the exercise sheet of dialog `d` is refused (plan A9-N12b; the engine refuses it too):
+    /// every page chosen is read and none holds an exercise.
+    fn sheet_refused(&self, d: &ExportDialog) -> Option<String> {
+        if d.choices.format != ExportFormat::Sheet {
+            return None;
+        }
+        let c = self.sheet_counted(d).flatten().filter(|c| c.pages_not_read == 0 && c.exercises == 0)?;
+        Some(if c.no_position > 0 {
+            crate::i18n::fmt(
+                tl!("No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n})."),
+                &[("n", &c.no_position.to_string())],
+            )
+        } else {
+            tl!("No exercise to put on the sheet: the pages chosen have no numbered diagram.").to_owned()
+        })
     }
 
     /// Open folder: the system's file manager shows the file written.
@@ -431,7 +633,22 @@ impl PdfCraftApp {
             parts.push(tl!("Diagrams: not detected yet").to_owned());
         }
         let format = d.choices.format;
-        if !matches!(format, ExportFormat::Exercises | ExportFormat::Anki) {
+        if format == ExportFormat::Sheet {
+            // The exercises of the pages already read (plan A9-N12b); the rest the export counts.
+            match self.sheet_counted(d) {
+                None => parts.push(tl!("Exercises: counting…").to_owned()),
+                Some(None) => parts.push(tl!("Exercises: counted when exported").to_owned()),
+                Some(Some(c)) => {
+                    if c.pages_counted > 0 {
+                        parts.extend(exercise_parts(&c, 0));
+                    }
+                    if c.pages_not_read > 0 {
+                        parts.push(crate::i18n::fmt(tl!("Pages not read yet: {n} (counted when exported)"), &[("n", &c.pages_not_read.to_string())]));
+                    }
+                }
+            }
+        }
+        if !format.exercises() {
             // The PGN of games is the book's PGN's games; every other format, the text read,
             // linked to it (plan A9-N2).
             let book = self.session.chess_book_pgn(d.doc).map(|p| p.index.games().len());
@@ -455,6 +672,30 @@ impl PdfCraftApp {
         parts.push(crate::i18n::fmt(tl!("Language: {lang}"), &[("lang", &lang)]));
         (parts.join(" · "), to_review)
     }
+}
+
+/// What the exercises of `c` come to (plan A9-N12b), for the dialog's summary and the window the
+/// export ends with: how many, those whose solution was not read (on the sheet all the same,
+/// D30), and those left out and why — no position to start from, `no_solution` (the PGN of
+/// exercises and Anki's cards leave them out), past the sheet's cap.
+fn exercise_parts(c: &SheetCount, no_solution: usize) -> Vec<String> {
+    let n = |v: usize| v.to_string();
+    let mut said = crate::i18n::fmt(tl!("Exercises: {n}"), &[("n", &n(c.exercises))]);
+    if c.unsolved > 0 {
+        said = format!("{said} ({})", crate::i18n::fmt(tl!("solution not read: {n}"), &[("n", &n(c.unsolved))]));
+    }
+    let mut parts = vec![said];
+    for (left, why) in [(c.no_position, tl!("no position to start from")), (no_solution, tl!("no solution read"))] {
+        if left > 0 {
+            parts.push(crate::i18n::fmt(tl!("Left out: {n} ({why})"), &[("n", &n(left)), ("why", why)]));
+        }
+    }
+    if c.over > 0 {
+        let max = n(pdfcraft_engine::chess::pdfcraft_chessvision::doc::worksheet::MAX_EXERCISES);
+        let why = crate::i18n::fmt(tl!("past the sheet's {max}"), &[("max", &max)]);
+        parts.push(crate::i18n::fmt(tl!("Left out: {n} ({why})"), &[("n", &n(c.over)), ("why", &why)]));
+    }
+    parts
 }
 
 /// The width of the dialog's labels, in points: the fields line up after it.
@@ -548,6 +789,24 @@ fn fields(ui: &mut egui::Ui, d: &mut ExportDialog, book_pgn: bool) {
             });
         });
     }
+    if format == ExportFormat::Sheet {
+        row(ui, tl!("Per page"), |ui, _| {
+            ui.horizontal(|ui| {
+                ui.scope(|ui| {
+                    crate::widgets::radio_group(ui, tl!("Per page"));
+                    ui.horizontal(|ui| {
+                        for (per_page, grid) in [(PerPage::Four, "2 × 2"), (PerPage::Six, "2 × 3"), (PerPage::Nine, "3 × 3")] {
+                            let tip = crate::i18n::fmt(tl!("Diagrams a page: {n} ({grid})"), &[("n", &per_page.count().to_string()), ("grid", grid)]);
+                            crate::widgets::radio_value(ui, &mut d.choices.sheet.per_page, per_page, per_page.count().to_string()).on_hover_text(tip);
+                        }
+                    });
+                });
+                ui.add_space(16.0);
+                ui.add(crate::widgets::checkbox(&mut d.choices.sheet.solutions, tl!("With the solutions")))
+                    .on_hover_text(tl!("The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so."));
+            });
+        });
+    }
     if format == ExportFormat::Pgn {
         row(ui, tl!("Diagrams as PGN games"), |ui, label| {
             let choices =
@@ -599,6 +858,7 @@ fn pending(ui: &mut egui::Ui, t: &Tokens, to_review: usize) -> bool {
 /// The export dialog, or what the export said, while either is shown.
 pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     if let Some(mut d) = app.chess.export_dialog.take() {
+        app.count_sheet(&mut d);
         let book_pgn = app.session.chess_book_pgn(d.doc).is_some();
         let t = Tokens::get(ctx);
         let mut answer = None;
@@ -609,6 +869,11 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
             ui.separator();
             let (summary, to_review) = app.chess_export_summary(&d);
             ui.label(summary);
+            let refused = app.sheet_refused(&d);
+            if let Some(why) = &refused {
+                ui.add_space(6.0);
+                crate::notice::callout(ui, crate::notice::Tone::Warning, why);
+            }
             if to_review > 0 {
                 ui.add_space(6.0);
                 if pending(ui, &t, to_review) {
@@ -617,7 +882,7 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
             }
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                if crate::widgets::pill_button(ui, tl!("Export…"), true).clicked() {
+                if ui.add_enabled_ui(refused.is_none(), |ui| crate::widgets::pill_button(ui, tl!("Export…"), true)).inner.clicked() {
                     answer = Some(DialogAnswer::Export);
                 }
                 if crate::widgets::pill_button(ui, tl!("Cancel"), false).clicked() {
@@ -693,7 +958,13 @@ mod tests {
 
     #[test]
     fn the_remembered_choices_read_back_and_unknown_ones_keep_their_defaults() {
-        let c = ExportChoices { format: ExportFormat::Anki, positions: PgnPositions::None, source: PgnSource::Text, naming: Naming::Words };
+        let c = ExportChoices {
+            format: ExportFormat::Anki,
+            positions: PgnPositions::None,
+            source: PgnSource::Text,
+            naming: Naming::Words,
+            sheet: SheetChoices { per_page: PerPage::Six, solutions: false },
+        };
         assert_eq!(ExportChoices::from_json(&c.to_json()), c);
         assert_eq!(ExportChoices::from_json(&serde_json::json!({ "format": "tiff", "positions": 3 })), ExportChoices::default());
         assert_eq!(ExportChoices::from_json(&serde_json::Value::Null), ExportChoices::default());
@@ -701,6 +972,13 @@ mod tests {
             assert_eq!(ExportFormat::from_token(f.token()), Some(f));
         }
         assert_eq!(ExportFormat::Anki.extension(), "txt");
-        assert_eq!(ExportFormat::Exercises.engine(), ChessFormat::Pgn);
+        assert_eq!(ExportFormat::Exercises.engine(), Some(ChessFormat::Pgn));
+        assert_eq!((ExportFormat::Sheet.engine(), ExportFormat::Sheet.extension()), (None, "pdf"));
+        assert_ne!(ExportFormat::Sheet.file_name("book"), "book.pdf", "never the book's own name");
+        // The sheet's layout: its per page and its solutions, and a count this build does not know.
+        let sheet = ExportChoices { sheet: SheetChoices { per_page: PerPage::Nine, solutions: false }, ..ExportChoices::default() };
+        assert_eq!(ExportChoices::from_json(&sheet.to_json()), sheet);
+        assert_eq!(ExportChoices::from_json(&serde_json::json!({ "per_page": 5 })).sheet, SheetChoices::default());
+        assert!(SheetChoices::default().solutions, "with the solutions unless the user says otherwise");
     }
 }

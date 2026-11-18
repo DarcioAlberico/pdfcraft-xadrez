@@ -3662,3 +3662,23 @@ progress bar	Progress	進行状況
 	Illegal move: {move} can't be played here.	不正な手: {move} はここでは指せません。
 	{move} is not a move.	{move} は指し手ではありません。
 	Arrow from {from}: Alt+click the square it goes to, or this one again to circle it.	{from} からの矢印: 行き先のマスを Alt+クリック、円にするにはもう一度このマスを。
+	exercises	練習問題
+	Exercise sheet (PDF)	練習問題シート (PDF)
+	The book's numbered diagrams as a new PDF to print, 4, 6 or 9 a page, with their solutions at the end.	本の番号付き局面図を、印刷用の新しい PDF に 1 ページ 4、6 または 9 個並べ、最後に解答を付けます。
+	No exercise to put on the sheet: the numbered diagrams of the pages chosen have no position to start from ({n}).	シートに載せる練習問題がありません: 選んだページの番号付き局面図には開始局面がありません ({n})。
+	No exercise to put on the sheet: the pages chosen have no numbered diagram.	シートに載せる練習問題がありません: 選んだページに番号付き局面図がありません。
+	Exercises: counting…	練習問題: 数えています…
+	Exercises: counted when exported	練習問題: エクスポート時に数えます
+	Pages not read yet: {n} (counted when exported)	まだ読み取っていないページ: {n} (エクスポート時に数えます)
+	Exercises: {n}	練習問題: {n}
+	solution not read: {n}	解答未読: {n}
+	no position to start from	開始局面なし
+	no solution read	解答を読み取れず
+	Left out: {n} ({why})	除外: {n} ({why})
+	past the sheet's {max}	シートの上限 {max} を超過
+	Per page	1 ページあたり
+	Diagrams a page: {n} ({grid})	1 ページの局面図: {n} ({grid})
+	With the solutions	解答を付ける
+	The solutions at the end, in the order of the numbers. A diagram whose solution was not read says so.	解答は最後に番号順で載せます。解答を読み取れなかった局面図にはその旨を記します。
+	The exercise sheet can't be written over a PDF that is open: choose another name.	練習問題シートは開いている PDF に上書きできません。別の名前を選んでください。
+	No exercise sheet was written	練習問題シートは書き出されませんでした

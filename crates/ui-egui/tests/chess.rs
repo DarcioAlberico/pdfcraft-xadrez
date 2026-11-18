@@ -1650,7 +1650,7 @@ fn export_writes_pgn_and_markdown_with_images() {
         h.get_by_label("Export book…").click();
         h.run_steps(2);
         h.get_by_role_and_label(egui::accesskit::Role::Dialog, "Export chess book");
-        for other in ["PGN — exercises", "Anki — cards", "EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
+        for other in ["PGN — exercises", "Anki — cards", "Exercise sheet (PDF)", "EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
             h.get_by_role_and_label(egui::accesskit::Role::RadioButton, other);
         }
         h.get_by_label(format).click();
@@ -5981,7 +5981,14 @@ fn the_export_dialogs_choices_are_remembered() {
     again.restore(&h.state().persist());
     assert_eq!(
         again.chess.export.to_json(),
-        serde_json::json!({ "format": "epub", "positions": "unused", "source": "book", "descriptions": "words" }),
+        serde_json::json!({
+            "format": "epub",
+            "positions": "unused",
+            "source": "book",
+            "descriptions": "words",
+            "per_page": 4,
+            "solutions": true
+        }),
         "the settings keep the dialog's choices"
     );
     let _ = std::fs::remove_dir_all(&dir);
@@ -6085,8 +6092,17 @@ fn the_export_dialog_is_a_dialog_whose_fields_are_named() {
         assert!(card.min.x >= 0.0 && card.min.y >= 0.0 && card.max.x <= w && card.max.y <= height, "the dialog fits the window: {card:?}");
         // Every format is a radio button of the group "Format".
         let group = h.get_by_role_and_label(Role::RadioGroup, "Format").accesskit_node().id();
-        for format in ["PGN — games", "PGN — exercises", "Anki — cards", "EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF", "Markdown"]
-        {
+        for format in [
+            "PGN — games",
+            "PGN — exercises",
+            "Anki — cards",
+            "Exercise sheet (PDF)",
+            "EPUB — e-book",
+            "HTML — web page",
+            "Word (.docx)",
+            "RTF",
+            "Markdown",
+        ] {
             let radio = h.get_by_role_and_label(Role::RadioButton, format);
             let mut up = radio.accesskit_node().parent();
             while up.as_ref().is_some_and(|p| p.id() != group) {
@@ -6116,6 +6132,271 @@ fn the_export_dialog_is_a_dialog_whose_fields_are_named() {
         shot(&mut h, &format!("x2-export-dialog-{w}x{height}.png"));
         let _ = std::fs::remove_dir_all(&dir);
     }
+}
+
+/// A PDF of a page per `(caption, solution)`: the caption in Helvetica above the start position in
+/// the Chess Merida font, and the solution under the board — a book of numbered exercises.
+fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
+    let widths = vec!["1000"; 95].join(" ");
+    let n = pages.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
+    let mut objs: Vec<String> = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".into(),
+        format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".into(),
+    ];
+    for (i, (caption, solution)) in pages.iter().enumerate() {
+        let mut c = format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\n");
+        c.push_str(&font_board(&MERIDA_START.map(String::from)));
+        if let Some(moves) = solution {
+            c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
+        }
+        objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i));
+        objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()));
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// Five exercises, the fourth with no solution printed.
+const FIVE_EXERCISES: [(&str, Option<&str>); 5] = [
+    ("Exercise 1", Some("1.e4 e5 2.Nf3 Nc6")),
+    ("Exercise 2", Some("1.d4 d5 2.c4")),
+    ("Exercise 3", Some("1.c4 c5")),
+    ("Exercise 4", None),
+    ("Exercise 5", Some("1.Nf3 Nf6")),
+];
+
+/// The harness on [`FIVE_EXERCISES`], its corrections kept in `dir`.
+fn exercises_harness(dir: &std::path::Path, size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+    std::fs::create_dir_all(dir).unwrap();
+    harness_with(exercise_book(&FIVE_EXERCISES), 0.25, size, Some(dir.join("store")))
+}
+
+/// Open the export dialog on the exercise sheet.
+fn open_sheet_dialog(h: &mut Harness<'static, PdfCraftApp>) {
+    h.state_mut().open_chess_export();
+    h.run_steps(2);
+    h.get_by_label("Exercise sheet (PDF)").click();
+    h.run_steps(3);
+}
+
+/// Type `value` into the dialog's number field labelled `label`.
+fn set_spin(h: &mut Harness<'static, PdfCraftApp>, label: &str, value: &str) {
+    h.get_by(|n| n.role() == egui::accesskit::Role::SpinButton && n.label().as_deref() == Some(label)).click();
+    h.run_steps(2);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    h.get_by(|n| n.role() == egui::accesskit::Role::SpinButton && n.label().as_deref() == Some(label)).type_text(value);
+    h.key_press(egui::Key::Enter);
+    h.run_steps(2);
+}
+
+/// The export dialog's summary ("Pages: 3 · …"; a label's text is its node's value).
+fn export_summary(h: &Harness<'static, PdfCraftApp>) -> String {
+    h.query_all_by(|n| n.role() == egui::accesskit::Role::Label && n.value().is_some_and(|v| v.starts_with("Pages: ") && v.contains(" · Language: ")))
+        .find_map(|n| n.accesskit_node().value())
+        .unwrap_or_default()
+}
+
+/// Export the sheet as the dialog is set to `out`, and give the file's pages' text.
+fn export_sheet(h: &mut Harness<'static, PdfCraftApp>, out: &std::path::Path) -> Vec<String> {
+    let _ = std::fs::remove_file(out);
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    let bytes = std::fs::read(out).expect("the sheet written");
+    let mut s = pdfcraft_engine::Session::new();
+    let id = s.open("sheet.pdf", None, Arc::new(bytes), None).expect("the sheet opens");
+    let doc = s.get(id).unwrap();
+    (0..doc.info.pages.len()).map(|p| doc.text_lines(p).iter().map(|l| l.text.clone()).collect::<Vec<_>>().join("\n")).collect()
+}
+
+/// Plan A9-N12b (A8-14): the exercise sheet in the export dialog. With the book read, the pages
+/// 1–3 and 6 a page, the summary says "Exercises: 3" and the sheet written holds those three, on
+/// one page of diagrams and the key's; the per page and the solutions chosen reach the file (5
+/// exercises: 6 a page with the key, 2 pages; 4 a page, 3; without the solutions, 1), and the
+/// dialog opens again on them.
+#[test]
+fn the_exercise_sheet_counts_the_pages_chosen_and_is_written_as_laid_out() {
+    let dir = corrections_dir("n12b-sheet");
+    let mut h = exercises_harness(&dir, egui::vec2(1400.0, 1000.0));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    open_sheet_dialog(&mut h);
+    let summary = export_summary(&h);
+    assert!(summary.contains("Exercises: 5 (solution not read: 1)"), "{summary}");
+    h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "6").click();
+    h.run_steps(2);
+    h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Pages from").click();
+    h.run_steps(2);
+    set_spin(&mut h, "to", "3");
+    let summary = export_summary(&h);
+    assert!(
+        summary.starts_with("Pages: 3 ·")
+            && summary.contains("Exercises: 3")
+            && !summary.contains("not read yet")
+            && !summary.contains("solution not read"),
+        "{summary}"
+    );
+    let pages = export_sheet(&mut h, &dir.join("one-to-three.pdf"));
+    assert_eq!(pages.len(), 2, "a page of diagrams and the key's: {pages:?}");
+    for k in 1..=3 {
+        assert!(pages[0].contains(&format!("Nº {k} · p. {k}")), "{k}: {pages:?}");
+    }
+    assert!(!pages.concat().contains("Nº 4"), "only the pages chosen: {pages:?}");
+    assert!(pages[1].contains("Nº 1 · p. 1: 1.e4 e5 2.Nf3 Nc6"), "{pages:?}");
+    h.state_mut().chess.export_done = None;
+    h.run_steps(2);
+    // Every page: 6 a page with the key, 4 a page with the key, 6 a page without it.
+    for (per_page, solutions, count) in [("6", true, 2), ("4", true, 3), ("6", false, 1)] {
+        open_sheet_dialog(&mut h);
+        h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "All pages").click();
+        h.get_by_role_and_label(egui::accesskit::Role::RadioButton, per_page).click();
+        h.run_steps(2);
+        let with = h.get_by_role_and_label(egui::accesskit::Role::CheckBox, "With the solutions");
+        if (with.accesskit_node().toggled() == Some(egui::accesskit::Toggled::True)) != solutions {
+            with.click();
+        }
+        h.run_steps(2);
+        let pages = export_sheet(&mut h, &dir.join(format!("all-{per_page}-{solutions}.pdf")));
+        assert_eq!(pages.len(), count, "{per_page} a page, solutions {solutions}: {pages:?}");
+        assert_eq!(pages.last().is_some_and(|p| p.contains("solution not read")), solutions, "{pages:?}");
+        h.state_mut().chess.export_done = None;
+        h.run_steps(2);
+    }
+    // The dialog opens again on the last choices, which the settings keep.
+    open_sheet_dialog(&mut h);
+    let chosen = |h: &Harness<'static, PdfCraftApp>, role, label: &str| {
+        h.get_by_role_and_label(role, label).accesskit_node().toggled() == Some(egui::accesskit::Toggled::True)
+    };
+    assert!(chosen(&h, egui::accesskit::Role::RadioButton, "6") && !chosen(&h, egui::accesskit::Role::CheckBox, "With the solutions"));
+    assert_eq!(h.state().chess.export.to_json()["per_page"], 6);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N12b (the coordinator's rule, 2026-11-16): choosing the sheet never reads an unread
+/// book. Nothing read, the summary counts nothing and says the pages are counted by the export;
+/// with two pages read in the Text tab, it counts theirs and says the rest; the export reads the
+/// rest, and the window it ends with says how many went on the sheet.
+#[test]
+fn the_sheets_count_reads_nothing_and_the_export_reads_the_rest() {
+    let dir = corrections_dir("n12b-unread");
+    let mut h = exercises_harness(&dir, egui::vec2(1400.0, 1000.0));
+    open_sheet_dialog(&mut h);
+    let summary = h.get_by_label_contains("Pages not read yet: 5 (counted when exported)").accesskit_node().label().unwrap_or_default();
+    assert!(!summary.contains("Exercises:"), "nothing counted: {summary}");
+    let id = h.state().active_ids().map(|(_, id)| id).unwrap();
+    // What the count's session scanned would be given back to the app's.
+    assert!(h.state_mut().session.chess_cached(id, &[]).is_empty(), "the count scanned no page");
+    assert!(h.state().chess.results().is_none(), "nor did anything else");
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    for page in [0, 1] {
+        h.state_mut().read_chess_text(page, false);
+        h.run_steps(3);
+    }
+    let cached = h.state_mut().session.chess_cached(id, &[]).pages();
+    open_sheet_dialog(&mut h);
+    let summary = export_summary(&h);
+    assert!(summary.contains("Exercises: 2 · Pages not read yet: 3 (counted when exported)"), "{summary} {cached:?}");
+    let out = dir.join("sheet.pdf");
+    let pages = export_sheet(&mut h, &out);
+    assert!(pages.concat().contains("Nº 5 · p. 5"), "the export read the rest: {pages:?}");
+    let done = h.state().chess.export_done.clone().expect("the window says what was written");
+    assert!(done.notes.iter().any(|n| n == "Exercises: 5 (solution not read: 1)"), "{:?}", done.notes);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N12b: a sheet with no exercise is refused, saying why. Every page chosen read and none
+/// with a numbered diagram: the dialog says so and Export… is off. A page not read yet: the export
+/// reads it, and the engine's refusal is said in the window it ends with; nothing is written.
+#[test]
+fn a_sheet_with_no_exercise_is_refused_saying_why() {
+    let dir = corrections_dir("n12b-empty");
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("sheet.pdf");
+    for read in [true, false] {
+        let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+        if read {
+            assert!(h.state_mut().execute("chess.scan"));
+            h.run_steps(3);
+        }
+        h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+        open_sheet_dialog(&mut h);
+        let refused = h.query_by_label("No exercise to put on the sheet: the pages chosen have no numbered diagram.").is_some();
+        let unread = h.query_by_label_contains("Pages not read yet: 1 (counted when exported)").is_some();
+        let export = h.get_by_label("Export…");
+        assert_eq!((refused, unread, export.accesskit_node().is_disabled()), (read, !read, read), "read {read}");
+        export.click();
+        h.run_steps(4);
+        if read {
+            assert!(h.state().chess.export_dialog.is_some(), "Export… is off: the dialog stays");
+        } else {
+            let done = h.state().chess.export_done.clone().expect("the refusal is said");
+            assert_eq!(done.said, "No exercise sheet was written");
+            assert!(done.notes.iter().any(|n| n.contains("no exercise to put on the sheet")), "{:?}", done.notes);
+        }
+        assert!(!out.exists(), "nothing written");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N12b at the reference screen (1366 × 768): the journey "book → saved exercise sheet" in
+/// five gestures with the file's name (Detect diagrams, Export book…, Exercise sheet (PDF),
+/// Export…, the name), the summary seen before writing; the dialog fits the window, Per page is a
+/// radio group, and no control in it is without a name. Pictures with `PDFCRAFT_CHESS_SHOTS`.
+#[test]
+fn the_book_to_a_saved_exercise_sheet_takes_five_gestures() {
+    use egui::accesskit::Role;
+    let dir = corrections_dir("n12b-journey");
+    let mut h = exercises_harness(&dir, egui::vec2(1366.0, 768.0));
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+    let out = dir.join("exercises.pdf");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    let mut g = Gestures::default();
+    g.click(&mut h, "Detect diagrams");
+    g.click(&mut h, "Export book…");
+    g.click(&mut h, "Exercise sheet (PDF)");
+    h.get_by_label_contains("Exercises: 5 (solution not read: 1)");
+    let dialog = h.get_by(|n| n.role() == Role::Dialog);
+    let card = dialog.rect();
+    assert!(card.min.x >= 0.0 && card.min.y >= 0.0 && card.max.x <= 1366.0 && card.max.y <= 768.0, "the dialog fits the window: {card:?}");
+    let group = h.get_by_role_and_label(Role::RadioGroup, "Per page").accesskit_node().id();
+    for n in ["4", "6", "9"] {
+        let mut up = h.get_by_role_and_label(Role::RadioButton, n).accesskit_node().parent();
+        while up.as_ref().is_some_and(|p| p.id() != group) {
+            up = up.and_then(|p| p.parent());
+        }
+        assert!(up.is_some(), "{n} is in the group Per page");
+    }
+    let nameless: Vec<String> = h
+        .query_all_by(|n| n.data().supports_action(egui::accesskit::Action::Focus) && n.label().is_none_or(|l| l.trim().is_empty()))
+        .filter(|n| card.contains_rect(n.rect()))
+        .map(|n| format!("{:?} {:?}", n.accesskit_node().role(), n.rect()))
+        .collect();
+    assert!(nameless.is_empty(), "{nameless:?}");
+    shot(&mut h, "n12b-sheet-dialog-1366x768.png");
+    g.click(&mut h, "Export…");
+    h.run_steps(4);
+    assert!(std::fs::read(&out).is_ok_and(|b| b.starts_with(b"%PDF-")), "written");
+    h.get_by_label("Open folder");
+    let gestures = g.take() + 1;
+    eprintln!("| Book → saved exercise sheet (the file's name counted as one) | {gestures} | 5 |");
+    assert!(gestures <= 5, "{gestures} gestures");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// Detecting again over a draft asks first; Discard changes drops it and the scan runs.
