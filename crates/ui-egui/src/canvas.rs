@@ -2877,7 +2877,12 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let captured_layer = crate::chess_capture::captured_layer(&mut app.chess, view.id);
     let mut captured_drawn = Vec::new();
     // Chess diagrams found in this document, while it is as it was scanned.
-    let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
+    let chess_stamp = app.session.chess_stamp(view.id);
+    let chess_shown = crate::chess_ui::shown(&app.chess, view.id, chess_stamp);
+    // The page the Text tab read, whose printed moves a double-click opens (plan A9-N1).
+    let chess_read = crate::chess_page_moves::read_page(&app.chess, view.id, chess_stamp);
+    // A printed move double-clicked or Alt+clicked: the page and the point in user space.
+    let mut chess_move_click: Option<(usize, [f32; 2])> = None;
     let chess_drafts = app.chess.draft_keys(view.id);
     let mut chess_pick: Option<pdfcraft_engine::chess::DiagramAt> = None;
     // A double-click on a page not scanned for diagrams: the page, the point in user space and
@@ -3615,7 +3620,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 }
             }
             crate::chess_capture::paint_captured(painter, &xf, i, info, captured_layer.as_deref().map(Vec::as_slice), &mut captured_drawn);
-            if let Some((d, tip)) = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered), &chess_drafts) {
+            let diagram_hover = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered), &chess_drafts);
+            let over_diagram = diagram_hover.is_some();
+            if let Some((d, tip)) = diagram_hover {
                 if hover_text.is_none()
                     && let Some(p) = pointer
                 {
@@ -3631,20 +3638,39 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     chess_pick = Some(pdfcraft_engine::chess::DiagramAt::new(i, d));
                 }
             }
-            // On a page not scanned yet, a double-click scans it and puts the diagram there on the
-            // board (`chess_ui::BoardAt`): no Chess tool to arm first.
-            if resp.double_clicked()
-                && tool == QuickTool::Select
-                && !consumed
-                && !page_covered
-                && !crate::chess_ui::page_scanned(chess_shown, i)
-                && let Some(p) = resp.interact_pointer_pos().filter(|p| xf.rect.contains(*p))
-                && let Some(page) = info.pages.get(i)
+            // A printed move of the page the Text tab read (plan A9-N1): under the pointer, a hand
+            // and its underline, the affordance; a double-click or an Alt+click opens its game.
+            let moves_here = tool == QuickTool::Select && !consumed && !page_covered && !over_diagram;
+            let read_here = chess_read.filter(|(p, _)| *p == i).map(|(_, d)| d);
+            if moves_here
+                && !resp.dragged()
+                && let Some(read) = read_here
+                && let Some(point) = pointer.and_then(|p| crate::chess_page_moves::user_point(&xf, info, i, p))
+                && let Some((_, rect)) = crate::chess_page_moves::opening_at(read, i, point)
             {
-                let (vx, vy) = xf.screen_to_view(p);
-                // The text layer took the double-click first: a word selected is under it.
-                let on_text = view.selection.is_some_and(|s| s.page == i);
-                chess_board_at = Some((i, page.view_to_user(vx, vy), on_text));
+                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                crate::chess_page_moves::paint_underline(painter, &xf, info, i, rect, &t);
+            }
+            let alt_click = resp.clicked() && ui.input(|inp| inp.modifiers.alt);
+            if (resp.double_clicked() || alt_click)
+                && moves_here
+                && let Some(point) = resp.interact_pointer_pos().and_then(|p| crate::chess_page_moves::user_point(&xf, info, i, p))
+            {
+                let on_move = read_here.and_then(|read| crate::chess_page_moves::opening_at(read, i, point)).is_some();
+                if resp.double_clicked() && !on_move && !crate::chess_ui::page_scanned(chess_shown, i) {
+                    // On a page not scanned yet, a double-click scans it and puts the diagram there
+                    // on the board (`chess_ui::BoardAt`): no Chess tool to arm first. Where there
+                    // is none, it goes on to the move printed there.
+                    // The text layer took the double-click first: a word selected is under it.
+                    let on_text = view.selection.is_some_and(|s| s.page == i);
+                    chess_board_at = Some((i, point, on_text));
+                } else if on_move || read_here.is_none() {
+                    // A move of the page read opens; on a page not read, the page is read first.
+                    chess_move_click = Some((i, point));
+                }
+            }
+            if crate::chess_page_moves::reading(&app.chess, view.id, chess_stamp, i) {
+                crate::chess_page_moves::paint_reading(ui, i, r, visible, &t);
             }
             for (mp, mr, mc) in &view.compare_marks {
                 if *mp == i {
@@ -4100,6 +4126,11 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     }
     if let Some((page, point, on_text)) = chess_board_at {
         app.chess.board_at = Some(crate::chess_ui::BoardAt { doc: view.id, page, point, on_text, started: false });
+    }
+    if let Some((page, point)) = chess_move_click {
+        app.chess.move_click = Some(crate::chess_page_moves::MoveClick { doc: view.id, page, point, say_none: false, started: false });
+        // The next frame's poll opens it.
+        ui.ctx().request_repaint();
     }
     match clicked_link {
         Some(LinkTarget::Page(p, dest)) => view.go_to_dest(p, dest, info),

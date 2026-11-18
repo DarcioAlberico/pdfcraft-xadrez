@@ -1689,6 +1689,28 @@ pub fn tools() -> Vec<ToolDef> {
                 },
                 &["doc"],
             )),
+        t("chess_move_at", "Printed move at a point", "Chess ▸ the printed move under a point of a page, without the interface (plan A9-N1): what a double-click on it in the app opens on the board. Page page is read alone as the app's Text tab reads it (its text layer; with chess OCR when the book's origin is Scanned, or as ocr says: auto, off or all), with the diagram corrections kept for doc unless corrections is false and the scan settings and models_dir as chess_document takes them, and the move whose box holds the point is found. x and y are points from the top-left of the displayed page (as page_render draws it at 72 dpi), turned into PDF user space through the page's crop box and rotation as the app's double-click turns the pointer. Returns page, point, user (the point in user space, y up), on_page, found, move (null when no move's box holds the point: prose, the gap between two moves, a margin, a point off the page; else block and inline, from 0, as chess_document's JSON indexes them, text as printed, number, san, status, fen: the position after it when it was played, game (1-based), rect: its box in user space, and opens: whether the app's double-click opens a game from it, which it does for a move played and for one with no position on its page alone, whose game the pages before may hold), read (moves on the page, ocr, needs_ocr, notes) and corrections. A point that is not a finite number, or a page out of range, is refused. The document is not changed.")
+            .ro()
+            .with(schema(
+                {
+                    let mut props = chess_props(true);
+                    if let Some(o) = props.as_object_mut() {
+                        o.remove("pages");
+                        let extra = json!({
+                            "page": { "type": "integer", "minimum": 1, "description": "The page, from 1." },
+                            "x": { "type": "number", "description": "Points from the left of the displayed page." },
+                            "y": { "type": "number", "description": "Points from the top of the displayed page." },
+                            "ocr": { "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of its text layer: off reads the layer, all reads the image, auto reads the image where the layer is poor or missing. Default: as the app's Text tab, all for a book whose origin is Scanned, else off." },
+                        });
+                        if let Value::Object(extra) = extra {
+                            o.extend(extra);
+                        }
+                    }
+                    insert_corrections(&mut props);
+                    props
+                },
+                &["doc", "page", "x", "y"],
+            )),
         t("chess_pattern_find", "Find positions by material and pawns", "Chess ▸ positions of the book by material and pawn structure, without the interface (plan A9-N16a; the filter in the Board's In the book list is still to come): what is already read of doc, and nothing else, held to material, a signature such as KRP-KR (White's pieces, a dash, Black's, each in the order K Q R B N P; either_side takes the colours swapped too, so KRP-KR also finds KR-KRP), and to pawns (doubled: a file with two pawns of a side or more; isolated: a pawn with no pawn of its side on a file beside; passed: a pawn with no pawn of the other side ahead of it on its file or a file beside; held by pawns.side, white, black or either, one side holding every trait asked; with either_side, the side is the one holding the material, swapped with it). Each side of a signature has its king (K-K at least). Opposite castling and the game's phase are left out until they have an exact definition (decision D32). In the book's PGN (reference_pgn, else the one kept for doc in reference_store unless reference is false), each game the index holds is played again once (played says how many), every line: the positions after a move (not the one a game is set up from) in a row of one line that match are one stretch, its first and last move as numbered (34.Rd1, 51...Kg7), main_line or a variation, and how many positions; listed game by game, the main line first, counted by game (games). Among the diagrams already read: those read in this session (any settings) and those kept on disk in cache (the app's folder by default, only read; outside the root it is not looked at), with page, page_label (its /PageLabels), index (1-based), side_assumed and from_disk. At most max of each kind are listed (100 by default, at most 1,000), all are counted (found). It never reads a page: read says what was looked at, and read.nothing, with why, when nothing of the book is read, which is not the same as none in the book. Refused for a document that does not allow copying.")
             .ro()
             .with(schema(

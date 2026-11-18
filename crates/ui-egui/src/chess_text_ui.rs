@@ -504,9 +504,9 @@ fn move_view(m: &MoveInline, at: MoveAt, chosen: &pdfcraft_engine::chess::refere
         tip = format!("{tip}\n{fen}");
     }
     // A move with no position on its page alone may go on from the page before: its game is
-    // looked for there.
-    let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
-    let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
+    // looked for there. The page's double-click goes by the same rule (plan A9-N1).
+    let opens = m.opens_game();
+    let in_pgn = crate::chess_page_moves::in_pgn(m);
     if in_pgn.is_some() {
         tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
     } else if opens {

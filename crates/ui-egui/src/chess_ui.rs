@@ -87,6 +87,10 @@ pub struct ChessState {
     /// A double-click on a page not scanned yet: the diagram there goes onto the board once the
     /// page is scanned ([`PdfCraftApp::chess_board_at_tick`]).
     pub board_at: Option<BoardAt>,
+    /// A printed move double-clicked (or Alt+clicked) on the page: its game opens on the board
+    /// once the Text tab's reading of its page is in, the page read first when it was not (plan
+    /// A9-N1, [`PdfCraftApp::chess_move_click_tick`]).
+    pub move_click: Option<crate::chess_page_moves::MoveClick>,
     /// A diagram to open in the editor once its page's scan is in ([`PickAfterScan`]).
     pub pick_after_scan: Option<PickAfterScan>,
     /// A diagram put on the board before the Text tab read its page: the page is read, and the
@@ -1287,6 +1291,7 @@ impl PdfCraftApp {
         self.chess_board_at_tick();
         self.chess_pick_after_scan_tick();
         self.chess_board_text_tick();
+        self.chess_move_click_tick();
     }
 
     fn poll_chess_scan(&mut self) {
@@ -1431,7 +1436,9 @@ impl PdfCraftApp {
 
     /// A double-click on a page not scanned yet (`BoardAt`): scan the page (after the scan
     /// running, if one is), then put the diagram under the double-click on the board. A point with
-    /// no diagram says so, unless the double-click selected a word there (which may be all it was
+    /// no diagram goes on to the move printed there (plan A9-N1, `chess_page_moves::MoveClick`):
+    /// its page is read as the Text tab reads it, and its game opens; finding no move either says
+    /// there is no diagram, unless the double-click selected a word there (which may be all it was
     /// for). Dropped when its document is no longer the one shown.
     pub(crate) fn chess_board_at_tick(&mut self) {
         let Some(mut at) = self.chess.board_at else { return };
@@ -1448,8 +1455,18 @@ impl PdfCraftApp {
                     self.select_chess_diagram(at.page, index, false);
                     self.open_chess_board(at.page, index);
                 }
-                None if !at.on_text => self.inform(tl!("No chess diagram was found here.").to_string()),
-                None => {}
+                // No diagram there: a move printed there opens its game (plan A9-N1), the page
+                // read first when it was not; finding none either is said as before.
+                None => {
+                    self.chess.move_click = Some(crate::chess_page_moves::MoveClick {
+                        doc: at.doc,
+                        page: at.page,
+                        point: at.point,
+                        say_none: !at.on_text,
+                        started: false,
+                    });
+                    self.chess_move_click_tick();
+                }
             }
             return;
         }

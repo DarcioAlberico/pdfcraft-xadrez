@@ -1940,7 +1940,8 @@ fn double_click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 /// A double-click on a diagram of a page not scanned yet scans the page, then puts the diagram
 /// on the board: there is no Chess tool to arm first. The scan is quiet (the board is what it
 /// was for); a double-click beside the diagrams scans the page, opens nothing and says so, and
-/// one that selected a word says nothing (selecting it may be all it was for).
+/// one that selected a word says nothing (selecting it may be all it was for), unless the word is
+/// a printed move, whose game opens there (plan A9-N1).
 #[test]
 fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_board() {
     let mut h = harness_stepping(0.05);
@@ -1965,14 +1966,27 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(h.state().said(), Some("No chess diagram was found here."));
 
     // On a word of the text: the word is selected, the page scanned, and nothing is said.
+    let mut h = harness_on(boards_with("Black should answer at once."), 0.05);
+    support::wait_until(&mut h, "the page's text layer", |app| app.views[0].glyph_screen_pos(0, 0).is_some());
+    let at = on_page(&h, 66.0, 544.0);
+    double_click_at(&mut h, at);
+    assert_eq!(h.state().views[0].selected_text().as_deref(), Some("Black"), "the double-click selected a word");
+    assert_eq!(diagrams(&h), 2, "the page was scanned");
+    assert!(!h.state().chess_board_shown());
+    assert_eq!(h.state().said(), None);
+
+    // On a printed move: selected too, and, no diagram being there, the move's game opens at it
+    // (plan A9-N1), the page read for it; still no word about a diagram.
     let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.05);
     support::wait_until(&mut h, "the page's text layer", |app| app.views[0].glyph_screen_pos(0, 0).is_some());
     let at = on_page(&h, 66.0, 544.0);
     double_click_at(&mut h, at);
     assert_eq!(h.state().views[0].selected_text().as_deref(), Some("12...e5"), "the double-click selected a word");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
-    assert!(!h.state().chess_board_shown());
-    assert_eq!(h.state().said(), None);
+    assert!(h.state().chess_board_shown(), "the move's game opened");
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.san(game.current()), "e5");
+    assert!(h.state().all_said().all(|t| t != "No chess diagram was found here."));
 }
 
 /// A diagram opened on the board after its page was read in the Text tab starts at the move the
