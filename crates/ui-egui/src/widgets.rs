@@ -283,12 +283,18 @@ fn own_ring_id(ctx: &egui::Context) -> egui::Id {
 /// chess dialog): the control in it with the keyboard gets the focus ring at the pass's end
 /// ([`paint_focus_ring`]; plan A9-I11b).
 pub(crate) fn ring_zone(ctx: &egui::Context, rect: Rect) {
-    // A handful a pass; capped, should a pass end without painting the ring.
+    // A handful a pass; capped all the same.
     const MAX_ZONES: usize = 32;
-    // The id first: `data_mut` holds the context's lock, which `viewport_id` takes too.
-    let key = ring_zones_id(ctx);
+    // The id and the pass first: `data_mut` holds the context's lock, which they take too.
+    let (key, pass) = (ring_zones_id(ctx), ctx.cumulative_pass_nr());
     ctx.data_mut(|d| {
-        let zones = d.get_temp_mut_or_default::<Vec<Rect>>(key);
+        let (at, zones) = d.get_temp_mut_or_default::<(u64, Vec<Rect>)>(key);
+        // A pass that ended without painting the ring (one that failed) leaves its zones: they
+        // are not this pass's.
+        if *at != pass {
+            *at = pass;
+            zones.clear();
+        }
         if zones.len() < MAX_ZONES {
             zones.push(rect);
         }
@@ -299,8 +305,27 @@ pub(crate) fn ring_zone(ctx: &egui::Context, rect: Rect) {
 /// [`focus_ring`], a list's row, a move of the Text tab, a board's cursor): [`paint_focus_ring`]
 /// leaves it alone.
 pub(crate) fn own_ring(ctx: &egui::Context, id: egui::Id) {
-    let key = own_ring_id(ctx);
-    ctx.data_mut(|d| d.insert_temp(key, id));
+    let (key, pass) = (own_ring_id(ctx), ctx.cumulative_pass_nr());
+    ctx.data_mut(|d| d.insert_temp(key, (pass, id)));
+}
+
+/// Whether a pointer button went down or up this pass.
+fn pointer_pressed_or_released(ctx: &egui::Context) -> bool {
+    ctx.input(|i| i.pointer.any_pressed() || i.pointer.any_released())
+}
+
+/// The control with the keyboard, as this pass has it so far. egui's `read_response` is not only
+/// a read: on a pass where a pointer button went down or up, it takes the keyboard from the
+/// widget it reads when the pointer is not over it, as a click elsewhere (a field a menu's click
+/// has just given the keyboard lost it at once). On such a pass nothing is read here, and
+/// another pass is asked for, where it is.
+pub(crate) fn focused_response(ctx: &egui::Context) -> Option<Response> {
+    let id = ctx.memory(|m| m.focused())?;
+    if pointer_pressed_or_released(ctx) {
+        ctx.request_repaint();
+        return None;
+    }
+    ctx.read_response(id)
 }
 
 /// The end of a viewport's pass (plan A9-I11b, WCAG 2.4.7, finding A6-20): the control with the
@@ -310,18 +335,18 @@ pub(crate) fn own_ring(ctx: &egui::Context, id: egui::Id) {
 /// stock button, field or check box is a 1-point outline in the text colour. Nothing while the
 /// window is not in use, as egui does.
 pub(crate) fn paint_focus_ring(ctx: &egui::Context) {
-    let (zones_key, own_key) = (ring_zones_id(ctx), own_ring_id(ctx));
-    let zones = ctx.data_mut(|d| d.remove_temp::<Vec<Rect>>(zones_key)).unwrap_or_default();
+    let (zones_key, own_key, pass) = (ring_zones_id(ctx), own_ring_id(ctx), ctx.cumulative_pass_nr());
+    let zones = ctx.data_mut(|d| d.remove_temp::<(u64, Vec<Rect>)>(zones_key)).filter(|(at, _)| *at == pass).map(|(_, z)| z).unwrap_or_default();
     let own = ctx.data_mut(|d| {
-        let own = d.get_temp::<egui::Id>(own_key);
-        d.remove::<egui::Id>(own_key);
-        own
+        let own = d.get_temp::<(u64, egui::Id)>(own_key);
+        d.remove::<(u64, egui::Id)>(own_key);
+        own.filter(|(at, _)| *at == pass).map(|(_, id)| id)
     });
     let Some(id) = ctx.memory(|m| m.focused()) else { return };
     if own == Some(id) || !ctx.input(|i| i.focused) {
         return;
     }
-    let Some(r) = ctx.read_response(id) else { return };
+    let Some(r) = focused_response(ctx) else { return };
     if !r.rect.is_finite() || !zones.iter().any(|z| z.contains(r.rect.center())) {
         return;
     }
@@ -335,16 +360,30 @@ pub(crate) fn paint_focus_ring(ctx: &egui::Context) {
 }
 
 /// The end of a scroll area's contents (plan A9-I11b, WCAG 2.4.11): the control that took the
-/// keyboard this pass, when it is in `ui` and not wholly in sight, is scrolled into sight, at
-/// once. egui moves the keyboard with Tab and leaves the area where it was.
+/// keyboard, when it is in `ui` and not wholly in sight, is scrolled into sight, once (the area
+/// remembers the control it followed, so a scroll by the user afterwards is left alone). egui
+/// moves the keyboard with Tab and leaves the area where it was. On a pass where a pointer
+/// button went down or up it is looked at the pass after ([`focused_response`]).
 pub(crate) fn follow_focus(ui: &egui::Ui) {
     let ctx = ui.ctx();
-    let Some(id) = ctx.memory(|m| m.focused()) else { return };
-    let Some(r) = ctx.read_response(id) else { return };
-    if !r.gained_focus() || r.layer_id != ui.layer_id() || !ui.min_rect().contains_rect(r.rect) || ui.clip_rect().contains_rect(r.rect) {
+    let key = ui.id().with("pdfcraft-followed-focus");
+    let Some(id) = ctx.memory(|m| m.focused()) else {
+        ctx.data_mut(|d| d.remove::<egui::Id>(key));
+        return;
+    };
+    if ctx.data(|d| d.get_temp::<egui::Id>(key)) == Some(id) {
         return;
     }
-    ui.scroll_to_rect_animation(r.rect.expand(4.0), None, egui::style::ScrollAnimation::none());
+    let Some(r) = focused_response(ctx) else { return };
+    if r.layer_id != ui.layer_id() || !ui.min_rect().contains_rect(r.rect) {
+        // Not in this area: coming back to the same control follows it again.
+        ctx.data_mut(|d| d.remove::<egui::Id>(key));
+        return;
+    }
+    ctx.data_mut(|d| d.insert_temp(key, id));
+    if !ui.clip_rect().contains_rect(r.rect) {
+        ui.scroll_to_rect_animation(r.rect.expand(4.0), None, egui::style::ScrollAnimation::none());
+    }
 }
 
 /// A segmented control (plan A8, P6, spec §2.1): one button per choice, joined in one frame, the
@@ -1345,6 +1384,78 @@ mod tests {
         assert_eq!(latin.len(), 1);
         assert_eq!(latin[0].2, "A short note");
         assert!(latin[0].0.x.abs() < 0.5);
+    }
+
+    /// The accent rings of 2 points painted in `out` ([`paint_focus_ring`]).
+    fn rings(out: &egui::FullOutput, accent: egui::Color32) -> usize {
+        out.shapes.iter().filter(|c| matches!(&c.shape, egui::Shape::Rect(r) if r.stroke.width == 2.0 && r.stroke.color == accent)).count()
+    }
+
+    /// Plan A9-I11b: a control given the keyboard by a click's action (a menu's Rename… gives it
+    /// to the name editor's first field) keeps it while the ring and the scroll areas look at it
+    /// on that click's pass; `read_response` there took it away as a click elsewhere.
+    #[test]
+    fn a_field_given_the_keyboard_on_a_click_keeps_it() {
+        let ctx = egui::Context::default();
+        let screen = Some(Rect::from_min_size(Pos2::ZERO, vec2(400.0, 300.0)));
+        let far = Pos2::new(350.0, 250.0);
+        let click = vec![
+            egui::Event::PointerMoved(far),
+            egui::Event::PointerButton { pos: far, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() },
+            egui::Event::PointerButton { pos: far, button: egui::PointerButton::Primary, pressed: false, modifiers: Default::default() },
+        ];
+        let mut text = String::new();
+        let mut field = None;
+        ctx.run_ui(egui::RawInput { screen_rect: screen, events: click, ..Default::default() }, |ui| {
+            ring_zone(ui.ctx(), ui.max_rect());
+            let r = ui.add(egui::TextEdit::singleline(&mut text));
+            r.request_focus();
+            field = Some(r.id);
+            follow_focus(ui);
+            paint_focus_ring(ui.ctx());
+        })
+        .drop_without_applying_deltas();
+        assert!(field.is_some());
+        assert_eq!(ctx.memory(|m| m.focused()), field, "the field keeps the keyboard after the click's pass");
+        // The pass after, with no button going down or up, rings it.
+        let accent = Tokens::get(&ctx).accent;
+        let out = ctx.run_ui(egui::RawInput { screen_rect: screen, ..Default::default() }, |ui| {
+            ring_zone(ui.ctx(), ui.max_rect());
+            ui.add(egui::TextEdit::singleline(&mut text));
+            paint_focus_ring(ui.ctx());
+        });
+        assert_eq!(ctx.memory(|m| m.focused()), field);
+        assert_eq!(rings(&out, accent), 1, "the field is ringed the pass after");
+    }
+
+    /// A pass that ends without painting the ring (one that failed) leaves no chess surface for
+    /// the next: a control at that place is not ringed there (review of plan A9-I11b).
+    #[test]
+    fn a_zone_lasts_one_pass() {
+        let ctx = egui::Context::default();
+        let screen = Some(Rect::from_min_size(Pos2::ZERO, vec2(400.0, 300.0)));
+        let input = || egui::RawInput { screen_rect: screen, ..Default::default() };
+        let accent = Tokens::get(&ctx).accent;
+        let button = |ui: &mut egui::Ui| ui.add(egui::Button::new("Press"));
+        ctx.run_ui(input(), |ui| button(ui).request_focus()).drop_without_applying_deltas();
+        let out = ctx.run_ui(input(), |ui| {
+            ring_zone(ui.ctx(), ui.max_rect());
+            button(ui);
+            paint_focus_ring(ui.ctx());
+        });
+        assert_eq!(rings(&out, accent), 1, "in a chess surface the button is ringed");
+        // A pass that marks the surface and never paints.
+        ctx.run_ui(input(), |ui| {
+            ring_zone(ui.ctx(), ui.max_rect());
+            button(ui);
+        })
+        .drop_without_applying_deltas();
+        let out = ctx.run_ui(input(), |ui| {
+            button(ui);
+            paint_focus_ring(ui.ctx());
+        });
+        assert!(ctx.memory(|m| m.focused()).is_some());
+        assert_eq!(rings(&out, accent), 0, "the zone of a pass that did not paint is not this pass's");
     }
 
     #[test]

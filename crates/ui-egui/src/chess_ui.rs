@@ -1686,7 +1686,7 @@ impl PdfCraftApp {
             state.tools_collapsed = true;
             self.left_open = false;
             let tools = ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("pdfcraft-tools-body")));
-            let focused = ctx.memory(|m| m.focused()).and_then(|id| ctx.read_response(id)).map(|r| r.rect.center());
+            let focused = crate::widgets::focused_response(&ctx).map(|r| r.rect.center());
             if let (Some(tools), Some(at)) = (tools, focused)
                 && tools.contains(at)
             {
