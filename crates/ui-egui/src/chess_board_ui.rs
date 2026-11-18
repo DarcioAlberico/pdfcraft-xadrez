@@ -2085,10 +2085,11 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
     });
 }
 
-/// How long the pointer rests on a move before its position shows (plan HC13).
-const PREVIEW_DELAY: f64 = 0.4;
+/// How long the pointer rests on a move before its position shows (plan HC13; on the page too,
+/// A9-N1b).
+pub(crate) const PREVIEW_DELAY: f64 = 0.4;
 /// The preview's side, in points.
-const PREVIEW_SIDE: f32 = 168.0;
+pub(crate) const PREVIEW_SIDE: f32 = 168.0;
 
 /// The position after move `node` in a tooltip (plan HC13): once the pointer has rested on the
 /// move for [`PREVIEW_DELAY`], or at once while the move has the keyboard focus; in the boards'
@@ -2171,27 +2172,41 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
 /// side.
 fn preview_texture(ctx: &egui::Context, state: &BoardState, node: NodeId) -> Option<TextureHandle> {
     let fen = state.game.fen_at(node)?;
-    let pieces = crate::chess_figurines::board_pieces(ctx)?;
-    let palette = crate::chess_theme::current(ctx);
-    let stamp = format!("{fen}|{}|{}|{}", palette.id, crate::chess_editor::pieces_generation(), state.flipped);
+    let (theme, pieces) = picture_look(ctx);
+    let stamp = format!("{fen}|{theme}|{pieces}|{}", state.flipped);
     let cache = egui::Id::new("chess-move-preview-picture");
     if let Some((s, tex)) = ctx.data(|d| d.get_temp::<(String, TextureHandle)>(cache))
         && s == stamp
     {
         return Some(tex);
     }
-    let placement = *fen.placement();
-    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: state.flipped, ..BoardStyle::default() });
+    let tex = position_picture(ctx, fen.placement(), state.flipped)?;
+    ctx.data_mut(|d| d.insert_temp(cache, (stamp, tex.clone())));
+    Some(tex)
+}
+
+/// What [`position_picture`] draws with: the boards' theme and the pieces' generation. A picture
+/// kept from another look is drawn again.
+pub(crate) fn picture_look(ctx: &egui::Context) -> (&'static str, u64) {
+    (crate::chess_theme::current(ctx).id, crate::chess_editor::pieces_generation())
+}
+
+/// Position `placement` as a move's preview shows it (plan HC13; a move printed on the page too,
+/// plan A9-N1b): [`PREVIEW_SIDE`] points a side, in the boards' theme and pieces, with no border
+/// or coordinates, Black at the foot when `flipped`. `None` while the board's pieces are not
+/// loaded (they are while the previews are on) and when it cannot be drawn.
+pub(crate) fn position_picture(ctx: &egui::Context, placement: &Placement, flipped: bool) -> Option<TextureHandle> {
+    let pieces = crate::chess_figurines::board_pieces(ctx)?;
+    let palette = crate::chess_theme::current(ctx);
+    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped, ..BoardStyle::default() });
     let px = (PREVIEW_SIDE * ctx.pixels_per_point()).round() as u32;
     let (w, h, rgba) = match palette.texture.filter(|t| *t != Texture::Hatched) {
-        Some(kind) => textured_rgba(&placement, &pieces, &style, px, kind, palette, &mut None).ok()?,
-        None => pdfcraft_engine::chess::office::diagram_rgba(&placement, &pieces, &style, px).ok()?,
+        Some(kind) => textured_rgba(placement, &pieces, &style, px, kind, palette, &mut None).ok()?,
+        None => pdfcraft_engine::chess::office::diagram_rgba(placement, &pieces, &style, px).ok()?,
     };
     let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
     (rgba.len() == w.checked_mul(h)?.checked_mul(4)?).then_some(())?;
-    let tex = ctx.load_texture("chess-move-preview", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
-    ctx.data_mut(|d| d.insert_temp(cache, (stamp, tex.clone())));
-    Some(tex)
+    Some(ctx.load_texture("chess-move-preview", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR))
 }
 
 /// A row of the column layout (plan HC9): a move number with White's and Black's moves, or what

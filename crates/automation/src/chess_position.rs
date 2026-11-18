@@ -91,7 +91,7 @@ impl Automation {
 /// The position `a` asks for: `fen` (the start position without it, as `chess_game` takes it),
 /// then `moves` (SAN or UCI) played from there; a move that cannot be played is refused, and says
 /// which.
-fn position_arg(a: &Args) -> Result<Fen> {
+pub(crate) fn position_arg(a: &Args) -> Result<Fen> {
     let mut game = match a.opt_str("fen")? {
         Some(fen) => Game::from_fen(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?,
         None => Game::standard(),
