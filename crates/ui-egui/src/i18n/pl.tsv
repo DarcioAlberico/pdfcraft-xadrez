@@ -3756,3 +3756,7 @@ progress bar	Progress	Postęp
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Nie udało się przeszukać książki: {e}
 	The diagrams read couldn't be looked at: {e}	Nie udało się przejrzeć przeczytanych diagramów: {e}
+# fix: pawn structure words
+pawn structure	Passed	Wolne
+# fix: the board rail's More button
+	More board tools	Więcej narzędzi szachownicy

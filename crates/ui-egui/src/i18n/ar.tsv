@@ -4064,3 +4064,7 @@ progress bar	Progress	التقدم
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	تعذّر البحث في الكتاب: {e}
 	The diagrams read couldn't be looked at: {e}	تعذّر النظر في المخططات المقروءة: {e}
+# fix: pawn structure words
+pawn structure	Passed	حرة
+# fix: the board rail's More button
+	More board tools	مزيد من أدوات الرقعة

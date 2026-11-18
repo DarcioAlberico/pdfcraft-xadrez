@@ -4041,3 +4041,7 @@ progress bar	Progress	Tiến độ
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
 	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}
+# fix: pawn structure words
+pawn structure	Passed	Tốt thông
+# fix: the board rail's More button
+	More board tools	Thêm công cụ bàn cờ
