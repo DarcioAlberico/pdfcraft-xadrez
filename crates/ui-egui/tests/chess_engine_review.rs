@@ -490,7 +490,9 @@ fn a_document_whose_chess_is_not_kept_has_nothing_written_even_closed_mid_batch(
     h.get_by_label("Start the check").click();
     engine.answer(1);
     assert!(wait_for(&mut h, |h| h.query_by_label_contains("position 2 of 5").is_some()), "one answered");
-    assert!(h.state_mut().execute("file.close"));
+    // Closed with what it found still waiting (no settle before: the tab closed at once), so
+    // only the rule can keep it from the disk.
+    h.state_mut().close_tab(0);
     assert!(wait_for(&mut h, |h| !h.state().chess.engine_review.running()), "the job ends");
     h.run_steps(2);
     h.state_mut().settle_chess_games();
