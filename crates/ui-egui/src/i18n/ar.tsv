@@ -4015,3 +4015,6 @@ progress bar	Progress	التقدم
 	Say a file's pieces	اذكر قطع عمود
 	{piece} on {square} picked up	رُفع {piece} من {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	تختار مفاتيح الأسهم مربعًا؛ ويرفع Enter أو Space القطعة أو ينقلها إليه.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	تعذّر البحث في الكتاب: {e}
+	The diagrams read couldn't be looked at: {e}	تعذّر النظر في المخططات المقروءة: {e}

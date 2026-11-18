@@ -3992,3 +3992,6 @@ progress bar	Progress	Tiến độ
 	Say a file's pieces	Đọc các quân trên một cột
 	{piece} on {square} picked up	Đã nhấc {piece} ở {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Phím mũi tên chọn ô; Enter hoặc Space nhấc một quân lên hoặc đi quân đó tới ô.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Không thể tìm trong sách: {e}
+	The diagrams read couldn't be looked at: {e}	Không thể xem các sơ đồ đã đọc: {e}

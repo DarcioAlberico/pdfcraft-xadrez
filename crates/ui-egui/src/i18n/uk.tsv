@@ -3764,3 +3764,6 @@ progress bar	Progress	Хід виконання
 	Say a file's pieces	Назвати фігури вертикалі
 	{piece} on {square} picked up	Піднято фігуру: {piece} на {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Стрілки вибирають поле; Enter або пробіл піднімає фігуру чи робить нею хід туди.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Не вдалося виконати пошук у книзі: {e}
+	The diagrams read couldn't be looked at: {e}	Не вдалося переглянути прочитані діаграми: {e}

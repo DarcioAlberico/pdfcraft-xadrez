@@ -3707,3 +3707,6 @@ progress bar	Progress	进度
 	Say a file's pieces	读出一列的棋子
 	{piece} on {square} picked up	已拿起 {square} 上的{piece}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	方向键选择格子；Enter 或空格键拿起棋子或把它走到那里。
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	无法在书中查找：{e}
+	The diagrams read couldn't be looked at: {e}	无法查看已读取的局面图：{e}

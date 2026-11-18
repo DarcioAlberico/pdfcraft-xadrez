@@ -26,6 +26,7 @@ mod chess_errata;
 mod chess_evals;
 mod chess_files;
 mod chess_games;
+mod chess_library;
 mod chess_move_at;
 mod chess_pattern;
 mod chess_pgn;
@@ -892,6 +893,9 @@ impl Automation {
             "chess_review_pack_import" => self.chess_review_pack_import(&a)?,
             "chess_cache_status" => self.chess_cache_status(&a)?,
             "chess_cache_clear" => self.chess_cache_clear(&a)?,
+            "chess_library_build" => self.chess_library_build(&a)?,
+            "chess_library_status" => self.chess_library_status(&a)?,
+            "chess_library_clear" => self.chess_library_clear(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_errata" => self.chess_errata(&a)?,

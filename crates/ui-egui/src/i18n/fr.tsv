@@ -3742,3 +3742,6 @@ progress bar	Progress	Progression
 	Say a file's pieces	Dire les pièces d'une colonne
 	{piece} on {square} picked up	Pièce prise : {piece} en {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Les flèches choisissent une case ; Entrée ou Espace prend une pièce ou la joue là.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Impossible de chercher dans le livre : {e}
+	The diagrams read couldn't be looked at: {e}	Impossible de parcourir les diagrammes lus : {e}

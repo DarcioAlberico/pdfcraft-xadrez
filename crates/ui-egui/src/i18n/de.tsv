@@ -3743,3 +3743,6 @@ progress bar	Progress	Fortschritt
 	Say a file's pieces	Figuren einer Linie ansagen
 	{piece} on {square} picked up	{piece} auf {square} aufgenommen
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Die Pfeiltasten wählen ein Feld; Eingabe oder Leertaste nimmt eine Figur auf oder zieht sie dorthin.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Das Buch konnte nicht durchsucht werden: {e}
+	The diagrams read couldn't be looked at: {e}	Die gelesenen Diagramme konnten nicht durchgesehen werden: {e}

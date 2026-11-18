@@ -129,6 +129,14 @@ pub(crate) fn find(doc: &ChessDoc, book: &PgnBook) -> (Vec<Found>, Vec<LeftOut>)
     (found, left_out)
 }
 
+/// The exercises of `doc` by the same rule ([`find`]), without writing them: where each is, its
+/// number and its solution's moves, and the numbered diagrams left out (plan A9-N15a, the
+/// Library's index of a book).
+pub fn list(doc: &ChessDoc) -> (Vec<Exercise>, Vec<LeftOut>) {
+    let (found, left_out) = find(doc, &PgnBook::default());
+    (found.into_iter().map(|f| f.exercise).collect(), left_out)
+}
+
 /// The exercises of `doc` as a problem PGN, from `book` (its title, its pages' labels), the moves
 /// written as `style` says (see the module documentation).
 pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> ExercisesPgn {

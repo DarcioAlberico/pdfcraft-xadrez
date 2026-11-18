@@ -3954,3 +3954,6 @@ progress bar	Progress	Avanzamento
 	Say a file's pieces	Leggi i pezzi di una colonna
 	{piece} on {square} picked up	Pezzo preso: {piece} in {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Le frecce scelgono una casa; Invio o Spazio prende un pezzo o lo gioca lì.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Impossibile cercare nel libro: {e}
+	The diagrams read couldn't be looked at: {e}	Impossibile esaminare i diagrammi letti: {e}

@@ -3707,3 +3707,6 @@ progress bar	Progress	Postęp
 	Say a file's pieces	Powiedz bierki linii
 	{piece} on {square} picked up	Podniesiono: {piece} z {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Strzałki wybierają pole; Enter lub spacja podnosi bierkę albo wykonuje nią ruch na to pole.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Nie udało się przeszukać książki: {e}
+	The diagrams read couldn't be looked at: {e}	Nie udało się przejrzeć przeczytanych diagramów: {e}

@@ -484,11 +484,13 @@ fn the_cache_revision_moves_only_when_a_result_comes_in() {
     s.prime_chess_cache(id, job.chess_cached(jid, &[]));
     let given = s.chess_cache_revision(id);
     assert_ne!(given, read, "a page a job read");
-    // Another document: its own count.
+    // Another document: its own value, which never repeats this one's (plan A9-N3b: the session's
+    // clock, so a cache dropped and made again never comes back to an earlier value).
     let other = s.open("other.pdf", None, Arc::new(book(6)), None).unwrap();
     assert_eq!(s.chess_cache_revision(other), 0);
     s.chess_scan(other, &[4], &quick(), true).unwrap();
     assert_eq!(s.chess_cache_revision(id), given, "another document's scan");
+    assert!(s.chess_cache_revision(other) > given, "after this document's, never the same");
 }
 
 /// Plan A9-N3: every diagram read is listed once with its position's key, from where the search

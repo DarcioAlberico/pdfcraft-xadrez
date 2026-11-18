@@ -3740,3 +3740,6 @@ progress bar	Progress	Орындалу барысы
 	Say a file's pieces	Тік қатардың фигураларын айту
 	{piece} on {square} picked up	Көтерілді: {square} шаршысындағы {piece}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Көрсеткілер шаршыны таңдайды; Enter не Space фигураны көтереді немесе оны сонда жүреді.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Кітаптан іздеу мүмкін болмады: {e}
+	The diagrams read couldn't be looked at: {e}	Оқылған диаграммаларды қарау мүмкін болмады: {e}

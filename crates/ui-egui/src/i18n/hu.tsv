@@ -3741,3 +3741,6 @@ progress bar	Progress	Előrehaladás
 	Say a file's pieces	Egy vonal bábuinak felolvasása
 	{piece} on {square} picked up	Felvéve: {piece}, {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	A nyilak mezőt választanak; az Enter vagy a Szóköz felvesz egy bábut, vagy odalép vele.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
+	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}

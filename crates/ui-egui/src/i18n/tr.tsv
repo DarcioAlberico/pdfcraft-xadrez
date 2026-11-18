@@ -3738,3 +3738,6 @@ progress bar	Progress	İlerleme
 	Say a file's pieces	Bir sütunun taşlarını söyle
 	{piece} on {square} picked up	Kaldırıldı: {square} karesindeki {piece}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Ok tuşları bir kare seçer; Enter veya Boşluk bir taşı kaldırır ya da onu oraya oynar.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Kitapta arama yapılamadı: {e}
+	The diagrams read couldn't be looked at: {e}	Okunan diyagramlara bakılamadı: {e}

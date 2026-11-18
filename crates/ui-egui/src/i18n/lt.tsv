@@ -3990,3 +3990,6 @@ progress bar	Progress	Eiga
 	Say a file's pieces	Pasakyti vertikalės figūras
 	{piece} on {square} picked up	Pakelta: {piece} langelyje {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Rodyklės parenka langelį; Enter arba tarpas pakelia figūrą arba ja ten paeina.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Knygoje ieškoti nepavyko: {e}
+	The diagrams read couldn't be looked at: {e}	Perskaitytų diagramų peržiūrėti nepavyko: {e}

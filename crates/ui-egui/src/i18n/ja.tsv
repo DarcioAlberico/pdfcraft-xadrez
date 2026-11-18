@@ -3744,3 +3744,6 @@ progress bar	Progress	進行状況
 	Say a file's pieces	筋の駒を読み上げる
 	{piece} on {square} picked up	{square} の{piece}を持ち上げました
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	矢印キーでマスを選び、Enter または Space で駒を持ち上げるか、そこへ指します。
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	本を検索できませんでした: {e}
+	The diagrams read couldn't be looked at: {e}	読み取った局面図を調べられませんでした: {e}

@@ -3706,3 +3706,6 @@ progress bar	Progress	Напредък
 	Say a file's pieces	Кажи фигурите на линия
 	{piece} on {square} picked up	Вдигната фигура: {piece} на {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Стрелките избират поле; Enter или интервал вдига фигура или я играе там.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Книгата не можа да бъде претърсена: {e}
+	The diagrams read couldn't be looked at: {e}	Прочетените диаграми не можаха да бъдат прегледани: {e}

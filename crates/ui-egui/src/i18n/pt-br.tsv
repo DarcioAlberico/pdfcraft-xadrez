@@ -3758,3 +3758,6 @@ progress bar	Progress	Progresso
 	Say a file's pieces	Dizer as peças de uma coluna
 	{piece} on {square} picked up	Peça levantada: {piece} em {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	As setas escolhem uma casa; Enter ou Espaço levanta uma peça ou a joga lá.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Não foi possível procurar no livro: {e}
+	The diagrams read couldn't be looked at: {e}	Não foi possível examinar os diagramas lidos: {e}

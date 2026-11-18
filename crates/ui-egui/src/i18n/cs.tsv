@@ -3816,3 +3816,6 @@ progress bar	Progress	Průběh
 	Say a file's pieces	Říct figury ve sloupci
 	{piece} on {square} picked up	Zvednuto: {piece} na {square}
 	Arrow keys pick a square; Enter or Space picks a piece up or plays it there.	Šipky vybírají pole; Enter nebo mezerník figuru zvedne nebo s ní táhne tam.
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	V knize nebylo možné hledat: {e}
+	The diagrams read couldn't be looked at: {e}	Přečtené diagramy nebylo možné projít: {e}
