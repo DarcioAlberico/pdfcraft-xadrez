@@ -302,16 +302,24 @@ pub fn set_free_space(probe: FreeSpace) {
 /// The store in `dir`, one for each folder in the process (its count of the books is shared by
 /// the scans that keep pages there), with the free-space probe the frontend gave.
 pub fn store_for(dir: &Path) -> Arc<ReadingStore> {
+    store_within(dir, MAX_BYTES)
+}
+
+/// [`store_for`] keeping at most `max` bytes in all: the Library's pages in progress (plan
+/// A9-N15a) have a budget of their own. A store of the folder made with another budget is replaced.
+pub fn store_within(dir: &Path, max: u64) -> Arc<ReadingStore> {
     // A list of shared stores: a panic elsewhere while it was held leaves it whole.
     let mut stores = STORES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     if let Some(at) = stores.iter().position(|(d, _)| d == dir) {
         let found = stores.remove(at);
-        let store = found.1.clone();
-        stores.push(found);
-        return store;
+        if found.1.max_bytes == max {
+            let store = found.1.clone();
+            stores.push(found);
+            return store;
+        }
     }
     let probe = FREE_SPACE.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone();
-    let store = ReadingStore::new(dir);
+    let store = ReadingStore::new(dir).with_max_bytes(max);
     let store = Arc::new(match probe {
         Some(p) => store.with_free_space(p, MIN_FREE_BYTES),
         None => store,
@@ -433,6 +441,17 @@ impl ReadingStore {
                 Found::SetAside(why)
             }
         }
+    }
+
+    /// The reading kept under `key` for the document `doc`, looked at and nothing else (plan
+    /// A9-N15a: the Library looks in the app's store without ever changing it): the book's use is
+    /// not recorded, and an entry that can't be trusted is a miss, left where it is.
+    pub fn peek<T: DeserializeOwned>(&self, doc: &DocKeys, key: &EntryKey) -> Option<T> {
+        let folder = book_folder(doc)?;
+        let path = self.dir.join(&folder).join(format!("{}{ENTRY}", key.hex()));
+        let bytes = super::corrections::read_capped(&path, MAX_ENTRY_BYTES).ok()?;
+        let json = decode(&bytes, key).ok()?;
+        serde_json::from_slice::<T>(&json).ok()
     }
 
     /// Keep `value` under `key` for the document `doc` of `pages` pages, making room by taking out
@@ -640,7 +659,7 @@ fn set_aside(path: &Path) {
 
 /// Write `bytes` over `path` whole, through a staging file beside it renamed over it. Not synced:
 /// a torn entry after a crash is a miss.
-fn write_whole(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(super) fn write_whole(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let mut staging = path.as_os_str().to_owned();
