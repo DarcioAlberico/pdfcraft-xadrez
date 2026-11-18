@@ -3644,3 +3644,6 @@ the move's comment	Move comment	Komentarz do ruchu
 	{why} (chess OCR needs the chess-glyphs model)	{why} (OCR szachowy wymaga modelu chess-glyphs)
 	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	„{name}” jest zaszyfrowany. Aplikacja przechowuje poprawki diagramów, PGN książki i partie szachowe każdego dokumentu bez szyfrowania na tym komputerze, aby wróciły po ponownym otwarciu dokumentu; próbki znaków trafiają do folderu wybranego dla nich.
 progress bar	Progress	Postęp
+# A9-N7a2: the Move field's refusals
+	Illegal move: {move} is ambiguous, it could be {moves}.	Nielegalny ruch: {move} jest niejednoznaczny, może to być {moves}.
+	Illegal move: {move} needs the piece the pawn becomes, as in {example}.	Nielegalny ruch: {move} wymaga figury, na którą promuje pion, np. {example}.
