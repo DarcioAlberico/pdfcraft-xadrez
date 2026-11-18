@@ -756,6 +756,9 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     if let Some(id) = chess.shown {
         crate::chess_list::take_keys(&mut chess.doc_mut(id).list, ctx, &mut raw.events, free);
     }
+    // A focused row of the Board tab's In the book list: ↑ ↓ Home End go to another row, not
+    // through the game (plan A9-N3b).
+    crate::chess_in_book::take_keys(&mut chess.in_book, ctx, &mut raw.events, free);
     // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
     // no variation (nor a page or an annotation).
     if free && chess.games.list_has_focus(ctx) {

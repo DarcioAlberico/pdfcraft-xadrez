@@ -3724,3 +3724,23 @@ progress bar	Progress	Napredek
 	Open game {n} on the board at {move}	Odpri partijo {n} na šahovnici pri potezi {move}
 	Only the pieces were compared: the side to move isn't printed.	Primerjane so bile samo figure: kdo je na potezi, ni natisnjeno.
 	The first {n} are listed.	Navedenih je prvih {n}.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Najdi v knjigi po materialu…
+	Look for	Išči
+	This position	Ta pozicija
+	By material	Po materialu
+	Material	Material
+	Either side	Katera koli stran
+	The material with the colours swapped is found too.	Najde se tudi material z zamenjanimi barvami.
+	Pawns:	Kmeti:
+	Doubled	Podvojeni
+	Isolated	Osamljeni
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	To ni zapis materiala: figure vsake strani v vrstnem redu K Q R B N P, najprej bele, kot KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Vpišite material, na primer KRP-KR, ali izberite vrsto kmetov.
+	Looking in the book…	Iskanje v knjigi…
+	Nothing in the book as read has this material and these pawns.	Nič v prebranem delu knjige nima tega materiala in teh kmetov.
+	{first} to {last}	{first} do {last}
+	Positions: {n}	Pozicije: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	V knjigi ni bilo mogoče iskati: {e}
+	The diagrams read couldn't be looked at: {e}	Prebranih diagramov ni bilo mogoče pregledati: {e}

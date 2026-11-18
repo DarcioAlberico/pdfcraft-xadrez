@@ -3793,3 +3793,23 @@ progress bar	Progress	Průběh
 	Open game {n} on the board at {move}	Otevřít partii {n} na šachovnici u tahu {move}
 	Only the pieces were compared: the side to move isn't printed.	Porovnány byly jen figury: kdo je na tahu, není vytištěno.
 	The first {n} are listed.	Je uvedeno prvních {n}.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Najít v knize podle materiálu…
+	Look for	Hledat
+	This position	Tato pozice
+	By material	Podle materiálu
+	Material	Materiál
+	Either side	Kterákoli strana
+	The material with the colours swapped is found too.	Najde se i materiál s prohozenými barvami.
+	Pawns:	Pěšci:
+	Doubled	Zdvojení
+	Isolated	Izolovaní
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Není to zápis materiálu: kameny každé strany v pořadí K Q R B N P, napřed bílé, jako KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Napište materiál, např. KRP-KR, nebo zvolte druh pěšců.
+	Looking in the book…	Hledání v knize…
+	Nothing in the book as read has this material and these pawns.	Nic v přečtené části knihy nemá tento materiál a tyto pěšce.
+	{first} to {last}	{first} až {last}
+	Positions: {n}	Pozice: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	V knize nebylo možné hledat: {e}
+	The diagrams read couldn't be looked at: {e}	Přečtené diagramy nebylo možné projít: {e}

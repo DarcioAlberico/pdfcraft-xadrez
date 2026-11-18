@@ -154,11 +154,20 @@ fn a_position_two_move_orders_reach_is_found_twice_and_the_books_reply_is_played
     shot(&mut h, "n3-in-the-book-dark.png");
     h.state_mut().set_option("theme", "light").unwrap();
     h.run_steps(3);
-    // The keyboard: from "‹ Moves", Tab reaches the book's first reply, Enter plays it.
-    h.get_by_label("Back to the moves").focus();
+    // The keyboard: from the list's switch (This position | By material, plan A9-N16b), Tab
+    // reaches the book's first reply, Enter plays it.
+    h.get_by_label("By material").focus();
     h.run_steps(1);
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Tab);
     assert!(focused(&h).starts_with("Play 3. bishop b5"), "{}", focused(&h));
+    // ↑ and ↓ go from row to row (plan A9-N3b), not through the game.
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::ArrowDown);
+    assert!(focused(&h).starts_with("Play 3. bishop c4"), "{}", focused(&h));
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::ArrowDown);
+    assert!(focused(&h).starts_with("Game 1 · Open"), "{}", focused(&h));
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Home);
+    assert!(focused(&h).starts_with("Play 3. bishop b5"), "{}", focused(&h));
+    assert_eq!(shown(&h), "Nc6", "the game did not move");
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     assert_eq!(shown(&h), "Bb5", "played on the board");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3 Nc6 3. Bb5");
@@ -246,4 +255,74 @@ fn the_search_runs_on_workers() {
     assert!(h.state_mut().wait_in_book(std::time::Duration::from_secs(60)), "the search ended");
     h.run_steps(3);
     h.get_by_label("In the book (2)");
+}
+
+// ─── Plan A9-N16b: by material and pawn structure ───────────────────────────────────────────
+
+/// A rook ending with a pawn, its twin with the colours swapped, and a queen game (plan A9-N16a's).
+const ENDINGS_PGN: &str = "[Event \"Rook ending\"]\n[SetUp \"1\"]\n[FEN \"6k1/8/8/3P4/8/8/r7/4K2R w - - 0 1\"]\n\n1.d6 Ra8 2.d7 Rd8 *\n\n[Event \"Twin\"]\n[SetUp \"1\"]\n[FEN \"4k2r/R7/8/8/3p4/8/8/6K1 b - - 0 1\"]\n\n1...d3 2.Ra1 d2 *\n\n[Event \"Queen\"]\n[SetUp \"1\"]\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1\"]\n\n1.Qd8# 1-0\n";
+
+/// Plan A9-N16b (the card's check): Chess ▸ Find in the book by material… opens the In the book
+/// list looking by material, the keyboard in its field. "KRP-KR" finds the rook ending's stretch;
+/// with Either side, the twin's too (the colours swapped), never the queen game. Walked with the
+/// keyboard: Tab from the last pawn mark reaches the first stretch, Enter opens its game on the
+/// board at its first move; a material that is not a signature says how one is written.
+#[test]
+fn by_material_the_rook_endings_are_listed_and_opened_from_the_keyboard() {
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", ENDINGS_PGN.as_bytes());
+    h.run_steps(3);
+    assert!(h.state_mut().execute("chess.find_material"));
+    h.run_steps(3);
+    assert_eq!(focused(&h), "Material", "the keyboard in its field");
+    h.get_by_label("Write a material, such as KRP-KR, or choose a kind of pawn.");
+    h.get_by_label("Material").type_text("KRP-KR");
+    h.run_steps(3);
+    h.get_by_label("Found: 1");
+    h.get_by_label("Either side").click();
+    h.run_steps(3);
+    h.get_by_label("Found: 2");
+    h.get_by_label("Game 1 · Rook ending: 1. d6 to 2… rook d8, Main line, Positions: 4");
+    h.get_by_label("Game 2 · Twin: 1… d3 to 2… d2, Main line, Positions: 3");
+    assert!(h.query_by_label_contains("Game 3").is_none(), "not the queen game");
+    shot(&mut h, "n16b-by-material.png");
+    // The keyboard: from the last pawn mark to the first stretch, and Enter opens its game.
+    h.get_by_label("Passed").focus();
+    h.run_steps(1);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Tab);
+    assert!(focused(&h).starts_with("Game 1 · Rook ending"), "{}", focused(&h));
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().game.tag("Event"), Some("Rook ending"));
+    assert_eq!(shown(&h), "d6", "at the stretch's first move");
+    // A material that is not a signature.
+    h.get_by_label("Material").focus();
+    h.run_steps(1);
+    h.get_by_label("Material").type_text("Q");
+    h.run_steps(2);
+    h.get_by_label("Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.");
+}
+
+/// Plan A9-N3b: while the next answer is looked for (on a worker), the list keeps the last one,
+/// dimmed: the keyboard stays on its row, so a reply played from the keyboard leaves it on the
+/// list, on the new position's first reply (it used to show "Looking…" alone for a frame, which
+/// dropped the focused row).
+#[test]
+fn the_list_keeps_the_keyboard_while_it_looks_again() {
+    let mut h = harness();
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", BOOK_PGN.as_bytes());
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 2. Nf3 Nc6 *");
+    h.get_by_label("In the book (2)").click();
+    h.run_steps(3);
+    h.state_mut().run_inline = false;
+    h.get_by_label("Play 3. bishop b5 on the board, Good move, Main line, Games: 2").focus();
+    h.run_steps(1);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
+    assert!(h.state_mut().wait_in_book(std::time::Duration::from_secs(60)), "the search ended");
+    h.run_steps(3);
+    assert_eq!(shown(&h), "Bb5");
+    assert!(focused(&h).starts_with("Play 3… a6"), "the keyboard on the list: {:?}", focused(&h));
 }

@@ -3992,3 +3992,23 @@ progress bar	Progress	التقدم
 	Open game {n} on the board at {move}	افتح المباراة {n} على الرقعة عند {move}
 	Only the pieces were compared: the side to move isn't printed.	قورنت القطع وحدها: الطرف الذي عليه الدور غير مطبوع.
 	The first {n} are listed.	أول {n} مدرجة.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	البحث في الكتاب حسب المادة…
+	Look for	البحث عن
+	This position	هذا الوضع
+	By material	حسب المادة
+	Material	المادة
+	Either side	أي طرف
+	The material with the colours swapped is found too.	يُعثر أيضًا على المادة مع تبديل الألوان.
+	Pawns:	البيادق:
+	Doubled	مزدوجة
+	Isolated	معزولة
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	ليست صيغة مادة: قطع كل طرف بالترتيب K Q R B N P، الأبيض أولًا، مثل KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	اكتب مادة مثل KRP-KR، أو اختر نوعًا من البيادق.
+	Looking in the book…	جارٍ البحث في الكتاب…
+	Nothing in the book as read has this material and these pawns.	لا شيء فيما قُرئ من الكتاب له هذه المادة وهذه البيادق.
+	{first} to {last}	{first} إلى {last}
+	Positions: {n}	الأوضاع: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	تعذّر البحث في الكتاب: {e}
+	The diagrams read couldn't be looked at: {e}	تعذّر النظر في المخططات المقروءة: {e}

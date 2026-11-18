@@ -3618,3 +3618,23 @@ progress bar	Progress	పురోగతి
 	Open game {n} on the board at {move}	ఆట {n} ని బోర్డుపై {move} వద్ద తెరవండి
 	Only the pieces were compared: the side to move isn't printed.	పావులను మాత్రమే పోల్చారు: ఎవరి వంతో ముద్రించలేదు.
 	The first {n} are listed.	మొదటి {n} జాబితాలో ఉన్నాయి.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	మెటీరియల్ ద్వారా పుస్తకంలో కనుగొనండి…
+	Look for	వెతకండి
+	This position	ఈ స్థితి
+	By material	మెటీరియల్ ద్వారా
+	Material	మెటీరియల్
+	Either side	ఏ వైపైనా
+	The material with the colours swapped is found too.	రంగులు మార్చిన మెటీరియల్ కూడా కనుగొనబడుతుంది.
+	Pawns:	బంటులు:
+	Doubled	రెట్టింపు
+	Isolated	ఒంటరి
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	ఇది మెటీరియల్ సంకేతం కాదు: ప్రతి వైపు పావులు K Q R B N P క్రమంలో, ముందు తెలుపు, KRP-KR లాగా.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	KRP-KR వంటి మెటీరియల్ రాయండి, లేదా బంటు రకాన్ని ఎంచుకోండి.
+	Looking in the book…	పుస్తకంలో వెతుకుతోంది…
+	Nothing in the book as read has this material and these pawns.	చదివిన పుస్తకంలో ఈ మెటీరియల్, ఈ బంటులు ఉన్నది ఏదీ లేదు.
+	{first} to {last}	{first} నుంచి {last}
+	Positions: {n}	స్థితులు: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	పుస్తకంలో వెతకలేకపోయాం: {e}
+	The diagrams read couldn't be looked at: {e}	చదివిన చిత్రాలను పరిశీలించలేకపోయాం: {e}

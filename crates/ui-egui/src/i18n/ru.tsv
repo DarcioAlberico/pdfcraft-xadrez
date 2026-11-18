@@ -3633,3 +3633,23 @@ progress bar	Progress	Ход выполнения
 	Open game {n} on the board at {move}	Открыть партию {n} на доске на ходе {move}
 	Only the pieces were compared: the side to move isn't printed.	Сравнивались только фигуры: очерёдность хода не напечатана.
 	The first {n} are listed.	Показаны первые {n}.
+# A9-N16b: In the book by material and pawns
+	Find in the book by material…	Найти в книге по материалу…
+	Look for	Искать
+	This position	Эта позиция
+	By material	По материалу
+	Material	Материал
+	Either side	Любая сторона
+	The material with the colours swapped is found too.	Материал с переставленными цветами тоже находится.
+	Pawns:	Пешки:
+	Doubled	Сдвоенные
+	Isolated	Изолированные
+	Not a material signature: each side's pieces in the order K Q R B N P, White's first, as KRP-KR.	Это не запись материала: фигуры каждой стороны в порядке K Q R B N P, сначала белые, например KRP-KR.
+	Write a material, such as KRP-KR, or choose a kind of pawn.	Введите материал, например KRP-KR, или выберите вид пешек.
+	Looking in the book…	Поиск в книге…
+	Nothing in the book as read has this material and these pawns.	В прочитанной части книги нет такого материала и таких пешек.
+	{first} to {last}	{first} — {last}
+	Positions: {n}	Позиций: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Не удалось выполнить поиск в книге: {e}
+	The diagrams read couldn't be looked at: {e}	Не удалось просмотреть прочитанные диаграммы: {e}
