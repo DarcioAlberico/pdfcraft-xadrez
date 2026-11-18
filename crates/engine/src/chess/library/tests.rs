@@ -1,11 +1,14 @@
-//! The Library on synthetic books (plan A9-N15a): folders of PDFs built here, read without a piece
+//! The Library on synthetic books (plans A9-N15a and N15b, the search): folders of PDFs built here, read without a piece
 //! model (diagram fonts are read exactly), each rule of the walk and of the build with a test of
 //! its own.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::index::{IndexedPosition, Place};
+use pdfcraft_chess::placement::Color;
+
+use super::find::FindQuery;
+use super::index::{BookIndex, IndexMeta, IndexedPosition, Place};
 use super::walk::{Cap, Caps, walk};
 use super::*;
 use crate::chess::tests::{book_of_boards, no_model};
@@ -105,7 +108,7 @@ fn book<'a>(built: &'a Built, name: &str) -> &'a BookReport {
 /// The positions of book `hash`'s index.
 fn positions(library: &Library, hash: &str) -> (index::IndexMeta, Vec<IndexedPosition>) {
     let mut found = Vec::new();
-    let meta = index::read(&library.index_path(hash), None, &mut |p| found.push(*p)).unwrap();
+    let meta = index::read(&library.index_path(hash), None, &mut |_, p| found.push(*p)).unwrap();
     (meta, found)
 }
 
@@ -515,6 +518,253 @@ fn clearing_takes_out_only_what_the_library_made() {
     assert_eq!(all.indexes, 2);
     assert!(lib.files().indexes.is_empty() && !lib.dir().join("catalog.json").exists());
     assert!(lib.dir().join("mine.txt").exists(), "another file stays");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The position after the Spanish opening's third move, 3.Bb5.
+const AFTER_BB5: &str = "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3";
+
+/// A two-page book: prose on the first page, the Spanish opening on the second, under a game's
+/// header whose players are `white` and `black`.
+fn game_on_page_two(white: &str, black: &str) -> Vec<u8> {
+    let first = helv(60.0, 11.0, "An introduction without moves.");
+    let mut second = helv(60.0, 11.0, &format!("\\(1\\) {white} - {black} [C60]"));
+    second.push_str(&helv(90.0, 11.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.Bxc6 dxc6"));
+    two_font_book(&[first, second])
+}
+
+/// A library of two books built in `base`: `one.pdf` (the chapter) and `two.pdf`.
+fn two_books(base: &Path) -> Library {
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("one.pdf"), chapter("One")).unwrap();
+    std::fs::write(books.join("two.pdf"), game_on_page_two("Capablanca,Jose", "Lasker,Emanuel")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    assert_eq!(built.read, 2, "{:#?}", built.books);
+    lib
+}
+
+fn key(fen: &str) -> pdfcraft_chess::fen::BookKey {
+    pdfcraft_chess::fen::Fen::parse(fen).unwrap().book_key()
+}
+
+/// Plan A9-N15b: two books that reach the same position give a hit each, with the book, the page
+/// as it numbers it, the move as numbered and its game; each index is read once.
+#[test]
+fn a_position_two_books_reach_is_found_in_both_with_its_page() {
+    let base = fresh("find-two");
+    let lib = two_books(&base);
+    let found = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 100);
+    assert_eq!((found.total, found.listed, found.indexes_read), (2, 2, 2), "{found:#?}");
+    let titles: Vec<&str> = found.books.iter().map(|b| b.title.as_str()).collect();
+    assert_eq!(titles, ["one", "two"]);
+    for (b, page) in found.books.iter().zip(["1", "2"]) {
+        let hit = &b.hits[0];
+        assert_eq!((hit.label.as_deref(), hit.number, hit.black, hit.san.as_deref()), (Some(page), 3, false, Some("Bb5")), "{b:#?}");
+        assert!(matches!(hit.place, Place::Move { .. }));
+    }
+    // The game of the second book's hit, with its players (as the header reads them).
+    let two = &found.books[1];
+    let game = two.hits[0].game.and_then(|g| two.games.iter().find(|(i, _)| *i == g)).map(|(_, g)| g.white.clone());
+    assert_eq!(game.as_deref(), Some("Capablanca, Jose"), "{two:#?}");
+    // The other side to move is another position, unless any side is asked.
+    let other = key("r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 3 3");
+    assert_eq!(lib.find(&FindQuery { position: Some(other), ..FindQuery::default() }, 100).total, 0);
+    assert_eq!(lib.find(&FindQuery { position: Some(other), any_side: true, ..FindQuery::default() }, 100).total, 2);
+    // `max` lists that many and counts all.
+    let one = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 1);
+    assert_eq!((one.total, one.listed, one.indexes_read), (2, 1, 2));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b: a SAN finds every move written so (marks held to when given), a player the games,
+/// an event or an opening's code too, and a position within a player's games only those.
+#[test]
+fn a_san_finds_every_move_and_a_player_the_games() {
+    let base = fresh("find-san");
+    let lib = two_books(&base);
+    let bb5 = lib.find(&FindQuery { san: Some("Bb5".into()), ..FindQuery::default() }, 100);
+    assert_eq!((bb5.total, bb5.books.len()), (2, 2));
+    assert_eq!(lib.find(&FindQuery { san: Some("Bxc6".into()), ..FindQuery::default() }, 100).total, 1);
+    assert_eq!(lib.find(&FindQuery { san: Some("Bb5+".into()), ..FindQuery::default() }, 100).total, 0, "a check asked for");
+    assert_eq!(lib.find(&FindQuery { san: Some("Bb5!".into()), ..FindQuery::default() }, 100).total, 2, "signs left out");
+    let games = lib.find(&FindQuery { player: Some("capablanca".into()), ..FindQuery::default() }, 100);
+    assert_eq!((games.total, games.books.len()), (1, 1), "{games:#?}");
+    let (_, g) = &games.books[0].games[0];
+    assert_eq!((g.white.as_str(), g.black.as_str(), g.eco.as_deref(), g.page), ("Capablanca, Jose", "Lasker, Emanuel", Some("C60"), Some(1)));
+    assert!(games.books[0].hits.is_empty());
+    assert_eq!(lib.find(&FindQuery { eco: Some("C6".into()), ..FindQuery::default() }, 100).total, 1);
+    assert_eq!(lib.find(&FindQuery { eco: Some("B".into()), ..FindQuery::default() }, 100).total, 0);
+    assert_eq!(lib.find(&FindQuery { player: Some("Tal".into()), ..FindQuery::default() }, 100).total, 0);
+    // The position within Capablanca's games: the second book's only.
+    let within = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), player: Some("Capablanca".into()), ..FindQuery::default() }, 100);
+    assert_eq!((within.total, within.books[0].title.as_str()), (1, "two"));
+    // Nothing asked finds nothing, and reads nothing.
+    let none = lib.find(&FindQuery::default(), 100);
+    assert_eq!((none.total, none.indexes_read), (0, 0));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b with A9-N16a: the material and the pawns, as `Query::matches` has them.
+#[test]
+fn the_material_and_the_pawns_are_found_as_the_query_matches_them() {
+    use pdfcraft_chess::pattern::{Material, PawnQuery, Query};
+    let base = fresh("find-pattern");
+    let lib = two_books(&base);
+    // After 5...dxc6: White has given its light bishop for a knight, Black's c-pawns are doubled.
+    let q = |pattern: Query| lib.find(&FindQuery { pattern, ..FindQuery::default() }, 100).total;
+    let doubled = |side| Query { pawns: PawnQuery { doubled: true, side, ..PawnQuery::default() }, ..Query::default() };
+    assert_eq!(q(doubled(Some(Color::Black))), 1);
+    assert_eq!(q(doubled(Some(Color::White))), 0);
+    let material = Material::parse("KQRRBNNPPPPPPPP-KQRRBBNPPPPPPPP").unwrap();
+    assert_eq!(q(Query { material: Some(material), ..Query::default() }), 1, "after 5...dxc6");
+    assert_eq!(q(Query { material: Some(material.mirrored()), ..Query::default() }), 0);
+    assert_eq!(q(Query { material: Some(material.mirrored()), either_side: true, ..Query::default() }), 1);
+    // The marks the index keeps answer as the query does on the placement, over the book's positions.
+    let mut every = Vec::new();
+    for hash in lib.files().indexes.iter().map(|(h, _)| h.clone()) {
+        index::read(&lib.index_path(&hash), None, &mut |_, p| every.push(*p)).unwrap();
+    }
+    let queries = [
+        doubled(None),
+        doubled(Some(Color::White)),
+        Query { pawns: PawnQuery { isolated: true, passed: true, ..PawnQuery::default() }, ..Query::default() },
+    ];
+    for p in &every {
+        let placement = placement_of(p.placement);
+        for query in &queries {
+            let f = FindQuery { pattern: *query, ..FindQuery::default() };
+            assert_eq!(f.pattern_matches(p), query.matches(&placement), "{query:?}");
+        }
+    }
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15b: an index that does not check out is not served: the search says it and goes on
+/// with the other books.
+#[test]
+fn a_damaged_index_is_said_and_not_served() {
+    let base = fresh("find-damaged");
+    let lib = two_books(&base);
+    let indexes = lib.files().indexes;
+    let path = lib.index_path(&indexes[0].0);
+    let mut b = std::fs::read(&path).unwrap();
+    let at = b.len() - 2;
+    b[at] ^= 0x77;
+    std::fs::write(&path, b).unwrap();
+    let found = lib.find(&FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() }, 100);
+    assert_eq!((found.total, found.unread.len(), found.indexes_read), (1, 1, 2), "{found:#?}");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The placement a key holds (four bits a square from a1: 1–6 White's P N B R Q K, 9–14 Black's).
+fn placement_of(key: pdfcraft_chess::fen::PlacementKey) -> pdfcraft_chess::placement::Placement {
+    use pdfcraft_chess::placement::{Piece, PieceKind, Placement, Square};
+    let mut out = Placement::empty();
+    for (w, word) in key.words().into_iter().enumerate() {
+        for i in 0..16 {
+            let code = (word >> (i * 4)) & 15;
+            let kind = match code & 7 {
+                1 => PieceKind::Pawn,
+                2 => PieceKind::Knight,
+                3 => PieceKind::Bishop,
+                4 => PieceKind::Rook,
+                5 => PieceKind::Queen,
+                6 => PieceKind::King,
+                _ => continue,
+            };
+            let color = if code & 8 != 0 { Color::Black } else { Color::White };
+            out.set(Square::from_index(w * 16 + i).unwrap(), Some(Piece::new(color, kind)));
+        }
+    }
+    out
+}
+
+/// A synthetic book's index of `n` positions: placements walked a piece at a time from the start
+/// position, as a book's games walk them (so they deflate as a book's do), each with a SAN of a
+/// small table and a game; `planted` of them, spread out, are the position after 3.Bb5.
+fn synthetic_index(n: usize, planted: usize) -> BookIndex {
+    use pdfcraft_chess::fen::Fen;
+    let start = *Fen::parse(START).unwrap().placement();
+    let target = Fen::parse(AFTER_BB5).unwrap();
+    let mut placement = start;
+    let mut seed = 0x2545_f491_4f6c_dd1du64;
+    let squares: Vec<pdfcraft_chess::placement::Square> = (0..64).filter_map(pdfcraft_chess::placement::Square::from_index).collect();
+    let mut positions = Vec::with_capacity(n);
+    let every = n / planted.max(1);
+    for i in 0..n {
+        // A piece moves to another square, now and then the game starts again.
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        if i % 80 == 0 {
+            placement = start;
+        }
+        let from = squares[(seed % 64) as usize];
+        let to = squares[((seed >> 8) % 64) as usize];
+        if let Some(piece) = placement.get(from)
+            && from != to
+            && placement.get(to).is_none_or(|p| p.kind != pdfcraft_chess::placement::PieceKind::King)
+            && piece.kind != pdfcraft_chess::placement::PieceKind::King
+        {
+            placement.set(from, None);
+            placement.set(to, Some(piece));
+        }
+        let planted_here = every > 0 && i % every == every / 2 && i / every < planted;
+        let (p, side) =
+            if planted_here { (*target.placement(), Color::Black) } else { (placement, if i % 2 == 0 { Color::White } else { Color::Black }) };
+        positions.push(IndexedPosition {
+            placement: pdfcraft_chess::fen::PlacementKey::of(&p),
+            side,
+            side_assumed: false,
+            page: Some(u32::try_from(i / 40).unwrap()),
+            place: Place::Move { block: u32::try_from(i % 40).unwrap(), inline: 0 },
+            number: u16::try_from(i % 80 / 2 + 1).unwrap(),
+            black: i % 2 == 1,
+            san: Some(u32::try_from(i % 50).unwrap()),
+            game: Some(u32::try_from(i / 80).unwrap()),
+            main_line: true,
+            accepted: true,
+            material: index::material_of(&p),
+            pawns: index::pawn_marks(&p),
+        });
+    }
+    let meta = IndexMeta {
+        title: "A million positions".into(),
+        pages: u32::try_from(n / 40 + 1).unwrap(),
+        sans: (0..50).map(|i| format!("Nf{}", i % 8 + 1)).collect(),
+        games: (0..n / 80 + 1)
+            .map(|_| index::IndexedGame { white: "Synthetic".into(), black: "Book".into(), event: "?".into(), ..Default::default() })
+            .collect(),
+        ..IndexMeta::default()
+    };
+    BookIndex { meta, positions }
+}
+
+/// Plan A9-N15b's budget (R8): a synthetic index of a million positions is looked through in at
+/// most a second, in release, read once (the count is deterministic: one index, every planted
+/// position found).
+/// `cargo test --release -p pdfcraft-engine --lib perf_library_find_a_million_positions -- --ignored --nocapture`.
+#[test]
+#[ignore = "a timing, in release"]
+fn perf_library_find_a_million_positions() {
+    let base = fresh("find-perf");
+    let lib = Library::new(base.join("library"));
+    std::fs::create_dir_all(lib.dir()).unwrap();
+    let index = synthetic_index(1_000_000, 7);
+    let hash = "ab".repeat(32);
+    let file = index::encode(&index, &IndexKey([3; 32])).unwrap();
+    std::fs::write(lib.index_path(&hash), &file).unwrap();
+    let book = CatalogBook { hash: Some(hash), paths: vec!["synthetic.pdf".into()], state: State::Indexed, ..CatalogBook::default() };
+    let mut catalog = Catalog { books: vec![book], ..Catalog::default() };
+    lib.write_catalog(&mut catalog).unwrap();
+    let query = FindQuery { position: Some(key(AFTER_BB5)), ..FindQuery::default() };
+    let t = std::time::Instant::now();
+    let found = lib.find(&query, 100);
+    let ms = t.elapsed().as_secs_f64() * 1000.0;
+    println!("PERF library_find_a_million_positions {ms:.1} ms ({} bytes, {} positions)", file.len(), index.positions.len());
+    assert_eq!((found.indexes_read, found.total), (1, 7), "{found:?}");
+    assert!(ms <= 1000.0, "{ms:.0} ms");
     let _ = std::fs::remove_dir_all(&base);
 }
 

@@ -34,10 +34,15 @@ fn pdf(pages: &[String]) -> Vec<u8> {
 
 /// [`pdf`] with every page turned by `/Rotate` `rotate`.
 fn pdf_turned(pages: &[String], rotate: u32) -> Vec<u8> {
+    pdf_sized(pages, rotate, [600, 800])
+}
+
+/// [`pdf_turned`] with pages `size` points wide and high.
+fn pdf_sized(pages: &[String], rotate: u32, size: [u32; 2]) -> Vec<u8> {
     let kids: Vec<String> = (0..pages.len()).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
     let mut objs = vec![
         "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
-        format!("<< /Type /Pages /Kids [{}] /Count {} /MediaBox [0 0 600 800] >>", kids.join(" "), pages.len()),
+        format!("<< /Type /Pages /Kids [{}] /Count {} /MediaBox [0 0 {} {}] >>", kids.join(" "), pages.len(), size[0], size[1]),
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
     ];
     for (i, content) in pages.iter().enumerate() {
@@ -658,5 +663,247 @@ fn a_move_under_the_pointer_is_underlined_in_both_themes() {
             shot(&mut h, &format!("n1-reading-{theme}.png"));
         }
         support::wait_until(&mut h, "the game opened", |app| !app.chess.board().game().is_empty());
+    }
+}
+
+// ─── Plan A9-N1b: the position after a printed move, the pointer resting on it ──────────────
+
+/// A page with one move printed on it near its top, and a line of prose well below.
+fn one_move() -> Vec<u8> {
+    one_move_at(730)
+}
+
+/// A page with one move printed `y` points above its foot, and a line of prose 250 points below
+/// it.
+fn one_move_at(y: u32) -> Vec<u8> {
+    let prose = y.saturating_sub(250);
+    pdf(&[format!("BT /F1 11 Tf 60 {y} Td (1.e4) Tj ET\nBT /F1 11 Tf 60 {prose} Td (The end of the chapter.) Tj ET\n")])
+}
+
+/// The name of the position after `1.e4`, as the move list's preview names its own.
+const AFTER_E4: &str = "Position after 1.e4";
+
+/// How many move previews show.
+fn previews(h: &Harness<'static, PdfCraftApp>) -> usize {
+    h.query_all_by_label_contains("Position after").count()
+}
+
+/// Move `san`'s box on screen, from its box on the page (`size` points, not turned).
+fn move_box(h: &Harness<'static, PdfCraftApp>, san: &str, size: [f32; 2]) -> egui::Rect {
+    let (page, [x0, y0, x1, y1]) = printed(h, san);
+    let r = h.state().views[0].page_screen_rect(page).expect("its page on screen");
+    let at = |x: f32, y: f32| egui::pos2(r.left() + x / size[0] * r.width(), r.top() + (size[1] - y) / size[1] * r.height());
+    egui::Rect::from_two_pos(at(x0, y0), at(x1, y1))
+}
+
+/// Plan A9-N1b: the pointer resting on a printed move of the page the Text tab read shows the
+/// position after it once 400 ms have passed, not before: beside the move, never over it, inside
+/// the window, named as the move list's preview is. The pointer can go from the move onto it, and
+/// it stays (WCAG 1.4.13, hoverable); off the move and off it, it goes, and back on the move the
+/// wait starts again.
+#[test]
+fn a_printed_move_rested_on_shows_its_position_beside_it() {
+    let mut h = harness_on(one_move());
+    let e4 = on_word(&h, 0, "e4");
+    h.hover_at(e4);
+    h.run_steps(3);
+    assert_eq!(previews(&h), 0, "not before 400 ms");
+    h.run_steps(3);
+    let shown = h.get_by_label(AFTER_E4).rect();
+    let mv = move_box(&h, "e4", [600.0, 800.0]);
+    assert!(mv.contains(e4), "the pointer is on the move {mv:?}");
+    assert!(shown.top() > mv.bottom(), "under the move {mv:?}, with room there: {shown:?}");
+    assert!(h.ctx.content_rect().contains_rect(shown), "inside the window: {shown:?}");
+    assert!(shown.width() >= 168.0 && shown.height() >= 168.0, "the move list's board: {shown:?}");
+    assert_eq!(h.output().platform_output.cursor_icon, egui::CursorIcon::PointingHand, "still the hand");
+    // From the move onto it, across the gap between them: it stays.
+    let x = e4.x.clamp(shown.left().max(mv.left()) + 1.0, shown.right().min(mv.right()) - 1.0);
+    for y in [(mv.bottom() + shown.top()) / 2.0, shown.top() + 4.0, shown.center().y] {
+        h.hover_at(egui::pos2(x, y));
+        h.run_steps(2);
+        assert!(h.query_by_label(AFTER_E4).is_some(), "the pointer at {y} on its way onto it");
+    }
+    h.run_steps(10);
+    assert!(h.query_by_label(AFTER_E4).is_some(), "it stays while the pointer is on it");
+    // Off the move and the preview: gone.
+    h.hover_at(on_word(&h, 0, "chapter"));
+    h.run_steps(1);
+    assert_eq!(previews(&h), 0, "off the move and the preview");
+    // Back on the move: the wait starts again.
+    h.hover_at(e4);
+    h.run_steps(3);
+    assert_eq!(previews(&h), 0, "waiting again");
+    h.run_steps(3);
+    assert!(h.query_by_label(AFTER_E4).is_some());
+}
+
+/// Plan A9-N1b (WCAG 1.4.13, dismissable): Esc closes the position shown, and only that: the
+/// keyboard stays where it was (here on the Chess column's Text tab; egui would take it away), the word
+/// selected on the page stays selected. It stays closed while the pointer stays on the move, and
+/// shows again once the pointer has left the move and rested on it again.
+#[test]
+fn esc_closes_a_printed_moves_position_and_leaves_the_keyboard() {
+    let mut h = harness_on(one_move());
+    let chapter = on_word(&h, 0, "chapter");
+    double_click_at(&mut h, chapter);
+    let selected = h.state().views[0].selected_text();
+    assert!(selected.as_deref().is_some_and(|s| s.starts_with("chapter")), "{selected:?}");
+    // The keyboard on the Chess column's Text tab.
+    h.get_by(|n| n.role() == Role::Tab && n.label().is_some_and(|l| l == "Text")).focus();
+    h.run_steps(2);
+    let focused = h.ctx.memory(|m| m.focused());
+    assert!(focused.is_some(), "the keyboard on the Text tab");
+    let e4 = on_word(&h, 0, "e4");
+    h.hover_at(e4);
+    h.run_steps(6);
+    assert!(h.query_by_label(AFTER_E4).is_some());
+    host_key(&mut h, egui::Key::Escape);
+    assert_eq!(previews(&h), 0, "Esc closed it");
+    assert_eq!(h.ctx.memory(|m| m.focused()), focused, "the keyboard where it was");
+    assert_eq!(h.state().views[0].selected_text(), selected, "the word still selected");
+    h.run_steps(6);
+    assert_eq!(previews(&h), 0, "closed while the pointer stays on the move");
+    h.hover_at(chapter);
+    h.run_steps(2);
+    h.hover_at(e4);
+    h.run_steps(6);
+    assert!(h.query_by_label(AFTER_E4).is_some(), "again once the pointer came back");
+}
+
+/// Plan A9-N1b: the position shown goes on a scroll and on a zoom, the wait starting again, and
+/// when a double-click on the move opens its game (closed while the pointer stays), also on a page
+/// the double-click had to read first; in Read mode it shows as in the others.
+#[test]
+fn a_printed_moves_position_goes_on_a_scroll_a_zoom_and_its_game_opening() {
+    // The move in the middle of the page, which a zoom keeps in view.
+    let mut h = harness_on(one_move_at(450));
+    h.state_mut().views[0].set_zoom(1.5);
+    h.run_steps(3);
+    let shows = |h: &mut Harness<'static, PdfCraftApp>, what: &str| {
+        let at = on_word(h, 0, "e4");
+        assert!(h.state().views[0].viewport_rect().contains(at), "{what}: the move in view at {at:?}");
+        h.hover_at(at);
+        h.run_steps(6);
+        assert!(h.query_by_label(AFTER_E4).is_some(), "{what}");
+    };
+    shows(&mut h, "zoomed in");
+    let before = on_word(&h, 0, "e4");
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Line,
+        delta: egui::vec2(0.0, -1.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: Modifiers::NONE,
+    });
+    h.run_steps(1);
+    assert_eq!(previews(&h), 0, "a scroll hides it");
+    h.run_steps(10);
+    assert_ne!(on_word(&h, 0, "e4"), before, "the page scrolled");
+    shows(&mut h, "rested on again after the scroll");
+    h.state_mut().views[0].set_zoom(1.2);
+    h.run_steps(1);
+    assert_eq!(previews(&h), 0, "a zoom hides it");
+    h.run_steps(10);
+    shows(&mut h, "rested on again after the zoom");
+    let at = on_word(&h, 0, "e4");
+    double_click_at(&mut h, at);
+    assert_eq!(shown(&h), "e4", "its game opened");
+    h.hover_at(on_word(&h, 0, "e4"));
+    h.run_steps(6);
+    assert_eq!(h.output().platform_output.cursor_icon, egui::CursorIcon::PointingHand, "the pointer on the move");
+    assert_eq!(previews(&h), 0, "closed by the double-click that opened its game");
+    assert!(h.state_mut().execute("view.read_mode"));
+    h.run_steps(3);
+    assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+    h.hover_at(on_word(&h, 0, "chapter"));
+    h.run_steps(2);
+    shows(&mut h, "in Read mode");
+    // On a page not read yet, the double-click reads it and then opens the move: closed too,
+    // though no move was under the pointer when the double-click came.
+    let mut h = harness_unread(one_move(), true);
+    let at = on_word(&h, 0, "e4");
+    double_click_at(&mut h, at);
+    assert_eq!(shown(&h), "e4", "the page read and the game opened");
+    h.run_steps(6);
+    assert_eq!(h.output().platform_output.cursor_icon, egui::CursorIcon::PointingHand, "the pointer on the move read");
+    assert_eq!(previews(&h), 0, "closed by the double-click that read the page and opened its game");
+}
+
+/// Plan A9-N1b: with the move list's preview off in the preferences (one switch for a move's
+/// position on hover), a printed move shows none, and it goes at once; nor does a move with no
+/// position on its page alone (the top of a page going on from the page before), which still
+/// opens with a double-click.
+#[test]
+fn no_position_shows_with_the_preview_off_or_for_a_move_without_one() {
+    let mut h = harness_on(one_move());
+    let e4 = on_word(&h, 0, "e4");
+    h.hover_at(e4);
+    h.run_steps(6);
+    assert!(h.query_by_label(AFTER_E4).is_some(), "on");
+    h.state_mut().set_option("move-preview", "off").unwrap();
+    h.run_steps(1);
+    assert_eq!(previews(&h), 0, "off: gone at once");
+    h.hover_at(on_word(&h, 0, "chapter"));
+    h.run_steps(2);
+    h.hover_at(e4);
+    h.run_steps(6);
+    assert_eq!(previews(&h), 0, "off");
+    assert_eq!(h.output().platform_output.cursor_icon, egui::CursorIcon::PointingHand, "the move still opens");
+    // Moves with no position on their page alone.
+    let mut h = harness_on(pdf(&["BT /F1 11 Tf 60 730 Td (12...e5 13.Nf3 Nf6) Tj ET\n".to_string()]));
+    {
+        let text = h.state().chess.text().expect("the page was read");
+        let m = text.chess.pages[0]
+            .blocks
+            .iter()
+            .flat_map(|b| b.inlines())
+            .find_map(|i| if let Inline::Move(m) = i { (m.san == "Nf3").then_some(m) } else { None })
+            .expect("Nf3 read as a move");
+        assert!(m.fen.is_none() && m.opens_game(), "no position, and it opens: {m:?}");
+    }
+    h.hover_at(on_word(&h, 0, "Nf3"));
+    h.run_steps(6);
+    assert_eq!(h.output().platform_output.cursor_icon, egui::CursorIcon::PointingHand, "it opens");
+    assert_eq!(previews(&h), 0, "no position, no preview");
+}
+
+/// Plan A9-N1b at 1366 × 768 in both themes: a printed move near the window's right and bottom
+/// edges shows its position over the move and kept inside the window, off the move
+/// (`PDFCRAFT_CHESS_SHOTS` saves the window to look at).
+#[test]
+fn a_printed_moves_position_stays_inside_the_window_in_both_themes() {
+    let size = [1200.0, 500.0];
+    for theme in ["light", "dark"] {
+        // A wide page, the move printed at its foot's right end.
+        let page = "BT /F1 11 Tf 1140 20 Td (1.e4) Tj ET\nBT /F1 11 Tf 40 300 Td (A wide page.) Tj ET\n".to_string();
+        let mut h = harness_unread(pdf_sized(&[page], 0, [1200, 500]), true);
+        h.state_mut().set_option("theme", theme).unwrap();
+        // Read through the gesture, then the columns closed: the page as wide as the window.
+        let at = on_word(&h, 0, "e4");
+        double_click_at(&mut h, at);
+        assert_eq!(shown(&h), "e4");
+        h.state_mut().choose_right_panel(None);
+        assert!(h.state_mut().execute("view.fit_width_scrolling"));
+        h.run_steps(4);
+        // A click on the page lets go of the word the double-click selected.
+        let blank = on_word(&h, 0, "wide") + egui::vec2(0.0, 80.0);
+        h.hover_at(blank);
+        h.run_steps(1);
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: blank, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
+        }
+        h.run_steps(2);
+        let e4 = on_word(&h, 0, "e4");
+        h.hover_at(e4);
+        h.run_steps(6);
+        let shown = h.get_by_label(AFTER_E4).rect();
+        let mv = move_box(&h, "e4", size);
+        let window = h.ctx.content_rect();
+        eprintln!("{theme}: window {window:?}, move {mv:?}, preview {shown:?}, pointer {e4:?}");
+        assert!(window.right() - mv.right() < 200.0 && window.bottom() - mv.bottom() < 200.0, "{theme}: the move near the window's corner: {mv:?}");
+        assert!(window.contains_rect(shown), "{theme}: inside the window: {shown:?}");
+        assert!(window.right() - shown.right() < 20.0, "{theme}: pushed in from the right edge: {shown:?}");
+        assert!(shown.bottom() < mv.top(), "{theme}: over the move, no room under it: {mv:?} {shown:?}");
+        assert!(shown.left() < e4.x && e4.x < shown.right(), "{theme}: the pointer can go straight up onto it");
+        shot(&mut h, &format!("n1b-preview-{theme}.png"));
     }
 }

@@ -2969,6 +2969,10 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             // Set again below when the right-click lands on a link.
             view.links.context = None;
         }
+        // The printed move under the pointer, whose position shows once the pointer rests on it,
+        // and whether a gesture on it opened its game (plan A9-N1b).
+        let mut chess_under: Option<crate::chess_page_moves::Under<'_>> = None;
+        let mut chess_opened = false;
         for &i in &visible_pages {
             badge_hover = None;
             let r = snap_to_pixels(rects[i].translate(origin.to_vec2()), ppp);
@@ -3639,17 +3643,22 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 }
             }
             // A printed move of the page the Text tab read (plan A9-N1): under the pointer, a hand
-            // and its underline, the affordance; a double-click or an Alt+click opens its game.
+            // and its underline, the affordance, and its position's preview once the pointer
+            // rests (A9-N1b); a double-click or an Alt+click opens its game. Not through anything
+            // drawn over the page (the preview itself among them).
             let moves_here = tool == QuickTool::Select && !consumed && !page_covered && !over_diagram;
             let read_here = chess_read.filter(|(p, _)| *p == i).map(|(_, d)| d);
             if moves_here
                 && !resp.dragged()
+                && resp.contains_pointer()
                 && let Some(read) = read_here
                 && let Some(point) = pointer.and_then(|p| crate::chess_page_moves::user_point(&xf, info, i, p))
-                && let Some((_, rect)) = crate::chess_page_moves::opening_at(read, i, point)
+                && let Some((at, inline, rect)) = crate::chess_page_moves::opening_at(read, i, point)
             {
                 ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
-                crate::chess_page_moves::paint_underline(painter, &xf, info, i, rect, &t);
+                if let Some(rect) = crate::chess_page_moves::paint_underline(painter, &xf, info, i, rect, &t) {
+                    chess_under = Some(crate::chess_page_moves::Under { page: i, at, inline, rect });
+                }
             }
             let alt_click = resp.clicked() && ui.input(|inp| inp.modifiers.alt);
             if (resp.double_clicked() || alt_click)
@@ -3657,6 +3666,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 && let Some(point) = resp.interact_pointer_pos().and_then(|p| crate::chess_page_moves::user_point(&xf, info, i, p))
             {
                 let on_move = read_here.and_then(|read| crate::chess_page_moves::opening_at(read, i, point)).is_some();
+                // The move there opens (on a page not read, once it is): its preview closes.
+                chess_opened = true;
                 if resp.double_clicked() && !on_move && !crate::chess_ui::page_scanned(chess_shown, i) {
                     // On a page not scanned yet, a double-click scans it and puts the diagram there
                     // on the board (`chess_ui::BoardAt`): no Chess tool to arm first. Where there
@@ -3726,6 +3737,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 hover_text = badge_hover.take();
             }
         }
+        crate::chess_page_moves::preview(ui.ctx(), resp.id, view.id, chess_under, tool == QuickTool::Select && !page_covered, chess_opened);
         // ScrollArea ignores the wheel while any widget is dragged, so a text-selection drag
         // scrolls the page itself (#721). After the page loop, so it keeps scrolling once the
         // pointer leaves the selection's page for the gap or the next page; over the whole

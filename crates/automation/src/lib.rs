@@ -896,6 +896,7 @@ impl Automation {
             "chess_library_build" => self.chess_library_build(&a)?,
             "chess_library_status" => self.chess_library_status(&a)?,
             "chess_library_clear" => self.chess_library_clear(&a)?,
+            "chess_library_find" => self.chess_library_find(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_errata" => self.chess_errata(&a)?,
