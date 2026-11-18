@@ -208,6 +208,9 @@ pub(crate) struct Answer {
     /// By material and pawns (plan A9-N16b): the stretches of the book's PGN, when it has one (in
     /// place of [`Answer::pgn`]).
     pub(crate) stretches: Option<Stretches>,
+    /// Why the diagrams read could not be looked at (a document that does not allow copying, a
+    /// reopening that failed): the PGN still answers (plan A9-N3b).
+    pub(crate) diagrams_error: Option<String>,
 }
 
 impl Answer {
@@ -271,24 +274,44 @@ struct Slot {
 }
 
 impl Slot {
-    /// Where the search is for what it was last asked for.
+    /// Where the search is for what it was last asked for. While a new answer is looked for, the
+    /// last one found in the same book stays (plan A9-N3b), to be shown dimmed: the list keeps its
+    /// rows, the keyboard and its scroll.
     fn status(&self) -> Status {
         let now = match &self.now {
-            None => return Status::Searching,
+            None => return Status::Searching(None),
             Some(None) => return Status::NothingRead,
             Some(Some(q)) => q,
         };
         match &self.answer {
             Some((q, Ok(a))) if q == now => {
-                if a.nothing_read() {
-                    Status::NothingRead
-                } else {
+                if !a.nothing_read() {
                     Status::Found(a.clone())
+                } else if let Some(why) = &a.diagrams_error {
+                    // Nothing else to show: the diagrams' failure is the answer.
+                    Status::Failed(why.clone())
+                } else {
+                    Status::NothingRead
                 }
             }
             Some((q, Err(e))) if q == now => Status::Failed(e.clone()),
-            _ => Status::Searching,
+            Some((q, Ok(a))) if q.doc == now.doc && !a.nothing_read() => Status::Searching(Some(a.clone())),
+            _ => Status::Searching(None),
         }
+    }
+
+    /// Ask for `query`: the search running for another one is dropped (which asks it to stop) and
+    /// `spawn`'s takes its place (plan A9-N3b); one already answered or running is not asked again.
+    /// Whether a search was started.
+    fn ask(&mut self, query: Query, spawn: impl FnOnce(Query) -> Job<Answer>) -> bool {
+        self.now = Some(Some(query.clone()));
+        let answered = self.answer.as_ref().is_some_and(|(q, _)| *q == query);
+        let running = self.asking.as_ref().is_some_and(|(q, _)| *q == query);
+        if query.read.is_none() || answered || running {
+            return false;
+        }
+        self.asking = Some((query.clone(), spawn(query)));
+        true
     }
 
     /// The document it looks in.
@@ -326,13 +349,21 @@ pub(crate) struct InBook {
     pub(crate) filter: Filter,
     /// What a click in the list asked for.
     pub(crate) asked: Option<BookAction>,
+    /// The list's rows the keyboard reaches, in order, as the last pass drew them, and the ↑ ↓
+    /// Home End pressed on one of them (plan A9-N3b), taken before the chess keys.
+    rows: Vec<egui::Id>,
+    keys: Vec<egui::Key>,
 }
+
+/// Most keys taken from one frame for the list's rows.
+const MAX_KEYS: usize = 16;
 
 /// Where the search is for the position the board shows.
 #[derive(Clone, Debug)]
 pub(crate) enum Status {
-    /// Being looked for (or the diagrams read being listed).
-    Searching,
+    /// Being looked for (or the diagrams read being listed), with the last answer found in the
+    /// same book, if any, to show meanwhile.
+    Searching(Option<Arc<Answer>>),
     /// Nothing of the book is read, or no book is open.
     NothingRead,
     /// Looked for: found or not.
@@ -421,11 +452,15 @@ fn look(q: &Query, ctl: &JobCtl) -> Result<Answer, String> {
 
 /// The diagrams read (the user's corrections in place of the readings they correct) that `wanted`
 /// takes, given a diagram's key and whether its side to move was assumed: into `out`, page by
-/// page, the first [`MAX_LISTED`] listed and all counted.
-fn diagrams_where(q: &Query, out: &mut Answer, wanted: impl Fn(BookKey, bool) -> bool) -> Result<(), String> {
+/// page, the first [`MAX_LISTED`] listed and all counted. When they could not be listed, why is
+/// said in [`Answer::diagrams_error`] and the rest of the search goes on (plan A9-N3b).
+fn diagrams_where(q: &Query, out: &mut Answer, wanted: impl Fn(BookKey, bool) -> bool) {
     let read = match q.read.as_deref().map(|r| &r.keys) {
         Some(Ok(keys)) => Some(keys),
-        Some(Err(e)) => return Err(e.clone()),
+        Some(Err(e)) => {
+            out.diagrams_error = Some(e.clone());
+            None
+        }
         None => None,
     };
     let mut corrected: BTreeMap<(usize, usize), BookKey> = BTreeMap::new();
@@ -464,14 +499,13 @@ fn diagrams_where(q: &Query, out: &mut Answer, wanted: impl Fn(BookKey, bool) ->
         .take(MAX_LISTED)
         .map(|(page, index, side_assumed)| DiagramHit { page, index, side_assumed, label: page.saturating_add(1).to_string() })
         .collect();
-    Ok(())
 }
 
 /// Positions by material and pawns (plan A9-N16b): the stretches of the book's PGN, each game
 /// played again once ([`ReferenceIndex::stretches`]), and the diagrams read whose pieces match.
 fn look_pattern(q: &Query, query: &PatternQuery) -> Result<Answer, String> {
     let mut out = Answer { pages: q.pages, ..Answer::default() };
-    diagrams_where(q, &mut out, |k, _| query.matches(&k.placement.placement()))?;
+    diagrams_where(q, &mut out, |k, _| query.matches(&k.placement.placement()));
     out.stretches = q.index.as_deref().map(|index| index.stretches(query, MAX_LISTED));
     Ok(out)
 }
@@ -483,7 +517,7 @@ fn look_position(q: &Query, fen: &str, legal: bool, ctl: &JobCtl) -> Result<Answ
     // A position whose side to move is not known (one that is not legal can lack it): its pieces.
     let any_side = parsed.side().is_none();
     let mut out = Answer { pages: q.pages, number: parsed.fullmove_number(), black: parsed.side() == Some(Color::Black), ..Answer::default() };
-    diagrams_where(q, &mut out, |k, assumed| k.matches(key, any_side || assumed))?;
+    diagrams_where(q, &mut out, |k, assumed| k.matches(key, any_side || assumed));
     // The book's PGN.
     let Some(index) = q.index.as_deref() else { return Ok(out) };
     let occ = index.occurrences(key, any_side, MAX_OCCURRENCES);
@@ -550,6 +584,14 @@ fn look_position(q: &Query, fen: &str, legal: bool, ctl: &JobCtl) -> Result<Answ
     Ok(out)
 }
 
+/// Whether the diagrams read are listed again: not while the list is for what is read now
+/// (`listed`), and, while a scan of the document runs (`scanning`), only when there is no list of
+/// it at all (`have`): every batch the scan reads moves the cache's revision, and each new list
+/// opens and parses the whole PDF on a worker; the list is made once the scan ends (plan A9-N3b).
+fn list_again(listed: bool, have: bool, scanning: bool) -> bool {
+    !listed && !(scanning && have)
+}
+
 impl PdfCraftApp {
     /// Every frame: what a click in the In the book list asked for, the jobs that ended picked
     /// up, and, while the Board tab's bar shows, the diagrams read listed and the position the
@@ -580,8 +622,10 @@ impl PdfCraftApp {
             revision: self.session.chess_cache_revision(doc),
             disk: self.chess.reading_dir.clone(),
         };
-        let listed = self.chess.in_book.read.as_ref().is_some_and(|r| r.key == key);
-        if !listed && self.chess.in_book.reading.is_none() {
+        let read = self.chess.in_book.read.as_ref();
+        let (listed, have) = (read.is_some_and(|r| r.key == key), read.is_some_and(|r| r.key.doc == doc));
+        let scanning = self.chess.run.as_ref().is_some_and(|r| r.doc == doc);
+        if list_again(listed, have, scanning) && self.chess.in_book.reading.is_none() {
             self.list_read_diagrams(key);
         }
         // The position.
@@ -609,22 +653,17 @@ impl PdfCraftApp {
     }
 
     /// Ask the position's search (or, `pattern`, the one by material and pawns) for `query`: one
-    /// job at a time, the newest asked for when the running one ends (the next tick); none before
-    /// the diagrams read are listed.
+    /// job at a time, a running one for an older query dropped, which asks it to stop (plan
+    /// A9-N3b); none before the diagrams read are listed.
     fn ask_in_book(&mut self, pattern: bool, query: Query) {
-        let slot = if pattern { &mut self.chess.in_book.pattern } else { &mut self.chess.in_book.position };
-        slot.now = Some(Some(query.clone()));
-        let answered = slot.answer.as_ref().is_some_and(|(q, _)| *q == query);
-        if query.read.is_none() || answered || slot.asking.is_some() {
-            return;
-        }
-        let asked = query.clone();
+        let inline = self.run_inline;
         let name = if pattern { "pdfcraft-chess-in-book-pattern" } else { "pdfcraft-chess-in-book" };
-        let job = Job::spawn(name, self.run_inline, move |ctl| look(&asked, ctl));
         let slot = if pattern { &mut self.chess.in_book.pattern } else { &mut self.chess.in_book.position };
-        slot.asking = Some((query, job));
+        let started = slot.ask(query, |asked| Job::spawn(name, inline, move |ctl| look(&asked, ctl)));
         // Inline (tests, the web) it has ended already.
-        self.poll_in_book();
+        if started {
+            self.poll_in_book();
+        }
     }
 
     /// List the diagrams read of document `key.doc` off the interface thread, in a session of its
@@ -700,13 +739,63 @@ impl PdfCraftApp {
     }
 }
 
-/// The bar's label for `status`: "In the book (3)" once looked for, "In the book" before and
-/// with nothing read.
+/// The bar's label for `status`: "In the book (3)" once looked for (the last count while the next
+/// is looked for), "In the book" before and with nothing read.
 pub(crate) fn bar_label(status: &Status) -> String {
     match status {
-        Status::Found(a) => crate::i18n::fmt(tl!("In the book ({n})"), &[("n", &count_text(a.count()))]),
+        Status::Found(a) | Status::Searching(Some(a)) => crate::i18n::fmt(tl!("In the book ({n})"), &[("n", &count_text(a.count()))]),
         _ => tl!("In the book").to_owned(),
     }
+}
+
+/// A search that failed, said in the interface's language with the reason after it (plan A9-N3b).
+pub(crate) fn failure_text(why: &str) -> String {
+    crate::i18n::fmt(tl!("The book couldn't be searched: {e}"), &[("e", why)])
+}
+
+/// Move the keyboard among the list's `rows` (as the last pass drew them) by `keys`: ↑ and ↓ to
+/// the row before and after, Home and End to the first and the last (plan A9-N3b). Nothing when
+/// no row has it.
+fn move_among(ctx: &egui::Context, rows: &[egui::Id], keys: &[egui::Key]) {
+    let Some(mut at) = rows.iter().position(|id| ctx.memory(|m| m.has_focus(*id))) else { return };
+    let last = rows.len().saturating_sub(1);
+    for key in keys {
+        at = match key {
+            egui::Key::ArrowUp => at.saturating_sub(1),
+            egui::Key::ArrowDown => at.saturating_add(1).min(last),
+            egui::Key::Home => 0,
+            egui::Key::End => last,
+            _ => at,
+        };
+    }
+    if let Some(id) = rows.get(at) {
+        ctx.memory_mut(|m| m.request_focus(*id));
+    }
+}
+
+/// Take ↑ ↓ Home End out of `events` while a row of the list has the keyboard (plan A9-N3b), before
+/// the chess keys would step through the game with them: the list moves among its rows with them
+/// at its next pass. Only presses are taken, as for the Diagrams list.
+pub(crate) fn take_keys(in_book: &mut InBook, ctx: &egui::Context, events: &mut Vec<egui::Event>, free: bool) {
+    in_book.keys.clear();
+    if !free || !in_book.rows.iter().any(|id| ctx.memory(|m| m.has_focus(*id))) {
+        return;
+    }
+    let keys = &mut in_book.keys;
+    events.retain(|event| match event {
+        egui::Event::Key {
+            key: key @ (egui::Key::ArrowUp | egui::Key::ArrowDown | egui::Key::Home | egui::Key::End),
+            pressed: true,
+            modifiers,
+            ..
+        } if modifiers.is_none() => {
+            if keys.len() < MAX_KEYS {
+                keys.push(*key);
+            }
+            false
+        }
+        _ => true,
+    });
 }
 
 /// A count as the interface's language writes it ("1.034" in Portuguese; plan A9-I14).
@@ -723,7 +812,7 @@ pub(crate) fn bar_item(ui: &mut egui::Ui, chess: &mut ChessState, label: &str, r
     let width = |s: &str| crate::widgets::text_width(ui, s, &font);
     // Cut, the words give way and the count stays: "In the b… (12)".
     let shown = match chess.in_book.status() {
-        Status::Found(a) if width(label) > room => {
+        Status::Found(a) | Status::Searching(Some(a)) if width(label) > room => {
             let count = format!("({})", count_text(a.count()));
             let words = crate::widgets::fit_line(tl!("In the book"), (room - width(&format!(" {count}"))).max(12.0), width);
             format!("{words} {count}")
@@ -788,6 +877,9 @@ fn game_page(chess: &ChessState, doc: DocId, game: usize) -> Option<String> {
 /// PGN opens on the board at its move; a diagram opens on its page, in the Diagrams tab (asked of
 /// the app, [`BookAction`]).
 pub(crate) fn list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
+    // ↑ ↓ Home End among the rows the last pass drew; this pass names them again.
+    let (rows, keys) = (std::mem::take(&mut chess.in_book.rows), std::mem::take(&mut chess.in_book.keys));
+    move_among(ui.ctx(), &rows, &keys);
     ui.label(egui::RichText::new(tl!("In the book")).strong());
     // What it looks for: the board's position, or positions by material and pawns (plan A9-N16b).
     let mut mode = chess.in_book.mode;
@@ -812,10 +904,10 @@ fn looked_at(answer: &Answer) -> String {
 
 /// The diagrams of `answer`, each opening on its page and in the Diagrams tab, and how many more
 /// there are than listed (`listed` of the other places listed too).
-fn diagram_rows(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, doc: Option<DocId>, answer: &Answer, listed: usize) {
+fn diagram_rows(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, doc: Option<DocId>, answer: &Answer, listed: usize, stale: bool) {
     for (k, d) in answer.diagrams.iter().enumerate() {
         let title = crate::i18n::fmt(tl!("Diagram {n}, p. {page}"), &[("n", &count_text(d.index.saturating_add(1))), ("page", &d.label)]);
-        let clicked = ui
+        let (clicked, id) = ui
             .push_id(("chess-in-book-diagram", k), |ui| {
                 let r = ui.add(egui::Button::new(title.as_str()).min_size(vec2(24.0, 24.0)));
                 let mut hover = tl!("Show this diagram on the page").to_owned();
@@ -824,10 +916,15 @@ fn diagram_rows(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, doc: Opti
                 }
                 let r = r.on_hover_text(hover);
                 r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &title));
-                r.clicked()
+                (r.clicked(), r.id)
             })
             .inner;
-        if clicked && let Some(doc) = doc {
+        chess.in_book.rows.push(id);
+        // A row of the last answer, shown while the next is looked for, does nothing.
+        if clicked
+            && !stale
+            && let Some(doc) = doc
+        {
             chess.in_book.asked = Some(BookAction::ShowDiagram { doc, page: d.page, index: d.index });
         }
     }
@@ -835,6 +932,40 @@ fn diagram_rows(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, doc: Opti
     if listed < answer.count() {
         let note = crate::i18n::fmt(tl!("The first {n} are listed."), &[("n", &count_text(listed))]);
         ui.add(egui::Label::new(egui::RichText::new(note).small().color(t.text_faint)).wrap());
+    }
+}
+
+/// The list's state for `status`: drawn and `None` while there is nothing to list (looking for the
+/// first answer, nothing read, a failure), else the answer to list and whether it is the last one,
+/// shown dimmed while the next is looked for (plan A9-N3b): the rows, the keyboard on one of them
+/// and the scroll stay.
+fn answer_of(ui: &mut egui::Ui, t: &Tokens, status: Status, looking: &str) -> Option<(Arc<Answer>, bool)> {
+    match status {
+        Status::Searching(None) => {
+            ui.add(egui::Label::new(egui::RichText::new(looking).color(t.text_muted)).wrap());
+            None
+        }
+        Status::NothingRead => {
+            ui.add(egui::Label::new(egui::RichText::new(tl!("Read the book (Detect diagrams or Text) to search.")).color(t.text_muted)).wrap());
+            None
+        }
+        Status::Failed(why) => {
+            crate::notice::callout(ui, crate::notice::Tone::Danger, &failure_text(&why));
+            None
+        }
+        Status::Searching(Some(a)) => {
+            ui.multiply_opacity(0.5);
+            Some((a, true))
+        }
+        Status::Found(a) => Some((a, false)),
+    }
+}
+
+/// The diagrams' failure, when the rest answered (plan A9-N3b).
+fn diagrams_failure(ui: &mut egui::Ui, answer: &Answer) {
+    if let Some(why) = &answer.diagrams_error {
+        let said = crate::i18n::fmt(tl!("The diagrams read couldn't be looked at: {e}"), &[("e", why)]);
+        crate::notice::callout(ui, crate::notice::Tone::Warning, &said);
     }
 }
 
@@ -886,30 +1017,20 @@ fn pattern_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
         }
         Ok(Some(_)) => {}
     }
-    let answer = match chess.in_book.pattern_status() {
-        Status::Searching => {
-            ui.add(egui::Label::new(egui::RichText::new(tl!("Looking in the book…")).color(t.text_muted)).wrap());
-            return;
-        }
-        Status::NothingRead => {
-            ui.add(egui::Label::new(egui::RichText::new(tl!("Read the book (Detect diagrams or Text) to search.")).color(t.text_muted)).wrap());
-            return;
-        }
-        Status::Failed(why) => {
-            crate::notice::callout(ui, crate::notice::Tone::Danger, &why);
-            return;
-        }
-        Status::Found(a) => a,
-    };
+    let looking = tl!("Looking in the book…");
+    let Some((answer, stale)) = answer_of(ui, t, chess.in_book.pattern_status(), looking) else { return };
     let doc = chess.in_book.pattern.doc();
     if answer.count() == 0 {
-        ui.add(egui::Label::new(tl!("Nothing in the book as read has this material and these pawns.")).wrap());
+        let none = if stale { looking } else { tl!("Nothing in the book as read has this material and these pawns.") };
+        ui.add(egui::Label::new(none).wrap());
         ui.add(egui::Label::new(egui::RichText::new(looked_at(&answer)).small().color(t.text_muted)).wrap());
+        diagrams_failure(ui, &answer);
         return;
     }
-    let found = crate::i18n::fmt(tl!("Found: {n}"), &[("n", &count_text(answer.count()))]);
+    let found = if stale { looking.to_owned() } else { crate::i18n::fmt(tl!("Found: {n}"), &[("n", &count_text(answer.count()))]) };
     ui.add(egui::Label::new(egui::RichText::new(found).small().color(t.text_muted)).wrap());
     ui.add(egui::Label::new(egui::RichText::new(looked_at(&answer)).small().color(t.text_muted)).wrap());
+    diagrams_failure(ui, &answer);
     section(ui, t, tl!("Where in the book"));
     let notation = crate::chess_figurines::Notation::current();
     let stretches = answer.stretches.as_ref().map_or(&[][..], |s| s.found.as_slice());
@@ -930,7 +1051,7 @@ fn pattern_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
         if let Some(page) = doc.and_then(|d| game_page(chess, d, s.game)) {
             details.push(crate::i18n::fmt(tl!("from p. {page}"), &[("page", &page)]));
         }
-        let clicked = ui
+        let (clicked, id) = ui
             .push_id(("chess-in-book-stretch", k), |ui| {
                 let r = ui.add(egui::Button::new(egui::RichText::new(&title)).truncate().min_size(vec2(24.0, 24.0)));
                 let open =
@@ -939,14 +1060,18 @@ fn pattern_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
                 let spoken = format!("{words}, {}", details.join(", "));
                 r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &spoken));
                 ui.add(egui::Label::new(egui::RichText::new(details.join(" · ")).small().color(t.text_muted)).truncate());
-                r.clicked()
+                (r.clicked(), r.id)
             })
             .inner;
-        if clicked && let Some(doc) = doc {
+        chess.in_book.rows.push(id);
+        if clicked
+            && !stale
+            && let Some(doc) = doc
+        {
             chess.in_book.asked = Some(BookAction::OpenGame { doc, game: s.game, node: s.node });
         }
     }
-    diagram_rows(ui, t, chess, doc, &answer, stretches.len());
+    diagram_rows(ui, t, chess, doc, &answer, stretches.len(), stale);
 }
 
 /// The name of the book's PGN's game `game`, as the answer's index keeps it.
@@ -965,36 +1090,26 @@ fn answer_game_name(chess: &ChessState, game: usize) -> String {
 
 /// The list for the position the board shows (plan A9-N3).
 fn position_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
-    let status = chess.in_book.status();
-    let answer = match status {
-        Status::Searching => {
-            ui.add(egui::Label::new(egui::RichText::new(tl!("Looking for the position in the book…")).color(t.text_muted)).wrap());
-            return;
-        }
-        Status::NothingRead => {
-            ui.add(egui::Label::new(egui::RichText::new(tl!("Read the book (Detect diagrams or Text) to search.")).color(t.text_muted)).wrap());
-            return;
-        }
-        Status::Failed(why) => {
-            crate::notice::callout(ui, crate::notice::Tone::Danger, &why);
-            return;
-        }
-        Status::Found(a) => a,
-    };
+    let looking = tl!("Looking for the position in the book…");
+    let Some((answer, stale)) = answer_of(ui, t, chess.in_book.status(), looking) else { return };
     let doc = chess.in_book.doc();
     // What was looked at, and how often the position is there: secondary.
     let looked = looked_at(&answer);
     if answer.count() == 0 {
-        ui.add(egui::Label::new(tl!("This position does not appear in the book as read.")).wrap());
+        let none = if stale { looking } else { tl!("This position does not appear in the book as read.") };
+        ui.add(egui::Label::new(none).wrap());
         ui.add(egui::Label::new(egui::RichText::new(looked).small().color(t.text_muted)).wrap());
+        diagrams_failure(ui, &answer);
         return;
     }
     let mut counts = vec![crate::i18n::fmt(tl!("Found: {n}"), &[("n", &count_text(answer.count()))])];
     if let Some(p) = answer.pgn.as_ref().filter(|p| p.lines > 1) {
         counts.push(crate::i18n::fmt(tl!("transpositions: {n}"), &[("n", &count_text(p.lines.saturating_sub(1)))]));
     }
-    ui.add(egui::Label::new(egui::RichText::new(counts.join(" · ")).small().color(t.text_muted)).wrap());
+    let counts = if stale { looking.to_owned() } else { counts.join(" · ") };
+    ui.add(egui::Label::new(egui::RichText::new(counts).small().color(t.text_muted)).wrap());
     ui.add(egui::Label::new(egui::RichText::new(looked).small().color(t.text_muted)).wrap());
+    diagrams_failure(ui, &answer);
     // What the book plays here.
     if !answer.next.is_empty() {
         section(ui, t, tl!("The book plays here"));
@@ -1035,11 +1150,17 @@ fn position_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
                     };
                     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, n.play.is_ok(), &name));
                     ui.add(egui::Label::new(egui::RichText::new(aside).small().color(t.text_muted)).truncate());
-                    r.clicked()
+                    (r.clicked(), r.id)
                 })
                 .inner
             });
-            if row.inner
+            let (clicked, id) = row.inner;
+            // Only a reply the board can play is reached by the keyboard.
+            if n.play.is_ok() {
+                chess.in_book.rows.push(id);
+            }
+            if clicked
+                && !stale
                 && let Ok(p) = n.play
             {
                 chess.board_mut().play_typed(p.from, p.to, p.promotion);
@@ -1071,7 +1192,7 @@ fn position_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
             if let Some(page) = doc.and_then(|d| game_page(chess, d, h.game)) {
                 details.push(crate::i18n::fmt(tl!("from p. {page}"), &[("page", &page)]));
             }
-            let clicked = ui
+            let (clicked, id) = ui
                 .push_id(("chess-in-book-pgn", k), |ui| {
                     let r = ui.add(egui::Button::new(egui::RichText::new(&title)).truncate().min_size(vec2(24.0, 24.0)));
                     let at = mv.clone().unwrap_or_else(|| tl!("Start of the game").to_owned());
@@ -1081,16 +1202,20 @@ fn position_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
                     let spoken = format!("{title_words}, {}", details.join(", "));
                     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &spoken));
                     ui.add(egui::Label::new(egui::RichText::new(details.join(" · ")).small().color(t.text_muted)).truncate());
-                    r.clicked()
+                    (r.clicked(), r.id)
                 })
                 .inner;
-            if clicked && let Some(doc) = doc {
+            chess.in_book.rows.push(id);
+            if clicked
+                && !stale
+                && let Some(doc) = doc
+            {
                 chess.in_book.asked = Some(BookAction::OpenGame { doc, game: h.game, node: h.node });
             }
         }
     }
     let listed = answer.pgn.as_ref().map_or(0, |p| p.found.len());
-    diagram_rows(ui, t, chess, doc, &answer, listed);
+    diagram_rows(ui, t, chess, doc, &answer, listed, stale);
 }
 
 #[cfg(test)]
@@ -1198,14 +1323,82 @@ mod tests {
     #[test]
     fn bad_input_is_an_error_not_a_panic() {
         assert!(look(&query("not a fen", BOOK), &JobCtl::default()).is_err());
-        let read = Arc::new(ReadList { key: ReadKey { doc: DocId(1), stamp: None, revision: 0, disk: None }, keys: Err("no copying".into()) });
-        assert_eq!(look(&Query { read: Some(read), ..query(&Game::standard().fen(), BOOK) }, &JobCtl::default()).unwrap_err(), "no copying");
         let illegal =
             Query { look: Look::Position { fen: "8/8/8/8/8/8/8/8 w - - 0 1".to_owned(), legal: false }, ..query("8/8/8/8/8/8/8/8 w - - 0 1", BOOK) };
         assert_eq!(look(&illegal, &JobCtl::default()).unwrap().count(), 0);
         assert_eq!(promotion_of("e7e8q"), Some(PieceKind::Queen));
         assert_eq!(promotion_of("e2e4"), None);
         assert_eq!(promotion_of("é"), None);
+    }
+
+    /// Plan A9-N3b: the diagrams read that could not be listed (a document that does not allow
+    /// copying, a reopening that failed) never hide the book's PGN: it answers, and the diagrams'
+    /// failure is said beside it. With no PGN either, the failure is the answer.
+    #[test]
+    fn a_list_of_diagrams_that_failed_leaves_the_pgn_answering() {
+        let failed =
+            || Some(Arc::new(ReadList { key: ReadKey { doc: DocId(1), stamp: None, revision: 0, disk: None }, keys: Err("no copying".into()) }));
+        let q = Query { read: failed(), ..query(&fen_after(&["e4", "e5", "Nf3", "Nc6"]), BOOK) };
+        let a = look(&q, &JobCtl::default()).unwrap();
+        assert_eq!((a.pgn.as_ref().map(|p| p.total), a.diagrams_error.as_deref()), (Some(2), Some("no copying")));
+        let mut slot = Slot { now: Some(Some(q.clone())), answer: Some((q, Ok(Arc::new(a)))), asking: None };
+        assert!(matches!(slot.status(), Status::Found(_)), "the PGN answers");
+        let alone = Query { index: None, read: failed(), ..query(&Game::standard().fen(), BOOK) };
+        let a = look(&alone, &JobCtl::default()).unwrap();
+        slot = Slot { now: Some(Some(alone.clone())), answer: Some((alone, Ok(Arc::new(a)))), asking: None };
+        assert!(matches!(slot.status(), Status::Failed(why) if why == "no copying"), "nothing else to show");
+    }
+
+    /// Plan A9-N3b: a search for a position no longer shown is dropped (which asks it to stop) and
+    /// the newest takes its place at once; the same one is never asked twice. While it runs, the
+    /// last answer in the same book is what the list shows, dimmed.
+    #[test]
+    fn the_newest_search_takes_the_place_of_one_running() {
+        let read =
+            || Some(Arc::new(ReadList { key: ReadKey { doc: DocId(1), stamp: None, revision: 0, disk: None }, keys: Ok(DiagramKeys::default()) }));
+        let (a, b) = (Query { read: read(), ..query(&fen_after(&["e4"]), BOOK) }, Query { read: read(), ..query(&fen_after(&["d4"]), BOOK) });
+        // Jobs that never end: each waits for a message no one sends.
+        let mut senders = Vec::new();
+        let mut gated = |_: Query| {
+            let (go, gate) = std::sync::mpsc::channel::<()>();
+            senders.push(go);
+            Job::spawn("in-book-test", false, move |_| gate.recv().map(|()| Answer::default()).map_err(|e| e.to_string()))
+        };
+        let mut slot = Slot::default();
+        assert!(slot.ask(a.clone(), &mut gated));
+        assert!(!slot.ask(a.clone(), &mut gated), "the same one, running: not asked again");
+        assert!(slot.ask(b.clone(), &mut gated), "the newest at once");
+        assert!(slot.asking.as_ref().is_some_and(|(q, _)| *q == b));
+        // The last answer stays while the next is looked for, in the same book only.
+        let found = Arc::new(Answer { pgn: Some(PgnFound { total: 1, lines: 1, found: Vec::new() }), ..Answer::default() });
+        slot.answer = Some((a, Ok(found)));
+        assert!(matches!(slot.status(), Status::Searching(Some(_))));
+        slot.now = Some(Some(Query { doc: DocId(2), ..b }));
+        assert!(matches!(slot.status(), Status::Searching(None)), "another book's answer is not shown");
+        drop(senders);
+    }
+
+    /// Plan A9-N3b: while a scan of the document runs, its batches move the cache's revision; the
+    /// diagrams read are listed then only when there is no list of the document at all, and again
+    /// once it ends.
+    #[test]
+    fn the_diagrams_are_listed_again_after_a_scan_not_at_each_batch() {
+        assert!(list_again(false, false, false) && list_again(false, true, false), "a new state of what is read");
+        assert!(!list_again(true, true, false) && !list_again(true, true, true), "the list is for it");
+        assert!(!list_again(false, true, true), "a scan running: the list it has");
+        assert!(list_again(false, false, true), "a scan running and no list yet: one now");
+    }
+
+    /// Plan A9-N3b: a search that failed is said in the interface's language, the reason after it.
+    #[test]
+    fn a_failure_is_said_in_the_interfaces_language() {
+        use crate::i18n::{self, Lang};
+        let pt = Lang::from_code("pt-br").expect("pt-BR registered");
+        i18n::set_current(pt);
+        let said = failure_text("no copying");
+        i18n::set_current(Lang::EN);
+        assert_eq!(said, "Não foi possível procurar no livro: no copying");
+        assert_eq!(failure_text("x"), "The book couldn't be searched: x");
     }
 
     /// The signs of two games on one reply: both, the second parted by a slash; an assessment of

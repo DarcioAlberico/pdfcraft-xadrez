@@ -3737,3 +3737,6 @@ progress bar	Progress	Fortschritt
 	Nothing in the book as read has this material and these pawns.	Nichts im gelesenen Buch hat dieses Material und diese Bauern.
 	{first} to {last}	{first} bis {last}
 	Positions: {n}	Stellungen: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Das Buch konnte nicht durchsucht werden: {e}
+	The diagrams read couldn't be looked at: {e}	Die gelesenen Diagramme konnten nicht durchgesehen werden: {e}

@@ -254,7 +254,8 @@ struct DocCache {
     by_key: std::collections::HashMap<page_key::PageKey, std::collections::BTreeSet<usize>>,
     /// Results held, at most [`MAX_CACHED_PAGES`].
     len: usize,
-    /// Moves each time a result it did not hold comes in ([`Session::chess_cache_revision`]).
+    /// The session's clock ([`ChessCache::clock`]) when a result it did not hold last came in
+    /// ([`Session::chess_cache_revision`]).
     revision: u64,
 }
 
@@ -460,8 +461,10 @@ impl ChessCache {
             e.params.same_state(&params) || (same_scan && key.is_some() && e.key == key)
         });
         d.insert(CacheEntry { page, key, params, result }, tick);
+        // The session's clock, not a count of the document's own: a document's cache dropped and
+        // made again never repeats an earlier value (plan A9-N3b).
         if !held {
-            d.revision = d.revision.wrapping_add(1);
+            d.revision = tick;
         }
         d.evict(page);
     }
@@ -1682,12 +1685,13 @@ impl Session {
         self.chess.scanned
     }
 
-    /// A count that moves each time this session's cache takes a result for document `id` that it
+    /// A value that moves each time this session's cache takes a result for document `id` that it
     /// did not hold: a scan's, or one a job's session read and gave back
     /// ([`Self::prime_chess_cache`]). Answering from the cache, or keeping what it holds as made in
     /// another state, leaves it. What was read of the document may have grown when it moved: the
-    /// app lists the diagrams read once per count (plan A9-N3, the Board's In the book). 0 for a
-    /// document the cache holds nothing of.
+    /// app lists the diagrams read once per value (plan A9-N3, the Board's In the book). It is the
+    /// session's clock at that moment (plan A9-N3b), so it never comes back to an earlier value,
+    /// for this document or another. 0 for a document the cache holds nothing of.
     pub fn chess_cache_revision(&self, id: DocId) -> u64 {
         self.chess.docs.get(&id).map_or(0, |d| d.revision)
     }

@@ -3700,3 +3700,6 @@ progress bar	Progress	Напредък
 	Nothing in the book as read has this material and these pawns.	Нищо в прочетеното от книгата няма този материал и тези пешки.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Позиции: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Книгата не можа да бъде претърсена: {e}
+	The diagrams read couldn't be looked at: {e}	Прочетените диаграми не можаха да бъдат прегледани: {e}

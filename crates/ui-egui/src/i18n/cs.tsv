@@ -3810,3 +3810,6 @@ progress bar	Progress	Průběh
 	Nothing in the book as read has this material and these pawns.	Nic v přečtené části knihy nemá tento materiál a tyto pěšce.
 	{first} to {last}	{first} až {last}
 	Positions: {n}	Pozice: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	V knize nebylo možné hledat: {e}
+	The diagrams read couldn't be looked at: {e}	Přečtené diagramy nebylo možné projít: {e}

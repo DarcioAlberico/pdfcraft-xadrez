@@ -3732,3 +3732,6 @@ progress bar	Progress	İlerleme
 	Nothing in the book as read has this material and these pawns.	Okunan kitapta bu malzemeye ve bu piyonlara sahip bir şey yok.
 	{first} to {last}	{first} – {last}
 	Positions: {n}	Konumlar: {n}
+# A9-N3b: In the book's failures
+	The book couldn't be searched: {e}	Kitapta arama yapılamadı: {e}
+	The diagrams read couldn't be looked at: {e}	Okunan diyagramlara bakılamadı: {e}
