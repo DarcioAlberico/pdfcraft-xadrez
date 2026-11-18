@@ -52,15 +52,11 @@ pub fn base_name(confidence: f32, doc: &str, page: usize) -> String {
     format!("{permille:04}_{doc}_p{:04}", page.saturating_add(1))
 }
 
-/// A 64-bit FNV-1a hash of `bytes`, in 16 hexadecimal digits: a document's name in sample files
-/// (its file name could be personal; the hash only tells documents apart).
+/// A 64-bit FNV-1a hash of `bytes` ([`pdfcraft_chess::hash::fnv64`]), in 16 hexadecimal digits:
+/// a document's name in sample files (its file name could be personal; the hash only tells
+/// documents apart).
 pub fn doc_hash(bytes: &[u8]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in bytes {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{h:016x}")
+    format!("{:016x}", pdfcraft_chess::hash::fnv64(bytes))
 }
 
 /// Write `png` as `<folder>/<class>/<base>_<n>.png`, `n` the first count from 1 that names no file
@@ -106,6 +102,29 @@ mod tests {
             let class = class_folder(text);
             assert!(class.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '+' | '-')), "{text:?} → {class}");
         }
+    }
+
+    /// Plan A9-I6: the identifiers made with FNV-1a are those the copies it replaced made (run
+    /// before the change): a sample's document name, an EPUB's identifier, a part's identifier
+    /// past its runs, and a long `/ID` folded to 16 bytes, which the stores are keyed by.
+    #[test]
+    fn the_identifiers_made_with_fnv_are_as_before() {
+        let pages: Vec<usize> = (0..200).step_by(2).collect();
+        let got = [
+            doc_hash(b"%PDF-1.7 synthetic"),
+            crate::chess::epub::identifier(b"%PDF-1.7 synthetic"),
+            crate::chess::epub::identifier_for_pages("b".into(), &pages, 400),
+            format!("{:?}", crate::chess::keys::fold_id(&[1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])),
+        ];
+        assert_eq!(
+            got,
+            [
+                "2243931de0aaf5a0",
+                "urn:pdfcraft:chess:2243931de0aaf5a0",
+                "b:pages:h6ff90df219b73125",
+                "Some([144, 83, 92, 191, 23, 124, 211, 13, 159, 206, 74, 194, 68, 45, 109, 21])"
+            ]
+        );
     }
 
     #[test]

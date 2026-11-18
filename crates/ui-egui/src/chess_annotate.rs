@@ -1373,7 +1373,7 @@ mod tests {
     /// translation the catalogues have of those texts is copied, so the two cannot drift apart.
     #[test]
     fn the_exports_spoken_names_are_the_catalogues() {
-        use crate::chess_text_ui::status_label;
+        use crate::chess_text_para::move_status_words;
         use crate::chess_widgets::DiagramState;
         use pdfcraft_engine::chess::pdfcraft_chess::san::Lang as Book;
         use pdfcraft_engine::chess::pdfcraft_chess::spoken;
@@ -1396,7 +1396,7 @@ mod tests {
         }
         ours.insert(DiagramState::Review.name());
         for status in [MoveStatus::Illegal, MoveStatus::Ambiguous, MoveStatus::OutOfSequence, MoveStatus::NotReached, MoveStatus::Unchecked] {
-            ours.insert(status_label(status));
+            ours.insert(move_status_words(status));
         }
         let theirs: BTreeSet<&str> = spoken::english().collect();
         assert_eq!(ours, theirs, "the English texts are the interface's");

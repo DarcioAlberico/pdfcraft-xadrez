@@ -438,7 +438,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
         let name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &setup.fen())]);
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
         let r = response.rect;
-        let at = |p: egui::Pos2| board.square_at((p.x - r.min.x) / r.width().max(1.0), (p.y - r.min.y) / r.height().max(1.0));
+        let at = |p: egui::Pos2| board.frame(r).square_at(p);
         if response.clicked()
             && let Some(sq) = response.interact_pointer_pos().and_then(at)
         {

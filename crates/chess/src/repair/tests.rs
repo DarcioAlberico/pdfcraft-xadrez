@@ -248,7 +248,7 @@ fn shapes() {
 fn position(mut seed: u64, plies: u8) -> GameContext {
     let mut board = Board::default();
     for _ in 0..plies {
-        let moves = legal_moves(&board);
+        let moves = crate::legal_moves(&board);
         seed ^= seed << 13;
         seed ^= seed >> 7;
         seed ^= seed << 17;

@@ -91,7 +91,7 @@
 //! Everything is bounded: [`MAX_GAME_NODES`] moves a game, [`MAX_VARIATION_DEPTH`] nested
 //! variations, [`MAX_COMMENT_BYTES`] a comment, [`MAX_GAMES`] games a document.
 
-use cozy_chess::{Board, Color, Move};
+use cozy_chess::{Board, Color};
 use pdfcraft_chess::fen::{Castling, Fen, Position};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
@@ -268,19 +268,10 @@ fn ply_of_board(board: &Board) -> u32 {
     (u32::from(board.fullmove_number()).saturating_sub(1)).saturating_mul(2).saturating_add(u32::from(board.side_to_move() == Color::Black))
 }
 
-fn legal_moves(board: &Board) -> Vec<Move> {
-    let mut v = Vec::new();
-    board.generate_moves(|moves| {
-        v.extend(moves);
-        false
-    });
-    v
-}
-
 /// The legal moves `san` could mean when its disambiguation does not single one out.
 fn fitting(board: &Board, san: &San) -> Vec<String> {
     let SanBody::Move { piece, from_file, from_rank, to, promotion, .. } = san.body else { return Vec::new() };
-    legal_moves(board)
+    pdfcraft_chess::legal_moves(board)
         .into_iter()
         .filter(|mv| from_file.is_none_or(|f| f == mv.from.file() as u8) && from_rank.is_none_or(|r| r == mv.from.rank() as u8))
         .filter_map(|mv| San::from_move(board, mv).ok())
@@ -293,7 +284,7 @@ fn fitting(board: &Board, san: &San) -> Vec<String> {
 /// Legal moves to the square `san` names, for a reviewer looking at an illegal move.
 fn near(board: &Board, san: &San) -> Vec<String> {
     let SanBody::Move { to, .. } = san.body else { return Vec::new() };
-    legal_moves(board)
+    pdfcraft_chess::legal_moves(board)
         .into_iter()
         .filter_map(|mv| San::from_move(board, mv).ok())
         .filter(|s| matches!(s.body, SanBody::Move { to: t, .. } if t == to))
