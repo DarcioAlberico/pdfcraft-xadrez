@@ -171,6 +171,9 @@ mod desktop {
                 "pages": { "scanned": scanned, "from_library": from_library, "from_app": from_app },
                 "walk": self.walk_json(&built.walk),
                 "bytes": built.bytes,
+                "orphans": built.orphans,
+                "orphan_bytes": built.orphan_bytes,
+                "listing_truncated": built.listing_truncated,
                 "max_bytes": pdfcraft_engine::chess::library::MAX_BYTES,
                 "workers": workers,
                 "outside_root": { "corrections": corrections_out, "reference": reference_out, "app_reading": reading_out },
@@ -187,8 +190,8 @@ mod desktop {
                 }));
             };
             let catalog = library.catalog();
-            let (indexes, set_aside) = library.indexes();
-            let has = |b: &CatalogBook| b.hash.as_deref().map(|h| indexes.iter().any(|(i, _)| i == h));
+            let files = library.files();
+            let has = |b: &CatalogBook| b.hash.as_deref().map(|h| files.indexes.iter().any(|(i, _)| i.eq_ignore_ascii_case(h)));
             let count = |s: State| catalog.books.iter().filter(|b| b.state == s).count();
             Ok(json!({
                 "library": shown,
@@ -199,10 +202,12 @@ mod desktop {
                     "skipped": count(State::Skipped), "cloud": count(State::Cloud), "full": count(State::Full),
                 },
                 "walk": self.walk_json(&catalog.walk),
-                "indexes": indexes.len(),
-                "set_aside": set_aside,
-                "bytes": indexes.iter().fold(0u64, |n, (_, b)| n.saturating_add(*b)),
+                "indexes": files.indexes.len(),
+                "set_aside": files.set_aside.len(),
+                "staging": files.staging.len(),
+                "bytes": files.bytes(),
                 "max_bytes": pdfcraft_engine::chess::library::MAX_BYTES,
+                "listing_truncated": files.truncated,
                 "updated": catalog.updated,
             }))
         }
@@ -221,7 +226,15 @@ mod desktop {
                 }
             };
             let cleared = library.clear(book.as_deref());
-            Ok(json!({ "library": shown, "book": book, "indexes": cleared.indexes, "files": cleared.files, "bytes": cleared.bytes }))
+            Ok(json!({
+                "library": shown,
+                "book": book,
+                "indexes": cleared.indexes,
+                "files": cleared.files,
+                "bytes": cleared.bytes,
+                "catalog_error": cleared.catalog_error.as_deref().map(|e| self.shown_text(e)),
+                "listing_truncated": cleared.listing_truncated,
+            }))
         }
     }
 }

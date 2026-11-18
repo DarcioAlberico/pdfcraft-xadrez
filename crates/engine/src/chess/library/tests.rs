@@ -410,7 +410,7 @@ fn a_book_never_kept_or_not_yet_allowed_is_skipped_and_said() {
     assert_eq!(said("ask.pdf"), (State::Skipped, Some(Skip::Ask)));
     assert_eq!(said("broken.pdf"), (State::Skipped, Some(Skip::DoesNotOpen)));
     assert!(book(&built, "broken.pdf").book.error.is_some());
-    assert_eq!((built.read, lib.indexes().0.len()), (0, 0), "nothing read, no index");
+    assert_eq!((built.read, lib.files().indexes.len()), (0, 0), "nothing read, no index");
     // Yes to the encrypted one: it is read and indexed; the other is never.
     let hash = book(&built, "ask.pdf").book.hash.clone().unwrap();
     let yes = build(&lib, std::slice::from_ref(&books), &BuildOptions { allowed: vec![hash], ..options() });
@@ -440,7 +440,7 @@ fn a_damaged_index_is_set_aside_and_made_again() {
     assert_eq!(run.scanned, 1, "read again");
     assert_eq!(std::fs::read(lib.dir().join(format!("{hash}.lib.bad"))).unwrap(), bad, "set aside as it was");
     assert_eq!(std::fs::read(&path).unwrap(), good, "made again the same");
-    assert_eq!(lib.indexes().1, 1);
+    assert_eq!(lib.files().set_aside.len(), 1);
     let _ = std::fs::remove_dir_all(&base);
 }
 
@@ -508,12 +508,243 @@ fn clearing_takes_out_only_what_the_library_made() {
     std::fs::write(lib.dir().join("mine.txt"), b"the person's").unwrap();
     let one = lib.clear(Some(&a));
     assert_eq!(one.indexes, 1);
-    assert_eq!(lib.indexes().0.len(), 1);
+    assert_eq!(lib.files().indexes.len(), 1);
     assert_eq!(lib.catalog().books.iter().find(|b| b.hash.as_deref() == Some(a.as_str())).map(|b| b.state), Some(State::Pending));
     assert_eq!(build(&lib, std::slice::from_ref(&books), &options()).read, 1, "the cleared one is read again");
     let all = lib.clear(None);
     assert_eq!(all.indexes, 2);
-    assert!(lib.indexes().0.is_empty() && !lib.dir().join("catalog.json").exists());
+    assert!(lib.files().indexes.is_empty() && !lib.dir().join("catalog.json").exists());
     assert!(lib.dir().join("mine.txt").exists(), "another file stays");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// The hash of book `name` in a build.
+fn hash_of(built: &Built, name: &str) -> String {
+    book(built, name).book.hash.clone().unwrap_or_else(|| panic!("{name} has no hash: {:#?}", built.books))
+}
+
+/// Plan A9-N15a2 (1): a build of another folder keeps the first folder's books in the catalog;
+/// a book that changed is read again under its new hash and its old index goes, said; a book taken
+/// out of its folder is dropped on the next build of that folder, and its index goes too.
+#[test]
+fn the_catalog_keeps_other_folders_and_orphan_indexes_go() {
+    let base = fresh("orphans");
+    let (a, b, lib) = (base.join("a"), base.join("b"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&a).unwrap();
+    std::fs::create_dir_all(&b).unwrap();
+    std::fs::write(a.join("1.pdf"), chapter("One")).unwrap();
+    std::fs::write(b.join("2.pdf"), chapter("Two")).unwrap();
+    let first = build(&lib, std::slice::from_ref(&a), &options());
+    let one = hash_of(&first, "1.pdf");
+    let second = build(&lib, std::slice::from_ref(&b), &options());
+    let two = hash_of(&second, "2.pdf");
+    let hashes = |c: &Catalog| c.books.iter().filter_map(|b| b.hash.clone()).collect::<Vec<_>>();
+    assert_eq!(hashes(&lib.catalog()), [two.clone(), one.clone()], "the first folder's book kept");
+    assert_eq!(lib.catalog().dirs.len(), 2);
+    assert!(second.orphans.is_empty());
+    assert_eq!(lib.files().indexes.len(), 2);
+    // Changed: read again under its new hash, the old index taken out.
+    std::fs::write(a.join("1.pdf"), chapter("One, again")).unwrap();
+    let changed = build(&lib, std::slice::from_ref(&a), &options());
+    let again = hash_of(&changed, "1.pdf");
+    assert_ne!(again, one);
+    assert_eq!(changed.orphans, std::slice::from_ref(&one));
+    assert!(changed.orphan_bytes > 0);
+    let mut left: Vec<String> = lib.files().indexes.into_iter().map(|(h, _)| h).collect();
+    left.sort();
+    let mut wanted = vec![again.clone(), two.clone()];
+    wanted.sort();
+    assert_eq!(left, wanted);
+    // Taken out of its folder: dropped on the next build of that folder, its index with it.
+    std::fs::remove_file(a.join("1.pdf")).unwrap();
+    let gone = build(&lib, std::slice::from_ref(&a), &options());
+    assert_eq!(gone.orphans, [again]);
+    assert_eq!(hashes(&lib.catalog()), [two]);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (2): a PDF larger than the cap is said too large from its size, never read: one
+/// another program holds open without sharing is too large, not unreadable.
+#[cfg(windows)]
+#[test]
+fn a_book_over_the_cap_is_never_read() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let base = fresh("too-large");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(books.join("a.pdf")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_book_bytes: Some(100), ..options() });
+    let a = &book(&built, "a.pdf").book;
+    assert_eq!((a.state, a.reason, a.error.as_deref()), (State::Skipped, Some(Skip::TooLarge), None), "{a:#?}");
+    drop(held);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (3): what the walk saw is looked at again just before a book is opened: a book
+/// that went to the cloud since (marked offline, as a OneDrive file freed) is not opened, and one
+/// taken away is said gone.
+#[cfg(windows)]
+#[test]
+fn a_book_that_went_to_the_cloud_or_away_since_the_walk_is_not_opened() {
+    let base = fresh("stale");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    for (name, title) in [("1.pdf", "One"), ("2.pdf", "Two"), ("3.pdf", "Three")] {
+        std::fs::write(books.join(name), chapter(title)).unwrap();
+    }
+    let away = books.join("2.pdf");
+    let built = lib
+        .build(std::slice::from_ref(&books), &options(), &mut |p| {
+            // Between the walk and the book's opening.
+            if p.pages == 0 && p.path.ends_with("2.pdf") {
+                let out = std::process::Command::new("attrib").arg("+O").arg(p.path).output().unwrap();
+                assert!(out.status.success());
+            }
+            if p.pages == 0 && p.path.ends_with("3.pdf") {
+                std::fs::remove_file(p.path).unwrap();
+            }
+            true
+        })
+        .unwrap();
+    let said = |name: &str| {
+        let b = &book(&built, name).book;
+        (b.state, b.reason, b.hash.is_some())
+    };
+    assert_eq!(said("1.pdf"), (State::Indexed, None, true));
+    assert_eq!(said("2.pdf"), (State::Skipped, Some(Skip::InCloud), false), "never opened");
+    assert_eq!(said("3.pdf"), (State::Skipped, Some(Skip::Gone), false));
+    assert_eq!(built.read, 1);
+    let _ = std::process::Command::new("attrib").arg("-O").arg(&away).output();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (4): the catalog is untrusted: a hash in it that is not one names no file, even
+/// when a file is there under that name.
+#[test]
+fn a_catalog_hash_that_is_no_hash_names_no_file() {
+    let base = fresh("bad-hash");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::create_dir_all(lib.dir()).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    // `library/../evil.lib`.
+    std::fs::write(base.join("evil.lib"), b"not an index").unwrap();
+    let walked = walk(std::slice::from_ref(&books), Caps::default(), &|| false);
+    let pdf = &walked.pdfs[0];
+    let mut catalog = Catalog {
+        books: vec![CatalogBook {
+            hash: Some("../evil".into()),
+            paths: vec![pdf.path.to_string_lossy().into_owned()],
+            size: pdf.size,
+            modified: pdf.modified,
+            state: State::Indexed,
+            ..CatalogBook::default()
+        }],
+        ..Catalog::default()
+    };
+    lib.write_catalog(&mut catalog).unwrap();
+    // Nothing read in this call: the book is as the catalog had it, when it can be trusted.
+    let built = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_books: Some(0), ..options() });
+    let a = &book(&built, "a.pdf").book;
+    assert_eq!((a.state, a.hash.as_deref()), (State::Pending, None), "{a:#?}");
+    assert!(base.join("evil.lib").exists(), "the file it named left alone");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (5): an index another program holds (an antivirus, say) is not damaged: the book
+/// is skipped this time and said, nothing set aside and nothing read; once let go, it is current.
+#[cfg(windows)]
+#[test]
+fn an_index_that_cannot_be_read_now_is_left_as_it_is() {
+    use std::os::windows::fs::OpenOptionsExt as _;
+    let base = fresh("index-held");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let first = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&first, "a.pdf");
+    let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(lib.index_path(&hash)).unwrap();
+    let again = build(&lib, std::slice::from_ref(&books), &options());
+    let a = book(&again, "a.pdf");
+    assert_eq!((a.book.state, a.book.reason), (State::Skipped, Some(Skip::IndexUnreadable)), "{a:#?}");
+    assert!(a.book.error.is_some());
+    assert_eq!(a.run.map(|r| (r.scanned, r.index_set_aside)), Some((0, false)));
+    assert!(lib.files().set_aside.is_empty(), "nothing set aside");
+    drop(held);
+    let third = build(&lib, std::slice::from_ref(&books), &options());
+    assert!(book(&third, "a.pdf").run.is_some_and(|r| r.current));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (6): a folder in the cloud named as a PDF is a folder, no book.
+#[cfg(windows)]
+#[test]
+fn a_cloud_folder_named_as_a_pdf_is_no_book() {
+    let base = fresh("cloud-folder");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    let folder = books.join("x.pdf");
+    std::fs::create_dir_all(&folder).unwrap();
+    let out = std::process::Command::new("attrib").arg("+O").arg("/D").arg(&folder).output().unwrap();
+    assert!(out.status.success(), "attrib +O /D: {}", String::from_utf8_lossy(&out.stderr));
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    assert!(built.books.is_empty(), "{:#?}", built.books);
+    assert_eq!(built.cloud, 0);
+    assert_eq!(built.walk.cloud_folders, [folder.to_string_lossy().into_owned()]);
+    let _ = std::process::Command::new("attrib").arg("-O").arg("/D").arg(&folder).output();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (7): when clearing one book cannot write the catalog again, it says so.
+#[cfg(windows)]
+#[test]
+fn clearing_says_when_the_catalog_cannot_be_written() {
+    let base = fresh("clear-readonly");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&built, "a.pdf");
+    let catalog = lib.dir().join("catalog.json");
+    let mut perms = std::fs::metadata(&catalog).unwrap().permissions();
+    perms.set_readonly(true);
+    std::fs::set_permissions(&catalog, perms.clone()).unwrap();
+    let cleared = lib.clear(Some(&hash));
+    assert_eq!(cleared.indexes, 1);
+    assert!(cleared.catalog_error.is_some(), "{cleared:?}");
+    #[allow(clippy::permissions_set_readonly_false)]
+    perms.set_readonly(false);
+    std::fs::set_permissions(&catalog, perms).unwrap();
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15a2 (8): the indexes set aside and the staging files count toward the cap, a staging
+/// file left by a write that stopped (over an hour old) is taken out, and a listing cut short says
+/// so.
+#[test]
+fn every_file_of_the_library_counts_toward_its_cap() {
+    let base = fresh("cap");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let built = build(&lib, std::slice::from_ref(&books), &options());
+    let hash = hash_of(&built, "a.pdf");
+    let index = std::fs::metadata(lib.index_path(&hash)).unwrap().len();
+    // Cleared, then made again under a cap the index alone fits, but not with an index set aside
+    // for it once and a write that stopped two hours ago.
+    assert_eq!(lib.clear(Some(&hash)).indexes, 1);
+    std::fs::write(lib.dir().join(format!("{hash}.lib.bad")), vec![0u8; 4096]).unwrap();
+    let stale = lib.dir().join(format!("{hash}.lib.tmp1-1"));
+    std::fs::write(&stale, vec![0u8; 1024]).unwrap();
+    let two_hours = std::time::SystemTime::now() - std::time::Duration::from_secs(7200);
+    std::fs::File::options().write(true).open(&stale).unwrap().set_modified(two_hours).unwrap();
+    assert_eq!(lib.files().bytes(), 4096 + 1024);
+    let full = build(&lib, std::slice::from_ref(&books), &BuildOptions { max_bytes: Some(index + 2048), ..options() });
+    assert_eq!(book(&full, "a.pdf").book.state, State::Full);
+    assert!(!stale.exists(), "the stale staging file taken out");
+    assert_eq!(full.bytes, 4096);
+    // A listing cut short says so.
+    assert!(lib.files_within(1).truncated);
+    assert!(!lib.files_within(100).truncated);
     let _ = std::fs::remove_dir_all(&base);
 }
