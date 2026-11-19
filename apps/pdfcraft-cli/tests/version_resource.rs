@@ -1,5 +1,6 @@
 //! `pdfcraft-cli.exe` carries a Windows version resource (`build.rs`), so Explorer, PowerShell's
 //! `VersionInfo` and inventory tools see its version and publisher, as they do for `pdfcraft.exe`.
+//! The product version is the chess edition's number (plan A9-V), the file version the workspace's.
 
 #![cfg(windows)]
 
@@ -28,7 +29,7 @@ fn string_value(resource: &[u8], key: &str) -> Option<String> {
 }
 
 #[test]
-fn the_exe_has_version_info_with_the_package_version() {
+fn the_exe_has_version_info_with_the_package_version_and_the_edition() {
     let exe = std::fs::read(env!("CARGO_BIN_EXE_pdfcraft-cli")).unwrap();
     let start = find(&exe, &utf16("VS_VERSION_INFO")).expect("no version resource");
     let resource = &exe[start..];
@@ -39,7 +40,7 @@ fn the_exe_has_version_info_with_the_package_version() {
         ("OriginalFilename", "pdfcraft-cli.exe"),
         ("InternalName", "pdfcraft-cli"),
         ("FileVersion", env!("CARGO_PKG_VERSION")),
-        ("ProductVersion", env!("CARGO_PKG_VERSION")),
+        ("ProductVersion", pdfcraft_engine::build_info::EDITION),
     ] {
         assert_eq!(string_value(resource, key).as_deref(), Some(value), "{key}");
     }
@@ -50,5 +51,7 @@ fn the_exe_has_version_info_with_the_package_version() {
     let ms = (number(env!("CARGO_PKG_VERSION_MAJOR")) << 16) | number(env!("CARGO_PKG_VERSION_MINOR"));
     let ls = number(env!("CARGO_PKG_VERSION_PATCH")) << 16;
     assert_eq!([dword(&exe, fixed + 8), dword(&exe, fixed + 12)], [ms, ls], "file version");
-    assert_eq!([dword(&exe, fixed + 16), dword(&exe, fixed + 20)], [ms, ls], "product version");
+    let edition: Vec<u32> = pdfcraft_engine::build_info::EDITION.split('.').map(number).collect();
+    let [major, minor, patch] = edition[..] else { panic!("{edition:?}") };
+    assert_eq!([dword(&exe, fixed + 16), dword(&exe, fixed + 20)], [(major << 16) | minor, patch << 16], "product version");
 }

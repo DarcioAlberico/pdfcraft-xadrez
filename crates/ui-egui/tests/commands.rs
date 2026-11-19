@@ -531,7 +531,9 @@ fn the_about_dialog_shows_the_running_version() {
     let mut h = harness();
     h.state_mut().execute("help.about");
     h.run_steps(3);
-    h.get_by_label_contains(&format!("Version {}", env!("CARGO_PKG_VERSION")));
+    // Plan A9-V: the chess edition's number first, then the build and upstream's version.
+    use pdfcraft_engine::build_info::{BUILD, EDITION};
+    h.get_by_label_contains(&format!("Version {EDITION}, build {BUILD} (PdfCraft {}", env!("CARGO_PKG_VERSION")));
 }
 
 #[test]
