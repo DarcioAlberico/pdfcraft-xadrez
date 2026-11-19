@@ -132,8 +132,9 @@ pub struct ChessExportOptions {
     pub anki: bool,
     /// PGN: the evaluations kept for the document and the limits to hold the book's signs to (plan
     /// A9-N17a, decision C): a move of the games read that the engine disagrees with gets the
-    /// engine's comment after the book's ([`super::review::annotate`]). The book's PGN's games and
-    /// the exercises are written as before.
+    /// engine's comment after the book's ([`super::review::annotate`]; in the Lichess dialect of
+    /// [`ChessExportOptions::pgn_style`], `[%eval …]`, plan A9-F7). The book's PGN's games and the
+    /// exercises are written as before.
     pub engine: Option<Arc<super::review::EngineReview>>,
 }
 
@@ -408,7 +409,7 @@ impl Session {
         let mut engine_comments = None;
         if let (ChessFormat::Pgn, Some(engine)) = (format, o.engine.as_ref()) {
             let review = super::review::divergences(&read.doc, &refs, &engine.evals, &engine.limits);
-            engine_comments = Some(super::review::annotate(&mut read.doc, &review, book_lang));
+            engine_comments = Some(super::review::annotate(&mut read.doc, &review, book_lang, o.pgn_style.dialect));
         }
         // The printed page numbers and the book's language say each diagram (plan A8 P9b, P9d).
         let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();

@@ -3880,3 +3880,9 @@ pawn structure	Passed	Prosti
 	{path} is a link, which the Library never opens.	{path} je povezava, ki je knjižnica nikoli ne odpre.
 	{path} can't be opened.	{path} ni mogoče odpreti.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Zadnja gradnja je bila prekinjena (PdfCraft se je zaprl ali se ustavil ob napaki): Nadaljuj nadaljuje tam, kjer je bila.
+	Show the clock and the evaluation the PGN gives each move	Prikaži uro in oceno, ki ju PGN da vsaki potezi
+	Evaluation: {value}	Ocena: {value}
+	Clock: {time}	Ura: {time}
+	PGN for	PGN za
+	Standard PGN	Standardni PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess in ChessBase pri znaku, ki ima kodo za vsako stran, ohranita samo kodo belega: kode črnega se zapišejo kot kode belega. Za Lichess gre znak, ki ga ne pozna, v komentar poteze, ocena šahovskega programa pa kot [%eval]; za ChessBase se diagram zapiše z njegovo lastno oznako.

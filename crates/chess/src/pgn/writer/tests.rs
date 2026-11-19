@@ -2,7 +2,7 @@ use proptest::prelude::*;
 
 use super::*;
 use crate::game::{Game, NodeId, PgnReport};
-use crate::pgn_style::Variations;
+use crate::pgn_style::{PgnDialect, Variations};
 
 fn read(text: &str) -> Game {
     let (game, report) = Game::from_pgn_report(text).unwrap();
@@ -31,12 +31,12 @@ fn tree(g: &Game) -> Vec<String> {
 }
 
 /// Each line of a written game's move text fits in [`LINE_WIDTH`], unless it is one piece alone
-/// or a piece kept off the start of the next line because it starts with `%`; none starts with
-/// `%`.
+/// (a comment's command is one piece, spaces and all) or a piece kept off the start of the next
+/// line because it starts with `%`; none starts with `%`.
 fn assert_wrapped(pgn: &str) {
     for line in moves_of(pgn).lines() {
         assert!(!line.starts_with('%'), "{line:?} in\n{pgn}");
-        assert!(line.chars().count() <= LINE_WIDTH || !line.contains(' ') || line.contains(" %"), "{line:?} in\n{pgn}");
+        assert!(line.chars().count() <= LINE_WIDTH || comment_words(line).len() == 1 || line.contains(" %"), "{line:?} in\n{pgn}");
     }
 }
 
@@ -94,6 +94,101 @@ fn a_long_piece_stands_alone_and_no_line_starts_with_an_escape() {
     assert_wrapped(&pgn);
     assert!(moves_of(&pgn).lines().any(|l| l == long), "{pgn}");
     assert_eq!(tree(&read(&pgn)), tree(&g));
+}
+
+/// Plan A9-F7 (R6-01): a round trip keeps a comment's commands where they were, the clock and the
+/// evaluation of every move of a lichess game; and the 79-column wrap never breaks a line inside
+/// a command (`[%clk` at the end of one line and `0:02:58]` at the start of the next), which a
+/// program that reads commands line by line would lose.
+#[test]
+fn a_round_trip_keeps_the_commands() {
+    let g = read(crate::pgn::commands::tests::LICHESS_GAME);
+    let pgn = g.pgn();
+    for command in ["[%eval 0.17] [%clk 0:03:00]", "[%eval 0.2] [%clk 0:02:57]", "[%eval #4] [%clk 0:02:50]"] {
+        assert!(pgn.contains(command), "{command} in\n{pgn}");
+    }
+    assert_eq!(tree(&read(&pgn)), tree(&g));
+    assert_eq!(read(&pgn).pgn(), pgn);
+    // A long game whose lines would break inside a command.
+    let mut text = String::new();
+    for k in 0..40u32 {
+        let (white, black) = if k % 2 == 0 { ("Nf3", "Nf6") } else { ("Ng1", "Ng8") };
+        let n = k + 1;
+        text.push_str(&format!(
+            "{n}. {white} {{ [%eval 0.{:02}] [%clk 0:{:02}:{:02}] }} {n}... {black} {{ Hm [%eval -0.{k}] [%clk 0:02:{:02}] }} ",
+            k % 100,
+            9 - k % 10,
+            59 - k,
+            59 - k
+        ));
+    }
+    text.push('*');
+    let g = read(&text);
+    let pgn = g.pgn();
+    assert_wrapped(&pgn);
+    for line in moves_of(&pgn).lines() {
+        assert_eq!(line.matches("[%").count(), crate::pgn::split_commands(line).1.len(), "a command broken at the end of {line:?} in\n{pgn}");
+    }
+    let back = read(&pgn);
+    assert_eq!(tree(&back), tree(&g));
+    assert_eq!(back.pgn(), pgn);
+    // The move text on one line keeps them as they were too.
+    assert!(g.movetext().starts_with("1. Nf3 {[%eval 0.00] [%clk 0:09:59]} 1... Nf6 {Hm [%eval -0.0] [%clk 0:02:59]}"), "{}", g.movetext());
+}
+
+/// Plan A9-F7 (R6-06, decision D18): the Lichess dialect writes Black's code of a pair as White's
+/// (`$37` as `$36`), keeps the glyphs lichess knows (`$146` too), and writes the others as their
+/// sign or name at the start of the move's comment, so nothing is lost; the standard dialect
+/// writes every code as read.
+#[test]
+fn the_lichess_dialect_writes_white_s_codes_and_says_the_others() {
+    let text = "1. e4 $1 e5 $37 2. Nf3 $23 Nc6 $133 3. Bb5 $146 a6 $141 4. Ba4 $245 {Spanish} Nf6 $24 5. O-O $220 Be7 $201 6. Re1 $221 b5 $36 $37 *";
+    let g = read(text);
+    let lichess = PgnStyle { dialect: PgnDialect::Lichess, ..PgnStyle::FULL };
+    assert_eq!(
+        g.movetext_with(lichess),
+        "1. e4 $1 e5 $36 2. Nf3 $22 Nc6 $132 3. Bb5 $146 a6 {\u{2207}} 4. Ba4 {\u{22a5} Spanish} 4... Nf6 {Slight space advantage} \
+         5. O-O {Diagram} 5... Be7 {Diagram} 6. Re1 {Diagram (from Black)} 6... b5 $36"
+    );
+    // Standard PGN: every code as read (decision D18).
+    assert_eq!(g.movetext(), text.trim_end_matches(" *").replace("{Spanish} Nf6", "{Spanish} 4... Nf6"));
+    // Without comments, what lichess has no glyph for is left out with them.
+    let bare = PgnStyle { comments: false, ..lichess };
+    assert_eq!(g.movetext_with(bare), "1. e4 $1 e5 $36 2. Nf3 $22 Nc6 $132 3. Bb5 $146 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 $36");
+    // The whole file, wrapped, reads back: lichess's glyphs as glyphs, the others as comments.
+    let pgn = g.pgn_with(lichess);
+    assert_wrapped(&pgn);
+    let back = read(&pgn);
+    let line = back.main_line();
+    assert_eq!(back.nags(line[2]), [36]);
+    assert_eq!(back.comment(line[7]), "\u{22a5} Spanish");
+    // ChessBase's diagram mark read in a comment is the word too, once.
+    let g = read("1. d4 Nf6 2. c4 {[#]} e6 $220 {Quiet [#]} *");
+    assert_eq!(g.movetext_with(lichess), "1. d4 Nf6 2. c4 {Diagram} 2... e6 {Quiet Diagram}");
+}
+
+/// Plan A9-F7 (the D18 session, 2026-11-19): ChessBase shows and keeps only White's code of a
+/// pair and drops `$201`/`$220`/`$221`, writing a diagram as the comment `{[#]}`. Its dialect
+/// writes Black's codes as White's and a diagram mark as `{[#]}` (once, when the comment has none
+/// yet); every other glyph as read.
+#[test]
+fn the_chessbase_dialect_writes_white_s_codes_and_its_own_diagram_mark() {
+    let text = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O $36 Be7 6. Re1 b5 7. Bb3 d6 $37 8. c3 O-O 9. h3 $22 Na5 $23 \
+                10. Bc2 c5 $133 11. d4 $132 $220 {Main line} Qc7 $201 $146 12. Nbd2 $221 {[#]} *";
+    let g = read(text);
+    let chessbase = PgnStyle { dialect: PgnDialect::ChessBase, ..PgnStyle::FULL };
+    assert_eq!(
+        g.movetext_with(chessbase),
+        "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O $36 Be7 6. Re1 b5 7. Bb3 d6 $36 8. c3 O-O 9. h3 $22 Na5 $22 \
+         10. Bc2 c5 $132 11. d4 $132 {[#] Main line} 11... Qc7 $146 {[#]} 12. Nbd2 {[#]}"
+    );
+    // Read back, every mark is a diagram, as ChessBase's own are.
+    let back = read(&g.pgn_with(chessbase));
+    let line = back.main_line();
+    assert!([21, 22, 23].iter().all(|&i| back.has_diagram(line[i])), "{}", back.movetext());
+    assert_eq!(back.comment(line[21]), "[#] Main line");
+    // Without comments, no mark is written: ChessBase would drop the glyph anyway.
+    assert!(!g.movetext_with(PgnStyle { comments: false, ..chessbase }).contains('{'));
 }
 
 /// R6-08: `PlyCount` is written from the moves once they no longer have the length the tag was
@@ -190,7 +285,7 @@ fn tags_are_escaped_and_never_break_their_line() {
 #[test]
 fn the_style_still_leaves_out_what_it_says() {
     let g = read("1. e4 {A} (1. d4 {B} d5) {C} 1... e5 $1 2. Nf3 *");
-    let style = PgnStyle { variations: Variations::Depth(0), comments: false, nags: false };
+    let style = PgnStyle { variations: Variations::Depth(0), comments: false, nags: false, ..PgnStyle::FULL };
     let pgn = write(&g, WriteOptions { style, ..WriteOptions::default() });
     assert_eq!(moves_of(&pgn), "1. e4 e5 2. Nf3 *\n");
     // Without the variation the comments before and after it are next to each other: one.

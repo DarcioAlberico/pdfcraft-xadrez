@@ -262,6 +262,20 @@ pub(crate) fn set_preview(ctx: &egui::Context, on: bool) {
     ctx.data_mut(|d| d.insert_temp(preview_key(), on));
 }
 
+fn badges_key() -> egui::Id {
+    egui::Id::new("chess-move-badges-on")
+}
+
+/// Whether a move shows the clock and the evaluation its PGN comment gives (plan A9-F7; off by
+/// default, Preferences ▸ Chess).
+pub(crate) fn badges(ctx: &egui::Context) -> bool {
+    ctx.data(|d| d.get_temp::<bool>(badges_key())).unwrap_or(false)
+}
+
+pub(crate) fn set_badges(ctx: &egui::Context, on: bool) {
+    ctx.data_mut(|d| d.insert_temp(badges_key(), on));
+}
+
 /// The figurines' picture (the board's twelve pieces, cut as the drag ghost's), made once per
 /// piece set.
 fn atlas(ctx: &egui::Context) -> Option<TextureHandle> {

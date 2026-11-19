@@ -3873,3 +3873,9 @@ pawn structure	Passed	Өтпелі
 	{path} is a link, which the Library never opens.	{path} — сілтеме, Кітапхана оны ешқашан ашпайды.
 	{path} can't be opened.	{path} ашылмайды.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Соңғы құру үзіліп қалды (PdfCraft жабылды немесе қатеге байланысты тоқтады): «Жалғастыру» тоқтаған жерінен жалғастырады.
+	Show the clock and the evaluation the PGN gives each move	PGN әр жүріске беретін сағат пен бағалауды көрсету
+	Evaluation: {value}	Бағалау: {value}
+	Clock: {time}	Сағат: {time}
+	PGN for	PGN мақсаты
+	Standard PGN	Стандартты PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess пен ChessBase әр жақ үшін коды бар белгінің тек ақтардың кодын сақтайды: қаралардың кодтары ақтардікі ретінде жазылады. Lichess үшін ол білмейтін белгі жүрістің түсініктемесіне, ал қозғалтқыштың бағалауы [%eval] ретінде жазылады; ChessBase үшін диаграмма оның өз белгісімен жазылады.

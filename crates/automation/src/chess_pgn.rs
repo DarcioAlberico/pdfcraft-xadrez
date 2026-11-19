@@ -28,7 +28,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::fragment::{FragmentItem, NagCode};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{
     Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, MAX_NODES, NodeId, NodePath, PgnReport, Shift,
 };
-use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::PgnStyle;
+use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::{PgnDialect, PgnStyle};
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
@@ -137,7 +137,8 @@ impl Automation {
 }
 
 /// The PGN writers' options (plan A8 V4): `variations` (`all`, `main`, `depth:N`), `comments`
-/// and `nags` (`all`, `none`); everything by default.
+/// and `nags` (`all`, `none`), and `dialect` (`standard`, `lichess`, `chessbase`; plan A9-F7);
+/// everything, in standard PGN, by default.
 pub(crate) fn pgn_style(a: &Args) -> Result<PgnStyle> {
     let mut style = PgnStyle::FULL;
     if let Some(name) = a.opt_str("variations")? {
@@ -148,6 +149,9 @@ pub(crate) fn pgn_style(a: &Args) -> Result<PgnStyle> {
     }
     if let Some(name) = a.opt_str("nags")? {
         style.nags = PgnStyle::switch_from_name(name).ok_or_else(|| Args::wrong("nags", "all or none"))?;
+    }
+    if let Some(name) = a.opt_str("dialect")? {
+        style.dialect = PgnDialect::from_name(name).ok_or_else(|| Args::wrong("dialect", "standard, lichess or chessbase"))?;
     }
     Ok(style)
 }

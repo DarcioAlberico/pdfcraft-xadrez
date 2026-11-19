@@ -1985,7 +1985,7 @@ mod tests {
     fn the_writer_leaves_out_what_the_style_says() {
         use crate::pgn_style::Variations;
         let (g, _) = Game::from_pgn(CORPUS).unwrap();
-        let style = |variations, comments, nags| PgnStyle { variations, comments, nags };
+        let style = |variations, comments, nags| PgnStyle { variations, comments, nags, ..PgnStyle::FULL };
         assert_eq!(g.movetext_with(PgnStyle::FULL), g.movetext());
         // The main line alone: no stray number where a variation was.
         assert_eq!(g.movetext_with(style(Variations::Depth(0), true, true)), "1. e4 e5 2. Nf3 {A comment} 2... Nc6 3. Bb5");

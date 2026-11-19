@@ -3789,3 +3789,9 @@ pawn structure	Passed	Проходные
 	{path} is a link, which the Library never opens.	{path} — это ссылка, а Библиотека никогда не открывает ссылки.
 	{path} can't be opened.	Не удаётся открыть {path}.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Последняя сборка была прервана (PdfCraft закрылся или остановился на ошибке): «Продолжить» продолжит с того места, где она остановилась.
+	Show the clock and the evaluation the PGN gives each move	Показывать часы и оценку, которые PGN даёт каждому ходу
+	Evaluation: {value}	Оценка: {value}
+	Clock: {time}	Часы: {time}
+	PGN for	PGN для
+	Standard PGN	Стандартный PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess и ChessBase хранят только код белых для знака, у которого есть код для каждой стороны: коды чёрных записываются как коды белых. Для Lichess знак, которого он не знает, идёт в комментарий к ходу, а оценка движка — как [%eval]; для ChessBase диаграмма записывается его собственной меткой.

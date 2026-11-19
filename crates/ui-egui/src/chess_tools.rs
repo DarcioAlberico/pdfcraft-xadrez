@@ -1706,7 +1706,8 @@ pub(crate) fn move_spoken(game: &Game, node: NodeId) -> String {
     if let Some(k) = path.as_ref().and_then(|p| p.indices().iter().rev().find(|&&i| i != 0).copied()) {
         parts.push(crate::i18n::fmt(tl!("variation {n}"), &[("n", &k.to_string())]));
     }
-    if !game.comment(node).trim().is_empty() {
+    // A comment of commands only (`[%clk]`, plan A9-F7) is not one a reader would be told of.
+    if pdfcraft_engine::chess::pdfcraft_chess::pgn::has_prose(game.comment(node)) {
         parts.push(tl!("with comment").to_owned());
     }
     parts.extend(game.nags(node).iter().filter_map(|&c| crate::chess_annotate::nag_name(c)).map(str::to_owned));

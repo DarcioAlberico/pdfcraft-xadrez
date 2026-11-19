@@ -14,10 +14,18 @@
 //! glyph, a word of a comment), never inside one, so a piece longer than a line stands alone;
 //! and no line starts with `%`, PGN's escape. A comment before a move comes right before it,
 //! after the variations of the move before (A1-06/A2-02: `1. e4 {A} (1. d4 d5) {B} 1... e5`);
-//! comments next to each other are written as one, the way PGN reads them back.
+//! comments next to each other are written as one, the way PGN reads them back. A comment's
+//! `[%…]` commands (`[%clk 0:03:00]`) are written where they were read, each one piece, so a line
+//! never breaks inside one (plan A9-F7).
+//!
+//! **Dialects** ([`PgnDialect`], plan A9-F7): standard PGN writes every glyph as read; the Lichess
+//! dialect writes the glyphs lichess knows, Black's code of a pair as White's, and the others as
+//! their signs in the move's comment ([`crate::nag::lichess`]); the ChessBase dialect writes
+//! Black's code of a pair as White's and a diagram mark as ChessBase's comment `{[#]}`.
 
 use crate::game::{Game, ROSTER, Token, kept_tokens};
-use crate::pgn_style::PgnStyle;
+use crate::nag;
+use crate::pgn_style::{PgnDialect, PgnStyle};
 use crate::placement::{Color, PieceKind};
 use crate::san::figurine_piece;
 
@@ -151,6 +159,12 @@ fn pieces(game: &Game, options: WriteOptions) -> Vec<Piece> {
         if let Token::Comment { node, text, before } = &token {
             let body = game.comment_body(*node, text, *before);
             let body = if options.letters { comment_letters(&body) } else { body };
+            // Lichess reads no diagram mark: ChessBase's `[#]` is the word, as a diagram glyph is.
+            let body = if options.style.dialect == PgnDialect::Lichess && crate::pgn::has_diagram_command(&body) {
+                crate::pgn::diagram_command_as(&body, LICHESS_DIAGRAM)
+            } else {
+                body
+            };
             let joined = comment.get_or_insert_with(String::new);
             if !joined.is_empty() && !body.is_empty() {
                 joined.push(' ');
@@ -158,19 +172,47 @@ fn pieces(game: &Game, options: WriteOptions) -> Vec<Piece> {
             joined.push_str(&body);
             continue;
         }
-        if let Some(body) = comment.take() {
-            push_comment(&mut out, &body);
-        }
+        let after_comment = match comment.take() {
+            Some(body) => {
+                push_comment(&mut out, &body);
+                true
+            }
+            None => false,
+        };
         match token {
-            Token::Move { number, color, numbered, san, nags, .. } => {
-                if numbered {
+            Token::Move { node, number, color, numbered, san, nags, .. } => {
+                // A Black move right after a comment says its number (a comment a dialect made of
+                // a glyph is one the tokens did not have).
+                if numbered || after_comment {
                     out.push(Piece::Word(match color {
                         Color::White => format!("{number}."),
                         Color::Black => format!("{number}..."),
                     }));
                 }
                 out.push(Piece::Word(san));
-                out.extend(nags.iter().map(|code| Piece::Word(format!("${code}"))));
+                match options.style.dialect {
+                    PgnDialect::Standard => out.extend(nags.iter().map(|code| Piece::Word(format!("${code}")))),
+                    PgnDialect::Lichess => {
+                        let mut said = lichess_glyphs(&nags, &mut out);
+                        // A comment with ChessBase's mark says Diagram already.
+                        if crate::pgn::has_diagram_command(game.comment(node)) {
+                            said.retain(|w| !w.starts_with(LICHESS_DIAGRAM));
+                        }
+                        // What lichess has no glyph for opens the move's comment (the move's own
+                        // comment, next, joins it), unless comments are left out.
+                        if options.style.comments && !said.is_empty() {
+                            comment = Some(said.join(" "));
+                        }
+                    }
+                    PgnDialect::ChessBase => {
+                        // ChessBase's own diagram mark opens the move's comment, unless the
+                        // comment has it already (read from ChessBase) or comments are left out.
+                        let diagram = chessbase_glyphs(&nags, &mut out);
+                        if diagram && options.style.comments && !crate::pgn::has_diagram_command(game.comment(node)) {
+                            comment = Some(crate::pgn::DIAGRAM_COMMAND.to_owned());
+                        }
+                    }
+                }
             }
             Token::VariationStart => out.push(Piece::Open),
             Token::VariationEnd => out.push(Piece::Close),
@@ -183,12 +225,88 @@ fn pieces(game: &Game, options: WriteOptions) -> Vec<Piece> {
     out
 }
 
-/// A comment as one piece per word, the braces on the first and the last, so a long one wraps.
-/// A brace inside (which a comment set on a game never holds) is written as a parenthesis: it
-/// would end the comment.
+/// What the Lichess dialect writes for a diagram mark, in the move's comment.
+const LICHESS_DIAGRAM: &str = "Diagram";
+
+/// The glyphs `nags` as the Lichess dialect writes them: those lichess knows pushed onto `out`,
+/// each once (`$37` as `$36`), and the signs or names of the others, each once, returned for the
+/// move's comment ([`nag::lichess`]).
+fn lichess_glyphs(nags: &[u16], out: &mut Vec<Piece>) -> Vec<String> {
+    let mut written: Vec<u16> = Vec::with_capacity(nags.len());
+    let mut said: Vec<String> = Vec::new();
+    for &code in nags {
+        match nag::lichess(code) {
+            Ok(known) => {
+                if !written.contains(&known) {
+                    written.push(known);
+                }
+            }
+            Err(word) => {
+                if !said.contains(&word) {
+                    said.push(word);
+                }
+            }
+        }
+    }
+    out.extend(written.iter().map(|code| Piece::Word(format!("${code}"))));
+    said
+}
+
+/// The glyphs `nags` as the ChessBase dialect writes them: pushed onto `out`, Black's code of a
+/// pair as White's, each once, and the diagram marks left out; whether there was one (the
+/// dialect writes ChessBase's `{[#]}` for it).
+fn chessbase_glyphs(nags: &[u16], out: &mut Vec<Piece>) -> bool {
+    let mut written: Vec<u16> = Vec::with_capacity(nags.len());
+    let mut diagram = false;
+    for &code in nags {
+        if nag::is_diagram(code) {
+            diagram = true;
+            continue;
+        }
+        let white = nag::white_code(code);
+        if !written.contains(&white) {
+            written.push(white);
+        }
+    }
+    out.extend(written.iter().map(|code| Piece::Word(format!("${code}"))));
+    diagram
+}
+
+/// A comment's words for wrapping: split at whitespace, but never inside a `[%…]` command, which
+/// is one word (its own whitespace runs made one space, as reading makes them).
+fn comment_words(body: &str) -> Vec<String> {
+    let spans = super::commands::command_spans(body);
+    let mut spans = spans.iter().peekable();
+    let mut words = Vec::new();
+    let mut word = String::new();
+    for (i, c) in body.char_indices() {
+        while spans.peek().is_some_and(|s| s.end <= i) {
+            spans.next();
+        }
+        let inside = spans.peek().is_some_and(|s| s.start <= i);
+        if !c.is_whitespace() {
+            word.push(c);
+        } else if inside {
+            // A command never starts or ends with whitespace, so the word has its `[%` already.
+            if !word.ends_with(' ') {
+                word.push(' ');
+            }
+        } else if !word.is_empty() {
+            words.push(std::mem::take(&mut word));
+        }
+    }
+    if !word.is_empty() {
+        words.push(word);
+    }
+    words
+}
+
+/// A comment as one piece per word (a command is one word), the braces on the first and the
+/// last, so a long one wraps. A brace inside (which a comment set on a game never holds) is
+/// written as a parenthesis: it would end the comment.
 fn push_comment(out: &mut Vec<Piece>, body: &str) {
     let body = body.replace('{', "(").replace('}', ")");
-    let words: Vec<&str> = body.split_whitespace().collect();
+    let words = comment_words(&body);
     let last = words.len().saturating_sub(1);
     if words.is_empty() {
         out.push(Piece::Word("{}".to_owned()));

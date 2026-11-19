@@ -3871,3 +3871,9 @@ pawn structure	Passed	Geçer
 	{path} is a link, which the Library never opens.	{path} bir bağlantı ve Kitaplık bağlantıları asla açmaz.
 	{path} can't be opened.	{path} açılamıyor.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Son oluşturma yarıda kesildi (PdfCraft kapandı ya da bir hatada durdu): Devam Et kaldığı yerden sürdürür.
+	Show the clock and the evaluation the PGN gives each move	PGN'nin her hamleye verdiği saati ve değerlendirmeyi göster
+	Evaluation: {value}	Değerlendirme: {value}
+	Clock: {time}	Saat: {time}
+	PGN for	PGN hedefi
+	Standard PGN	Standart PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess ve ChessBase, her taraf için ayrı kodu olan bir işaretin yalnızca Beyaz kodunu tutar: Siyah'ın kodları Beyaz'ınki olarak yazılır. Lichess için, tanımadığı bir işaret hamlenin yorumuna, motor değerlendirmesi ise [%eval] olarak gider; ChessBase için diyagram kendi işaretiyle yazılır.

@@ -3512,6 +3512,58 @@ fn a_pgn_file_with_several_games_is_imported() {
 
 // ---- T5a: the PGN tool rail and the chess key scope ----
 
+/// Plan A9-F7 (R6-01): a game downloaded from lichess (synthetic: an evaluation and a clock in
+/// every move's comment), on the board at 1366 × 768. No move of the list shows its comment's
+/// commands, nor does the comment large under the board; the one comment with words shows its
+/// words. With the preference on, the clock and the evaluation are badges after each move, named
+/// for a screen reader. Shots in light and dark when `PDFCRAFT_CHESS_SHOTS` names a folder.
+#[test]
+fn a_lichess_game_shows_its_moves_without_their_commands() {
+    const LICHESS: &str = "[Event \"Rated blitz game\"]\n[White \"White\"]\n[Black \"Black\"]\n\n\
+        1. e4 { [%eval 0.17] [%clk 0:03:00] } 1... e5 { [%eval 0.19] [%clk 0:03:00] } \
+        2. Nf3 { [%eval 0.15] [%clk 0:02:58] } 2... Nc6 { [%eval 0.2] [%clk 0:02:57] } \
+        3. Bb5 { The Spanish. [%eval 0.25] [%clk 0:02:55] } 3... a6 { [%eval 0.3] [%clk 0:02:51] } *";
+    for theme in ["light", "dark"] {
+        let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
+        h.state_mut().set_option("theme", theme).unwrap();
+        h.state_mut().set_option("comment-focus", "on").unwrap();
+        h.state_mut().show_chess_board();
+        h.run_steps(3);
+        put_game(&mut h, LICHESS, &[0, 0, 0]);
+        h.run_steps(3);
+        let commands: Vec<String> = h.query_all_by_label_contains("[%").map(|n| format!("{:?}", n.accesskit_node().label())).collect();
+        assert!(commands.is_empty(), "{commands:?}");
+        assert!(h.query_by_label("The Spanish.").is_some(), "a comment's words still show");
+        assert!(h.query_by_label_contains("Clock: ").is_none(), "no badge until asked");
+        shot(&mut h, &format!("f7-lichess-{theme}.png"));
+        // Bb5's comment has words: the large comment shows them, and only them.
+        put_game(&mut h, LICHESS, &[0, 0, 0, 0, 0]);
+        h.run_steps(3);
+        assert!(h.query_all_by_label_contains("[%").next().is_none());
+        assert!(h.query_all_by_label("The Spanish.").count() >= 2, "in the list and large under the board");
+        h.state_mut().set_option("move-badges", "on").unwrap();
+        h.run_steps(3);
+        assert!(h.query_by_label("Clock: 2:58").is_some() && h.query_by_label("Evaluation: +0.15").is_some());
+        assert!(h.query_by_label("Clock: 2:51").is_some() && h.query_by_label("Evaluation: +0.3").is_some());
+        // Each badge wraps with the running text, inside the list (a framed badge was laid out
+        // past the list's right edge, out of sight, before the row wrapped).
+        let moves = h.query_all_by_label("Moves").next().expect("the notation's region").rect();
+        for badge in ["Clock: 2:51", "Evaluation: +0.3", "Clock: 3:00"] {
+            for node in h.query_all_by_label(badge) {
+                let r = node.rect();
+                assert!(r.min.x >= moves.min.x - 1.0 && r.max.x <= moves.max.x + 1.0, "{badge}: {r:?} outside {moves:?}");
+                // On one line: never broken across two (its border would frame the whole row).
+                assert!(r.height() < 30.0 && r.width() < 80.0, "{badge}: {r:?}");
+            }
+        }
+        // Black's move after a comment that shows nothing reads on, as after no comment.
+        assert!(h.query_by_label("1...").is_none() && h.query_by_label("3...").is_some(), "only after The Spanish.");
+        shot(&mut h, &format!("f7-lichess-badges-{theme}.png"));
+        // The game keeps the commands, for its PGN.
+        assert!(h.state().chess.board().game().movetext().starts_with("1. e4 {[%eval 0.17] [%clk 0:03:00]} 1... e5"));
+    }
+}
+
 /// A game with variations: 1.e4 e5 (1...c5 2.Nf3 (2.c3) d6) 2.Nf3.
 const FORKS: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *";
 
@@ -6199,7 +6251,8 @@ fn the_export_dialogs_choices_are_remembered() {
             "source": "book",
             "descriptions": "words",
             "per_page": 4,
-            "solutions": true
+            "solutions": true,
+            "dialect": "standard"
         }),
         "the settings keep the dialog's choices"
     );

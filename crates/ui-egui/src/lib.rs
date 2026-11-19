@@ -2456,6 +2456,7 @@ impl PdfCraftApp {
         v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
         v["chess_move_list"] = self.chess.list_look.to_json();
         v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
+        v["chess_move_badges"] = serde_json::Value::Bool(self.chess.move_badges);
         v["chess_variations"] = self.chess.variation_rules.to_json();
         // The Diagram tab or the editor in the Diagrams panel, and its main button (plan A8 P3b2).
         v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
@@ -2555,6 +2556,9 @@ impl PdfCraftApp {
         self.chess.variation_rules = chess_moves_tree::VariationRules::from_json(&v["chess_variations"]);
         if let Some(on) = v["chess_move_preview"].as_bool() {
             self.chess.no_move_preview = !on;
+        }
+        if let Some(on) = v["chess_move_badges"].as_bool() {
+            self.chess.move_badges = on;
         }
         if let Some(on) = v["chess_classic_editor"].as_bool() {
             self.chess.classic_editor = on;
@@ -2761,6 +2765,14 @@ impl PdfCraftApp {
                     "on" => false,
                     "off" => true,
                     _ => return Err("move-preview must be on or off".into()),
+                };
+            }
+            // The clock and evaluation badges in the move list (plan A9-F7).
+            ("move-badges", _) => {
+                self.chess.move_badges = match value {
+                    "on" => true,
+                    "off" => false,
+                    _ => return Err("move-badges must be on or off".into()),
                 };
             }
             ("comment-focus", _) => {
@@ -3326,6 +3338,7 @@ impl eframe::App for PdfCraftApp {
         let wanted = self.chess.move_pieces == chess_figurines::MovePieces::Figurines || !self.chess.no_move_preview;
         let figurines = wanted.then(|| self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board));
         chess_figurines::set_preview(ctx, !self.chess.no_move_preview);
+        chess_figurines::set_badges(ctx, self.chess.move_badges);
         chess_figurines::set(ctx, self.chess.move_pieces, figurines);
         chess_figurines::set_list_look(ctx, self.chess.list_look);
         // The board's game follows the variation rules of the preferences (plan A8 V3).
