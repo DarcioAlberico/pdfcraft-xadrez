@@ -891,6 +891,94 @@ fn a_new_game_from_one_after_a_later_diagram() {
     assert_eq!(doc.games[1].origin, GameOrigin::Initial);
 }
 
+/// A game collection prints a chapter's exercises before its first game (Huschenbeth, *Carlsen vs.
+/// Caruana*): the game's `1.e4`, which the exercise cannot play, starts from the initial position
+/// and the whole game is played, instead of stopping at its first move. A `1.` that neither can
+/// play stays the exercise's, flagged.
+#[test]
+fn a_first_game_after_a_chapters_exercises_starts_from_the_initial_position() {
+    let p0 = page_text(vec![line(215.0, "White to play (Game 1)")]);
+    let p1 = page_text(vec![line(100.0, "Game 1"), line(160.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, ROOK, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.origin, GameOrigin::Initial);
+    assert_eq!(game.score.mainline().len(), 6);
+    // A first move neither the exercise nor the initial position can play is the exercise's.
+    let p1 = page_text(vec![line(160.0, "1.Qh7+ Kf8 2.Qh8+")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, ROOK, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let doc = b.finish();
+    assert_eq!(moves(&doc.pages[1]).first(), Some(&("1.Qh7+".to_owned(), MoveStatus::Illegal)));
+    assert_eq!(doc.games.first().map(|g| g.origin), Some(GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }));
+}
+
+/// A game's header after a chapter's exercises (Huschenbeth: `Game 42`, the players and the
+/// event, then `1.Nf3`): the exercises are not the header's game, even when one of them could
+/// play its first move (a knight on e5), nor does an exercise that could not be read block it.
+#[test]
+fn a_games_header_after_the_exercises_starts_its_game_from_the_initial_position() {
+    let knight = "4k3/8/8/4N3/8/8/8/4K3 w - - 0 1";
+    let header = |top: f32| {
+        vec![
+            line(top, "Game 42"),
+            line(top + 30.0, "Caruana (2827) - Carlsen (2840)"),
+            line(top + 44.0, "Pro Chess League (5), 2017"),
+            line(top + 90.0, "1.Nf3 Nf6 2.g3 b5 3.Bg2 Bb7"),
+        ]
+    };
+    let unreadable = {
+        let mut r = reading(0, 60.0, knight, true, false);
+        r.outcome = Err(Unreadable::NoModel);
+        r
+    };
+    for exercise in [reading(0, 60.0, knight, true, false), unreadable] {
+        let p0 = page_text(vec![line(215.0, "White to play (Game 47)")]);
+        let p1 = page_text(header(100.0));
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, std::slice::from_ref(&exercise), &[], &[]));
+        b.add_page(&input(1, &p1, &[], &[], &[]));
+        let doc = b.finish();
+        assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+        let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+        assert_eq!(game.origin, GameOrigin::Initial);
+        assert_eq!((game.score.roster.white.as_str(), game.score.roster.black.as_str()), ("Caruana", "Carlsen"));
+    }
+    // Without the header, a first move the exercise can play is the exercise's solution.
+    let p0 = page_text(vec![line(215.0, "White to play")]);
+    let p1 = page_text(vec![line(100.0, "1.Nf3 Kd7 2.Nd4")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, knight, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let doc = b.finish();
+    assert_eq!(doc.games.first().map(|g| g.origin), Some(GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }));
+}
+
+/// A book that prints its game in bold and its analysis in regular type sets a diagram of the
+/// game's position after the analysis (Huschenbeth: `36...Kh8?`, `36...exd5 37.exd5 cxd5` in
+/// regular type, the diagram after `36...Kh8`, then `37.Rfd1?`). The diagram shows where the bold
+/// line stands, not the analysis: the game goes on past it from the bold line, as one game.
+#[test]
+fn a_diagram_after_analysis_shows_the_bold_line_and_the_game_goes_on() {
+    let italian = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+    let p0 = page_text(vec![line(100.0, "*1.e4 *e5 *2.Nf3 *Nc6 *3.Bc4 *Bc5"), line(130.0, "3...Nf6 4.Ng5 d5"), line(370.0, "*4.c3 *Nf6 *5.d4")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 200.0, italian, true, false)], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.origin, GameOrigin::Initial);
+    let main: Vec<String> = game.score.mainline().iter().filter_map(|&n| game.score.nodes.get(n).map(|m| m.san.clone())).collect();
+    assert_eq!(main, ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "c3", "Nf6", "d4"]);
+    assert_eq!(game.shown, [DiagramAt::on(0, 0)], "the diagram reprints the game's position");
+    let pgn = pgn::write_game(&game.score);
+    assert!(pgn.contains("(3... Nf6 4. Ng5 d5)"), "the analysis stays a variation: {pgn}");
+}
+
 #[test]
 fn puzzle_labels() {
     use crate::doc::build::puzzle_label;
@@ -1285,6 +1373,61 @@ fn a_games_header_fills_its_tags() {
     assert!(!pgn.contains("Carlsen,Magnus") && pgn.contains("1. d4 Nf6 2. c4 e6"), "{pgn}");
     // The header stays in the document's text.
     assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("Carlsen,Magnus")), "{:?}", kinds(&doc.pages[0]));
+}
+
+/// A collection of one match's games numbers each in a label over its players' line, which has no
+/// number of its own (Huschenbeth, *Carlsen vs. Caruana*): `Game 2`, then the players with their
+/// ratings and the event's line under them, in one block or two. The header ends the game before
+/// it, whose comments no longer take its words or its label, and fills the next game's tags.
+/// Without the event's line under it, a name, a dash and a name are no header.
+#[test]
+fn a_games_label_and_players_without_a_number_fill_its_tags() {
+    for (players, event) in [(170.0, 184.0), (170.0, 240.0)] {
+        let p0 = page_text(vec![
+            line(100.0, "1.e4 e5 2.Nf3 Nc6"),
+            line(140.0, "Game 2"),
+            line(players, "Caruana (2709) - Carlsen (2802)"),
+            line(event, "5th Wch Blitz, Moscow (7), 2010"),
+            line(300.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6"),
+        ]);
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[], &[], &[]));
+        let doc = b.finish();
+        assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+        let [first, game] = doc.games.as_slice() else { panic!("{} games: {:?}", doc.games.len(), kinds(&doc.pages[0])) };
+        let before = pgn::write_game(&first.score);
+        assert!(!before.contains("Game 2") && !before.contains("Carlsen") && !before.contains("Moscow"), "{before}");
+        assert_eq!(game.origin, GameOrigin::Initial);
+        let pgn = pgn::write_game(&game.score);
+        for tag in [
+            "[Event \"5th Wch Blitz, Moscow\"]",
+            "[Date \"2010.??.??\"]",
+            "[Round \"7\"]",
+            "[White \"Caruana\"]",
+            "[Black \"Carlsen\"]",
+            "[WhiteElo \"2709\"]",
+            "[BlackElo \"2802\"]",
+        ] {
+            assert!(pgn.contains(tag), "{tag}: {pgn}");
+        }
+        // The label and the header stay in the document's text, as the header's.
+        let roles: Vec<Option<BlockRole>> = doc.pages[0].blocks.iter().map(Block::role).collect();
+        assert_eq!(
+            roles.iter().filter(|r| **r == Some(BlockRole::GameHeader)).count(),
+            if event > 200.0 { 3 } else { 2 },
+            "{:?}",
+            kinds(&doc.pages[0])
+        );
+        assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("Game 2")), "{:?}", kinds(&doc.pages[0]));
+    }
+    // A name, a dash and a name with no event's line under them: prose, a comment.
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 Nc6"), line(160.0, "Caruana (2709) - Carlsen (2802)"), line(220.0, "A fine game.")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert!(pgn::write_game(&game.score).contains("Caruana (2709) - Carlsen (2802)"));
+    assert_eq!(game.score.roster.white, "?");
 }
 
 /// A page of puzzles read across its two columns (Chess Evolution's solutions): each game takes
