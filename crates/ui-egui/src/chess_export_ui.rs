@@ -509,6 +509,12 @@ impl PdfCraftApp {
             let found =
                 SheetCount { exercises: e.exercises.len(), unsolved, no_position: reason(LeftOutReason::NoPosition), ..SheetCount::default() };
             notes.extend(exercise_parts(&found, reason(LeftOutReason::NoSolution)));
+            // Written without ChessBase's training question (plan A9-N10c): a first move that
+            // castles or promotes, whose coding ChessBase was not seen to use.
+            let untrained = e.training_left_out.as_ref().map_or(0, Vec::len);
+            if untrained > 0 {
+                notes.push(crate::i18n::fmt(tl!("Without ChessBase's training question: {n}"), &[("n", &crate::i18n::number(untrained))]));
+            }
         }
         notes.extend(made.notes.iter().cloned());
         self.chess.export_done = Some(Done { path, said, notes });

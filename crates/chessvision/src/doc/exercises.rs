@@ -18,17 +18,32 @@
 //!   diagrama 1 de 6`).
 //!
 //! A numbered diagram whose solution was not read, or that has no position to start from, is left
-//! out and listed ([`LeftOut`]). ChessBase's training command (`%tqu`) is not written: decision
-//! D20 waits for it to be tried in ChessBase first.
+//! out and listed ([`LeftOut`]).
+//!
+//! **ChessBase's training question** (plan A9-N10c, decision D20): in the ChessBase dialect
+//! ([`PgnDialect::ChessBase`]), the statement's comment opens with the `%tqu` command, in the form
+//! the D18 session saw ChessBase 26 read and write (`docs/chess/d18-kit/RESULTADO.md`, D1–D3):
+//! `{[%tqu "Pt","Brancas jogam (№ 185).","","","d1d8","",10] Pág. 275 · diagrama 1 de 6}`. The
+//! fields are the language (ChessBase's tabs En, De, Fr, Es, It, Ne and Pt; any other language is
+//! `En`, its text left as it is), the question (the statement's first sentence: the side to move
+//! and the number), two empty fields, then one answer: the main line's first move as its two
+//! squares, empty feedback and the score 10. The rest of the statement follows the command. The
+//! session saw plain moves only, so an exercise whose first move castles or promotes is written
+//! without the command and listed ([`TrainingLeftOut`]): no coding is guessed. How ChessBase
+//! escapes was not seen either, so the question and the rest write `"` as `'`, `[` and `]` as `(`
+//! and `)` (a `]` would end the command) and control characters as spaces. Standard PGN and the
+//! Lichess dialect write no command; nor does any dialect with `comments: none`, which writes no
+//! comment.
 //!
 //! The same exercises, by the same rule ([`find`]), are also Anki's cards: [`super::anki`] (plan
 //! A9-N10b).
 
 use pdfcraft_chess::describe;
-use pdfcraft_chess::pgn_style::PgnStyle;
+use pdfcraft_chess::pgn_style::{PgnDialect, PgnStyle};
 use pdfcraft_chess::placement::Color;
+use pdfcraft_chess::san::{Lang, San};
 
-use super::games::{DiagramAt, GameOrigin, GameScore};
+use super::games::{DiagramAt, GameOrigin, GameScore, MAX_COMMENT_BYTES};
 use super::markdown::{PgnBook, with_origin};
 use super::pgn::GameWarning;
 use super::{Block, ChessDoc};
@@ -70,6 +85,37 @@ pub struct LeftOut {
     pub reason: LeftOutReason,
 }
 
+/// Why an exercise is written without ChessBase's training question (plan A9-N10c).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TrainingLeftOutReason {
+    /// Its first move castles: the D18 session saw no castling answer, so its coding is not known.
+    Castling,
+    /// Its first move promotes a pawn: likewise.
+    Promotion,
+    /// Its first move is no move of its start position (only in a score read from JSON that was
+    /// tampered with: the PGN's writer leaves such a move out too).
+    NoMove,
+}
+
+impl TrainingLeftOutReason {
+    /// The reason's name in the tools' replies.
+    pub fn name(self) -> &'static str {
+        match self {
+            TrainingLeftOutReason::Castling => "castling",
+            TrainingLeftOutReason::Promotion => "promotion",
+            TrainingLeftOutReason::NoMove => "no_move",
+        }
+    }
+}
+
+/// An exercise written without ChessBase's training question, and why.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TrainingLeftOut {
+    pub at: DiagramAt,
+    pub number: u32,
+    pub reason: TrainingLeftOutReason,
+}
+
 /// What [`exercises_pgn`] wrote.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ExercisesPgn {
@@ -79,6 +125,10 @@ pub struct ExercisesPgn {
     pub left_out: Vec<LeftOut>,
     /// What writing left out of a game (plan A9-F4), by exercise in the order written.
     pub warnings: Vec<GameWarning>,
+    /// The exercises written without ChessBase's training question, and why, in the book's order
+    /// (plan A9-N10c); `None` when no training question is written (another dialect than
+    /// ChessBase's, comments left out, or Anki's cards).
+    pub training_left_out: Option<Vec<TrainingLeftOut>>,
 }
 
 /// An exercise found, as [`exercises_pgn`] writes it and as Anki's cards show it
@@ -90,6 +140,13 @@ pub(crate) struct Found {
     pub(crate) score: GameScore,
     /// The side the book prints the diagram from.
     pub(crate) orientation: Color,
+    /// The statement's two parts: its first sentence, the side to move and the number
+    /// ([`question`])…
+    question: String,
+    /// … and the rest (where it is in the book, and what the book said before the solution).
+    rest: String,
+    /// The language the statement is in.
+    lang: Lang,
 }
 
 /// The exercises of `doc` in the book's order, and the numbered diagrams left out (see the module
@@ -121,9 +178,11 @@ pub(crate) fn find(doc: &ChessDoc, book: &PgnBook) -> (Vec<Found>, Vec<LeftOut>)
                 title.clone_into(&mut score.roster.event);
             }
             score.roster.round = number.to_string();
-            score.comment = statement(side, number, lang, &score.comment);
+            let question = question(side, number, lang);
+            let rest = score.comment.trim().to_owned();
+            score.comment = statement(&question, &rest);
             let exercise = Exercise { at, number, moves: score.mainline().len() };
-            found.push(Found { exercise, score, orientation: d.orientation() });
+            found.push(Found { exercise, score, orientation: d.orientation(), question, rest, lang });
         }
     }
     (found, left_out)
@@ -140,17 +199,135 @@ pub fn list(doc: &ChessDoc) -> (Vec<Exercise>, Vec<LeftOut>) {
 /// The exercises of `doc` as a problem PGN, from `book` (its title, its pages' labels), the moves
 /// written as `style` says (see the module documentation).
 pub fn exercises_pgn(doc: &ChessDoc, book: &PgnBook, style: PgnStyle) -> ExercisesPgn {
-    let (found, left_out) = find(doc, book);
+    let (mut found, left_out) = find(doc, book);
+    // ChessBase's training question (plan A9-N10c), in the comment the writer writes.
+    let training_left_out = (style.dialect == PgnDialect::ChessBase && style.comments).then(|| {
+        let mut untrained = Vec::new();
+        for f in &mut found {
+            match training_answer(&f.score) {
+                Ok(answer) => f.score.comment = training_comment(f.lang, &f.question, &answer, &f.rest),
+                Err(reason) => untrained.push(TrainingLeftOut { at: f.exercise.at, number: f.exercise.number, reason }),
+            }
+        }
+        untrained
+    });
     let written = super::pgn::write_report(found.iter().map(|f| &f.score), style);
-    ExercisesPgn { pgn: written.pgn, exercises: found.iter().map(|f| f.exercise).collect(), left_out, warnings: written.warnings }
+    ExercisesPgn { pgn: written.pgn, exercises: found.iter().map(|f| f.exercise).collect(), left_out, warnings: written.warnings, training_left_out }
 }
 
-/// The statement before an exercise's first move: the side to move and its number, then `rest`
-/// (where it is in the book, and what the book said before the solution).
-fn statement(side: Color, number: u32, lang: pdfcraft_chess::san::Lang, rest: &str) -> String {
+/// The statement's first sentence: the side to move and the exercise's number (`Brancas jogam
+/// (№ 185).`), in `lang`.
+fn question(side: Color, number: u32, lang: Lang) -> String {
     let to_move = describe::to_move(side, lang);
     let mut chars = to_move.chars();
     let head: String = chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or_default();
-    let rest = rest.trim();
-    if rest.is_empty() { format!("{head} (№ {number}).") } else { format!("{head} (№ {number}). {rest}") }
+    format!("{head} (№ {number}).")
+}
+
+/// The statement before an exercise's first move: its `question`, then `rest` (where it is in
+/// the book, and what the book said before the solution).
+fn statement(question: &str, rest: &str) -> String {
+    if rest.is_empty() { question.to_owned() } else { format!("{question} {rest}") }
+}
+
+/// The score of the one answer written: the 10 the D18 session saw ChessBase give the first.
+const TRAINING_SCORE: u32 = 10;
+
+/// The language field of ChessBase's training question for a statement in `lang`: the tab of
+/// ChessBase's dialog in that language (En, De, Fr, Es, It, Ne, Pt, as the D18 session saw them),
+/// `En` for any other.
+pub(crate) fn training_language(lang: Lang) -> &'static str {
+    match lang {
+        Lang::De => "De",
+        Lang::Fr => "Fr",
+        Lang::Es => "Es",
+        Lang::It => "It",
+        Lang::Nl => "Ne",
+        Lang::Pt => "Pt",
+        _ => "En",
+    }
+}
+
+/// `text` as it is safe to write in and around the training command, since how ChessBase escapes
+/// was not seen: `"` as `'`, `[` and `]` as `(` and `)` (a `]` ends the command, and the reader
+/// takes a `[` before it for one left open), control characters as spaces, whitespace runs one
+/// space, the ends trimmed.
+fn training_text(text: &str) -> String {
+    let safe: String = text
+        .chars()
+        .map(|c| match c {
+            '"' => '\'',
+            '[' => '(',
+            ']' => ')',
+            c if c.is_control() => ' ',
+            c => c,
+        })
+        .collect();
+    safe.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// ChessBase's training command asking `question` in the tab of `lang`, `answer` (a move as its
+/// two squares) its one answer, with no feedback and [`TRAINING_SCORE`]. The question is made
+/// safe ([`training_text`]) and cut, at a character, so the command fits a comment
+/// ([`MAX_COMMENT_BYTES`]): the comment's cap never cuts it in two.
+pub(crate) fn training_command(lang: Lang, question: &str, answer: &str) -> String {
+    let head = format!("[%tqu \"{}\",\"", training_language(lang));
+    let tail = format!("\",\"\",\"\",\"{answer}\",\"\",{TRAINING_SCORE}]");
+    let room = MAX_COMMENT_BYTES.saturating_sub(head.len()).saturating_sub(tail.len());
+    let question = training_text(question);
+    let mut end = question.len().min(room);
+    while !question.is_char_boundary(end) {
+        end = end.saturating_sub(1);
+    }
+    let question = question.get(..end).unwrap_or_default().trim_end();
+    format!("{head}{question}{tail}")
+}
+
+/// The statement's comment with ChessBase's training question: the command first, then `rest`,
+/// made safe ([`training_text`]), as ChessBase writes a training question before the first move.
+fn training_comment(lang: Lang, question: &str, answer: &str, rest: &str) -> String {
+    let command = training_command(lang, question, answer);
+    let rest = training_text(rest);
+    if rest.is_empty() { command } else { format!("{command} {rest}") }
+}
+
+/// The training question's answer for an exercise: the first move of its main line as its two
+/// squares (`d1d8`), as the D18 session saw ChessBase write it. A castling or a promotion, which
+/// the session did not see, is refused, as is a move its start position does not have.
+fn training_answer(score: &GameScore) -> Result<String, TrainingLeftOutReason> {
+    let board = score.start_board().ok_or(TrainingLeftOutReason::NoMove)?;
+    let first = score.roots.first().and_then(|&n| score.nodes.get(n)).ok_or(TrainingLeftOutReason::NoMove)?;
+    // Its SAN, else the move that leads to the position after it (as the PGN's writer names a
+    // move whose SAN was edited into no move).
+    let by_san = San::read(&first.san, Lang::En).ok().and_then(|san| san.to_move(&board).ok());
+    let mv = by_san.or_else(|| move_to(&board, &first.fen)).ok_or(TrainingLeftOutReason::NoMove)?;
+    let us = board.side_to_move();
+    // cozy-chess writes castling as the king taking its own rook (`e1h1`).
+    if mv.from == board.king(us) && board.colors(us).has(mv.to) {
+        return Err(TrainingLeftOutReason::Castling);
+    }
+    if mv.promotion.is_some() {
+        return Err(TrainingLeftOutReason::Promotion);
+    }
+    Ok(format!("{}{}", mv.from, mv.to))
+}
+
+/// The legal move on `board` that leads to the position `fen` (castling rights, en passant and the
+/// side to move included, the move counters aside).
+fn move_to(board: &cozy_chess::Board, fen: &str) -> Option<cozy_chess::Move> {
+    use pdfcraft_chess::fen::Fen;
+    let want = Fen::from_board(&pdfcraft_chess::fen::board_from_fen(fen.trim()).ok()?).full_key();
+    let mut found = None;
+    board.generate_moves(|moves| {
+        for mv in moves {
+            let mut after = board.clone();
+            after.play_unchecked(mv);
+            if Fen::from_board(&after).full_key() == want {
+                found = Some(mv);
+                return true;
+            }
+        }
+        false
+    });
+    found
 }

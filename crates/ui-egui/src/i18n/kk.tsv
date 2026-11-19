@@ -3879,3 +3879,4 @@ pawn structure	Passed	Өтпелі
 	PGN for	PGN мақсаты
 	Standard PGN	Стандартты PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess пен ChessBase әр жақ үшін коды бар белгінің тек ақтардың кодын сақтайды: қаралардың кодтары ақтардікі ретінде жазылады. Lichess үшін ол білмейтін белгі жүрістің түсініктемесіне, ал қозғалтқыштың бағалауы [%eval] ретінде жазылады; ChessBase үшін диаграмма оның өз белгісімен жазылады.
+	Without ChessBase's training question: {n}	ChessBase жаттығу сұрағынсыз: {n}

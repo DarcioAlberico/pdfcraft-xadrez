@@ -4416,6 +4416,49 @@ fn chess_export_exercises_writes_a_problem_pgn() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N10c (decision D20, the D18 session): with `dialect: chessbase`, `chess_export_exercises`
+/// opens each statement with ChessBase's training question — the book's language as ChessBase's
+/// tab, the question, two empty fields, the first move as its squares, empty feedback and 10 — and
+/// lists the exercises whose first move castles or promotes, written without it; the standard
+/// dialect writes none and says null. The path stays confined to the root.
+#[test]
+fn chess_export_exercises_writes_chessbases_training_question() {
+    let (base, root) = workdir("exercises-tqu");
+    let rows: Vec<Vec<String>> = ["6k1/5ppp/8/8/8/8/8/3R2K1", "4k3/8/8/8/8/8/8/4K2R", "8/P7/8/8/8/8/7k/4K3"].into_iter().map(merida_rows).collect();
+    let board = |i: usize| -> [&str; 8] { std::array::from_fn(|r| rows[i][r].as_str()) };
+    let pages = [("Exercise 1", board(0), Some("1.Rd8#")), ("Exercise 2", board(1), Some("1.O-O")), ("Exercise 3", board(2), Some("1.a8=Q"))];
+    std::fs::write(root.join("exercises.pdf"), exercise_pages(&pages)).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "exercises.pdf" }))["doc"].as_u64().unwrap();
+    let args = |dialect: &str, out: &str| json!({ "doc": doc, "lang": "en", "text_lang": "pt", "out": out, "title": "Mates", "dialect": dialect });
+    let made = ok(&mut a, "chess_export_exercises", args("chessbase", "cb.pgn"));
+    let numbers: Vec<u64> = made["exercises"].as_array().unwrap().iter().filter_map(|e| e["number"].as_u64()).collect();
+    assert_eq!(numbers, [1, 2, 3], "{made:#}");
+    assert_eq!(
+        made["training_left_out"],
+        json!([{ "page": 2, "diagram": 1, "number": 2, "reason": "castling" }, { "page": 3, "diagram": 1, "number": 3, "reason": "promotion" }]),
+        "{made:#}"
+    );
+    let pgn = std::fs::read_to_string(root.join("cb.pgn")).unwrap();
+    println!("CB-EXERCISES-BEGIN\n{pgn}CB-EXERCISES-END");
+    let games: Vec<&str> = pgn.split("\n\n[Event").collect();
+    assert_eq!(games.len(), 3, "{pgn}");
+    assert!(games[0].contains("\n{[%tqu \"Pt\",\"Brancas jogam (№ 1).\",\"\",\"\",\"d1d8\",\"\",10] Pág. 1"), "{pgn}");
+    assert!(games[0].split_whitespace().collect::<Vec<_>>().join(" ").contains("1. Rd8#"), "{pgn}");
+    assert!(!games[1].contains("%tqu") && games[1].contains("{Brancas jogam (№ 2).") && games[1].contains("1. O-O"), "{pgn}");
+    assert!(!games[2].contains("%tqu") && games[2].contains("{Brancas jogam (№ 3).") && games[2].contains("1. a8=Q"), "{pgn}");
+    let standard = ok(&mut a, "chess_export_exercises", args("standard", "standard.pgn"));
+    assert_eq!(standard["training_left_out"], Value::Null, "{standard:#}");
+    let plain = std::fs::read_to_string(root.join("standard.pgn")).unwrap();
+    assert!(!plain.contains("%tqu") && plain.contains("{Brancas jogam (№ 1). Pág. 1"), "{plain}");
+    match a.call("chess_export_exercises", &args("chessbase", "../outside/x.pgn")) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a path outside the root: {other:?}"),
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan A9-N12a (A8-14, decision D30): `chess_export_worksheet` writes the book's exercises as a
 /// new PDF — four diagrams a page, each captioned, the solutions at the end, the numbered diagram
 /// whose solution was not read among them with "solution not read" — that opens without repair,

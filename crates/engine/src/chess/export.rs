@@ -375,6 +375,7 @@ fn anki_cards(
         exercises: deck.exercises(),
         left_out: deck.left_out,
         warnings: Vec::new(),
+        training_left_out: None,
     };
     (Written { bytes, drawn: images.len(), images }, made)
 }

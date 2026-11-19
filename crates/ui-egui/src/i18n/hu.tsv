@@ -3880,3 +3880,4 @@ pawn structure	Passed	Szabad
 	PGN for	PGN ehhez
 	Standard PGN	Szabványos PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	A Lichess és a ChessBase az olyan jelnek, amelynek mindkét félnek van kódja, csak a világos kódját tartja meg: a sötétéi a világoséként íródnak. A Lichess számára az általa nem ismert jel a lépés megjegyzésébe kerül, a motor értékelése pedig [%eval]-ként; a ChessBase számára a diagram a saját jelölésével.
+	Without ChessBase's training question: {n}	ChessBase-edzéskérdés nélkül: {n}

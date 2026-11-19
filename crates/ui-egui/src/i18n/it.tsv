@@ -4093,3 +4093,4 @@ pawn structure	Passed	Passati
 	PGN for	PGN per
 	Standard PGN	PGN standard
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess e ChessBase tengono solo il codice del Bianco di un segno che ne ha uno per ciascun colore: quelli del Nero vengono scritti come quelli del Bianco. Per Lichess, un segno che non conosce va nel commento della mossa e la valutazione del motore come [%eval]; per ChessBase, un diagramma con il suo segno.
+	Without ChessBase's training question: {n}	Senza la domanda di allenamento di ChessBase: {n}
