@@ -3936,3 +3936,83 @@ progress bar	Progress	Progreso
 pawn structure	Passed	Pasados
 # fix: the board rail's More button
 	More board tools	Más herramientas del tablero
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Omitido: no permite copiar
+	Encrypted: read it into the Library?	Cifrado: ¿leerlo en la Biblioteca?
+	Skipped: does not open	Omitido: no se abre
+	Skipped: larger than 1 GB	Omitido: mayor de 1 GB
+	Skipped: can't be read	Omitido: no se puede leer
+	Skipped: reading failed	Omitido: falló la lectura
+	Skipped: now in the cloud	Omitido: ahora está en la nube
+	Skipped: a link, never followed	Omitido: un enlace, nunca se sigue
+	Skipped: no longer there	Omitido: ya no está
+	Left as it was: its index can't be read now	Se dejó como estaba: su índice no se puede leer ahora
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Páginas leídas: {pages} · diagramas: {diagrams} · por revisar: {review} · partidas: {games}
+	no piece model: picture diagrams not read	sin el modelo de piezas: los diagramas en imagen no se leyeron
+	Stopped partway: Continue goes on from there	Detenido a medias: Continuar sigue desde ahí
+	Not read yet	Aún sin leer
+	In the cloud: never opened	En la nube: nunca se abre
+	Not kept: the Library is full (128 MB)	No guardado: la Biblioteca está llena (128 MB)
+	Encrypted: you said yes	Cifrado: dijiste que sí
+	The Library needs the app's data folder, and there is none.	La Biblioteca necesita la carpeta de datos de la app, y no hay ninguna.
+	Choose a folder of chess books	Elige una carpeta de libros de ajedrez
+	Books left out of the Library: {n}	Libros quitados de la Biblioteca: {n}
+	This folder is in the Library already, through {dir}.	Esta carpeta ya está en la Biblioteca, a través de {dir}.
+	The Library has {n} folders already.	La Biblioteca ya tiene {n} carpetas.
+	The Library's folders couldn't be changed: {e}	No se pudieron cambiar las carpetas de la Biblioteca: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	La construcción de la Biblioteca se detuvo: libros pendientes: {n}. Continuar sigue desde ahí.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	La Biblioteca está construida: libros leídos ahora: {read}; libros en la Biblioteca: {indexed}.
+	The Library couldn't be built: {e}	No se pudo construir la Biblioteca: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} está en la nube, no en este equipo: no se abre.
+	{path} is no longer there: build the Library again to forget it.	{path} ya no está: vuelve a construir la Biblioteca para olvidarlo.
+	This move is in the book's PGN, which gives no page for it.	Esta jugada está en el PGN del libro, que no indica su página.
+	The move couldn't be outlined: page {page} reads differently now.	No se pudo marcar la jugada: la página {page} ahora se lee de otra forma.
+	Library	Biblioteca
+	Books	Libros
+	Stopping after this page…	Deteniendo tras esta página…
+	Building the Library: looking at the folders…	Construyendo la Biblioteca: revisando las carpetas…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Construyendo la Biblioteca: libro {n} de {m} ({name}), página {p} de {q}
+	Building the Library: book {n} of {m} ({name})	Construyendo la Biblioteca: libro {n} de {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Los libros de las carpetas que elijas, leídos una vez, para encontrar una posición, una jugada o un jugador en todos ellos. No se lee nada hasta que construyas.
+	No folder yet: add the folders where your chess books are.	Aún no hay carpetas: añade las carpetas donde están tus libros de ajedrez.
+	Its books leave the Library; the files stay where they are.	Sus libros salen de la Biblioteca; los archivos se quedan donde están.
+	Add a folder…	Añadir una carpeta…
+	The folders can't change while the Library is being built.	Las carpetas no pueden cambiar mientras se construye la Biblioteca.
+	Books in the Library: {n}	Libros en la Biblioteca: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Sin revisar: enlaces {links}, carpetas en la nube {cloud}, carpetas que no se pueden listar {unlisted}.
+	The folders hold more than a build looks at.	Las carpetas contienen más de lo que revisa una construcción.
+	Build	Construir
+	Reads on {n} of the {all} cores of this computer.	Lee con {n} de los {all} núcleos de este equipo.
+	Counting the pages: book {n} of {m}…	Contando las páginas: libro {n} de {m}…
+	Every book is read: a build only looks for new or changed ones.	Todos los libros están leídos: una construcción solo busca los nuevos o cambiados.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Por leer: {books} libros, {pages} páginas, {time} (una estimación)
+	Books whose pages could not be counted: {n}	Libros cuyas páginas no se pudieron contar: {n}
+	Leave out	Dejar fuera
+	Position (FEN)	Posición (FEN)
+	Move (SAN)	Jugada (SAN)
+	Player	Jugador
+	Opening (ECO)	Apertura (ECO)
+	From the board	Del tablero
+	The position the Board tab shows	La posición que muestra la pestaña Tablero
+	Either side to move	Cualquier bando al turno
+	Not a FEN: {e}	No es un FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Escribe una posición (FEN), una jugada como Bxh7+, un jugador, un evento o un código de apertura como B90.
+	Looking in the Library…	Buscando en la Biblioteca…
+	The Library couldn't be searched: {e}	No se pudo buscar en la Biblioteca: {e}
+	No book of the Library is read yet: build it first, in Books.	Aún no se ha leído ningún libro de la Biblioteca: constrúyela primero, en Libros.
+	Books not read yet, not looked in: {n}	Libros aún sin leer, no revisados: {n}
+	Books whose index could not be read: {n}	Libros cuyo índice no se pudo leer: {n}
+	Nothing in the Library matches.	Nada en la Biblioteca coincide.
+	Open the Library	Abrir la Biblioteca
+	Look in the Library	Buscar en la Biblioteca
+	Find this position in every book of the Library	Buscar esta posición en todos los libros de la Biblioteca
+	Library…	Biblioteca…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	La carpeta se añadirá cuando termine la construcción.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Hay otra construcción de esta Biblioteca en curso (en otra ventana, en otro PdfCraft o en la línea de comandos): espera a que termine.
+	The Library's catalog can't be read, so it isn't changed: {e}	No se puede leer el catálogo de la Biblioteca, así que no se cambia: {e}
+	This book changed since the Library read it: build the Library again.	Este libro cambió desde que la Biblioteca lo leyó: vuelve a construir la Biblioteca.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	La jugada no se marcó: su página no se leyó a tiempo, o te fuiste a otro sitio.
+	{path} is a link, which the Library never opens.	{path} es un enlace, que la Biblioteca nunca abre.
+	{path} can't be opened.	No se puede abrir {path}.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	La última construcción se interrumpió (PdfCraft se cerró o se detuvo por un error): Continuar sigue desde donde estaba.

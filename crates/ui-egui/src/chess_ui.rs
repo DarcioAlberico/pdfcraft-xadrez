@@ -118,6 +118,9 @@ pub struct ChessState {
     /// document's check found.
     #[cfg(not(target_arch = "wasm32"))]
     pub engine_review: crate::chess_engine_review::EngineReview,
+    /// Chess ▸ Library… (plan A9-N15c): its dialog, its build, its search.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub library: crate::chess_library::LibraryUi,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,

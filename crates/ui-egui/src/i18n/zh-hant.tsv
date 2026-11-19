@@ -3735,3 +3735,83 @@ progress bar	Progress	進度
 pawn structure	Passed	通路兵
 # fix: the board rail's More button
 	More board tools	更多棋盤工具
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	已略過：不允許複製
+	Encrypted: read it into the Library?	已加密：要讀入書庫嗎？
+	Skipped: does not open	已略過：無法開啟
+	Skipped: larger than 1 GB	已略過：大於 1 GB
+	Skipped: can't be read	已略過：無法讀取
+	Skipped: reading failed	已略過：讀取失敗
+	Skipped: now in the cloud	已略過：現在在雲端
+	Skipped: a link, never followed	已略過：連結，從不追隨
+	Skipped: no longer there	已略過：已不在原處
+	Left as it was: its index can't be read now	保持原樣：其索引現在無法讀取
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	已讀頁數：{pages} · 棋圖：{diagrams} · 待複核：{review} · 對局：{games}
+	no piece model: picture diagrams not read	無棋子模型：圖片棋圖未讀取
+	Stopped partway: Continue goes on from there	中途停止：「繼續」從那裡接著讀
+	Not read yet	尚未讀取
+	In the cloud: never opened	在雲端：從不開啟
+	Not kept: the Library is full (128 MB)	未保存：書庫已滿（128 MB）
+	Encrypted: you said yes	已加密：你已同意
+	The Library needs the app's data folder, and there is none.	書庫需要應用程式的資料資料夾，但沒有。
+	Choose a folder of chess books	選擇一個西洋棋書籍資料夾
+	Books left out of the Library: {n}	移出書庫的書：{n}
+	This folder is in the Library already, through {dir}.	此資料夾已透過 {dir} 在書庫中。
+	The Library has {n} folders already.	書庫已有 {n} 個資料夾。
+	The Library's folders couldn't be changed: {e}	無法變更書庫的資料夾：{e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	書庫建置已停止：剩餘的書：{n}。「繼續」從那裡接著讀。
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	書庫已建置：本次讀取的書：{read}；書庫中的書：{indexed}。
+	The Library couldn't be built: {e}	無法建置書庫：{e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} 在雲端，不在這台電腦上：不會開啟。
+	{path} is no longer there: build the Library again to forget it.	{path} 已不在原處：重新建置書庫即可將其忘記。
+	This move is in the book's PGN, which gives no page for it.	這步棋在本書的 PGN 中，但其中沒有提供頁碼。
+	The move couldn't be outlined: page {page} reads differently now.	無法框出這步棋：第 {page} 頁現在的讀取結果不同。
+	Library	書庫
+	Books	書籍
+	Stopping after this page…	將在本頁之後停止…
+	Building the Library: looking at the folders…	正在建置書庫：查看資料夾…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	正在建置書庫：第 {n}/{m} 本（{name}），第 {p}/{q} 頁
+	Building the Library: book {n} of {m} ({name})	正在建置書庫：第 {n}/{m} 本（{name}）
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	你選擇的資料夾中的書只讀取一次，之後就能在所有書中找到某個局面、某步棋或某位棋手。在你建置之前不會讀取任何內容。
+	No folder yet: add the folders where your chess books are.	還沒有資料夾：新增存放你的西洋棋書籍的資料夾。
+	Its books leave the Library; the files stay where they are.	其中的書會移出書庫；檔案保留在原處。
+	Add a folder…	新增資料夾…
+	The folders can't change while the Library is being built.	建置書庫期間不能變更資料夾。
+	Books in the Library: {n}	書庫中的書：{n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	未查看：連結 {links}，雲端資料夾 {cloud}，無法列出的資料夾 {unlisted}。
+	The folders hold more than a build looks at.	這些資料夾包含的內容超出了一次建置的查看範圍。
+	Build	建置
+	Reads on {n} of the {all} cores of this computer.	使用本機 {all} 個核心中的 {n} 個讀取。
+	Counting the pages: book {n} of {m}…	正在計算頁數：第 {n}/{m} 本…
+	Every book is read: a build only looks for new or changed ones.	所有書都已讀取：建置只尋找新的或已變更的書。
+	To read: {books} books, {pages} pages, {time} (an estimate)	待讀取：{books} 本、{pages} 頁、{time}（估計）
+	Books whose pages could not be counted: {n}	無法計算頁數的書：{n}
+	Leave out	排除
+	Position (FEN)	局面（FEN）
+	Move (SAN)	著法（SAN）
+	Player	棋手
+	Opening (ECO)	開局（ECO）
+	From the board	從棋盤
+	The position the Board tab shows	棋盤分頁顯示的局面
+	Either side to move	任一方走棋
+	Not a FEN: {e}	不是 FEN：{e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	輸入一個局面（FEN）、一步棋（如 Bxh7+）、一位棋手、一項賽事或一個開局代碼（如 B90）。
+	Looking in the Library…	正在書庫中尋找…
+	The Library couldn't be searched: {e}	無法在書庫中尋找：{e}
+	No book of the Library is read yet: build it first, in Books.	書庫中還沒有已讀取的書：請先在「書籍」中建置。
+	Books not read yet, not looked in: {n}	尚未讀取、未查看的書：{n}
+	Books whose index could not be read: {n}	索引無法讀取的書：{n}
+	Nothing in the Library matches.	書庫中沒有相符項目。
+	Open the Library	開啟書庫
+	Look in the Library	在書庫中尋找
+	Find this position in every book of the Library	在書庫的所有書中尋找此局面
+	Library…	書庫…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	建置結束後會加入該資料夾。
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	此書庫的另一次建置正在執行（在另一個視窗、另一個 PdfCraft 或命令列中）：請等它結束。
+	The Library's catalog can't be read, so it isn't changed: {e}	無法讀取書庫的目錄，因此不作變更：{e}
+	This book changed since the Library read it: build the Library again.	書庫讀取這本書之後，它已變更：請重新建置書庫。
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	未框出這步棋：它所在的頁面沒有及時讀取，或者你已移到別處。
+	{path} is a link, which the Library never opens.	{path} 是一個連結，書庫從不開啟連結。
+	{path} can't be opened.	無法開啟 {path}。
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	上次建置中途中斷（PdfCraft 已關閉，或因錯誤停止）：「繼續」會從中斷處接著讀。

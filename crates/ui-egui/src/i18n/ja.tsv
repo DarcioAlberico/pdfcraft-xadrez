@@ -3797,3 +3797,83 @@ progress bar	Progress	進行状況
 pawn structure	Passed	パスポーン
 # fix: the board rail's More button
 	More board tools	その他の盤ツール
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	スキップ：コピーが許可されていません
+	Encrypted: read it into the Library?	暗号化：ライブラリに読み込みますか？
+	Skipped: does not open	スキップ：開けません
+	Skipped: larger than 1 GB	スキップ：1 GB を超えています
+	Skipped: can't be read	スキップ：読めません
+	Skipped: reading failed	スキップ：読み取りに失敗しました
+	Skipped: now in the cloud	スキップ：現在クラウド上にあります
+	Skipped: a link, never followed	スキップ：リンクは辿りません
+	Skipped: no longer there	スキップ：もうありません
+	Left as it was: its index can't be read now	そのまま：索引を今は読めません
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	読み取ったページ：{pages}・局面図：{diagrams}・確認待ち：{review}・対局：{games}
+	no piece model: picture diagrams not read	駒モデルなし：画像の局面図は読んでいません
+	Stopped partway: Continue goes on from there	途中で停止：「続行」でそこから再開します
+	Not read yet	まだ読んでいません
+	In the cloud: never opened	クラウド上：開きません
+	Not kept: the Library is full (128 MB)	保存されません：ライブラリが満杯です（128 MB）
+	Encrypted: you said yes	暗号化：はいと答えました
+	The Library needs the app's data folder, and there is none.	ライブラリにはアプリのデータフォルダーが必要ですが、ありません。
+	Choose a folder of chess books	チェスの本のフォルダーを選択
+	Books left out of the Library: {n}	ライブラリから外した本：{n}
+	This folder is in the Library already, through {dir}.	このフォルダーは {dir} を通じてすでにライブラリにあります。
+	The Library has {n} folders already.	ライブラリにはすでに {n} 個のフォルダーがあります。
+	The Library's folders couldn't be changed: {e}	ライブラリのフォルダーを変更できませんでした：{e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	ライブラリの構築を停止しました：残りの本 {n}。「続行」でそこから再開します。
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	ライブラリを構築しました：今回読んだ本 {read}、ライブラリの本 {indexed}。
+	The Library couldn't be built: {e}	ライブラリを構築できませんでした：{e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} はこのコンピューターではなくクラウド上にあるため、開きません。
+	{path} is no longer there: build the Library again to forget it.	{path} はもうありません：忘れるにはライブラリを再構築してください。
+	This move is in the book's PGN, which gives no page for it.	この指し手は本の PGN にありますが、ページが示されていません。
+	The move couldn't be outlined: page {page} reads differently now.	指し手を囲めませんでした：{page} ページの読み取り結果が変わっています。
+	Library	ライブラリ
+	Books	本
+	Stopping after this page…	このページの後で停止します…
+	Building the Library: looking at the folders…	ライブラリを構築中：フォルダーを確認しています…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	ライブラリを構築中：本 {n}/{m}（{name}）、ページ {p}/{q}
+	Building the Library: book {n} of {m} ({name})	ライブラリを構築中：本 {n}/{m}（{name}）
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	選んだフォルダーの本を一度だけ読み、局面・指し手・対局者をすべての本から見つけられるようにします。構築するまで何も読みません。
+	No folder yet: add the folders where your chess books are.	フォルダーがまだありません：チェスの本があるフォルダーを追加してください。
+	Its books leave the Library; the files stay where they are.	その本はライブラリから外れます。ファイルはそのまま残ります。
+	Add a folder…	フォルダーを追加…
+	The folders can't change while the Library is being built.	ライブラリの構築中はフォルダーを変更できません。
+	Books in the Library: {n}	ライブラリの本：{n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	未確認：リンク {links}、クラウド上のフォルダー {cloud}、一覧できないフォルダー {unlisted}。
+	The folders hold more than a build looks at.	フォルダーには一回の構築で確認できる以上のものがあります。
+	Build	構築
+	Reads on {n} of the {all} cores of this computer.	このコンピューターの {all} コア中 {n} コアで読みます。
+	Counting the pages: book {n} of {m}…	ページを数えています：本 {n}/{m}…
+	Every book is read: a build only looks for new or changed ones.	すべての本を読みました：構築では新しい本や変更された本だけを探します。
+	To read: {books} books, {pages} pages, {time} (an estimate)	読む本：{books} 冊、{pages} ページ、{time}（見積もり）
+	Books whose pages could not be counted: {n}	ページを数えられなかった本：{n}
+	Leave out	除外
+	Position (FEN)	局面（FEN）
+	Move (SAN)	指し手（SAN）
+	Player	対局者
+	Opening (ECO)	オープニング（ECO）
+	From the board	盤から
+	The position the Board tab shows	盤タブに表示されている局面
+	Either side to move	どちらの手番でも
+	Not a FEN: {e}	FEN ではありません：{e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	局面（FEN）、Bxh7+ のような指し手、対局者、大会、または B90 のようなオープニングコードを入力してください。
+	Looking in the Library…	ライブラリを検索しています…
+	The Library couldn't be searched: {e}	ライブラリを検索できませんでした：{e}
+	No book of the Library is read yet: build it first, in Books.	ライブラリの本はまだ読まれていません：まず「本」で構築してください。
+	Books not read yet, not looked in: {n}	まだ読んでいない本（未確認）：{n}
+	Books whose index could not be read: {n}	索引を読めなかった本：{n}
+	Nothing in the Library matches.	ライブラリに一致するものはありません。
+	Open the Library	ライブラリを開く
+	Look in the Library	ライブラリで探す
+	Find this position in every book of the Library	この局面をライブラリのすべての本で探す
+	Library…	ライブラリ…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	フォルダーは構築が終わったときに追加されます。
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	このライブラリの別の構築が実行中です（別のウィンドウ、別の PdfCraft、またはコマンドライン）：終わるまでお待ちください。
+	The Library's catalog can't be read, so it isn't changed: {e}	ライブラリのカタログを読めないため、変更しません：{e}
+	This book changed since the Library read it: build the Library again.	ライブラリが読んだ後にこの本は変更されています：ライブラリを再構築してください。
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	指し手を囲みませんでした：そのページが時間内に読まれなかったか、別の場所へ移動しました。
+	{path} is a link, which the Library never opens.	{path} はリンクです。ライブラリはリンクを開きません。
+	{path} can't be opened.	{path} を開けません。
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	前回の構築は途中で終わりました（PdfCraft が閉じられたか、エラーで止まりました）：「続行」で中断したところから続けます。

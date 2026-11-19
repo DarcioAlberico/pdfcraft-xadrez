@@ -3709,3 +3709,83 @@ progress bar	Progress	Ход выполнения
 pawn structure	Passed	Проходные
 # fix: the board rail's More button
 	More board tools	Другие инструменты доски
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Пропущена: копирование запрещено
+	Encrypted: read it into the Library?	Зашифрована: прочитать в Библиотеку?
+	Skipped: does not open	Пропущена: не открывается
+	Skipped: larger than 1 GB	Пропущена: больше 1 ГБ
+	Skipped: can't be read	Пропущена: не читается
+	Skipped: reading failed	Пропущена: чтение не удалось
+	Skipped: now in the cloud	Пропущена: теперь в облаке
+	Skipped: a link, never followed	Пропущена: ссылка, по ссылкам не переходим
+	Skipped: no longer there	Пропущена: её больше нет
+	Left as it was: its index can't be read now	Оставлена как есть: её индекс сейчас не читается
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Прочитано страниц: {pages} · диаграмм: {diagrams} · на проверку: {review} · партий: {games}
+	no piece model: picture diagrams not read	нет модели фигур: диаграммы-картинки не прочитаны
+	Stopped partway: Continue goes on from there	Остановлено на середине: «Продолжить» продолжит отсюда
+	Not read yet	Ещё не прочитана
+	In the cloud: never opened	В облаке: не открывается
+	Not kept: the Library is full (128 MB)	Не сохранена: Библиотека заполнена (128 МБ)
+	Encrypted: you said yes	Зашифрована: вы сказали «да»
+	The Library needs the app's data folder, and there is none.	Библиотеке нужна папка данных приложения, а её нет.
+	Choose a folder of chess books	Выберите папку с шахматными книгами
+	Books left out of the Library: {n}	Книг убрано из Библиотеки: {n}
+	This folder is in the Library already, through {dir}.	Эта папка уже в Библиотеке, через {dir}.
+	The Library has {n} folders already.	В Библиотеке уже папок: {n}.
+	The Library's folders couldn't be changed: {e}	Не удалось изменить папки Библиотеки: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Сборка Библиотеки остановлена: осталось книг: {n}. «Продолжить» продолжит отсюда.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Библиотека собрана: прочитано книг сейчас: {read}; книг в Библиотеке: {indexed}.
+	The Library couldn't be built: {e}	Не удалось собрать Библиотеку: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} в облаке, а не на этом компьютере: не открывается.
+	{path} is no longer there: build the Library again to forget it.	{path} больше нет: соберите Библиотеку заново, чтобы забыть его.
+	This move is in the book's PGN, which gives no page for it.	Этот ход есть в PGN книги, где его страница не указана.
+	The move couldn't be outlined: page {page} reads differently now.	Не удалось обвести ход: страница {page} теперь читается иначе.
+	Library	Библиотека
+	Books	Книги
+	Stopping after this page…	Остановка после этой страницы…
+	Building the Library: looking at the folders…	Сборка Библиотеки: просмотр папок…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Сборка Библиотеки: книга {n} из {m} ({name}), страница {p} из {q}
+	Building the Library: book {n} of {m} ({name})	Сборка Библиотеки: книга {n} из {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Книги из выбранных папок, прочитанные один раз, чтобы позицию, ход или игрока можно было найти во всех. Ничего не читается, пока вы не соберёте.
+	No folder yet: add the folders where your chess books are.	Папок пока нет: добавьте папки с вашими шахматными книгами.
+	Its books leave the Library; the files stay where they are.	Её книги уйдут из Библиотеки; файлы останутся на месте.
+	Add a folder…	Добавить папку…
+	The folders can't change while the Library is being built.	Папки нельзя менять, пока собирается Библиотека.
+	Books in the Library: {n}	Книг в Библиотеке: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Не просмотрено: ссылок {links}, папок в облаке {cloud}, папок, которые нельзя перечислить {unlisted}.
+	The folders hold more than a build looks at.	В папках больше, чем просматривает одна сборка.
+	Build	Собрать
+	Reads on {n} of the {all} cores of this computer.	Читает на {n} из {all} ядер этого компьютера.
+	Counting the pages: book {n} of {m}…	Подсчёт страниц: книга {n} из {m}…
+	Every book is read: a build only looks for new or changed ones.	Все книги прочитаны: сборка ищет только новые или изменённые.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Прочитать: книг {books}, страниц {pages}, {time} (оценка)
+	Books whose pages could not be counted: {n}	Книг, страницы которых не удалось подсчитать: {n}
+	Leave out	Не включать
+	Position (FEN)	Позиция (FEN)
+	Move (SAN)	Ход (SAN)
+	Player	Игрок
+	Opening (ECO)	Дебют (ECO)
+	From the board	С доски
+	The position the Board tab shows	Позиция на вкладке «Доска»
+	Either side to move	Очередь хода любой стороны
+	Not a FEN: {e}	Это не FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Введите позицию (FEN), ход вроде Bxh7+, игрока, турнир или код дебюта вроде B90.
+	Looking in the Library…	Поиск в Библиотеке…
+	The Library couldn't be searched: {e}	Не удалось выполнить поиск в Библиотеке: {e}
+	No book of the Library is read yet: build it first, in Books.	Ни одна книга Библиотеки ещё не прочитана: сначала соберите её, в разделе «Книги».
+	Books not read yet, not looked in: {n}	Книг ещё не прочитано, не просмотрено: {n}
+	Books whose index could not be read: {n}	Книг, индекс которых не удалось прочитать: {n}
+	Nothing in the Library matches.	В Библиотеке ничего не найдено.
+	Open the Library	Открыть Библиотеку
+	Look in the Library	Искать в Библиотеке
+	Find this position in every book of the Library	Искать эту позицию во всех книгах Библиотеки
+	Library…	Библиотека…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Папка будет добавлена, когда сборка закончится.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Идёт другая сборка этой Библиотеки (в другом окне, в другом PdfCraft или в командной строке): дождитесь её окончания.
+	The Library's catalog can't be read, so it isn't changed: {e}	Каталог Библиотеки не читается, поэтому он не изменён: {e}
+	This book changed since the Library read it: build the Library again.	Эта книга изменилась с тех пор, как Библиотека её прочла: соберите Библиотеку заново.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Ход не обведён: его страница не была прочитана вовремя, или вы ушли в другое место.
+	{path} is a link, which the Library never opens.	{path} — это ссылка, а Библиотека никогда не открывает ссылки.
+	{path} can't be opened.	Не удаётся открыть {path}.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Последняя сборка была прервана (PdfCraft закрылся или остановился на ошибке): «Продолжить» продолжит с того места, где она остановилась.

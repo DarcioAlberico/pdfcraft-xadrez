@@ -3800,3 +3800,83 @@ progress bar	Progress	Napredek
 pawn structure	Passed	Prosti
 # fix: the board rail's More button
 	More board tools	Več orodij šahovnice
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Preskočeno: kopiranje ni dovoljeno
+	Encrypted: read it into the Library?	Šifrirano: jo prebrati v knjižnico?
+	Skipped: does not open	Preskočeno: se ne odpre
+	Skipped: larger than 1 GB	Preskočeno: večja od 1 GB
+	Skipped: can't be read	Preskočeno: ni berljiva
+	Skipped: reading failed	Preskočeno: branje ni uspelo
+	Skipped: now in the cloud	Preskočeno: zdaj v oblaku
+	Skipped: a link, never followed	Preskočeno: povezava, ki ji nikoli ne sledimo
+	Skipped: no longer there	Preskočeno: je ni več
+	Left as it was: its index can't be read now	Pustili, kot je bilo: njenega kazala zdaj ni mogoče prebrati
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Prebrane strani: {pages} · diagrami: {diagrams} · za pregled: {review} · partije: {games}
+	no piece model: picture diagrams not read	brez modela figur: diagrami v slikah niso prebrani
+	Stopped partway: Continue goes on from there	Ustavljeno sredi: Nadaljuj nadaljuje od tam
+	Not read yet	Še ni prebrano
+	In the cloud: never opened	V oblaku: nikoli ne odpremo
+	Not kept: the Library is full (128 MB)	Ni shranjeno: knjižnica je polna (128 MB)
+	Encrypted: you said yes	Šifrirano: rekli ste da
+	The Library needs the app's data folder, and there is none.	Knjižnica potrebuje podatkovno mapo aplikacije, a je ni.
+	Choose a folder of chess books	Izberite mapo s šahovskimi knjigami
+	Books left out of the Library: {n}	Knjige, odstranjene iz knjižnice: {n}
+	This folder is in the Library already, through {dir}.	Ta mapa je že v knjižnici, prek {dir}.
+	The Library has {n} folders already.	Knjižnica že ima map: {n}.
+	The Library's folders couldn't be changed: {e}	Map knjižnice ni bilo mogoče spremeniti: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Gradnja knjižnice je ustavljena: preostale knjige: {n}. Nadaljuj nadaljuje od tam.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Knjižnica je zgrajena: zdaj prebrane knjige: {read}; knjige v knjižnici: {indexed}.
+	The Library couldn't be built: {e}	Knjižnice ni bilo mogoče zgraditi: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} je v oblaku, ne v tem računalniku: se ne odpre.
+	{path} is no longer there: build the Library again to forget it.	{path} ni več tam: znova zgradite knjižnico, da ga pozabi.
+	This move is in the book's PGN, which gives no page for it.	Ta poteza je v PGN knjige, ki zanjo ne navaja strani.
+	The move couldn't be outlined: page {page} reads differently now.	Poteze ni bilo mogoče obrobiti: stran {page} se zdaj bere drugače.
+	Library	Knjižnica
+	Books	Knjige
+	Stopping after this page…	Ustavitev po tej strani…
+	Building the Library: looking at the folders…	Gradnja knjižnice: pregled map…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Gradnja knjižnice: knjiga {n} od {m} ({name}), stran {p} od {q}
+	Building the Library: book {n} of {m} ({name})	Gradnja knjižnice: knjiga {n} od {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Knjige iz map, ki jih izberete, enkrat prebrane, da se položaj, poteza ali igralec najde v vseh. Nič se ne prebere, dokler ne zgradite.
+	No folder yet: add the folders where your chess books are.	Še ni map: dodajte mape, v katerih so vaše šahovske knjige.
+	Its books leave the Library; the files stay where they are.	Njene knjige zapustijo knjižnico; datoteke ostanejo, kjer so.
+	Add a folder…	Dodaj mapo…
+	The folders can't change while the Library is being built.	Map ni mogoče spreminjati, medtem ko se knjižnica gradi.
+	Books in the Library: {n}	Knjige v knjižnici: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Ni pregledano: povezave {links}, mape v oblaku {cloud}, mape, ki jih ni mogoče našteti {unlisted}.
+	The folders hold more than a build looks at.	Mape vsebujejo več, kot pregleda ena gradnja.
+	Build	Zgradi
+	Reads on {n} of the {all} cores of this computer.	Bere na {n} od {all} jeder tega računalnika.
+	Counting the pages: book {n} of {m}…	Štetje strani: knjiga {n} od {m}…
+	Every book is read: a build only looks for new or changed ones.	Vse knjige so prebrane: gradnja išče le nove ali spremenjene.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Za branje: knjige {books}, strani {pages}, {time} (ocena)
+	Books whose pages could not be counted: {n}	Knjige, katerih strani ni bilo mogoče prešteti: {n}
+	Leave out	Izpusti
+	Position (FEN)	Položaj (FEN)
+	Move (SAN)	Poteza (SAN)
+	Player	Igralec
+	Opening (ECO)	Otvoritev (ECO)
+	From the board	S šahovnice
+	The position the Board tab shows	Položaj, ki ga kaže zavihek Šahovnica
+	Either side to move	Na potezi katera koli stran
+	Not a FEN: {e}	Ni FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Napišite položaj (FEN), potezo, kot je Bxh7+, igralca, turnir ali kodo otvoritve, kot je B90.
+	Looking in the Library…	Iskanje v knjižnici…
+	The Library couldn't be searched: {e}	Iskanje v knjižnici ni uspelo: {e}
+	No book of the Library is read yet: build it first, in Books.	Nobena knjiga knjižnice še ni prebrana: najprej jo zgradite, v razdelku Knjige.
+	Books not read yet, not looked in: {n}	Knjige, še neprebrane, nepregledane: {n}
+	Books whose index could not be read: {n}	Knjige, katerih kazala ni bilo mogoče prebrati: {n}
+	Nothing in the Library matches.	Nič v knjižnici se ne ujema.
+	Open the Library	Odpri knjižnico
+	Look in the Library	Išči v knjižnici
+	Find this position in every book of the Library	Išči ta položaj v vseh knjigah knjižnice
+	Library…	Knjižnica…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Mapa bo dodana, ko se gradnja konča.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Poteka druga gradnja te knjižnice (v drugem oknu, v drugem PdfCraftu ali v ukazni vrstici): počakajte, da se konča.
+	The Library's catalog can't be read, so it isn't changed: {e}	Kataloga knjižnice ni mogoče prebrati, zato se ne spremeni: {e}
+	This book changed since the Library read it: build the Library again.	Ta knjiga se je spremenila, odkar jo je knjižnica prebrala: znova zgradite knjižnico.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Poteza ni bila obrobljena: njena stran ni bila pravočasno prebrana ali pa ste šli drugam.
+	{path} is a link, which the Library never opens.	{path} je povezava, ki je knjižnica nikoli ne odpre.
+	{path} can't be opened.	{path} ni mogoče odpreti.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Zadnja gradnja je bila prekinjena (PdfCraft se je zaprl ali se ustavil ob napaki): Nadaljuj nadaljuje tam, kjer je bila.

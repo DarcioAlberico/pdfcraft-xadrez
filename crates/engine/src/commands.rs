@@ -402,6 +402,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     // The book's signs and goals checked by an engine the app runs, in a batch (plan A9-N17b):
     // desktop only, so the web's menus and palette leave it out.
     c("chess.engine_review", "Check with the engine…", CHESS, None, Copying, "gauge"),
+    // The books of the folders chosen, read once and searched together (plan A9-N15c): desktop
+    // only, like the engine's check.
+    c("chess.library", "Library…", CHESS, None, Nothing, "files"),
     // Found by name in the palette and the Chess menu (plan A9-I16, R4-02): the board, an
     // engine's analysis of the position, the export dialog (plan A9-X2) and the sheet of the
     // chess keys (F1 in the chess panels).

@@ -159,7 +159,7 @@ mod tests {
         // The state Not read; the empty Diagram tab has square-dashed-mouse-pointer.
         ("circle-dashed", "Not read", &["chess_widgets.rs"]),
         // Stop, for a long job; × is closing.
-        ("circle-stop", "Stop", &["chess_panel_head.rs"]),
+        ("circle-stop", "Stop", &["chess_panel_head.rs", "chess_library.rs"]),
     ];
 
     /// The chess sources (`chess_*.rs`), without their test modules.

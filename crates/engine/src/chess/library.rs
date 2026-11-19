@@ -32,6 +32,7 @@
 
 pub mod find;
 pub mod index;
+pub mod plan;
 pub mod walk;
 
 #[cfg(test)]
@@ -61,6 +62,8 @@ pub const MAX_PAGE_BYTES: u64 = 128 << 20;
 pub const MAX_BOOK_BYTES: usize = 1 << 30;
 /// The version of what makes an index: raised when the index made of the same reading changes.
 pub const KEY_VERSION: u32 = 1;
+/// Most folders chosen (plan A9-N15c).
+pub const MAX_FOLDERS: usize = 64;
 
 const CATALOG: &str = "catalog.json";
 const CATALOG_FORMAT: &str = "pdfcraft-chess-library";
@@ -201,11 +204,21 @@ pub struct Catalog {
     /// The folders chosen.
     pub dirs: Vec<String>,
     pub books: Vec<CatalogBook>,
+    /// The encrypted books the person said yes to, by hash (D31 A; plan A9-N15c): every build
+    /// reads them, whoever asks for it. A build before this field ignores it.
+    #[serde(default)]
+    pub allowed: Vec<String>,
     #[serde(default)]
     pub walk: WalkNote,
     /// When it was last written, in seconds since 1970.
     #[serde(default)]
     pub updated: u64,
+    /// When the build writing it started, while it runs (plan A9-N15c): a build ended (done,
+    /// stopped or failed on a book) takes it out, so one still here when no build holds the
+    /// Library's lock ([`Library::busy`]) was cut short (the process ended mid-build). A build
+    /// before this field ignores it.
+    #[serde(default)]
+    pub building: Option<u64>,
 }
 
 /// How [`Library::build`] reads the books.
@@ -230,6 +243,52 @@ pub struct BuildOptions {
     /// (`None`: [`MAX_BYTES`]); smaller ones for tests.
     pub max_book_bytes: Option<u64>,
     pub max_bytes: Option<u64>,
+    /// Set to stop the build (plan A9-N15c): looked at between two entries of the walk, before
+    /// each book, while a book is read and hashed (a chunk at a time) and between two pages; the
+    /// build then ends as stopped, its catalog written.
+    pub stop: Option<Arc<std::sync::atomic::AtomicBool>>,
+}
+
+/// Why [`Library::build`] did not run.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BuildError {
+    /// Another build or change of this Library holds its lock ([`Library::lock`]).
+    Busy,
+    /// The Library's folder or its catalog can't be written, and why.
+    Write(String),
+}
+
+impl std::fmt::Display for BuildError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BuildError::Busy => f.write_str(BUSY),
+            BuildError::Write(why) => f.write_str(why),
+        }
+    }
+}
+
+/// What a second build or change is told while one holds the Library (plan A9-N15c).
+pub const BUSY: &str =
+    "another build or change of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end";
+
+/// The lock file in the Library's folder ([`Library::lock`]).
+const LOCK: &str = "library.flock";
+
+/// The Library held by this process for a build or a change ([`Library::lock`]): `library.flock`
+/// locked by the system, let go of when dropped, and by the system when the process ends (no lock
+/// is ever taken for stale, as the stores' `<kind>.flock`, plan A9-G3a).
+#[derive(Debug)]
+pub struct LibraryLock {
+    /// `None`: the folder's file system has no locks (some network shares): nothing is held.
+    file: Option<std::fs::File>,
+}
+
+impl Drop for LibraryLock {
+    fn drop(&mut self) {
+        if let Some(file) = self.file.take() {
+            let _ = file.unlock();
+        }
+    }
 }
 
 /// Where a build is, for its progress.
@@ -306,6 +365,8 @@ pub struct Cleared {
     pub catalog_error: Option<String>,
     /// The folder held more files than are listed ([`MAX_LISTED_FILES`]): those past them stay.
     pub listing_truncated: bool,
+    /// Another build or change held the Library ([`Library::lock`]): nothing was taken out.
+    pub busy: bool,
 }
 
 /// Most files of the Library's folder listed at once.
@@ -425,14 +486,64 @@ impl Library {
     }
 
     /// The catalog, as written: an empty one when there is none, or none to trust (one that
-    /// can't be read is left where it is, and the next build writes another over it).
+    /// can't be read is left where it is, and the next build writes another over it). Its yeses
+    /// are hashes only, each once, at most [`walk::MAX_BOOKS`] (it is untrusted input).
     pub fn catalog(&self) -> Catalog {
-        super::corrections::read_capped(&self.dir.join(CATALOG), MAX_CATALOG_BYTES)
-            .ok()
-            .filter(|b| b.len() <= MAX_CATALOG_BYTES)
-            .and_then(|b| serde_json::from_slice::<Catalog>(&b).ok())
-            .filter(|c| c.format == CATALOG_FORMAT && c.version == CATALOG_VERSION)
-            .unwrap_or_default()
+        self.read_catalog().unwrap_or_default()
+    }
+
+    /// The catalog, or why it can't be trusted: an empty one when there is none; an error when
+    /// one is there and can't be read, is too large, is not JSON of a catalog, or is of another
+    /// format or version (plan A9-N15c: a single change refuses then, rather than write an empty
+    /// catalog over the folders, the books and the yeses).
+    pub fn read_catalog(&self) -> Result<Catalog, String> {
+        let bytes = match super::corrections::read_capped(&self.dir.join(CATALOG), MAX_CATALOG_BYTES) {
+            Ok(b) => b,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Catalog::default()),
+            Err(e) => return Err(e.to_string()),
+        };
+        if bytes.len() > MAX_CATALOG_BYTES {
+            return Err("it is larger than a catalog may be".into());
+        }
+        let mut catalog = serde_json::from_slice::<Catalog>(&bytes).map_err(|e| e.to_string())?;
+        if catalog.format != CATALOG_FORMAT || catalog.version != CATALOG_VERSION {
+            return Err(format!("it is of another format or version ({} {})", catalog.format, catalog.version));
+        }
+        catalog.allowed = allowed_of(&catalog.allowed, &[]);
+        Ok(catalog)
+    }
+
+    /// Hold the Library for a build or a change ([`LibraryLock`]): one try, never a wait;
+    /// [`ChangeError::Busy`] while another holds it, in this process or another.
+    pub fn lock(&self) -> Result<LibraryLock, ChangeError> {
+        std::fs::create_dir_all(&self.dir).map_err(|e| ChangeError::Write(e.to_string()))?;
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(self.dir.join(LOCK))
+            .map_err(|e| ChangeError::Write(e.to_string()))?;
+        match file.try_lock() {
+            Ok(()) => Ok(LibraryLock { file: Some(file) }),
+            Err(std::fs::TryLockError::WouldBlock) => Err(ChangeError::Busy),
+            Err(std::fs::TryLockError::Error(e)) if e.kind() == std::io::ErrorKind::Unsupported => Ok(LibraryLock { file: None }),
+            Err(std::fs::TryLockError::Error(e)) => Err(ChangeError::Write(e.to_string())),
+        }
+    }
+
+    /// Whether a build or a change holds the Library now (one try of its lock, let go of at
+    /// once); `false` when it can't be told (no folder yet, no file locks).
+    pub fn busy(&self) -> bool {
+        let Ok(file) = std::fs::OpenOptions::new().read(true).write(true).open(self.dir.join(LOCK)) else { return false };
+        match file.try_lock() {
+            Ok(()) => {
+                let _ = file.unlock();
+                false
+            }
+            Err(std::fs::TryLockError::WouldBlock) => true,
+            Err(std::fs::TryLockError::Error(_)) => false,
+        }
     }
 
     fn write_catalog(&self, catalog: &mut Catalog) -> std::io::Result<()> {
@@ -515,11 +626,21 @@ impl Library {
     /// Walk `dirs` and index every book there whose index is not current (see the module
     /// documentation), at most `opts.max_books` of them; `progress` is told of each book and each
     /// page scanned, and returning `false` stops between two pages. The catalog is written after
-    /// every book, so a stop or a crash keeps what was done. Fails only when the Library's folder
-    /// can't be written.
-    pub fn build(&self, dirs: &[PathBuf], opts: &BuildOptions, progress: &mut dyn FnMut(&Progress<'_>) -> bool) -> Result<Built, String> {
-        std::fs::create_dir_all(&self.dir).map_err(|e| format!("the Library's folder can't be made: {e}"))?;
-        let walked = walk::walk(dirs, opts.caps, &|| false);
+    /// every book, so a stop or a crash keeps what was done; `opts.stop` stops it too, between two
+    /// entries of the walk, while a book is read and hashed, and between two pages (plan A9-N15c).
+    /// It holds the Library's lock throughout ([`Library::lock`]), and marks the catalog as being
+    /// built until it ends ([`Catalog::building`]). Fails when another build or change holds the
+    /// Library ([`BuildError::Busy`]), or when its folder can't be written.
+    pub fn build(&self, dirs: &[PathBuf], opts: &BuildOptions, progress: &mut dyn FnMut(&Progress<'_>) -> bool) -> Result<Built, BuildError> {
+        std::fs::create_dir_all(&self.dir).map_err(|e| BuildError::Write(format!("the Library's folder can't be made: {e}")))?;
+        // One build or change at a time, in this process or another (plan A9-N15c): another's
+        // indexes are never swept as orphans, nor its catalog written over.
+        let _held = self.lock().map_err(|e| match e {
+            ChangeError::Busy => BuildError::Busy,
+            other => BuildError::Write(other.to_string()),
+        })?;
+        let halted = || opts.stop.as_ref().is_some_and(|s| s.load(std::sync::atomic::Ordering::Relaxed));
+        let walked = walk::walk(dirs, opts.caps, &halted);
         let before = self.catalog();
         let models = super::models(opts.models_dir.as_deref());
         let settings = ChessScanSettings {
@@ -538,8 +659,11 @@ impl Library {
                 chosen.push(d);
             }
         }
+        // The yeses kept in the catalog and those given now, each once (plan A9-N15c).
+        let allowed = allowed_of(&before.allowed, &opts.allowed);
         let mut catalog = Catalog {
             dirs: chosen,
+            allowed: allowed.clone(),
             walk: WalkNote {
                 entries: walked.entries,
                 capped: walked.capped.clone(),
@@ -547,20 +671,24 @@ impl Library {
                 cloud_folders: walked.cloud_folders.iter().map(|p| shown(p)).collect(),
                 unlisted: walked.unlisted.iter().map(|(p, e)| (shown(p), e.clone())).collect(),
             },
+            building: Some(now()),
             ..Catalog::default()
         };
+        // Marked as being built at once, the books as they were: a build cut short says so.
+        catalog.books = merged(&before, dirs, &[], false);
+        self.write_catalog(&mut catalog).map_err(|e| BuildError::Write(format!("the Library's catalog can't be written: {e}")))?;
         // Whether the walk saw every PDF of its folders: only then is a book of theirs it did not
         // find gone.
         let whole = !walked.stopped && walked.capped.is_empty() && walked.unlisted.is_empty();
         let max_book_bytes = opts.max_book_bytes.unwrap_or(u64::try_from(MAX_BOOK_BYTES).unwrap_or(u64::MAX));
         let mut reports: Vec<BookReport> = Vec::new();
         let mut by_hash: HashMap<String, usize> = HashMap::new();
-        let (mut read, mut stopped) = (0usize, false);
+        let (mut read, mut stopped) = (0usize, walked.stopped);
         let books = walked.pdfs.len();
         for (n, pdf) in walked.pdfs.iter().enumerate() {
             let path = shown(&pdf.path);
             let room = opts.max_books.is_none_or(|max| read < max);
-            if !stopped && room && !progress(&Progress { book: n, books, path: &pdf.path, page: 0, pages: 0 }) {
+            if !stopped && (halted() || (room && !progress(&Progress { book: n, books, path: &pdf.path, page: 0, pages: 0 }))) {
                 stopped = true;
             }
             // Past a stop or `max_books`: as the catalog had it, when nothing changed, else pending.
@@ -576,18 +704,24 @@ impl Library {
                 continue;
             }
             let cap = usize::try_from(max_book_bytes).unwrap_or(usize::MAX).min(MAX_BOOK_BYTES);
-            let bytes = match super::corrections::read_capped(&pdf.path, cap) {
-                Ok(b) if b.len() > cap => {
+            // Read and hashed a chunk at a time, the stop looked at between two (a book may be a
+            // gigabyte).
+            let (bytes, content) = match read_hashing(&pdf.path, cap, &halted) {
+                Ok(None) => {
+                    stopped = true;
+                    reports.push(BookReport { book: carried(&before, pdf, &path, self), run: None });
+                    continue;
+                }
+                Ok(Some((b, _))) if b.len() > cap => {
                     reports.push(BookReport { book: skipped(pdf, &path, Skip::TooLarge, None), run: Some(BookRun::default()) });
                     continue;
                 }
-                Ok(b) => b,
+                Ok(Some(read)) => read,
                 Err(e) => {
                     reports.push(BookReport { book: skipped(pdf, &path, Skip::Unreadable, Some(e.to_string())), run: Some(BookRun::default()) });
                     continue;
                 }
             };
-            let content: [u8; 32] = sha2::Sha256::digest(&bytes).into();
             let hash = hex(&content);
             if let Some(&at) = by_hash.get(&hash) {
                 if let Some(r) = reports.get_mut(at) {
@@ -596,7 +730,7 @@ impl Library {
                 continue;
             }
             let book = Book { pdf, path: &path, hash: &hash, content: &content, n, books };
-            let wants = Wants { settings: &settings, models: &models, general: general.as_ref(), opts };
+            let wants = Wants { settings: &settings, models: &models, general: general.as_ref(), opts, allowed: &allowed };
             let (entry, run, outcome) = self.book(&book, bytes, &wants, progress);
             if outcome == Outcome::Read || outcome == Outcome::Stopped {
                 read = read.saturating_add(1);
@@ -611,7 +745,7 @@ impl Library {
             catalog.books = merged(&before, dirs, &reports, false);
             // Kept after every book: a stop, or a crash, keeps what was done.
             if let Err(e) = self.write_catalog(&mut catalog) {
-                return Err(format!("the Library's catalog can't be written: {e}"));
+                return Err(BuildError::Write(format!("the Library's catalog can't be written: {e}")));
             }
         }
         // The PDFs in the cloud (a folder in the cloud is no book, whatever its name).
@@ -620,7 +754,9 @@ impl Library {
             reports.push(BookReport { book, run: None });
         }
         catalog.books = merged(&before, dirs, &reports, whole);
-        self.write_catalog(&mut catalog).map_err(|e| format!("the Library's catalog can't be written: {e}"))?;
+        // Ended (done or stopped): no longer being built.
+        catalog.building = None;
+        self.write_catalog(&mut catalog).map_err(|e| BuildError::Write(format!("the Library's catalog can't be written: {e}")))?;
         // The indexes no book names any more go (plan A9-N15a2).
         let (orphans, orphan_bytes, listing_truncated) = self.sweep(&catalog);
         let left = reports.iter().filter(|r| matches!(r.book.state, State::Pending | State::Partial)).count();
@@ -668,7 +804,7 @@ impl Library {
         let keys = doc.doc_keys();
         match super::store::persist_policy(doc) {
             super::store::Persist::Never => return (skip(entry, Skip::Never, None), run, Outcome::Skipped),
-            super::store::Persist::Ask if !wants.opts.allowed.iter().any(|h| h.eq_ignore_ascii_case(book.hash)) => {
+            super::store::Persist::Ask if !wants.allowed.iter().any(|h| h.eq_ignore_ascii_case(book.hash)) => {
                 return (skip(entry, Skip::Ask, None), run, Outcome::Skipped);
             }
             super::store::Persist::Ask => session.set_chess_keep(id, true),
@@ -779,6 +915,13 @@ impl Library {
     /// Take out the indexes (only `book`'s: its hash), the catalog with all of them, and the pages
     /// in progress; only the names the Library makes, and its folders once nothing else is in them.
     pub fn clear(&self, book: Option<&str>) -> Cleared {
+        // Never under another build or change (plan A9-N15c); where the lock can't be made (no
+        // folder to make it in), there is nothing held to wait for.
+        let held = match self.lock() {
+            Ok(held) => Some(held),
+            Err(ChangeError::Busy) => return Cleared { busy: true, ..Cleared::default() },
+            Err(_) => None,
+        };
         let mut cleared = Cleared::default();
         let mut remove = |path: &Path, index: bool| {
             let bytes = std::fs::metadata(path).map_or(0, |m| m.len());
@@ -794,7 +937,14 @@ impl Library {
             let hash = hash.to_ascii_lowercase();
             remove(&self.index_path(&hash), true);
             remove(&self.dir.join(format!("{hash}{SET_ASIDE}")), false);
-            let mut catalog = self.catalog();
+            let mut catalog = match self.read_catalog() {
+                Ok(c) => c,
+                // Never an empty catalog written over one that can't be read (plan A9-N15c).
+                Err(why) => {
+                    cleared.catalog_error = Some(why);
+                    return cleared;
+                }
+            };
             if let Some(b) = catalog.books.iter_mut().find(|b| b.hash.as_deref() == Some(hash.as_str())) {
                 b.state = State::Pending;
                 b.counts = None;
@@ -830,6 +980,9 @@ impl Library {
         cleared.files = cleared.files.saturating_add(pages.files);
         cleared.bytes = cleared.bytes.saturating_add(pages.bytes);
         let _ = std::fs::remove_dir(self.pages_dir());
+        // Let go of, then taken out with the folder when nothing else is in it.
+        drop(held);
+        let _ = std::fs::remove_file(self.dir.join(LOCK));
         let _ = std::fs::remove_dir(&self.dir);
         cleared
     }
@@ -862,6 +1015,160 @@ struct Wants<'a> {
     models: &'a ChessModels,
     general: Option<&'a [u8; 32]>,
     opts: &'a BuildOptions,
+    /// The encrypted books said yes to: the catalog's and the options', in lower case.
+    allowed: &'a [String],
+}
+
+/// The hashes of `kept` and of `given`, each once, in lower case: only hashes, at most
+/// [`walk::MAX_BOOKS`] (the catalog is untrusted input).
+fn allowed_of(kept: &[String], given: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for h in kept.iter().chain(given) {
+        let h = h.to_ascii_lowercase();
+        if out.len() < walk::MAX_BOOKS && is_hash(&h) && !out.contains(&h) {
+            out.push(h);
+        }
+    }
+    out
+}
+
+/// Why the folders or the yeses of a Library could not be changed (plan A9-N15c).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ChangeError {
+    /// The folder is in the Library already: it is this chosen folder, or inside it.
+    Within(String),
+    /// [`MAX_FOLDERS`] are chosen already.
+    TooMany,
+    /// Not a book's hash.
+    NotAHash,
+    /// Another build or change holds the Library ([`Library::lock`]).
+    Busy,
+    /// The catalog there can't be read, and why: a change would write over its folders, its books
+    /// and its yeses, so none is made (plan A9-N15c).
+    Unreadable(String),
+    /// The catalog could not be written, and why.
+    Write(String),
+}
+
+impl std::fmt::Display for ChangeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ChangeError::Within(dir) => write!(f, "the folder is in the Library already, through {dir}"),
+            ChangeError::TooMany => write!(f, "the Library has {MAX_FOLDERS} folders already"),
+            ChangeError::NotAHash => write!(f, "not a book's hash"),
+            ChangeError::Busy => f.write_str(BUSY),
+            ChangeError::Unreadable(why) => write!(f, "the Library's catalog can't be read, so it is not changed: {why}"),
+            ChangeError::Write(why) => write!(f, "the Library's catalog can't be written: {why}"),
+        }
+    }
+}
+
+/// What [`Library::remove_folder`] took out: the books that were only there, and the indexes no
+/// book names any more (their hashes, and the bytes freed).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Removed {
+    pub books: usize,
+    pub orphans: Vec<String>,
+    pub orphan_bytes: u64,
+}
+
+impl Library {
+    /// Choose folder `dir` (plan A9-N15c): only the catalog changes; nothing is walked or read
+    /// until a build is asked for (D31 B). A folder that is a chosen one or inside one is refused
+    /// (its books are in the Library already); chosen folders inside `dir` give way to it. At most
+    /// [`MAX_FOLDERS`]. The catalog as written.
+    pub fn add_folder(&self, dir: &Path) -> Result<Catalog, ChangeError> {
+        let _held = self.lock()?;
+        let mut catalog = self.read_catalog().map_err(ChangeError::Unreadable)?;
+        if let Some(within) = catalog.dirs.iter().find(|d| within(dir, Path::new(d.as_str()))) {
+            return Err(ChangeError::Within(within.clone()));
+        }
+        catalog.dirs.retain(|d| !within(Path::new(d.as_str()), dir));
+        if catalog.dirs.len() >= MAX_FOLDERS {
+            return Err(ChangeError::TooMany);
+        }
+        catalog.dirs.push(dir.to_string_lossy().into_owned());
+        std::fs::create_dir_all(&self.dir).map_err(|e| ChangeError::Write(e.to_string()))?;
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        Ok(catalog)
+    }
+
+    /// Leave folder `dir` (as the catalog writes it) out of the Library (plan A9-N15c): its books
+    /// leave the catalog — a book with a path in another chosen folder keeps that path — and so
+    /// do the walk's notes of it; the indexes no book names any more are taken out. The files of
+    /// the folder are never touched. A folder not chosen changes nothing.
+    pub fn remove_folder(&self, dir: &str) -> Result<Removed, ChangeError> {
+        let _held = self.lock()?;
+        let mut catalog = self.read_catalog().map_err(ChangeError::Unreadable)?;
+        let count = catalog.dirs.len();
+        catalog.dirs.retain(|d| d != dir);
+        if catalog.dirs.len() == count {
+            return Ok(Removed::default());
+        }
+        let gone = Path::new(dir);
+        let chosen: Vec<PathBuf> = catalog.dirs.iter().map(PathBuf::from).collect();
+        let stays = |p: &str| {
+            let p = Path::new(p);
+            !p.starts_with(gone) || chosen.iter().any(|d| p.starts_with(d))
+        };
+        let mut books = 0usize;
+        catalog.books.retain_mut(|b| {
+            b.paths.retain(|p| stays(p));
+            let kept = !b.paths.is_empty();
+            if !kept {
+                books = books.saturating_add(1);
+            }
+            kept
+        });
+        catalog.walk.links.retain(|p| stays(p));
+        catalog.walk.cloud_folders.retain(|p| stays(p));
+        catalog.walk.unlisted.retain(|(p, _)| stays(p));
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        let (orphans, orphan_bytes, _) = self.sweep(&catalog);
+        Ok(Removed { books, orphans, orphan_bytes })
+    }
+
+    /// Say yes (`yes`) or no to the encrypted book `hash` (D31 A; plan A9-N15c): with a yes, every
+    /// build reads it. The catalog as written.
+    pub fn allow(&self, hash: &str, yes: bool) -> Result<Catalog, ChangeError> {
+        if !is_hash(hash) {
+            return Err(ChangeError::NotAHash);
+        }
+        let hash = hash.to_ascii_lowercase();
+        let _held = self.lock()?;
+        let mut catalog = self.read_catalog().map_err(ChangeError::Unreadable)?;
+        let mut allowed = allowed_of(&catalog.allowed, &[]);
+        allowed.retain(|h| *h != hash);
+        if yes {
+            allowed.push(hash);
+        }
+        catalog.allowed = allowed_of(&allowed, &[]);
+        std::fs::create_dir_all(&self.dir).map_err(|e| ChangeError::Write(e.to_string()))?;
+        self.write_catalog(&mut catalog).map_err(|e| ChangeError::Write(e.to_string()))?;
+        Ok(catalog)
+    }
+}
+
+/// Whether `path` is `dir` or inside it, as the file system compares names: without regard to
+/// case on Windows (plan A9-N15c), exactly elsewhere.
+fn within(path: &Path, dir: &Path) -> bool {
+    if cfg!(windows) {
+        let lower = |p: &Path| PathBuf::from(p.to_string_lossy().to_lowercase());
+        lower(path).starts_with(lower(dir))
+    } else {
+        path.starts_with(dir)
+    }
+}
+
+/// Whether the PDF at `path` is on this computer to be opened (plan A9-N15c: a result of the
+/// search, just before it opens): the entry is looked at without following a link, and a link,
+/// a file whose data is in the cloud (opening it would download it) or one no longer there is
+/// not opened, and why. Its size and its time (seconds since 1970, as the catalog keeps them),
+/// for telling a book that changed since the Library read it.
+pub fn on_this_computer(path: &Path) -> Result<(u64, u64), Skip> {
+    still_a_book(path, u64::MAX)?;
+    let meta = std::fs::symlink_metadata(path).map_err(|_| Skip::Gone)?;
+    Ok((meta.len(), walk::secs(meta.modified().ok())))
 }
 
 /// What became of a book in a build.
@@ -942,6 +1249,36 @@ fn still_a_book(path: &Path, max: u64) -> Result<(), Skip> {
         return Err(Skip::TooLarge);
     }
     Ok(())
+}
+
+/// Most bytes read at a time by [`read_hashing`].
+const READ_CHUNK: usize = 8 << 20;
+
+/// The bytes of the file at `path`, at most `max` and one more (to tell a larger file), and the
+/// SHA-256 of what was read; read a chunk at a time, `halted` asked between two: `Ok(None)` when it
+/// said stop.
+fn read_hashing(path: &Path, max: usize, halted: &dyn Fn() -> bool) -> std::io::Result<Option<(Vec<u8>, [u8; 32])>> {
+    use std::io::Read as _;
+    let mut file = std::fs::File::open(path)?;
+    let mut hasher = sha2::Sha256::new();
+    let mut bytes: Vec<u8> = Vec::new();
+    let limit = max.saturating_add(1);
+    let mut chunk = vec![0u8; READ_CHUNK.min(limit).max(1)];
+    while bytes.len() < limit {
+        if halted() {
+            return Ok(None);
+        }
+        let want = chunk.len().min(limit.saturating_sub(bytes.len()));
+        let Some(buffer) = chunk.get_mut(..want) else { break };
+        let n = file.read(buffer)?;
+        if n == 0 {
+            break;
+        }
+        let Some(read) = chunk.get(..n) else { break };
+        hasher.update(read);
+        bytes.extend_from_slice(read);
+    }
+    Ok(Some((bytes, hasher.finalize().into())))
 }
 
 /// A book not read, and why.

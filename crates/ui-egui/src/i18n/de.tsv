@@ -3796,3 +3796,83 @@ progress bar	Progress	Fortschritt
 pawn structure	Passed	Frei
 # fix: the board rail's More button
 	More board tools	Weitere Brettwerkzeuge
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Übersprungen: Kopieren nicht erlaubt
+	Encrypted: read it into the Library?	Verschlüsselt: in die Bibliothek einlesen?
+	Skipped: does not open	Übersprungen: lässt sich nicht öffnen
+	Skipped: larger than 1 GB	Übersprungen: größer als 1 GB
+	Skipped: can't be read	Übersprungen: nicht lesbar
+	Skipped: reading failed	Übersprungen: Lesen fehlgeschlagen
+	Skipped: now in the cloud	Übersprungen: jetzt in der Cloud
+	Skipped: a link, never followed	Übersprungen: ein Link, nie gefolgt
+	Skipped: no longer there	Übersprungen: nicht mehr vorhanden
+	Left as it was: its index can't be read now	Unverändert gelassen: sein Index ist gerade nicht lesbar
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Gelesene Seiten: {pages} · Diagramme: {diagrams} · zu prüfen: {review} · Partien: {games}
+	no piece model: picture diagrams not read	kein Figurenmodell: Diagramme als Bilder nicht gelesen
+	Stopped partway: Continue goes on from there	Mittendrin angehalten: Fortsetzen macht dort weiter
+	Not read yet	Noch nicht gelesen
+	In the cloud: never opened	In der Cloud: nie geöffnet
+	Not kept: the Library is full (128 MB)	Nicht gespeichert: die Bibliothek ist voll (128 MB)
+	Encrypted: you said yes	Verschlüsselt: Sie haben Ja gesagt
+	The Library needs the app's data folder, and there is none.	Die Bibliothek braucht den Datenordner der App, und es gibt keinen.
+	Choose a folder of chess books	Ordner mit Schachbüchern wählen
+	Books left out of the Library: {n}	Aus der Bibliothek genommene Bücher: {n}
+	This folder is in the Library already, through {dir}.	Dieser Ordner ist schon in der Bibliothek, über {dir}.
+	The Library has {n} folders already.	Die Bibliothek hat schon {n} Ordner.
+	The Library's folders couldn't be changed: {e}	Die Ordner der Bibliothek konnten nicht geändert werden: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Der Aufbau der Bibliothek wurde angehalten: verbleibende Bücher: {n}. Weiter setzt dort fort.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Die Bibliothek ist aufgebaut: jetzt gelesene Bücher: {read}; Bücher in der Bibliothek: {indexed}.
+	The Library couldn't be built: {e}	Die Bibliothek konnte nicht aufgebaut werden: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} ist in der Cloud, nicht auf diesem Computer: es wird nicht geöffnet.
+	{path} is no longer there: build the Library again to forget it.	{path} ist nicht mehr da: die Bibliothek neu aufbauen, um es zu vergessen.
+	This move is in the book's PGN, which gives no page for it.	Dieser Zug steht im PGN des Buchs, das keine Seite dafür angibt.
+	The move couldn't be outlined: page {page} reads differently now.	Der Zug konnte nicht umrandet werden: Seite {page} liest sich jetzt anders.
+	Library	Bibliothek
+	Books	Bücher
+	Stopping after this page…	Hält nach dieser Seite an…
+	Building the Library: looking at the folders…	Bibliothek wird aufgebaut: Ordner werden durchgesehen…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Bibliothek wird aufgebaut: Buch {n} von {m} ({name}), Seite {p} von {q}
+	Building the Library: book {n} of {m} ({name})	Bibliothek wird aufgebaut: Buch {n} von {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Die Bücher der gewählten Ordner, einmal gelesen, damit eine Stellung, ein Zug oder ein Spieler in allen gefunden wird. Nichts wird gelesen, bevor Sie aufbauen.
+	No folder yet: add the folders where your chess books are.	Noch kein Ordner: fügen Sie die Ordner mit Ihren Schachbüchern hinzu.
+	Its books leave the Library; the files stay where they are.	Seine Bücher verlassen die Bibliothek; die Dateien bleiben, wo sie sind.
+	Add a folder…	Ordner hinzufügen…
+	The folders can't change while the Library is being built.	Die Ordner können nicht geändert werden, während die Bibliothek aufgebaut wird.
+	Books in the Library: {n}	Bücher in der Bibliothek: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Nicht durchsucht: Links {links}, Ordner in der Cloud {cloud}, nicht auflistbare Ordner {unlisted}.
+	The folders hold more than a build looks at.	Die Ordner enthalten mehr, als ein Aufbau durchsieht.
+	Build	Aufbauen
+	Reads on {n} of the {all} cores of this computer.	Liest auf {n} von {all} Kernen dieses Computers.
+	Counting the pages: book {n} of {m}…	Seiten werden gezählt: Buch {n} von {m}…
+	Every book is read: a build only looks for new or changed ones.	Alle Bücher sind gelesen: ein Aufbau sucht nur neue oder geänderte.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Zu lesen: {books} Bücher, {pages} Seiten, {time} (geschätzt)
+	Books whose pages could not be counted: {n}	Bücher, deren Seiten nicht gezählt werden konnten: {n}
+	Leave out	Auslassen
+	Position (FEN)	Stellung (FEN)
+	Move (SAN)	Zug (SAN)
+	Player	Spieler
+	Opening (ECO)	Eröffnung (ECO)
+	From the board	Vom Brett
+	The position the Board tab shows	Die Stellung, die der Tab Brett zeigt
+	Either side to move	Beliebige Seite am Zug
+	Not a FEN: {e}	Kein FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Schreiben Sie eine Stellung (FEN), einen Zug wie Bxh7+, einen Spieler, ein Turnier oder einen Eröffnungscode wie B90.
+	Looking in the Library…	Suche in der Bibliothek…
+	The Library couldn't be searched: {e}	Die Bibliothek konnte nicht durchsucht werden: {e}
+	No book of the Library is read yet: build it first, in Books.	Noch kein Buch der Bibliothek ist gelesen: bauen Sie sie zuerst auf, unter Bücher.
+	Books not read yet, not looked in: {n}	Noch nicht gelesene Bücher, nicht durchsucht: {n}
+	Books whose index could not be read: {n}	Bücher, deren Index nicht gelesen werden konnte: {n}
+	Nothing in the Library matches.	Nichts in der Bibliothek passt.
+	Open the Library	Bibliothek öffnen
+	Look in the Library	In der Bibliothek suchen
+	Find this position in every book of the Library	Diese Stellung in allen Büchern der Bibliothek suchen
+	Library…	Bibliothek…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Der Ordner wird hinzugefügt, wenn der Aufbau endet.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Ein anderer Aufbau dieser Bibliothek läuft (in einem anderen Fenster, einem anderen PdfCraft oder auf der Kommandozeile): warten Sie, bis er endet.
+	The Library's catalog can't be read, so it isn't changed: {e}	Der Katalog der Bibliothek kann nicht gelesen werden, daher wird er nicht geändert: {e}
+	This book changed since the Library read it: build the Library again.	Dieses Buch hat sich geändert, seit die Bibliothek es gelesen hat: die Bibliothek neu aufbauen.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Der Zug wurde nicht umrandet: seine Seite wurde nicht rechtzeitig gelesen, oder Sie sind weitergegangen.
+	{path} is a link, which the Library never opens.	{path} ist ein Link, den die Bibliothek nie öffnet.
+	{path} can't be opened.	{path} kann nicht geöffnet werden.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Der letzte Aufbau wurde abgebrochen (PdfCraft wurde geschlossen oder hielt bei einem Fehler an): Weiter setzt dort fort, wo er war.

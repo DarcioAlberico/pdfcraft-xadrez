@@ -339,6 +339,8 @@ impl PdfCraftApp {
         // The books' readings beside them (plan A9-N5b), which stop below a free gigabyte.
         pdfcraft_engine::chess::reading::set_free_space(std::sync::Arc::new(pdfcraft_platform::app_dirs::free_space));
         self.chess.reading_dir = Some(dir.join(pdfcraft_engine::chess::reading::KIND));
+        // The Library beside them, in its own space (plan A9-N15c, D31 C).
+        self.chess.library.use_folder(&dir);
     }
 
     /// [`PdfCraftApp::use_chess_data`] with the app's own folders: `chess` in its data folder,
@@ -461,6 +463,9 @@ impl PdfCraftApp {
         // A9-N17b).
         #[cfg(not(target_arch = "wasm32"))]
         self.quit_engine_review();
+        // The Library's build stops between two pages; what it kept stays (plan A9-N15c).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.quit_library();
         // The chess games are kept whatever happens to the documents: written, and waited for at
         // most `SETTLE` (plan A9-I3b), since the window closes next.
         self.flush_chess_games();
