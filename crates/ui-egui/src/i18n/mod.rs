@@ -683,13 +683,99 @@ mod tests {
         assert!(missing.is_empty(), "chess texts missing from catalogues:\n{}", named.join("\n"));
     }
 
+    /// Roots that say "search" in Portuguese: never the word for detecting diagrams (§2.1).
+    const SEARCHING_ROOTS: [&str; 4] = ["procur", "busca", "varre", "varri"];
+    /// A text that names one of these may say "glifo": the characters the OCR reads, not a sign.
+    const GLYPH_READING_ROOTS: [&str; 4] = ["modelo", "leitor", "fonte", "ocr"];
+    /// Labels §2.8.2 renamed, which no Portuguese text may bring back.
+    const RENAMED_PHRASES: [&str; 2] = ["ligar o livro", "encaixar"];
+    /// What else the help of 2026-10-31 called by an old name (plan A9-E1, finding R10-03): the
+    /// chess window's "Trazer de volta", the panel's "Diagramas de xadrez" and its command, and the
+    /// question the export dialog replaced (A9-X2).
+    const HELP_RENAMED_PHRASES: [&str; 4] = ["trazer de volta", "diagramas de xadrez", "procurar diagramas", "exportar assim mesmo"];
+
+    /// Why one Portuguese text breaks the glossary, if it does: `phrases` are the renamed labels
+    /// it is held to.
+    fn glossary_breach(text: &str, phrases: &[&str]) -> Option<&'static str> {
+        let br = text.to_lowercase();
+        if br.contains("diagrama") && SEARCHING_ROOTS.iter().any(|r| br.contains(r)) {
+            return Some("diagrams are detected");
+        }
+        if br.contains("glif") && !GLYPH_READING_ROOTS.iter().any(|r| br.contains(r)) {
+            return Some("a move's sign is \"sinal\"");
+        }
+        phrases.iter().any(|p| br.contains(p)).then_some("a label §2.8.2 renamed")
+    }
+
+    /// The help's source (plan A9-E1): `docs/chess/ajuda/ajuda.html`, which the PDF is printed from.
+    fn help_source() -> String {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/chess/ajuda/ajuda.html");
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())).replace("\r\n", "\n")
+    }
+
+    /// The help's text without its markup: comments, `<style>` and tags out (an inline tag joins its
+    /// words, any other ends a block), the entities the help uses decoded. Plain text passes through.
+    fn help_text(html: &str) -> String {
+        const INLINE: [&str; 10] = ["b", "strong", "i", "em", "kbd", "code", "a", "span", "sup", "sub"];
+        let mut out = String::with_capacity(html.len());
+        let mut rest = html;
+        while let Some(at) = rest.find('<') {
+            out.push_str(&rest[..at]);
+            rest = &rest[at..];
+            let (end, skip) = if rest.starts_with("<!--") {
+                ("-->", true)
+            } else if rest.starts_with("<style") {
+                ("</style>", true)
+            } else {
+                (">", false)
+            };
+            let Some(close) = rest.find(end) else { break };
+            let tag = &rest[1..close];
+            let name: String = tag.trim_start_matches('/').chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+            if skip || !INLINE.contains(&name.to_ascii_lowercase().as_str()) {
+                out.push_str("\n\n");
+            }
+            rest = &rest[close + end.len()..];
+        }
+        out.push_str(rest);
+        out.replace("&nbsp;", " ").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&amp;", "&")
+    }
+
+    /// The help's sentences: its blocks (split at blank lines) with their lines joined, cut after
+    /// `.`, `!`, `?` and `;`.
+    fn help_sentences(text: &str) -> Vec<String> {
+        let mut sentences = Vec::new();
+        for block in text.split("\n\n") {
+            let joined = block.split_whitespace().collect::<Vec<_>>().join(" ");
+            let mut start = 0;
+            let chars: Vec<(usize, char)> = joined.char_indices().collect();
+            for (k, (at, c)) in chars.iter().enumerate() {
+                let next_is_space = chars.get(k + 1).is_some_and(|(_, n)| *n == ' ');
+                if matches!(c, '.' | '!' | '?' | ';') && next_is_space {
+                    sentences.push(joined[start..at + c.len_utf8()].to_owned());
+                    start = at + c.len_utf8();
+                }
+            }
+            sentences.push(joined[start..].to_owned());
+        }
+        sentences.into_iter().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()).collect()
+    }
+
+    /// Every sentence of the help that breaks the glossary, with the reason.
+    fn help_breaches(source: &str) -> Vec<String> {
+        let phrases: Vec<&str> = RENAMED_PHRASES.iter().chain(HELP_RENAMED_PHRASES.iter()).copied().collect();
+        help_sentences(&help_text(source)).into_iter().filter_map(|s| glossary_breach(&s, &phrases).map(|why| format!("help ({why}): {s}"))).collect()
+    }
+
     /// Plan A9-I14 (§2.1, §2.8.2; findings A6-21, R10-06): one word per concept, checked by root and
     /// not by phrase, over the texts the chess surfaces show (the chess files' `tl!` literals and
     /// the engine's chess commands) in English and in the Brazilian catalogue. Detecting diagrams
     /// is never "scan" (English), nor "procurar", "busca" or "varredura" (Portuguese) in a text
     /// about diagrams; a move's sign is "sinal", and "glifo" is only the characters the OCR reads
     /// (with a model, a reader, a font or the OCR in the same text); the book is aligned to its
-    /// PGN, never "ligado" by the action; Back to the main window, never "Encaixar".
+    /// PGN, never "ligado" by the action; Back to the main window, never "Encaixar". Since plan
+    /// A9-E1 (finding R10-03) the help's source is held to the same rules, sentence by sentence,
+    /// and to the other old names the help of 2026-10-31 used.
     #[test]
     fn the_chess_texts_keep_the_glossary() {
         let mut shown: std::collections::BTreeSet<String> = chess_texts().into_iter().map(|(_, source)| source).collect();
@@ -708,16 +794,70 @@ mod tests {
             if !shown.contains(source) {
                 continue;
             }
-            let (en, br) = (source.to_lowercase(), translation.to_lowercase());
-            let about_diagrams = en.contains("diagram") || br.contains("diagrama");
-            let detecting = ["procur", "busca", "varre", "varri"].iter().any(|r| br.contains(r));
-            let glyph_as_sign = br.contains("glif") && !["modelo", "leitor", "fonte", "ocr"].iter().any(|r| br.contains(r));
-            let phrase = ["ligar o livro", "encaixar"].iter().any(|p| br.contains(p));
-            if (about_diagrams && detecting) || glyph_as_sign || phrase {
+            // The English source says a text is about diagrams even where the translation doesn't.
+            let about_diagrams = if source.to_lowercase().contains("diagram") { format!("diagrama {translation}") } else { translation.to_owned() };
+            if glossary_breach(&about_diagrams, &RENAMED_PHRASES).is_some() {
                 breaches.push(format!("pt-br: {source} → {translation}"));
             }
         }
-        assert!(breaches.is_empty(), "texts off the glossary:\n{}", breaches.join("\n"));
+        breaches.extend(help_breaches(&help_source()));
+        assert!(breaches.is_empty(), "texts off the glossary ({}):\n{}", breaches.len(), breaches.join("\n"));
+    }
+
+    /// Whether `shown` is the catalogue text `label` with its `{placeholders}` filled in.
+    fn fills(label: &str, shown: &str) -> bool {
+        let mut parts = Vec::new();
+        let mut rest = label;
+        while let (Some(open), Some(close)) = (rest.find('{'), rest.find('}')) {
+            if close < open {
+                break;
+            }
+            parts.push(&rest[..open]);
+            rest = &rest[close + 1..];
+        }
+        parts.push(rest);
+        let [first, middle @ .., last] = parts.as_slice() else { return label == shown };
+        let Some(mut tail) = shown.strip_prefix(first) else { return false };
+        for part in middle {
+            // A placeholder stands for at least one character.
+            let Some(skip) = tail.chars().next().map(char::len_utf8) else { return false };
+            let Some(at) = tail[skip..].find(part) else { return false };
+            tail = &tail[skip + at + part.len()..];
+        }
+        tail.len() > last.len() && tail.ends_with(last)
+    }
+
+    /// Plan A9-E1: every UI name the help quotes in bold (`<b>`) is a text of the Brazilian
+    /// catalogue, word for word (a `{placeholder}` filled with anything), so a renamed control
+    /// can't leave the help naming one the app no longer has.
+    #[test]
+    fn the_help_names_only_what_the_app_shows() {
+        let pt = LANGUAGES.iter().find(|l| l.code == "pt-br").expect("pt-br registered").source;
+        let labels: Vec<&str> = pt
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .filter_map(|l| l.split('\t').nth(2))
+            .flat_map(|t| t.split('|'))
+            .filter(|t| !t.is_empty())
+            .collect();
+        let source = help_source();
+        let mut named = Vec::new();
+        let mut rest = source.as_str();
+        while let Some(open) = rest.find("<b>") {
+            rest = &rest[open + 3..];
+            let Some(close) = rest.find("</b>") else { break };
+            named.push(help_text(&rest[..close]).split_whitespace().collect::<Vec<_>>().join(" "));
+            rest = &rest[close + 4..];
+        }
+        assert!(named.len() > 200, "the help quotes the app's controls in bold: {}", named.len());
+        let unknown: std::collections::BTreeSet<&String> =
+            named.iter().filter(|n| !labels.iter().any(|l| *l == n.as_str() || (l.contains('{') && fills(l, n)))).collect();
+        assert!(
+            unknown.is_empty(),
+            "the help names {} controls the app doesn't show:\n{}",
+            unknown.len(),
+            unknown.into_iter().cloned().collect::<Vec<_>>().join("\n")
+        );
     }
 
     /// Plan A9-I14 (finding A6-26): counts in the language's groups of digits ("12.691 lances").
