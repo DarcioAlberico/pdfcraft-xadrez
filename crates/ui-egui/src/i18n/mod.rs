@@ -707,10 +707,104 @@ mod tests {
         phrases.iter().any(|p| br.contains(p)).then_some("a label §2.8.2 renamed")
     }
 
+    /// Words that say "search" or "scan" in English: never what detecting diagrams is (§2.1). A
+    /// "scanned" book stays: it is a kind of book, not the action.
+    const SEARCHING_WORDS: [&str; 7] = ["scan", "scans", "scanning", "search", "searches", "searched", "searching"];
+    /// An English sentence that names one of these may say "glyph": the characters the OCR reads.
+    const ENGLISH_GLYPH_READING_ROOTS: [&str; 4] = ["model", "reader", "font", "ocr"];
+    /// The English labels §2.8.2 and the help of 2026-10-31 retired (their Portuguese are
+    /// `RENAMED_PHRASES` and `HELP_RENAMED_PHRASES`); "Dock" is checked as a word of its own.
+    const ENGLISH_RENAMED_PHRASES: [&str; 4] = ["link the whole book", "bring it back", "chess diagrams", "export anyway"];
+
+    /// Why one sentence of the English help breaks the glossary, if it does: diagrams are detected,
+    /// never searched for or scanned; a move's symbol is a sign, and "glyph" is only the characters
+    /// the OCR reads; no label §2.8.2 retired.
+    fn english_glossary_breach(text: &str) -> Option<&'static str> {
+        let en = text.to_lowercase();
+        let words: Vec<&str> = en.split(|c: char| !c.is_alphabetic()).filter(|w| !w.is_empty()).collect();
+        if words.iter().any(|w| w.starts_with("diagram")) && words.iter().any(|w| SEARCHING_WORDS.contains(w)) {
+            return Some("diagrams are detected");
+        }
+        if en.contains("glyph") && !ENGLISH_GLYPH_READING_ROOTS.iter().any(|r| en.contains(r)) {
+            return Some("a move's symbol is a \"sign\"");
+        }
+        (ENGLISH_RENAMED_PHRASES.iter().any(|p| en.contains(p)) || words.contains(&"dock")).then_some("a label §2.8.2 renamed")
+    }
+
     /// The help's source (plan A9-E1): `docs/chess/ajuda/ajuda.html`, which the PDF is printed from.
     fn help_source() -> String {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/chess/ajuda/ajuda.html");
+        help_file("ajuda.html")
+    }
+
+    /// The English help's source (plan A9-E1e): `docs/chess/ajuda/help-en.html`, which
+    /// "Help - Chess Tools.pdf" is printed from.
+    fn english_help_source() -> String {
+        help_file("help-en.html")
+    }
+
+    /// A file of the help's folder, `docs/chess/ajuda`, with its line ends as LF.
+    fn help_file(name: &str) -> String {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/chess/ajuda").join(name);
         std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())).replace("\r\n", "\n")
+    }
+
+    /// The help without its comments, so a tag a comment names (the bold tag of the rules) is never
+    /// taken for markup.
+    fn without_comments(html: &str) -> String {
+        let mut out = String::with_capacity(html.len());
+        let mut rest = html;
+        while let Some(open) = rest.find("<!--") {
+            out.push_str(&rest[..open]);
+            rest = match rest[open..].find("-->") {
+                Some(close) => &rest[open + close + 3..],
+                None => "",
+            };
+        }
+        out.push_str(rest);
+        out
+    }
+
+    /// The names the help quotes in bold (`<b>`), their markup out and their spaces joined.
+    fn bold_names(html: &str) -> Vec<String> {
+        let source = without_comments(html);
+        let mut named = Vec::new();
+        let mut rest = source.as_str();
+        while let Some(open) = rest.find("<b>") {
+            rest = &rest[open + 3..];
+            let Some(close) = rest.find("</b>") else { break };
+            named.push(help_text(&rest[..close]).split_whitespace().collect::<Vec<_>>().join(" "));
+            rest = &rest[close + 4..];
+        }
+        named
+    }
+
+    /// The English help's prose: no comment, and no control's name (`<b>`) or literal (`<code>`),
+    /// which say what the app and the files say ("Glyph palette", `chess-glyphs.onnx`).
+    fn english_help_prose(html: &str) -> String {
+        let mut text = without_comments(html);
+        for tag in ["b", "code"] {
+            let (open, close) = (format!("<{tag}>"), format!("</{tag}>"));
+            let mut out = String::with_capacity(text.len());
+            let mut rest = text.as_str();
+            while let Some(at) = rest.find(&open) {
+                out.push_str(&rest[..at]);
+                rest = &rest[at..];
+                let Some(end) = rest.find(&close) else { break };
+                out.push(' ');
+                rest = &rest[end + close.len()..];
+            }
+            out.push_str(rest);
+            text = out;
+        }
+        text
+    }
+
+    /// Every sentence of the English help's prose that breaks the glossary, with the reason.
+    fn english_help_breaches(source: &str) -> Vec<String> {
+        help_sentences(&help_text(&english_help_prose(source)))
+            .into_iter()
+            .filter_map(|s| english_glossary_breach(&s).map(|why| format!("help-en ({why}): {s}")))
+            .collect()
     }
 
     /// The help's text without its markup: comments, `<style>` and tags out (an inline tag joins its
@@ -775,7 +869,11 @@ mod tests {
     /// (with a model, a reader, a font or the OCR in the same text); the book is aligned to its
     /// PGN, never "ligado" by the action; Back to the main window, never "Encaixar". Since plan
     /// A9-E1 (finding R10-03) the help's source is held to the same rules, sentence by sentence,
-    /// and to the other old names the help of 2026-10-31 used.
+    /// and to the other old names the help of 2026-10-31 used; since plan A9-E1e the English help's
+    /// prose is too, in English words (no "search" or "scan" in a sentence about diagrams, "glyph"
+    /// only beside the OCR, its model, reader or font, none of the retired English labels). Its
+    /// bold names and code are left out of that: the English interface itself names a move's signs
+    /// glyphs ("Glyph palette"), and a file is `chess-glyphs.onnx`.
     #[test]
     fn the_chess_texts_keep_the_glossary() {
         let mut shown: std::collections::BTreeSet<String> = chess_texts().into_iter().map(|(_, source)| source).collect();
@@ -801,6 +899,7 @@ mod tests {
             }
         }
         breaches.extend(help_breaches(&help_source()));
+        breaches.extend(english_help_breaches(&english_help_source()));
         assert!(breaches.is_empty(), "texts off the glossary ({}):\n{}", breaches.len(), breaches.join("\n"));
     }
 
@@ -827,9 +926,33 @@ mod tests {
         tail.len() > last.len() && tail.ends_with(last)
     }
 
+    /// Whether a catalogue text has words of its own besides its `{placeholders}`: one made of
+    /// placeholders and punctuation alone ("{n} {kind}", "{0}: {1}") would take any name at all.
+    fn has_words(label: &str) -> bool {
+        let mut literal = String::new();
+        let mut rest = label;
+        while let (Some(open), Some(close)) = (rest.find('{'), rest.find('}')) {
+            if close < open {
+                break;
+            }
+            literal.push_str(&rest[..open]);
+            rest = &rest[close + 1..];
+        }
+        literal.push_str(rest);
+        literal.chars().any(char::is_alphabetic)
+    }
+
+    /// Whether `name`, quoted in bold by a help, is one of the catalogue's `labels`: word for word,
+    /// or a label's `{placeholders}` filled with anything, so long as the label has words of its
+    /// own (plan A9-E1e: "{n} {kind}" used to take every name with a space in it).
+    fn is_a_label(labels: &[&str], name: &str) -> bool {
+        labels.iter().any(|l| *l == name || (l.contains('{') && has_words(l) && fills(l, name)))
+    }
+
     /// Plan A9-E1: every UI name the help quotes in bold (`<b>`) is a text of the Brazilian
-    /// catalogue, word for word (a `{placeholder}` filled with anything), so a renamed control
-    /// can't leave the help naming one the app no longer has.
+    /// catalogue, word for word (a `{placeholder}` filled with anything, in a text that has words
+    /// of its own besides them since plan A9-E1e), so a renamed control can't leave the help
+    /// naming one the app no longer has.
     #[test]
     fn the_help_names_only_what_the_app_shows() {
         let pt = LANGUAGES.iter().find(|l| l.code == "pt-br").expect("pt-br registered").source;
@@ -840,21 +963,41 @@ mod tests {
             .flat_map(|t| t.split('|'))
             .filter(|t| !t.is_empty())
             .collect();
-        let source = help_source();
-        let mut named = Vec::new();
-        let mut rest = source.as_str();
-        while let Some(open) = rest.find("<b>") {
-            rest = &rest[open + 3..];
-            let Some(close) = rest.find("</b>") else { break };
-            named.push(help_text(&rest[..close]).split_whitespace().collect::<Vec<_>>().join(" "));
-            rest = &rest[close + 4..];
-        }
+        let named = bold_names(&help_source());
         assert!(named.len() > 200, "the help quotes the app's controls in bold: {}", named.len());
-        let unknown: std::collections::BTreeSet<&String> =
-            named.iter().filter(|n| !labels.iter().any(|l| *l == n.as_str() || (l.contains('{') && fills(l, n)))).collect();
+        let unknown: std::collections::BTreeSet<&String> = named.iter().filter(|n| !is_a_label(&labels, n)).collect();
         assert!(
             unknown.is_empty(),
             "the help names {} controls the app doesn't show:\n{}",
+            unknown.len(),
+            unknown.into_iter().cloned().collect::<Vec<_>>().join("\n")
+        );
+    }
+
+    /// Plan A9-E1e: every UI name the English help quotes in bold (`<b>`) is a text the interface
+    /// shows in English, the catalogue's source word for word (the second column of `pt-br.tsv`,
+    /// the text of the `tl!` calls; a command id's row, `@id`, is no text), a `{placeholder}` filled
+    /// with anything in a text that has words of its own, as the Portuguese check takes them.
+    #[test]
+    fn the_english_help_names_only_what_the_app_shows() {
+        let pt = LANGUAGES.iter().find(|l| l.code == "pt-br").expect("pt-br registered").source;
+        let labels: Vec<&str> = pt
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .filter_map(|l| {
+                let mut columns = l.split('\t');
+                let (context, source, _) = (columns.next()?, columns.next()?, columns.next()?);
+                (context != "@id").then_some(source)
+            })
+            .flat_map(|t| t.split('|'))
+            .filter(|t| !t.is_empty())
+            .collect();
+        let named = bold_names(&english_help_source());
+        assert!(named.len() > 200, "the English help quotes the app's controls in bold: {}", named.len());
+        let unknown: std::collections::BTreeSet<&String> = named.iter().filter(|n| !is_a_label(&labels, n)).collect();
+        assert!(
+            unknown.is_empty(),
+            "the English help names {} controls the app doesn't show:\n{}",
             unknown.len(),
             unknown.into_iter().cloned().collect::<Vec<_>>().join("\n")
         );
