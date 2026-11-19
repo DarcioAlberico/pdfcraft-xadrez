@@ -243,6 +243,10 @@ fn chess_status_says_whether_models_are_missing_or_invalid_and_why() {
     assert!(missing["pieces"]["reason"].is_null());
     assert_eq!(missing["looked_in"], "models_dir");
     assert!(["font", "geometric"].contains(&missing["piece_set"]["source"].as_str().unwrap()), "{missing:#}");
+    // Which build answers (plan A9-V): the chess edition's number, upstream's version, the build.
+    assert_eq!(missing["edition"], pdfcraft_engine::build_info::EDITION, "{missing:#}");
+    assert_eq!(missing["version"], pdfcraft_engine::build_info::VERSION, "{missing:#}");
+    assert_eq!(missing["build"], pdfcraft_engine::build_info::BUILD, "{missing:#}");
     // A model file that is not a model: invalid, with the reason, both here and when reading.
     std::fs::write(root.join("models").join("chess-pieces.onnx"), b"not a model").unwrap();
     std::fs::write(root.join("models").join("chess-pieces.json"), b"{\"kind\": \"pieces\"}").unwrap();

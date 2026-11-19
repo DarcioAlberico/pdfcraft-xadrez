@@ -1369,7 +1369,9 @@ impl Automation {
             "looked_in": if a.opt_str("models_dir")?.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
             "reads_fonts_without_model": true,
             "piece_set": piece_set,
-            // Which build answers (plan A9, E2): builds kept side by side are one version.
+            // Which build answers (plan A9, E2 and A9-V): the chess edition's release number,
+            // upstream's version, and the build that tells two builds of one release apart.
+            "edition": pdfcraft_engine::build_info::EDITION,
             "build": pdfcraft_engine::build_info::BUILD,
             "version": pdfcraft_engine::build_info::VERSION,
         }))

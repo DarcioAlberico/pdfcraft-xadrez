@@ -9,7 +9,7 @@
 #   $DIST/pdfcraft-cli-<version>-linux-<arch>.tar.gz  the headless CLI alone (servers, CI, agents)
 #
 # A local or patched build: set PDFCRAFT_BUILD_LABEL (e.g. `titlebar`). `--version` and About then
-# show `0.7.1 (titlebar)`, file names carry `-titlebar`, and the .rpm/.deb release becomes
+# end in `(PdfCraft 0.7.1, titlebar)`, file names carry `-titlebar`, and the .rpm/.deb release becomes
 # `1.titlebar`, which upgrades over the release of the same version (and the next release over it).
 #
 # Cross-compiling (CI: riscv64, tar only): set CROSS_ARCH (riscv64), CROSS_TARGET (the Rust target),
