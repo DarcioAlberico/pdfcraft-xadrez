@@ -6,16 +6,20 @@
 //! moves and annotation glyphs marked so spelling checks skip them (`w:noProof`), piece letters
 //! and signs in the user's figurine font (SemFig) and sign font (ISChess) when the export found
 //! them, as the HTML export sets them ([`spans`]), and the document in the book's language
-//! (`w:lang`). Each diagram is a picture, drawn by [`diagram_png`] at 300 ppi for the
-//! [`DIAGRAM_PT`] it is set at, its text alternative saying the position in words
+//! (`w:lang`). Each diagram is a picture, its text alternative saying the position in words
 //! ([`pdfcraft_chess::describe`]), and a caption under it in Word's `Caption` style: the PGN's
-//! comment for the diagram (`Pág. 17 · diagrama 1 de 2`), its FEN and its lichess link. Word also
-//! gets the board as SVG, the same drawing, which it shows at any size (the PNG is the fallback).
+//! comment for the diagram (`Pág. 17 · diagrama 1 de 2`), its FEN and its lichess link. Word gets
+//! the board as SVG ([`pdfcraft_chess::svg::board_standalone`]: no `<use>`, decision D18), the
+//! same drawing, which Word 2016 and later show and print at any size, and as a PNG of
+//! [`WORD_DIAGRAM_PX`] for readers that cannot; RTF gets the PNG alone, at 300 ppi for the
+//! [`DIAGRAM_PT`] it is set at ([`DEFAULT_DIAGRAM_PX`]). A position the book prints again is drawn
+//! once and stored once (plan A9-X1b, R8-09: a 748-page book's Word file was 118.5 MB).
 //!
 //! [`diagram_png`] draws the board with `chess::draw` and the same operators the PDF replacement
-//! uses ([`super::replace::drawing_ops`]) on a one-page PDF made here, and renders it with the
-//! page renderer.
+//! uses ([`super::replace::drawing_ops`]) on a one-page PDF made here, renders it with the page
+//! renderer, and writes it paletted ([`palette`]).
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use pdfcraft_chess::describe;
@@ -23,7 +27,7 @@ use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::placement::Placement;
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chess::svg::to_svg;
+use pdfcraft_chess::svg::board_standalone;
 use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
 use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline, PageLabel};
 use pdfcraft_chessvision::text_font::TextFont;
@@ -34,9 +38,20 @@ use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
 
 use super::replace::drawing_ops;
 
+pub mod palette;
+
 /// The default side of a diagram image, in pixels: 300 ppi at the [`DIAGRAM_PT`] Word and RTF set
-/// it at.
+/// it at. RTF, Markdown and Anki's cards, whose picture is the only one.
 pub const DEFAULT_DIAGRAM_PX: u32 = 900;
+/// The default side of Word's diagram image, the picture a reader shows when it cannot draw the
+/// SVG beside it (Word before 2016, some other readers; plan A9-X1b): 1.5 times the 288 px Word
+/// shows a diagram at on a 96 dpi screen, 144 ppi printed. Word 2016 and later draw and print the
+/// SVG. A book's 999 diagrams were 92 MB of 900 px RGBA pictures; this size is what keeps such a
+/// book's file within 25 MB with the SVG kept.
+pub const WORD_DIAGRAM_PX: u32 = 432;
+/// The most colours of Word's diagram image (plan A9-X1b): the squares and the pieces' fills
+/// exact, the edges between them in fewer levels than RTF's picture, which stands alone.
+pub const WORD_DIAGRAM_COLORS: usize = 64;
 /// The largest side of a diagram image, in pixels.
 pub const MAX_DIAGRAM_PX: u32 = 2400;
 /// The side a diagram is set at, in points (three inches).
@@ -54,6 +69,9 @@ pub struct OfficeOptions<'a> {
     pub link_text: &'a str,
     /// The diagram images' side in pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
     pub diagram_px: u32,
+    /// Word: each diagram also as SVG, which Word 2016 and later draw, the PNG its fallback of at
+    /// most [`WORD_DIAGRAM_COLORS`] colours; RTF: the PNG alone, of up to 256 colours.
+    pub svg: bool,
     /// The user's figurine font: its family is named on the runs that need it.
     pub text_font: Option<&'a TextFont>,
     /// The user's sign font (ISChess): the annotation glyphs it draws are written in it.
@@ -67,10 +85,16 @@ pub struct OfficeOptions<'a> {
     pub naming: describe::Naming,
 }
 
-/// The board as a PNG of `px` × `px` pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
+/// The board as a PNG of `px` × `px` pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]), paletted: a
+/// byte a pixel, at most [`palette::MAX_COLORS`] colours, the squares' own exact (plan A9-X1b).
 pub fn diagram_png(placement: &Placement, pieces: &PieceSet, style: &BoardStyle, px: u32) -> Result<Vec<u8>, String> {
+    diagram_png_of(placement, pieces, style, px, palette::MAX_COLORS)
+}
+
+/// [`diagram_png`] of at most `colors` colours.
+fn diagram_png_of(placement: &Placement, pieces: &PieceSet, style: &BoardStyle, px: u32, colors: usize) -> Result<Vec<u8>, String> {
     let (w, h, rgba) = diagram_rgba(placement, pieces, style, px)?;
-    crate::export::encode_png(w, h, &rgba)
+    palette::encode(w, h, &rgba, colors)
 }
 
 /// The board as premultiplied RGBA pixels, `px` × `px` (clamped to 32..=[`MAX_DIAGRAM_PX`]): what
@@ -154,11 +178,49 @@ fn runs(inlines: &[Inline], o: &OfficeOptions<'_>, lang: Lang) -> Vec<Run> {
         .collect()
 }
 
+/// The most positions a Word or RTF file gets drawn (plan A9-X1b): a PNG and an SVG each, under
+/// the 65,535 files a zip file holds with the parts beside them. A book prints a few thousand.
+pub const MAX_BOARDS: usize = 30_000;
+/// The most bytes of drawn positions, PNG and SVG, a Word or RTF file gets (1 GiB): far past any
+/// book at the default size, and under the 4 GB a zip file holds.
+pub const MAX_BOARD_BYTES: usize = 1 << 30;
+
+/// How many positions, and how many bytes of them, [`to_flow`] draws at most.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Limits {
+    pub(crate) boards: usize,
+    pub(crate) bytes: usize,
+}
+
+/// A position drawn for a figure: its PNG, and for Word its SVG. The same position is drawn once.
+type Drawn = Result<(Vec<u8>, Option<String>), String>;
+
 /// The document as a flowing document, and how many diagrams were drawn. A diagram whose image
-/// cannot be made is set as text, and said in `notes`.
+/// cannot be made is set as text, and said in `notes`; so is one past [`MAX_BOARDS`] positions or
+/// [`MAX_BOARD_BYTES`] bytes of them. A position is drawn once, however often the book prints it
+/// (plan A9-X1b).
 pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -> (FlowDoc, usize) {
+    let limits = Limits { boards: MAX_BOARDS, bytes: MAX_BOARD_BYTES };
+    #[cfg(test)]
+    let limits = TEST_LIMITS.with(std::cell::Cell::get).unwrap_or(limits);
+    to_flow_within(doc, o, notes, limits)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Smaller limits for the exports this thread writes, so a test reaches them through a whole
+    /// export (its notes in the export's result) without 30,000 positions.
+    pub(crate) static TEST_LIMITS: std::cell::Cell<Option<Limits>> = const { std::cell::Cell::new(None) };
+}
+
+/// [`to_flow`] within `limits`.
+pub(crate) fn to_flow_within(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>, limits: Limits) -> (FlowDoc, usize) {
     let mut blocks = Vec::new();
     let mut drawn = 0;
+    let mut boards: HashMap<Placement, Drawn> = HashMap::new();
+    let mut bytes = 0usize;
+    // Diagrams past the limits, set as their caption.
+    let mut over = 0usize;
     for page in &doc.pages {
         let lang = page.text_language();
         let page_label = PageLabel::of(o.page_labels, page.index);
@@ -194,26 +256,54 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                         caption.push(Run::text(" · "));
                         caption.push(Run { link: Some(url), ..Run::text(o.link_text) });
                     }
-                    let drawn_board = pdfcraft_chess::fen::Fen::parse(shown.fen).map_err(|e| e.to_string()).and_then(|f| {
-                        let png = diagram_png(f.placement(), o.pieces, &o.style, o.diagram_px)?;
-                        Ok((png, *f.placement()))
-                    });
-                    match drawn_board {
-                        Ok((png, placement)) => {
-                            let alt = describe::describe_side_named(number, &label, shown.fen, shown.side_known, lang, o.naming);
-                            // Word draws the SVG at any size; the PNG stays as its fallback.
-                            let svg = Some(to_svg(&board(&placement, o.pieces, &o.style), &alt));
-                            blocks.push(FlowBlock::Figure(Figure { png, svg, side_pt: DIAGRAM_PT, alt, caption }));
-                            drawn += 1;
-                        }
+                    let placement = match pdfcraft_chess::fen::Fen::parse(shown.fen) {
+                        Ok(f) => *f.placement(),
                         Err(e) => {
                             notes.push(format!("page {label}, diagram {number}: {e}; its FEN was set instead"));
                             blocks.push(FlowBlock::Para(caption));
+                            continue;
                         }
+                    };
+                    if !boards.contains_key(&placement) {
+                        if boards.len() >= limits.boards || bytes >= limits.bytes {
+                            over = over.saturating_add(1);
+                            blocks.push(FlowBlock::Para(caption));
+                            continue;
+                        }
+                        // Word draws the SVG at any size; the PNG stays as its fallback. Neither
+                        // names the position: the figure's text alternative does, and the same
+                        // position is then the same picture (plan A9-X1b).
+                        let colors = if o.svg { WORD_DIAGRAM_COLORS } else { palette::MAX_COLORS };
+                        let made = diagram_png_of(&placement, o.pieces, &o.style, o.diagram_px, colors)
+                            .map(|png| (png, o.svg.then(|| board_standalone(&placement, o.pieces, &o.style))));
+                        if let Ok((png, svg)) = &made {
+                            bytes = bytes.saturating_add(png.len()).saturating_add(svg.as_ref().map_or(0, String::len));
+                        }
+                        boards.insert(placement, made);
+                    }
+                    match boards.get(&placement) {
+                        Some(Ok((png, svg))) => {
+                            let alt = describe::describe_side_named(number, &label, shown.fen, shown.side_known, lang, o.naming);
+                            let figure = Figure { png: png.clone(), svg: svg.clone(), side_pt: DIAGRAM_PT, alt, caption };
+                            blocks.push(FlowBlock::Figure(figure));
+                            drawn += 1;
+                        }
+                        Some(Err(e)) => {
+                            notes.push(format!("page {label}, diagram {number}: {e}; its FEN was set instead"));
+                            blocks.push(FlowBlock::Para(caption));
+                        }
+                        None => blocks.push(FlowBlock::Para(caption)),
                     }
                 }
             }
         }
+    }
+    if over > 0 {
+        notes.push(format!(
+            "diagrams set as their FEN, past the most positions a file gets drawn ({}, or {} MB of pictures): {over}",
+            limits.boards,
+            limits.bytes / 1_000_000
+        ));
     }
     let flow = FlowDoc { title: o.title.to_owned(), lang: o.lang.to_owned(), blocks };
     // Nothing is embedded: a font a run names must be installed where the file is read.

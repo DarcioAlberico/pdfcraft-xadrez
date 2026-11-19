@@ -185,7 +185,7 @@ fn chess_export_schema() -> Value {
                     "review_marks".into(),
                     json!({ "type": "boolean", "description": "HTML and EPUB: highlight what the reading flagged for review (default: on in HTML, off in EPUB, a book for readers)." }),
                 );
-                o.insert("diagram_px".into(), json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word, RTF and Markdown: the diagram images' side in pixels (default 900: 300 ppi at the 3 inches Word and RTF set a diagram at)." }));
+                o.insert("diagram_px".into(), json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word, RTF and Markdown: the diagram images' side in pixels. Left out, each format's own: 900 for RTF and Markdown (300 ppi at the 3 inches a diagram is set at), 432 for Word, whose PNG is the picture for readers that cannot draw the SVG beside it (144 ppi; Word 2016 and later draw the SVG)." }));
                 o.insert(
                     "title".into(),
                     json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }),
@@ -300,7 +300,7 @@ fn chess_export_anki_schema() -> Value {
         }
         props.insert(
             "diagram_px".into(),
-            json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "The pictures' side in pixels (default 900)." }),
+            json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "The pictures' side in pixels (left out: 900)." }),
         );
         props.insert(
             "reference_pgn".into(),
@@ -1614,7 +1614,7 @@ pub fn tools() -> Vec<ToolDef> {
             .with(chess_export_schema()),
         t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date, and a cover image drawn from the first page (at most 1600 px on its long side; when it cannot be drawn the book has none and the reply's notes say so). No script, nothing fetched. The user's figurine and sign fonts go in the package when found (one whose licence forbids embedding, OS/2 fsType Restricted or bitmaps only, or a WOFF or WOFF2 file, whose licence cannot be checked, is refused and text_font says why); the package says how it can be read (schema:accessMode, accessibilityFeature, accessibilityHazard, accessibilitySummary), dc:creator (the PDF's author) and dc:source (its file name); every page starts with a page break named by its printed number, listed in the navigation's page list; the pages share one styles.css; the identifier comes from the PDF's /ID when it has one. Same options and reply as chess_export_html. The document is not changed.")
             .with(chess_export_schema()),
-        t("chess_export_docx", "Export chess document as Word", "Chess ▸ Export ▸ Word: the chess_export_html document as a .docx file at out: a flowing document in the book's language (w:lang): Word headings, paragraphs whose moves and annotation glyphs spelling checks skip (w:noProof), piece letters and signs in the user's figurine font (SemFig) and sign font (ISChess) when found, as chess_export_html sets them (named, not embedded: the reply's notes say they must be installed where the file is read), and each diagram as a PNG picture (the same board as the PDF replacement, diagram_px pixels a side for 3 inches) whose text alternative (wp:docPr descr) says the position in words, with a caption in Word's Caption style kept on its page: the PGN's comment for it (Page 17 · diagram 1 of 2), its FEN and, with links, its lichess address as a real hyperlink (only http/https addresses become links). A diagram that was not read is said in words. Same options and reply as chess_export_html (diagrams does not apply). The document is not changed.")
+        t("chess_export_docx", "Export chess document as Word", "Chess ▸ Export ▸ Word: the chess_export_html document as a .docx file at out: a flowing document in the book's language (w:lang): Word headings, paragraphs whose moves and annotation glyphs spelling checks skip (w:noProof), piece letters and signs in the user's figurine font (SemFig) and sign font (ISChess) when found, as chess_export_html sets them (named, not embedded: the reply's notes say they must be installed where the file is read), and each diagram as a picture 3 inches a side (the same board as the PDF replacement) in SVG, which Word 2016 and later draw and print at any size (no <use>: each piece in place), with a paletted PNG of diagram_px pixels (default 432, at most 64 colours) for readers that cannot; a position printed again is one picture in the file, stored once; bytes says the file's size whose text alternative (wp:docPr descr) says the position in words, with a caption in Word's Caption style kept on its page: the PGN's comment for it (Page 17 · diagram 1 of 2), its FEN and, with links, its lichess address as a real hyperlink (only http/https addresses become links). A diagram that was not read is said in words. Same options and reply as chess_export_html (diagrams does not apply). The document is not changed.")
             .with(chess_export_schema()),
         t("chess_export_rtf", "Export chess document as RTF", "Chess ▸ Export ▸ RTF: as chess_export_docx, written as an .rtf file at out (figurines as \\uN? escapes, moves \\noproof, diagrams as PNG pictures whose wzDescription is their text alternative); its font table lists every font a run names.")
             .with(chess_export_schema()),
@@ -2043,7 +2043,7 @@ pub fn tools() -> Vec<ToolDef> {
                     "link_text": { "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." },
                     "pieces": { "type": "string", "enum": pieces_values(), "description": "installed (default), geometric, or a set PdfCraft ships, by id, as the chess exports take it." },
                     "board_theme": board_theme(),
-                    "diagram_px": { "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word, RTF and Markdown: the diagram images' side in pixels (default 900)." },
+                    "diagram_px": { "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word, RTF and Markdown: the diagram images' side in pixels. Left out, each format's own: 900 for RTF and Markdown, 432 for Word (the fallback of its SVG)." },
                     "review_marks": { "type": "boolean", "description": "HTML and EPUB: highlight what is to review (games played have nothing; default as the exports)." },
                 }),
                 &["format", "out"],

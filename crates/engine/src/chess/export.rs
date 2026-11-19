@@ -92,8 +92,10 @@ pub struct ChessExportOptions {
     /// HTML and EPUB: the user's sign font (ISChess), if any.
     pub sign_font: Option<Arc<TextFont>>,
     pub title: String,
-    /// Word, RTF and Markdown: the diagram images' side in pixels.
-    pub diagram_px: u32,
+    /// Word, RTF, Markdown and Anki's cards: the diagram images' side in pixels. `None`: each
+    /// format's own, [`super::office::WORD_DIAGRAM_PX`] for Word (the fallback of its SVG; plan
+    /// A9-X1b), [`super::office::DEFAULT_DIAGRAM_PX`] for the others.
+    pub diagram_px: Option<u32>,
     /// Markdown: the images' folder, relative to the Markdown file.
     pub image_dir: String,
     /// The book's cipher so far: chess OCR starts from it ([`ChessExport::read`] carries it on).
@@ -159,7 +161,7 @@ impl ChessExportOptions {
             text_font: fonts.figurines.map(Arc::new),
             sign_font: fonts.signs.map(Arc::new),
             title: title.into(),
-            diagram_px: super::office::DEFAULT_DIAGRAM_PX,
+            diagram_px: None,
             image_dir: markdown::image_folder(title),
             book: None,
             style: BoardStyle::default(),
@@ -288,9 +290,9 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
                     for block in &page.blocks {
                         let Block::Diagram(d) = block else { continue };
                         let Some(shown) = d.shown() else { continue };
-                        let png = pdfcraft_chess::fen::Fen::parse(shown.fen)
-                            .map_err(|e| e.to_string())
-                            .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px));
+                        let png = pdfcraft_chess::fen::Fen::parse(shown.fen).map_err(|e| e.to_string()).and_then(|f| {
+                            super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px.unwrap_or(super::office::DEFAULT_DIAGRAM_PX))
+                        });
                         match png {
                             Ok(png) => {
                                 images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
@@ -315,6 +317,9 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
             markdown::write(doc, &md).into_bytes()
         }
         ChessFormat::Docx | ChessFormat::Rtf => {
+            // Word's picture is its SVG's fallback (plan A9-X1b); RTF's stands alone.
+            let word = format == ChessFormat::Docx;
+            let own_px = if word { super::office::WORD_DIAGRAM_PX } else { super::office::DEFAULT_DIAGRAM_PX };
             let office = super::office::OfficeOptions {
                 title: &o.title,
                 pieces: &o.pieces,
@@ -322,7 +327,8 @@ fn write_doc(doc: &ChessDoc, format: ChessFormat, o: &ChessExportOptions, w: Wri
                 figurines: o.figurines,
                 links: o.links,
                 link_text: &o.link_text,
-                diagram_px: o.diagram_px,
+                diagram_px: o.diagram_px.unwrap_or(own_px),
+                svg: word,
                 text_font: o.text_font.as_deref(),
                 sign_font: o.sign_font.as_deref(),
                 lang: w.lang,
@@ -355,7 +361,7 @@ fn anki_cards(
         let style = BoardStyle { flipped: card.flipped, ..o.style };
         let png = pdfcraft_chess::fen::Fen::parse(&card.fen)
             .map_err(|e| e.to_string())
-            .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &style, o.diagram_px));
+            .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &style, o.diagram_px.unwrap_or(super::office::DEFAULT_DIAGRAM_PX)));
         match png {
             Ok(png) => {
                 images.push((format!("{}/{}", o.image_dir, card.image), png));

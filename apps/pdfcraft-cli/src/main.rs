@@ -760,7 +760,7 @@ fn chess_round_trip(bytes: &[u8], models: Option<&Path>) {
     options.scan = scan.clone();
     options.ocr = ocr;
     options.pieces = Arc::new(pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet::geometric());
-    options.diagram_px = 64;
+    options.diagram_px = Some(64);
     for format in ChessFormat::ALL {
         let _ = s.chess_export(id, format, &options);
     }

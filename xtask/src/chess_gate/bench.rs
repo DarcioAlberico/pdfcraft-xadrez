@@ -106,6 +106,20 @@ fn bench_result(text: &str, passed: bool, verdict: &str) -> Result<String, Strin
     Ok(text.lines().rev().find(|l| !verdict.is_empty() && l.contains(verdict)).map_or(tail, |l| l.trim().to_owned()))
 }
 
+/// The files besides the walker and the vision whose `perf_` tests stage 4b runs when they change:
+/// the stores, the games' autosave, and the Word export with its pictures (plan A9-X1b, whose
+/// test holds a book's file to its size).
+const TIMED: [&str; 8] = [
+    "crates/engine/src/chess/corrections.rs",
+    "crates/engine/src/chess/reference_store.rs",
+    "crates/engine/src/chess/store.rs",
+    "crates/ui-egui/src/chess_autosave.rs",
+    "crates/engine/src/chess/office.rs",
+    "crates/engine/src/chess/office/palette.rs",
+    "crates/export/src/flow.rs",
+    "crates/export/src/zip.rs",
+];
+
 /// The `PERF <name> <ms>` lines of a test run.
 fn perf_lines(out: &str) -> BTreeMap<String, f64> {
     out.lines()
@@ -283,18 +297,13 @@ impl Gate {
 
     /// Stage 4b: the `perf_` tests in release, against the baseline's times.
     pub(super) fn stage4b(&mut self) -> bool {
-        let stores = [
-            "crates/engine/src/chess/corrections.rs",
-            "crates/engine/src/chess/reference_store.rs",
-            "crates/engine/src/chess/store.rs",
-            "crates/ui-egui/src/chess_autosave.rs",
-        ];
-        if !self.walker_changed() && !self.changed.iter().any(|f| stores.contains(&f.as_str())) {
-            eprintln!("chess-gate: neither the walker, the vision, the stores nor the autosave changed");
+        if !self.walker_changed() && !self.changed.iter().any(|f| TIMED.contains(&f.as_str())) {
+            eprintln!("chess-gate: neither the walker, the vision, the stores, the autosave nor the Word export changed");
             return true;
         }
         let base = load_perf(&self.gate_dir);
-        let engine = self.crates().iter().any(|(dir, _)| Self::layer(dir) >= 6);
+        // The engine's own `perf_` tests: an L6+ crate changed, or the Word writer below it.
+        let engine = self.crates().iter().any(|(dir, _)| Self::layer(dir) >= 6) || self.changed.iter().any(|f| f.starts_with("crates/export/src/"));
         let runs = perf_runs(&self.root, engine);
         if runs.is_empty() {
             let t = Instant::now();

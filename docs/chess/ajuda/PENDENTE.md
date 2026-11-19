@@ -6,3 +6,4 @@ Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige 
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| A9-X1b | (este PR) | 18. Exportar o livro (O que vai e o que não vai para o livro exportado) | O Word leva cada diagrama em SVG, que o Word 2016 em diante mostra e imprime nítido, e numa imagem de 432 px e 64 cores para quem não lê o SVG (impressa a 144 ppi); a mesma posição vai uma vez no arquivo. Um livro de 748 páginas caiu de 118,5 para 21,2 MB. Além de 30.000 posições (ou 1 GiB de imagens) num arquivo, o diagrama sai com a FEN e o aviso da exportação diz quantos. A interface não muda. |
