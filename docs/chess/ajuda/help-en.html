@@ -1,0 +1,1116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Help - Chess Tools</title>
+<!--
+  The help of PdfCraft's chess tools, in English (plan A9, step E1e): the English edition of
+  ajuda.html, chapter for chapter and figure for figure. This is the source: the PDF
+  "Help - Chess Tools.pdf" is printed from it by Chrome. How to remake the PDF, and where the
+  figures and the generators are: README.md, in this folder.
+  Rules: a name the interface shows goes in a bold tag, word for word as the English source text
+  of the catalogue has it (the second column of crates/ui-egui/src/i18n/pt-br.tsv; the test
+  i18n::tests::the_english_help_names_only_what_the_app_shows checks it); emphasis uses strong
+  or em, never the bold tag. The glossary (plan sections 2.1 and 2.8.2) holds sentence by
+  sentence (i18n::tests::the_chess_texts_keep_the_glossary): diagrams are "detected", never
+  searched for or scanned; a move's symbol is a "sign", and "glyph" is only for what the OCR
+  reads (or a control's own name). The figures are in img/, outside the repository.
+-->
+<style>
+@page { size: A4; margin: 18mm 17mm 18mm 17mm;
+  @top-left { content: "PdfCraft · Chess tools"; font: 8.5pt "Segoe UI", sans-serif; color: #666; }
+  @bottom-right { content: counter(page); font: 8.5pt "Segoe UI", sans-serif; color: #666; } }
+@page :first { @top-left { content: none; } @bottom-right { content: none; } }
+html { font: 10.2pt/1.42 "Segoe UI", "Noto Sans", sans-serif; color: #1d1d1f; }
+body { margin: 0; }
+h1 { font-size: 19pt; margin: 20pt 0 8pt; color: #12324f; break-after: avoid; }
+#c1 { break-before: page; margin-top: 0; }
+h1 .num { color: #2a6db0; margin-right: 6pt; }
+h2 { font-size: 12.5pt; margin: 14pt 0 5pt; color: #12324f; break-after: avoid; }
+h3 { font-size: 10.6pt; margin: 10pt 0 3pt; break-after: avoid; }
+p { margin: 0 0 6pt; orphans: 2; widows: 2; }
+ul, ol { margin: 0 0 6pt; padding-left: 16pt; }
+li { margin: 0 0 2.5pt; }
+table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt; font-size: 9.4pt; break-inside: auto; }
+th, td { border: 0.6pt solid #b9c4cf; padding: 3pt 5pt; vertical-align: top; text-align: left; }
+th { background: #e8eef4; }
+tr { break-inside: avoid; }
+kbd { font: 8.8pt "Segoe UI", sans-serif; border: 0.6pt solid #9aa5b1; border-bottom-width: 1.2pt; border-radius: 2.5pt; padding: 0 2.5pt; background: #f6f8fa; white-space: nowrap; }
+code { font: 8.9pt Consolas, "Cascadia Mono", monospace; background: #f1f3f5; padding: 0 2pt; border-radius: 2pt; }
+figure { margin: 6pt 0 10pt; break-inside: avoid; text-align: center; }
+figure img { max-width: 100%; max-height: 112mm; border: 0.6pt solid #9aa5b1; }
+figure.half img { max-width: 72%; }
+figure.small img { max-width: 48%; }
+figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
+.build { color: #7a8794; white-space: nowrap; }
+.box { border-left: 3pt solid #2a6db0; background: #eef4fa; padding: 5pt 8pt; margin: 6pt 0 9pt; break-inside: avoid; }
+.box h3 { margin-top: 0; }
+.cover { height: 250mm; display: flex; flex-direction: column; justify-content: center; }
+.cover .kicker { letter-spacing: 3pt; color: #2a6db0; font-weight: 600; }
+.cover .title { font-size: 34pt; font-weight: 700; color: #12324f; margin: 4pt 0; }
+.cover .version { font-size: 13pt; color: #2a6db0; font-weight: 600; margin: 2pt 0 10pt; }
+.cover .sub { font-size: 15pt; color: #34495e; margin-bottom: 18pt; }
+.cover p { max-width: 150mm; color: #34495e; }
+.toc { list-style: none; padding: 0; font-size: 11pt; }
+.toc li { display: flex; margin: 0 0 4pt; }
+.toc .cn { width: 22pt; color: #2a6db0; font-weight: 600; }
+.toc a { color: inherit; text-decoration: none; }
+.toc .pg { margin-left: auto; padding-left: 8pt; }
+.toc li::after { content: none; }
+.two { display: flex; gap: 10pt; align-items: flex-start; break-inside: avoid; }
+.two > * { flex: 1; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+<div class="kicker">PDFCRAFT</div>
+<div class="title">Help — Chess Tools</div>
+<div class="version">Version 1.0.0 · <span class="build-id">build bc3f895 2026-11-19</span></div>
+<div class="sub">How to read, review, study and export chess books in PDF</div>
+<p>This guide describes version 1.0.0 of PdfCraft's chess edition, <span class="build-id">build bc3f895 2026-11-19</span> (the <code>main</code> of 19 November 2026, bc3f8954, the build in <code>dist/app</code>). To see the version you have installed, open <b>Help</b> ▸ <b>About PdfCraft</b>, or run <code>pdfcraft-cli --version</code>: both say it as <code style="white-space: nowrap">1.0.0, build bc3f895 2026-11-19 (PdfCraft 0.9.0)</code>, the edition first, then the build, then the version of PdfCraft it is built on.</p>
+<p>The figures were made in PdfCraft itself, in English, in a window of 1366 × 768, with a sample book of four pages: two public-domain games (Morphy, Paris 1858; Anderssen–Kieseritzky, London 1851) with notes written for this guide, two exercises and their solutions. Each figure's caption names the build it came from.</p>
+</section>
+
+<h1 style="break-before: page">Contents</h1>
+<ul class="toc">
+<li><span class="cn">1</span><a href="#c1">Overview</a><span class="pg" data-for="c1"></span></li>
+<li><span class="cn">2</span><a href="#c2">Installing and opening: models, fonts and engine</a><span class="pg" data-for="c2"></span></li>
+<li><span class="cn">3</span><a href="#c3">Detecting and reviewing the diagrams</a><span class="pg" data-for="c3"></span></li>
+<li><span class="cn">4</span><a href="#c4">The diagram editor: correcting a position</a><span class="pg" data-for="c4"></span></li>
+<li><span class="cn">5</span><a href="#c5">The Text tab: the book read as chess</a><span class="pg" data-for="c5"></span></li>
+<li><span class="cn">6</span><a href="#c6">The book's PGN</a><span class="pg" data-for="c6"></span></li>
+<li><span class="cn">7</span><a href="#c7">The analysis board</a><span class="pg" data-for="c7"></span></li>
+<li><span class="cn">8</span><a href="#c8">Analysing with an engine</a><span class="pg" data-for="c8"></span></li>
+<li><span class="cn">9</span><a href="#c9">In the book and the Library</a><span class="pg" data-for="c9"></span></li>
+<li><span class="cn">10</span><a href="#c10">The move list</a><span class="pg" data-for="c10"></span></li>
+<li><span class="cn">11</span><a href="#c11">The tool rail</a><span class="pg" data-for="c11"></span></li>
+<li><span class="cn">12</span><a href="#c12">Capturing printed moves</a><span class="pg" data-for="c12"></span></li>
+<li><span class="cn">13</span><a href="#c13">Signs and comments</a><span class="pg" data-for="c13"></span></li>
+<li><span class="cn">14</span><a href="#c14">Variations, structure and Undo</a><span class="pg" data-for="c14"></span></li>
+<li><span class="cn">15</span><a href="#c15">The document's games</a><span class="pg" data-for="c15"></span></li>
+<li><span class="cn">16</span><a href="#c16">The chess window and Follow the move on the page</a><span class="pg" data-for="c16"></span></li>
+<li><span class="cn">17</span><a href="#c17">Preferences and appearance</a><span class="pg" data-for="c17"></span></li>
+<li><span class="cn">18</span><a href="#c18">Exporting the book</a><span class="pg" data-for="c18"></span></li>
+<li><span class="cn">19</span><a href="#c19">Keyboard and screen reader</a><span class="pg" data-for="c19"></span></li>
+<li><span class="cn">20</span><a href="#c20">Automation from the command line</a><span class="pg" data-for="c20"></span></li>
+<li><span class="cn">21</span><a href="#c21">Limits and troubleshooting</a><span class="pg" data-for="c21"></span></li>
+</ul>
+
+<!-- ============================================================ 1 -->
+<h1 id="c1"><span class="num">1</span>Overview</h1>
+<p>PdfCraft reads a chess book in PDF. It detects the diagrams and reads each one as a position (a FEN), and it reads the moves in the text, figurines and annotation signs included. With a book read, you can:</p>
+<ul>
+<li>review the positions read and correct the wrong ones, without changing the PDF;</li>
+<li>study any diagram or game of the book on an analysis board, with variations, comments, drawings and an engine such as Stockfish;</li>
+<li>open a printed move on the board by double-clicking it on the page, and transcribe whole passages by selecting their text;</li>
+<li>align the book to the PGN that comes with its digital edition (Chessable, Forward Chess…);</li>
+<li>see where in the book the board's position appears, or a given material and pawn structure;</li>
+<li>export the book as PGN, EPUB, HTML, Word, RTF or Markdown, and its exercises as a sheet to print, a PGN of problems or Anki cards.</li>
+</ul>
+<p>Everything runs on your computer. Nothing is sent anywhere.</p>
+<figure>
+<img src="img/01-overview.png" alt="The sample book with the Chess column open on the Diagrams tab.">
+<figcaption>The sample book after <b>Detect diagrams</b>: the page on the left, each diagram marked on it, and the <b>Chess</b> column on the right, on its <b>Diagrams</b> tab. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+
+<h2>Where the tools are</h2>
+<table>
+<tr><th style="width:32%">Place</th><th>What it is for</th></tr>
+<tr><td>The <b>Chess</b> column (on the right, in the Inspector's place)</td><td>The chess panel, with three tabs: <b>Diagrams</b> detects, lists and reviews the diagrams (chapters 3 and 4); <b>Text</b> shows the page read as chess (chapter 5); <b>Board</b> is the analysis board (chapters 7 to 15). It opens from the chess button on the right-hand rail, from <b>Chess panel</b> in the <b>Chess</b> menu, or from the command search (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
+<tr><td>The <b>Chess</b> menu</td><td><b>Detect diagrams</b>, <b>Chess panel</b>, <b>Load the book's PGN…</b>, <b>Export the book's review…</b> and <b>Import a book's review…</b>, <b>Make the book's bookmarks…</b>, <b>Chess board</b>, <b>Analyze the position</b>, <b>Export chess book…</b> and <b>Chess shortcuts</b>. It also has <b>Find in the book by material…</b> and <b>Library…</b> (chapter 9) and <b>Check with the engine…</b> (chapter 8).</td></tr>
+<tr><td><b>Tools</b> ▸ <b>Chess</b></td><td>The panel, the board, capturing, the book's PGN and the export, as tools of the <b>Tools</b> panel.</td></tr>
+<tr><td><b>Move list beside the page</b></td><td>The board's game laid out as in a book, in a column of its own beside the PDF (chapter 10).</td></tr>
+<tr><td><b>Chess in its own window</b></td><td>The board and the tabs in a separate window, for a second monitor (chapter 16).</td></tr>
+<tr><td><b>Preferences</b> ▸ <b>Chess</b></td><td>Pieces, board theme, move list, keys, reading models and the engine (chapter 17).</td></tr>
+</table>
+<p>The chess button on the right-hand rail shows up by itself, with a dot, when the document is a book set in a chess font or has a PGN beside it, before you have detected anything. Every chess tool is also a command: press <kbd>Ctrl</kbd>+<kbd>K</kbd> and type part of its name, such as “analyze”, “board”, “export book” or “variation”. With the keyboard on the board, <kbd>F1</kbd> opens the sheet of chess shortcuts.</p>
+<figure class="half">
+<img src="img/02-chess-menu.png" alt="The Chess menu, open.">
+<figcaption>The <b>Chess</b> menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+
+<h2>The window's width decides the layout</h2>
+<p>The <b>Chess</b> column adapts to the window's width, measured in points (pt) after <b>Interface size</b>:</p>
+<ul>
+<li><strong>Up to 999 pt</strong> (a 1366 × 768 screen with the interface at 150 % or more): the column takes the page's place. <kbd>F6</kbd>, or the <b>Show the page (F6)</b> button, switches between the two.</li>
+<li><strong>From 1,000 to 1,599 pt</strong>: one column of 360 pt beside the page. A diagram's editor opens in the list's place.</li>
+<li><strong>From 1,600 pt</strong>: two columns, the diagram's editor (or the board) beside the list. From 1,920 pt the columns are 420 pt wide, and the editor's board takes up to 380 pt.</li>
+</ul>
+<p>Below 1,920 pt, opening the chess panel collapses the <b>Tools</b> panel, once a session, with the notice <b>Tools panel collapsed</b> and <b>Undo</b>. A column you resized in the session keeps its size. A layout saved by a build from before 14 November opens without the board's old tab and the old Diagram tab, on the tab that was showing. Read mode has the same column, with the same tabs and the same editor.</p>
+
+<h2>Notices and errors</h2>
+<p>Every chess message shows at the foot of the page area, and a screen reader says it. A notice goes at your next click or key; when what was done can be undone, it carries <b>Undo</b> (confirming or forgetting a correction, redrawing in the PDF, putting a lichess link, keeping the book's PGN, aligning the book). What failed (a file not written or not read, the book's PGN or the corrections not kept, games not autosaved, a model that couldn't be loaded) is a red error with ×, which stays until you dismiss it. <kbd>Esc</kbd> dismisses it while the keyboard is in the chess panels or on the error itself; errors of the same moment are kept together (“… (and 2 more)”), and doing again with success what failed takes its error away. An internal error in a long job is said too (“The work stopped on an internal error: …”), instead of leaving the panel busy.</p>
+
+<!-- ============================================================ 2 -->
+<h1 id="c2"><span class="num">2</span>Installing and opening: models, fonts and engine</h1>
+<p>PdfCraft's chess edition is a folder, with no installer: <code>dist/app</code>, holding the program (<code>pdfcraft.exe</code>), the command line (<code>pdfcraft-cli.exe</code>) and three folders beside them. None of the files below comes with PdfCraft's code; without them, everything else keeps working.</p>
+<table>
+<tr><th style="width:24%">File</th><th style="width:38%">What it does</th><th>Without it</th></tr>
+<tr><td><code>chess-pieces.onnx</code> + <code>.json</code></td><td>The piece model: reads drawn and scanned diagrams.</td><td>Only diagrams set in a diagram font are read; the others are detected and stay <b>Not read</b>.</td></tr>
+<tr><td><code>chess-glyphs.onnx</code> + <code>.json</code></td><td>The chess OCR's glyph model: reads moves, figurines and signs from the page's image.</td><td>Pages without a good text layer have no moves.</td></tr>
+<tr><td><code>text-detection.rten</code>, <code>text-recognition.rten</code></td><td>Read the prose around the moves on a scanned page.</td><td>The chess OCR's glyph reader reads the prose as well, less accurately.</td></tr>
+<tr><td>A diagram font (Chess Merida…) or a <code>pieces</code> folder</td><td>Draw redrawn diagrams with real pieces.</td><td><b>Auto</b> uses geometric pieces; you can pick one of the sets that come with the program (chapter 17).</td></tr>
+<tr><td>A figurine font (Hastings, Linares, Zurich…) and ISChess</td><td>Write the figurines (♘f3) and the signs (⩲ ± □) in the HTML and EPUB exports.</td><td>The reader's own fonts are used.</td></tr>
+<tr><td>A UCI engine (Stockfish)</td><td>Analysis on the board (chapter 8).</td><td>The board works without analysis.</td></tr>
+</table>
+<p>Each model is checked before it is loaded (its operations, constants and tensor sizes) and, when a <code>.parity.json</code> sits beside it, after it is loaded. A model that is refused, because it would ask for too much memory or chains more than 256 operations, shows as invalid, with the reason, and the program carries on.</p>
+
+<h2>Where to put each thing</h2>
+<table style="break-inside: avoid">
+<tr><th style="width:14%">Folder</th><th>What goes in it</th></tr>
+<tr><td><code>models</code></td><td>The reading models. PdfCraft looks for them first in the folder chosen in Preferences, then in the one <code>PDFCRAFT_MODELS</code> names, then in <code>models</code> and last in the program's own folder.</td></tr>
+<tr><td><code>fonts</code></td><td>Diagram fonts (each becomes a piece set) and figurine and sign fonts (the exports write with them). <b>Import fonts…</b>, in Preferences, copies them here. A WOFF or WOFF2 font is not embedded in the exports, since its licence can't be checked: convert it to TTF or OTF.</td></tr>
+<tr><td><code>engine</code></td><td>The engine's program, in the folder itself or in a folder inside it (down to three levels, as in <code>engine/stockfish/stockfish.exe</code>). With two programs, the first by name is used, and the board's ⋯ menu says which (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>). <b>Choose engine…</b> picks another.</td></tr>
+</table>
+<div class="box"><h3>On this computer</h3>
+<p>In <code>dist/app/engine</code>, Stockfish sits in a folder of its own and is found by itself. The shortcut <code>abrir-xadrez.cmd</code> opens PdfCraft with <code>PDFCRAFT_MODELS=C:\Python-Chess2\pdfcraft-models</code>. Earlier builds are kept whole, with their models, fonts and engine, in <code>dist/app/anterior-&lt;date&gt;</code>.</p></div>
+
+<h2>Reading models in Preferences</h2>
+<p><b>Chess models…</b> chooses the models' folder. It is checked at once: each model loaded, not found, or the reason it couldn't be loaded (a <code>.json</code> missing beside its <code>.onnx</code>, for instance). The choice is remembered. <b>Check again</b> reads the folder anew after you replace its files, and reads the pages already detected again with the new model; <b>Forget</b> goes back to the automatic search. The same choice is in the panel's <b>More chess actions</b> menu. Changing the models during a reading is safe: it finishes with the models it started with.</p>
+
+<h2>Builds side by side</h2>
+<ul>
+<li>Each copy of PdfCraft in its own folder is its own instance: a PDF opened with the <code>pdfcraft.exe</code> of <code>dist/app/anterior-…</code> opens in that build, not in the current one. Avoid correcting diagrams in two builds at once.</li>
+<li><b>Help</b> ▸ <b>About PdfCraft</b> and <code>pdfcraft-cli --version</code> say the version and the build (<code>1.0.0, build bc3f895 2026-11-19 (PdfCraft 0.9.0)</code>). <b>Help</b> ▸ <b>Check for updates…</b> asks nothing over the network: it says “PdfCraft Xadrez <i>build</i>: new versions come from the dist/app folder.”</li>
+<li>When it saves the preferences, this build keeps those a newer build wrote that it doesn't know. Builds from before 12 November still erase them.</li>
+</ul>
+
+<h2>Where the chess work is kept</h2>
+<p>Everything the chess tools keep of a document is in the app's data folder, <code>%LOCALAPPDATA%\PdfCraft\chess</code> (in portable mode, in the portable data folder), the same folder the command line uses, one file per document and per kind:</p>
+<table>
+<tr><th style="width:24%">Folder</th><th>What</th></tr>
+<tr><td><code>corrections</code></td><td>The diagram corrections (chapter 4).</td></tr>
+<tr><td><code>reference</code></td><td>The book's PGN and the choices made in its conflicts (chapter 6).</td></tr>
+<tr><td><code>games</code></td><td>The document's games (chapter 15).</td></tr>
+<tr><td><code>reading</code></td><td>What was read of the pages already detected, so that a book opened again is not read again (chapter 3).</td></tr>
+<tr><td><code>cipher</code></td><td>The book's cipher: what each symbol of a figurine font, or a misreading, stands for (chapter 5).</td></tr>
+<tr><td><code>evals</code></td><td>The engine's evaluations (chapter 8).</td></tr>
+<tr><td><code>library</code></td><td>The Library's catalog and an index per book (chapter 9).</td></tr>
+</table>
+<p>A document is known by its PDF's <code>/ID</code>, its path, and its name and size, so the work survives closing it, editing it and saving it under another name. At each start the app brings in what an earlier build kept in <code>Recovery\chess</code>, without changing that folder, and says so when it brought something in. For an encrypted document, nothing of this is written before you answer the question “Keep your chess work on this protected document?” (chapter 15).</p>
+
+<h2>The web version</h2>
+<p>The web version keeps the same work in the browser. It detects diagrams a few pages a frame, without freezing the tab, and × stops between two pages. Exporting and aligning a book work there only for books of at most 20 pages, and the app says why. The file pickers refuse a file larger than their limit without reading it, and a correction or a book's PGN kept that can't be read is said and set aside, never deleted.</p>
+
+<!-- ============================================================ 3 -->
+<h1 id="c3"><span class="num">3</span>Detecting and reviewing the diagrams</h1>
+<h2>Reviewing a book in 5 steps</h2>
+<ol>
+<li><strong>Detect.</strong> Click <b>Detect diagrams</b> at the top of the <b>Diagrams</b> tab (or in the <b>Chess</b> menu). Its ▾ (<b>Where to detect</b>) offers the whole book (<b>In the whole book (4 pages)</b>) or <b>On this page</b>. The progress bar says the page detection has reached (<b>Detecting… page 75 of 703</b>), and <b>Stop</b> stops it between two pages; the diagrams read so far stay.</li>
+<li><strong>Review.</strong> At the end, the notice at the foot of the page sums up, for instance “4 diagrams · 1 to review”, with <b>Review now</b>, which opens the first diagram to review in the editor and sets the list's filter back to <b>All (4)</b>.</li>
+<li><strong>Correct.</strong> Put the pieces where the book has them: a click on a square puts the palette's piece there, or use the keyboard. The footer says at once whether the position is legal and, when it isn't, why.</li>
+<li><strong>Confirm.</strong> <b>Confirm and next</b> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>). The correction is kept, without changing the PDF, and the next diagram to review opens. A reading that was right only needs <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. After the last one, the editor says <b>Review done: 1 of 1 checked</b>.</li>
+<li><strong>Export.</strong> <b>Export book…</b> writes the book with your corrections (chapter 18).</li>
+</ol>
+<figure class="half">
+<img src="img/03-detect.png" alt="The top of the Diagrams tab, with the Where to detect menu open.">
+<figcaption>The top of the <b>Diagrams</b> tab, with the <b>Where to detect</b> menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<p>At the top of the tab are <b>Detect diagrams</b> ▾, <b>Export book…</b> (the file icon), <b>Board</b> and the ⋯ menu, <b>More chess actions</b>. In a narrow column <b>Board</b> keeps only its icon and <b>Detect diagrams</b> is cut short with “…”; the whole name is in the tooltip.</p>
+<p>On the desktop, detection uses several cores (up to four, leaving one for the rest of the program): the list fills in by batches of pages, in the book's order. On the web it reads one page at a time.</p>
+<p>Each open book has its own list. Detecting in another book never empties this one's, and while another book is being detected, a book with no detection of its own says <b>Detecting in another book… page 306 of 748</b> under its header. The page read in the Text tab, the list's filter, the export's choices and the book origin also belong to each book.</p>
+
+<h3>Opening a book again does not read it all again</h3>
+<p>What detection read of each page (and what the chess OCR read of a scanned page) is kept in the <code>chess\reading</code> folder, up to 512 MiB in all, the books used longest ago leaving first; nothing is kept while the disk has less than 1 GB free. When you open the book again, the list comes back without reading the pages. A page is read again when it changed, or with another piece model, other settings, or a newer version's reading. A book that does not allow copying keeps no reading at all, and an encrypted one only after <b>Keep them</b> in the question about your chess work (the reading kept is not encrypted). An edit of the PDF, or Undo and Redo, keeps the list: only the pages that changed are read again, in the background.</p>
+
+<h2>The states of a diagram</h2>
+<p>Every diagram has a state, shown by an icon and a word, never by colour alone: in the list, on its mark on the page and in the editor. The list's row has a short word (<b>Corrected</b>, PGN; with unconfirmed changes, just <b>Not confirmed</b>, with a dot on the icon); the whole state is in the tooltip and in what a screen reader says.</p>
+<table>
+<tr><th style="width:22%">State</th><th style="width:26%">Icon and colour</th><th>Means</th></tr>
+<tr><td><b>Read</b></td><td>circle with ✓, green</td><td>The position was read with confidence.</td></tr>
+<tr><td><b>To review</b></td><td>triangle, amber</td><td>Some square was in doubt, the reading was repaired, or the position contradicts the side printed. Check it before you use it.</td></tr>
+<tr><td><b>Not read</b></td><td>dashed circle, grey</td><td>It couldn't be read (a drawn board without the piece model, for instance). Set the position up in the editor.</td></tr>
+<tr><td><b>With an error</b></td><td>circle with ×, red</td><td>Reading it failed; its tooltip says why, in the interface's language. Set the position up in the editor.</td></tr>
+<tr><td><b>Verified</b></td><td>badge with ✓, green</td><td>You checked it and kept the reading.</td></tr>
+<tr><td><b>Corrected</b></td><td>badge with ✓, green</td><td>You corrected this position.</td></tr>
+<tr><td><b>Confirmed by the PGN</b></td><td>open book</td><td>The position is in the book's PGN (chapter 6).</td></tr>
+</table>
+<p>A diagram is to review when it was not read, when reading it failed, or when it did not pass the quality check. A reading the program had to repair never passes on its own: someone has to confirm it.</p>
+
+<h2>Who is to move, and the move number</h2>
+<p>The side to move comes from what the page says, in this order:</p>
+<ul>
+<li>the diagram's caption, or a heading over the page's diagrams, in words (“Black to move”, “White to play and win”, “Pretas jogam”, “Weiß am Zug”, “Black to move in all positions”) — only short lines with no moves, never the analysis;</li>
+<li>the first bold move number under the diagram, in the same column and before the next diagram: <code>23.♘f3</code> says White is to move, and <code>23...♖xe4</code> that Black is, at move 23 (a number in the body font is prose and is passed over);</li>
+<li>a “Mate in 2” problem (<code>#2</code>, “Mate em 2”, up to three moves): when the page doesn't say who is to move, the side that mates is, if only one of them does.</li>
+</ul>
+<p>When the position itself contradicts the side printed (the side not to move would be in check), the position wins, and the diagram goes to review. With none of these, the side is assumed: White is to move, and the exports say “side to move not given”.</p>
+
+<h2>The Diagrams list</h2>
+<div class="two">
+<div>
+<p>The filters (chips) show the groups that have diagrams, with their count: <b>All (4)</b>, <b>Read (3)</b>, <b>To review (1)</b> and, when there are any, <b>Not read (n)</b>, <b>With an error (n)</b>, <b>Verified (n)</b>, <b>Corrected (n)</b> and <b>Confirmed by the PGN (n)</b>. One applies at a time, plus <b>On this page</b>. <b>Follow the page</b> keeps the page on screen at the top of the list.</p>
+<p>The diagrams are grouped under their page's header, with the number the book prints (pages in Roman numerals, or a book that starts at page 25, say “xvii” and “25”). The header's menu has <b>Mark the page as checked</b>: every diagram of that page read with confidence becomes <b>Verified</b>, in one step that <b>Undo</b> takes back. Those to review are left for you: accepting them in bulk is deliberately not offered.</p>
+<p>Each row shows the diagram and its state; the FEN is in the tooltip. <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> walk the rows, <kbd>Enter</kbd> opens the editor with the keyboard on its board, and <kbd>Esc</kbd>, in the editor, goes back to the row.</p>
+</div>
+<figure style="flex:0.9">
+<img src="img/04-list.png" alt="The Diagrams list with a row's menu open.">
+<figcaption>The list, with a row's ⋯ menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<p>On the page, each diagram has a mark in its state's colour, its number on a tab; a click picks the diagram, with the Select tool or the Hand. A double-click on a diagram on the page opens it on the board.</p>
+<h3>Each row's ⋯ menu</h3>
+<ul>
+<li><b>Open on the board</b>: puts the position on the analysis board, as a new game.</li>
+<li><b>Analyze</b>: opens it on the board with the engine analysing.</li>
+<li><b>Copy FEN</b> and <b>Open in lichess</b>, from the side the diagram is printed from (a diagram printed from Black's side opens from Black's side).</li>
+</ul>
+<p>All three use the correction you kept, when there is one: a diagram no model could read can go on the board once you have corrected it.</p>
+
+<h3>The <b>More chess actions</b> menu</h3>
+<p>The ⋯ at the top of the panel gathers the actions on the whole book (they are in the <b>Chess</b> menu too):</p>
+<ul>
+<li><b>Chess models…</b> (chapter 2).</li>
+<li><b>Make the book's bookmarks…</b> reads the whole book (with its progress and <b>Stop</b>) and first shows the bookmarks it will make: the chapters, the games with a header and the numbered exercises, with the boxes <b>Chapters</b>, <b>Games</b> and <b>Exercises</b> and the bookmark's title. <b>Add the bookmarks</b> makes them in a single step that <b>Edit</b> ▸ <b>Undo</b> takes back.</li>
+<li><b>Export the book's review…</b> writes the diagram corrections, the choices made on the book's PGN and the document's games into one file, to take to another computer. The file never carries the PGN's text, nor the PDF's path or name, and the app warns that the games' comments may hold text from the book.</li>
+<li><b>Import a book's review…</b> reads the whole file, asks first when it is another book's review (<b>Import anyway</b> · <b>Cancel</b>), merges everything into what this document already has (importing twice duplicates nothing) and says what came in and what could not be used.</li>
+</ul>
+<figure class="half">
+<img src="img/05-more-actions.png" alt="The More chess actions menu, open.">
+<figcaption>The <b>More chess actions</b> menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h3>Notices in the panel</h3>
+<p>One notice at a time shows under the panel's header: amber when the piece model is missing (“only diagrams set in a chess font are read”) or when the document changed since its diagrams were detected; red, with an icon, when a model couldn't be loaded or the board couldn't be drawn.</p>
+
+<!-- ============================================================ 4 -->
+<h1 id="c4"><span class="num">4</span>The diagram editor: correcting a position</h1>
+<p>A click on a diagram in the list, on <b>Review now</b> or on a diagram's mark on the page opens the editor. With one column, it takes the list's place; with two (from 1,600 pt), it opens in the second. ‹ <b>Diagrams</b> (named <b>Back to Diagrams</b>) and <kbd>Esc</kbd> go back to the list, discarding nothing; in a narrow column the button is just its arrow. Read mode and the chess window have the same editor.</p>
+<figure>
+<img src="img/06-editor.png" alt="The editor with Exercise 2.">
+<figcaption>Exercise 2 of the book, printed without Black's king. The position read is not legal, so it was left to review. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>What is in the editor</h2>
+<ul>
+<li><strong>Header:</strong> ‹ <b>Diagrams</b>, the page and the diagram (<b>Page 3 · diagram 2 of 2</b>; a click shows the diagram on the page) and the arrows ‹ › with a short counter (1/1; the whole text in the tooltip). The arrows walk the diagrams of the chosen filter (with none, those to review).</li>
+<li><b>Read</b> | <b>Original</b> (<kbd>Alt</kbd>+<kbd>O</kbd>): <b>Original</b> shows, in the board's own square and at the same size, the diagram's picture on the page itself, so you can check it square by square without zooming the page. The picture is the one the page view drew: a page not drawn yet says so, with <b>Show it on the page</b>. The choice stays for the next diagram. At the end of the same row, <b>Unconfirmed changes</b> shows while there is a draft, in a place kept for it (the board doesn't jump).</li>
+<li><strong>Board and palette:</strong> the white pieces, the black pieces and the eraser. Doubtful squares are outlined, and each one's second reading is one click away (<b>Empty the square</b>, for instance).</li>
+<li><b>To move</b> (<b>White</b> · <b>Black</b>) and <b>Move number:</b>.</li>
+<li><strong>Details:</strong> castling written out, the FEN, <b>Flip board</b> and <b>Restore the automatic reading</b>. A castling right the pieces no longer allow is taken off by itself.</li>
+<li><strong>The mate a caption asks for:</strong> in a “Mate in n” problem, under the board: “Mate in 2: 1.Qf7! (unique)”, the keys of a problem with several solutions, or no mate, with the best try and the defence that refutes it.</li>
+<li><strong>A fixed footer:</strong> the legality chip, the ⋯ menu and the main button. With other diagrams to review it is <b>Confirm and next</b> ▾ <b>Only confirm</b> (the way you used last comes first); with nothing queued, it is <b>Confirm</b>, without ▾. Once confirmed, with nothing changed, it says <b>Confirmed</b>, greyed out until the position changes.</li>
+</ul>
+<p>The first time, a tip explains the editor; its × is in its corner. A screen reader hears <b>Diagram board, page 3, diagram 2</b> and the board as a grid of squares (“e4, White knight”), and <b>To move</b> as a group of two choices.</p>
+
+<figure class="small">
+<img src="img/06b-original.png" alt="The editor on Original, with the diagram's picture from the page.">
+<figcaption><b>Original</b>: the picture of Exercise 2 on its own page, in the board's square. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+
+<h2>Example: correcting the diagram with an error</h2>
+<ol>
+<li>The footer warns that the position is not legal (Black's king is missing). Pick the black king in the palette and click e8. The footer now says <b>Legal position</b>, and the dot on the icon and <b>Unconfirmed changes</b> show there is a draft.</li>
+<li>Confirm. The list now says <b>Corrected</b>, and the editor <b>Review done: 1 of 1 checked</b>. The notice at the foot of the page says “Review done: 1 of 1 checked · Diagram 2, page 3: Corrected”, with <b>Undo</b>.</li>
+</ol>
+<p>The footer explains any illegal position: a king missing, two kings, kings side by side, the side not to move in check, a pawn on the first or eighth rank, castling the king or rook no longer allows, an en passant square that doesn't fit the pawns…</p>
+
+<h2>Confirming and forgetting can be undone</h2>
+<p>Confirming, <b>Forget the correction</b> and <b>Mark the page as checked</b> are steps of Undo. The notice at the foot of the page carries <b>Undo</b> until your next click or key, and right after, <b>Edit</b> ▸ <b>Undo</b> and <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo the correction too; undoing a confirmation leaves the position in the editor as unconfirmed changes. <kbd>Ctrl</kbd>+<kbd>Z</kbd> with the keyboard in the editor never undoes the board's game.</p>
+
+<div class="two">
+<div>
+<h3>The footer's ⋯ menu</h3>
+<ul>
+<li><b>Redraw in the PDF…</b>: draws the corrected position over the diagram, in one undo step. The correction is kept first; if it can't be, nothing is drawn and the app says why. The first time, the question <b>Redraw in the PDF?</b> asks you to confirm (<b>Don't show again</b> is remembered).</li>
+<li><b>Add lichess link</b>: puts a label with the analysis link under the diagram, from the side the diagram is printed from. Putting the link again after a correction replaces the old label and link with the new ones, in one step; a label someone rewrote, a link drawn over it, or another diagram's link stay.</li>
+<li><b>Copy FEN</b> and <b>Open in lichess</b>.</li>
+<li><b>Forget the correction</b>, last, apart and in red: goes back to the automatic reading. With unconfirmed changes on top, it asks first (<b>Forget the correction?</b>).</li>
+</ul>
+<p><b>Analyze on the board</b> (the gauge icon in the header) takes the position, as edited, to the board with the engine on.</p>
+</div>
+<figure style="flex:0.85">
+<img src="img/07-editor-menu.png" alt="The editor footer's menu.">
+<figcaption>The footer's ⋯ menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+
+<h2>Drafts, and where the corrections are kept</h2>
+<p>Unconfirmed changes stay as each diagram's draft while you look at others. When you close the document, quit, export or detect again with drafts pending, the app asks: <b>Confirm correction</b>, <b>Discard changes</b> or <b>Keep editing</b>, with the keyboard on the button that changes nothing. If <b>Confirm correction</b> fails, the question stays open and says why. <b>Keep editing</b> a draft of another document opens that document and that diagram.</p>
+<p>The corrections are kept in <code>chess\corrections</code>, one file per book (chapter 2). A correction belongs to one diagram only, the one its box overlaps most, and finds its diagram by the page's content and its place on it, even when pages are inserted before it. Deleting the corrected page doesn't pass the correction to the diagram that moves up into its place: it stays kept, applied to no diagram. With two corrections over one diagram, the one whose page was found by its content wins, then the newer one. While the command line or another window writes in the same folder, <b>Confirm</b> doesn't hold up the window: the change applies at once and is written when the folder is free.</p>
+<p>A diagram's correction wins over any new reading: in the list, on the board, in the links and in every export. A build from before 12 November opened alongside reads this build's corrections but never writes over them. In Preferences, <b>Classic diagram editor</b> shows the editor inside the panel, as in older versions, with the same buttons.</p>
+<p>When the book is aligned to its PGN and the reading differs from the PGN's position in one or two squares, the editor suggests the PGN's position with <b>Use the PGN's position</b>, as a draft. A correction of yours is never changed by the PGN.</p>
+
+<h2>Keys of the editor</h2>
+<table>
+<tr><th style="width:30%">Key</th><th>Does</th></tr>
+<tr><td><kbd>Tab</kbd></td><td>Walks the controls. The board has the keyboard when a diagram opens and after confirming.</td></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Move the cursor on the board.</td></tr>
+<tr><td><kbd>K</kbd> <kbd>Q</kbd> <kbd>R</kbd> <kbd>B</kbd> <kbd>N</kbd> <kbd>P</kbd></td><td>Put that white piece (King, Queen, Rook, Bishop, Knight, Pawn) on the cursor's square; with <kbd>Shift</kbd>, the black one. These are the interface's own letters: in Portuguese, R D T B C P.</td></tr>
+<tr><td><kbd>Delete</kbd>, <kbd>Backspace</kbd>, <kbd>Space</kbd></td><td>Empty the square.</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Puts the piece chosen in the palette.</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>O</kbd></td><td>Switches between <b>Read</b> and <b>Original</b>.</td></tr>
+<tr><td><kbd>Page Up</kbd>, <kbd>Page Down</kbd></td><td>The previous or next diagram of the filter (or of those to review).</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td><td>Confirm and next.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Undo and redo in the editor (or the last correction confirmed).</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Back to the list's row, discarding nothing.</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>←</kbd>, <kbd>Alt</kbd>+<kbd>→</kbd></td><td>Back and forward in the view history.</td></tr>
+</table>
+
+<!-- ============================================================ 5 -->
+<h1 id="c5"><span class="num">5</span>The Text tab: the book read as chess</h1>
+<p>The <b>Text</b> tab shows the page on screen read as a chess document: headings, paragraphs, moves and diagrams, named by the number the book prints on the page (<b>Recognised text of page xvii</b>).</p>
+<figure>
+<img src="img/08-text.png" alt="Page 1 of the sample book in the Text tab.">
+<figcaption>Page 1 of the sample book in the <b>Text</b> tab, with the tab's ⋯ menu open. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>The top row and the tab's menu</h2>
+<p>The top row says the page read and where its text came from (the text layer or the chess OCR), with <b>Read with OCR</b> and the tab's ⋯ menu:</p>
+<ul>
+<li><b>Book origin</b> (below);</li>
+<li><b>Load the book's PGN…</b>, or <b>Use</b> the PGN that sits beside the PDF (chapter 6);</li>
+<li><b>Align the book to the PGN</b> (chapter 6);</li>
+<li><b>Export book…</b> (chapter 18);</li>
+<li><b>Check with the engine…</b> and, after a check, <b>Divergences (n)</b> (chapter 8);</li>
+<li>last, in red, <b>Remove the book's PGN</b>.</li>
+</ul>
+<p>With the book's PGN, a line under the top row counts the page's moves: <b>Book's PGN on this page: 33 confirmed, 0 read from the PGN, 0 in conflict (0 to review).</b> While the page is being read, the tab says <b>Reading the page…</b> once.</p>
+
+<h2>The moves and the state of each</h2>
+<p>Each paragraph is laid out as one text, its lines evenly spaced. A move's state is told by the colour of its text and by a mark before it, which reads at 4.5:1 in both themes:</p>
+<table>
+<tr><th style="width:22%">Mark before the move</th><th>Means</th></tr>
+<tr><td>none (the text colour)</td><td>Valid: the move was played in the game.</td></tr>
+<tr><td>×</td><td>Illegal: it can't be played in the position.</td></tr>
+<tr><td>×?</td><td>Ambiguous: more than one piece can make the move.</td></tr>
+<tr><td>?</td><td>Out of sequence, or not reached (the line stopped before it).</td></tr>
+<tr><td>·</td><td>Not checked.</td></tr>
+<tr><td>▸</td><td>A diagram's caption.</td></tr>
+</table>
+<p>Each move's tooltip says its state and its FEN. A move the reader repaired (an old OCR layer's <code>6.Rel</code> for <code>6.Re1</code>), or whose printed mark the position doesn't bear out (a capture with nothing to take, a <code>+</code> with no check, a <code>#</code> with no mate), is flagged for review, with what was printed. With the book's PGN, a move the reader couldn't play and the PGN recovered is underlined, and a move in conflict with the PGN is in italics.</p>
+<p><kbd>Tab</kbd> stops only at the moves and the diagrams, never at the prose; a screen reader says each move in words, with its state and its link to the PGN.</p>
+<h2>From the tab to the page and the board</h2>
+<ul>
+<li>A click on a move or a paragraph shows where it is on the page.</li>
+<li>A click on a diagram opens its editor. If the diagram's page was not detected yet, it is detected first, and the diagram opens as soon as it is found.</li>
+<li>A double-click on a move, or <b>Open this game on the board</b> in its menu, opens the game on the board at that move. The pages around it (up to four each way) are read too, so a game the book runs on from one page to the next comes whole.</li>
+</ul>
+
+<h2>Moves printed on the page</h2>
+<p>You don't have to go through the Text tab: a <strong>double-click on a move printed on the page</strong> opens its game on the board at that move (the position after it). The game is the book's PGN's when the move is linked to it, else the page's, read on across the pages around it; the same game, unchanged, is shown again rather than added twice. The word stays selected; <kbd>Alt</kbd>+click does the same without selecting.</p>
+<ul>
+<li>Over a move the Text tab has read, the pointer becomes a hand and the move is underlined in the accent colour. When the pointer rests on it for 0.4 s, a small board with the position after the move shows beside it (below it, or above it near the foot of the window), never covering it; the pointer can move onto the board and it stays. It goes when the pointer leaves both, on a scroll, a zoom or another page, and when a double-click opens the game; <kbd>Esc</kbd> closes it, and the keyboard stays where it was.</li>
+<li>On a page not read yet, the gesture reads the page first, with <b>Reading the page…</b> at the foot of the page, and then opens the move.</li>
+<li>On a page whose diagrams were not detected yet, a double-click first detects the page's diagrams and puts on the board the one that is there; only where there is no diagram does it go on to the move. On prose, it just selects the word.</li>
+</ul>
+<p>It works the same in Read mode.</p>
+
+<h2>Book origin</h2>
+<p>Says where the pages of the open document came from:</p>
+<table>
+<tr><th style="width:36%">Choice</th><th>Does</th></tr>
+<tr><td><b>Auto (page by page)</b></td><td>Trusts each page's text layer unless it looks poor; then it uses the chess OCR.</td></tr>
+<tr><td><b>Born digital (text layer only)</b></td><td>Never uses the chess OCR. A page with a poor layer is read as it is, with a note.</td></tr>
+<tr><td><b>Scanned (chess OCR on every page)</b></td><td>Reads every page, and every export, with the chess OCR.</td></tr>
+</table>
+<p>A scan that FineReader, Acrobat or Tesseract has already recognised carries their text invisibly over the image, and that layer usually gets figurines and signs wrong. A page whose text is almost all invisible, with images covering half of it or more, is treated as “another program's OCR”, and the Auto mode reads it with the chess OCR. The reading's notes under the page, and the reason not to trust the text layer, are given in the interface's language.</p>
+<p>In the chess OCR, a picture on the page (a photograph's halftone, a dusty scan) doesn't stop the reading: the fine dots are left out, and a strip with too many of them is skipped and said in the notes. The book's cipher, what the OCR learned of each page's symbols, is kept per document (<code>chess\cipher</code>): opening a scanned book again uses what earlier readings proved.</p>
+<h3>Books set in ISChess</h3>
+<p>Quality Chess and Chess Informant books often set their signs, and sometimes their figurines, in the ISChess font, whose letters stand for something else (<code>O</code> is ±, <code>Q</code> is +−, <code>a</code> is !?). PdfCraft knows the font by its name, so the page is read with the signs and pieces the book prints, without needing the font's file.</p>
+
+<h2>How the book is read</h2>
+<ul>
+<li>The text printed between a diagram and the move that settles it goes into the game, as a comment where it stands.</li>
+<li>The text inside a diagram's box (coordinates, a caption printed in it) is a paragraph of the diagram's own, never a heading; the game goes on after it.</li>
+<li>Paragraphs are not cut mid-sentence where the layout changes a line's type or weight, and a blank line separates two of them.</li>
+<li>A square named in a sentence (“an awkward check on h5”, “it does not come to d3”) stays text and is not played. A move in bold is still a move.</li>
+<li>Labels in capitals (<code>A)</code>, <code>B2.1)</code>) separate sibling lines as <code>a)</code> does; text in square brackets with no move goes back to the comment with its brackets.</li>
+<li>A page in descriptive notation (<code>P-K4</code>, <code>C3AR</code>) says in its notes that this notation is not supported, instead of being left with no games and no explanation.</li>
+<li>A document holds up to 20,000 games read; the pages go in the book's order, and a game goes on only onto the next page.</li>
+</ul>
+
+<!-- ============================================================ 6 -->
+<h1 id="c6"><span class="num">6</span>The book's PGN</h1>
+<p>Many digital books come with a PGN of their own (Chessable and Forward Chess exports…). Aligned to the PDF, that PGN confirms the positions read, recovers moves the reader couldn't play, and gives the exports the whole games, with every variation.</p>
+<h2>How to load it</h2>
+<ul>
+<li><strong>Offered when you open the book.</strong> When a <code>.pgn</code> with the same name sits beside the PDF (also when the names differ only by emoji, symbols, spaces or case, as “📚Book.pdf” and “Book.pgn”), the panel offers to use it: <b>Use</b> or <b>Not now</b>, with the file's name in the text. Without such a PGN, the folder's only <code>.pgn</code> is offered too. The folder is looked through in the background, by names alone: no file is opened, a OneDrive file that isn't downloaded is never offered, and at most 4,096 entries are looked at. The offer shows once per document, and a refusal is remembered.</li>
+<li><b>Load the book's PGN…</b> (in the Text tab's ⋯ menu or the <b>Chess</b> menu) picks the file by hand.</li>
+</ul>
+<figure class="half">
+<img src="img/09-offer.png" alt="The offer of the PGN that sits beside the PDF.">
+<figcaption>The offer of the PGN that sits beside the PDF. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<p>The PGN is indexed in the background, without holding up the window, and the Text tab says <b>Indexing the book's PGN…</b> meanwhile. A PGN with a BOM, or in Latin-1 / Windows-1252, is read whole, accents included. PdfCraft indexes up to about 250,000 moves: a larger PGN is still kept, and the notice says that only its first moves are linked to the book.</p>
+
+<h2>Aligning the book to the PGN</h2>
+<p><b>Align the book to the PGN</b> (in the Text tab's ⋯ menu, where it then becomes <b>Align again</b>, or with <kbd>Ctrl</kbd>+<kbd>K</kbd>) reads the whole book and links each page to the PGN's games, the Text and Diagrams tabs showing the page it has reached, with a bar and <b>Stop</b>. Stopping writes nothing and leaves the book's link as it was. While the book is aligned, the Text tab goes on reading the page shown. At the end the notice says what it found (<b>The book is linked to its PGN: 84 of 95 moves (6 read from the PGN), 0 in conflict.</b>), with <b>Undo</b>.</p>
+<figure>
+<img src="img/10-aligned.png" alt="The sample book aligned to its PGN.">
+<figcaption>The sample book after <b>Align the book to the PGN</b>: the diagrams the PGN has become <b>Confirmed by the PGN</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>What changes with the PGN</h2>
+<ul>
+<li><strong>Diagrams:</strong> those that match a position of the PGN become <b>Confirmed by the PGN</b>, with a filter of their own. A diagram keeps its reading as printed and shows the PGN's position; the side the text names (“Position after 5.dxc5”) counts for the description, the FEN and the lichess link of the exports.</li>
+<li><strong>The Text tab:</strong> a move recovered from the PGN is underlined; a move in conflict is in italics, and its menu offers <b>Use the PGN's move</b> or <b>Keep the book's move</b>. In a conflict the tab's text stays the book's; in the exports, the PGN's move wins.</li>
+<li><strong>The board:</strong> a double-click on a linked move opens the PGN's game at that move, with all its variations; <b>In the book</b> looks in the PGN (chapter 9).</li>
+<li><strong>The exports:</strong> every format uses the book's PGN and the document's games (chapter 18).</li>
+</ul>
+<h2>Your choices in conflicts stay</h2>
+<p>Each choice keeps the PGN move it was made against. Loading the same PGN again, or another one, keeps your choices; the notice says how many name a move the new PGN doesn't have (“They stay kept for a PGN that has it.”). A choice is found again when a new reading cuts the page into other blocks; one that is not found stays kept, never moves to another move, and the Text tab says how many there are: <b>Choices made on this page not found in its reading (kept): 2</b>.</p>
+<h2>Where the PGN is kept</h2>
+<p>The PGN is kept in the <code>chess\reference</code> folder (a copy, not just its path), and it follows the document when you save it under another name. <b>Remove the book's PGN</b> undoes the link, and the file records when the PGN was removed. A file that can't be read is said (“The book's PGN could not be read”), and only the next change sets it aside (<code>….bad</code>). While the command line or another window writes in the same folder, loading, removing or deciding never holds up the window. A build from before 13 November opened alongside doesn't see the PGN loaded in this one.</p>
+
+<!-- ============================================================ 7 -->
+<h1 id="c7"><span class="num">7</span>The analysis board</h1>
+<p>The Chess column's <b>Board</b> tab is the board for analysis and study. It never scrolls: each region has its place, and only the move list scrolls.</p>
+<figure>
+<img src="img/11-board.png" alt="The Board tab with the Opera Game and drawings.">
+<figcaption>The <b>Board</b> tab with the Opera Game at 12…Rd8, opened from the diagram on page 1, with arrows and a circled square. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<table>
+<tr><th style="width:24%">Region (top to bottom)</th><th>What it holds</th></tr>
+<tr><td>The rail, on the left</td><td>The game's tools (chapter 11).</td></tr>
+<tr><td>Header</td><td>The move shown and who is to move (a dot of that side's colour and <b>White to move</b>, in the text colour; red only for an illegal position and for mate), <b>Analyze</b>, <b>Move list beside the page</b>, <b>Board theme</b> and the board's ⋯ menu.</td></tr>
+<tr><td>Board</td><td>With the evaluation bar beside it while the engine analyses.</td></tr>
+<tr><td>Navigation</td><td>« ‹ › » (start, back, forward, end), the <b>Move</b> field, <b>Flip board</b> and, at the end, the engine's state (program, depth, kN/s) or the material: each side's extra pieces and the difference in points.</td></tr>
+<tr><td>Engine lines</td><td>One row each, cut short with “…” (the whole text in the tooltip), only while the engine is on (chapter 8).</td></tr>
+<tr><td>Trail</td><td>Where the move shown is: the variation (<i>Main line › 5…Bxc5 › 6…Rf8</i>), the continuations at a fork, or the diagram the game came from.</td></tr>
+<tr><td>Moves</td><td>The game, laid out as in a book (chapter 10). They fill the rest: at least 10 rows, 7 with the engine's three lines.</td></tr>
+<tr><td>Footer bar</td><td><b>Game</b> ▾ · <b>Comment</b> · <b>In the book (n)</b> · FEN/PGN ▾.</td></tr>
+</table>
+
+<h2>The footer bar</h2>
+<div class="two">
+<div>
+<ul>
+<li><b>Game</b> ▾: <b>The game starts at move:</b> (the first move's number, to correct a game read wrong), <b>Game details</b> and <b>Games in this document (2)</b>, which open in the moves' place (chapter 15).</li>
+<li><b>Comment</b> opens the comment fields of the move shown, under the moves (chapter 13).</li>
+<li><b>In the book (n)</b>: in how many places of the open book the position shown appears; opens the list in the moves' place (chapter 9).</li>
+<li>FEN/PGN ▾: <b>Copy FEN</b>, <b>Copy PGN</b>, <b>Copy the main line only</b>, <b>Copy without comments</b> and <b>Copy without annotation glyphs</b>; <b>Open in lichess</b> (from the side the source diagram is printed from, even with the view flipped); back to the <b>Standard start position</b>; and <b>Edit the FEN and the PGN</b>, in the moves' place.</li>
+</ul>
+<p>A list opened in the moves' place goes back with ‹ <b>Moves</b> or <kbd>Esc</kbd>.</p>
+</div>
+<figure style="flex:0.8">
+<img src="img/12-fen-pgn.png" alt="The FEN/PGN menu, open.">
+<figcaption>The FEN/PGN ▾ menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<h3>The board's ⋯ menu</h3>
+<p><b>Lines:</b> 1, 2 or 3 engine lines; once an engine has started, which program and from where (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>, the whole path in the tooltip); <b>Choose engine…</b>; <b>Clear drawings</b>, with a hint on how to draw; and the diagram the game came from.</p>
+<figure class="half">
+<img src="img/14c-engine-menu.png" alt="The board's menu with the engine started.">
+<figcaption>The board's ⋯ menu once the engine has started. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+
+<h2>Opening a position or a game on the board</h2>
+<ul>
+<li>Double-click a diagram on the page, or choose <b>Open on the board</b> in the list. If the editor has that diagram open, the position as edited is used. The moves under the diagram give the side to move and the move number (<code>12...e5</code> makes it Black to move at move 12).</li>
+<li>Double-click a move printed on the page, or a move of the Text tab: the book's game opens at that move (chapter 5).</li>
+<li><b>New game</b>, <b>Open PGN…</b>, or a PGN pasted into <b>Edit the FEN and the PGN</b> (chapter 15).</li>
+</ul>
+<p>Each of these opens a new game in the list of games: it never replaces the game on the board.</p>
+
+<h2>Playing and walking the moves</h2>
+<p>Play by clicking a piece and then its destination, or by dragging it. A pawn reaching the last rank asks which piece to promote to. The navigation arrows, or <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> while the keyboard is in the chess panels but not on the board, walk the line; <kbd>Page Up</kbd> and <kbd>Page Down</kbd> go to the previous or next variation, and <kbd>↑</kbd> <kbd>↓</kbd> move a variation up or down (chapter 19). With the keyboard on the board itself, the arrows walk its squares (see “The board by the keyboard”, below).</p>
+<p>A different move at an earlier point starts a variation, as on lichess. Preferences can change that: <b>Playing a different move</b> can <b>Start a variation</b>, <b>Ask</b> or <b>Replace the continuation</b>. A diagram with an illegal position shows in a red frame and can't be played until it is corrected in the editor; until then it has no game, and <b>Game details</b> and <b>Rename…</b> are off (chapter 15). Who is to move at the start of a new game is set in <b>Set up a position</b> or in the FEN.</p>
+
+<h2>The Move field</h2>
+<p>The <b>Move</b> field, after « ‹ › », plays a move from the keyboard (<kbd>M</kbd> takes you there; while the engine analyses, it waits behind the <b>Type a move</b> button). Type <code>Nf3</code>, <code>e4</code>, <code>O-O</code> (in English or in the interface's letters) or <code>g1f3</code> and press <kbd>Enter</kbd>. A move that can't be played is said with the reason and stays in the field: one that two pieces can make names both (<code>Nd2</code>: it could be <code>Nbd2</code>, <code>Nfd2</code>), and a pawn reaching the last rank without its piece asks for it (<code>e8=Q</code>, <code>e8Q</code> or <code>e7e8q</code>). The field also answers questions, for those who can't see the board:</p>
+<table>
+<tr><th style="width:28%">Type</th><th>Hear</th></tr>
+<tr><td><code>p</code></td><td>the pieces, side by side</td></tr>
+<tr><td><code>u</code></td><td>the last move</td></tr>
+<tr><td><code>s</code></td><td>who is to move</td></tr>
+<tr><td><code>f e</code>, <code>r 4</code></td><td>a file, a rank</td></tr>
+<tr><td><code>arrow e2e4 red</code>, <code>circle d5</code></td><td>draw on the board</td></tr>
+</table>
+
+<h2>The board by the keyboard</h2>
+<p><kbd>Tab</kbd> reaches the board, and a ring marks the square the keyboard is on (e2 at first, then the one last clicked). The arrows walk the squares as the board is shown (from Black's side too), and <kbd>Home</kbd> and <kbd>End</kbd> go to the ends of the rank. <kbd>Enter</kbd> or <kbd>Space</kbd> picks the piece up (<b>White knight on b1 picked up</b>) and, on another square, plays it there, as a click does. While the board has the keyboard, the arrows walk its squares; elsewhere in the panel they still step through the moves. A screen reader finds the board as a grid of 64 squares, each at its place on the screen (“e4, White pawn”; “c3, empty”), and hears the square the keyboard is on. From anywhere in the chess panels, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> says the pieces, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd> those of a rank and <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>…<kbd>H</kbd> those of a file, as the Move field's <code>p</code>, <code>r 4</code> and <code>f e</code> do.</p>
+
+<h2>Drawing on the board</h2>
+<p>With the right mouse button, as on lichess: a click circles a square, and a drag draws an arrow. Hold <kbd>Shift</kbd> for red, <kbd>Alt</kbd> for blue or <kbd>Ctrl</kbd> for yellow; with no key, it is green. Drawing the same thing again takes it off. <kbd>Alt</kbd>+click on two squares draws an arrow without dragging (on the same square twice, a circle).</p>
+<p>Drawings belong to the move shown and come back when you return to it; each drawing is one undo step. In the PGN they go into the move's comment, in the convention of ChessBase and lichess (<code>{[%csl Rd7][%cal Gd1d7,Gb5d7] text}</code>), and a PGN with these commands shows its drawings when loaded, those of the comment before a line's first move too. <b>Clear drawings</b>, in the ⋯ menu, takes the drawings off the move shown.</p>
+
+<h2>Setting up a position</h2>
+<div class="two">
+<div>
+<p><b>Set up a position</b>, on the rail, puts the set-up in the board's place. Click a square to put the piece chosen in the palette; click it again, or right-click it, to empty it. <b>Standard start position</b> and <b>Empty board</b> start over, and <b>Flip board</b> turns the view. Choose <b>To move</b> and the castling rights; a right the pieces don't allow is taken off by itself. The panel says at once whether the position is legal.</p>
+<p>When the game already has moves, the choice is between <b>New game from this position</b> (the current game keeps its moves) and <b>Replace this game</b> (the moves go, with a notice and Undo). <b>Cancel</b>, <kbd>Esc</kbd>, another tool or another game leaves the set-up.</p>
+</div>
+<figure style="flex:0.8">
+<img src="img/13-setup.png" alt="The Set up a position tool.">
+<figcaption>The <b>Set up a position</b> tool. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ 8 -->
+<h1 id="c8"><span class="num">8</span>Analysing with an engine</h1>
+<p><b>Analyze</b>, in the board's header (or <b>Analyze the position</b> in the <b>Chess</b> menu), starts the UCI engine, which analyses the position shown to depth 30. It starts again whenever the position changes, and pauses while the board is out of sight.</p>
+<figure>
+<img src="img/14-engine.png" alt="Stockfish analysing with three lines.">
+<figcaption>Stockfish analysing the position after 12…Rd8, with three lines. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<ul>
+<li>The lines (1, 2 or 3, under <b>Lines:</b> in the ⋯ menu) show the evaluation for White (<code>+0.40</code>, <code>#3</code>) in the notation chosen for the move list (chapter 17). A click on a move of a line plays the line up to it: moves already in the game are followed, and the others start a variation.</li>
+<li>The evaluation bar beside the board shows who is better, and the best move is drawn as a blue arrow. In a mated position the bar is all the winner's and the score reads <code>#</code>.</li>
+<li>The engine is given the game's moves since the last capture or pawn move (up to 100), not just the position, so it sees a repetition or a perpetual check coming. The same position reached by another path is analysed separately.</li>
+<li>Back on a position already analysed this session (one of the last 64), the lines show at once and the search goes on.</li>
+<li>The evaluations are kept per document (<code>chess\evals</code>): the best of each position, at depth 10 or more, for the tools (chapter 20). The board doesn't show them yet before its engine reaches them again.</li>
+</ul>
+<h2>The engine's program</h2>
+<p>The engine comes from the <code>engine</code> folder beside the program (chapter 2), from <code>PDFCRAFT_CHESS_ENGINE</code>, or from <b>Choose engine…</b>. The board's ⋯ menu says which program it was started (or tried) from, and where. A program that doesn't answer as a UCI engine within 5 s is refused (<i>That program didn't answer as a UCI chess engine.</i>) and ended at once. Turning analysis off, choosing another engine or quitting ends the engine before PdfCraft goes on. With no engine, the panel explains how to get one: <b>Choose engine…</b>, <b>Open stockfishchess.org</b> or <b>Not now</b>. The program, the number of lines and whether analysis is on are remembered.</p>
+<h2>The engine's preferences</h2>
+<div class="two">
+<div>
+<p>At the end of the <b>Chess</b> section of Preferences, the <b>Chess engine</b> group has <b>Search threads</b>, <b>Hash table</b> and <b>Endgame tables (Syzygy)</b> (<b>Choose folder…</b>, <b>Forget</b>), each on <b>Engine's default</b> until you choose, and remembered for the next session. Once an engine has started in the session, only what it accepts is offered, and the rest is named: <b>This engine does not take: Hash table</b>.</p>
+</div>
+<figure style="flex:1">
+<img src="img/15-prefs-engine.png" alt="The Chess engine group in Preferences.">
+<figcaption>The end of the <b>Chess</b> section of Preferences: <b>Chess models</b>, <b>Chess engine</b> and the PGN's BOM. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+
+<h2>Checking the book with the engine</h2>
+<p><b>Check with the engine…</b> (in the Text tab's ⋯ menu and the <b>Chess</b> menu; desktop only) puts the engine to checking what the book says. The dialog asks for the pages and <b>To depth</b> (18) or <b>Seconds each</b> (0.3). <b>Count the positions</b> reads those pages, with a bar, and says before anything starts how many positions the engine will analyse and about how long that takes (<b>Positions to check: 12,000 (≈ 1 h)</b>), leaving out those the kept evaluations already hold at that depth.</p>
+<figure class="half">
+<img src="img/15b-check.png" alt="The Check with the engine dialog after counting the positions.">
+<figcaption>The <b>Check with the engine</b> dialog on the sample book, after <b>Count the positions</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<p><b>Start the check</b> runs in the background, with the row <b>Checking with the engine: position 5 of 12 (… left)</b> and <b>Stop</b> in the Text tab; what the engine has found is kept, and <b>Continue the check (n left)</b>, in the ⋯ menu and in the dialog, asks only for the positions still to do. Afterwards, each move of the Text tab shows the evaluation of the position after it, and <b>Divergences (n)</b> (in the tab's ⋯ menu, and as the ≠ n button at its top while there are some) shows the list in the page text's place: the page as the book numbers it, what the book says, what the calculation says, the source (the engine or the mate solver) and <b>Show in PDF</b>; ‹ <b>Text</b> and <kbd>Esc</kbd> go back.</p>
+<div class="two" style="break-inside: avoid">
+<figure>
+<img src="img/08b-text-evaluated.png" alt="The Text tab with each move's evaluation.">
+<figcaption>The <b>Text</b> tab after the check: the evaluation after each move, and ≠ 1 at the top. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<figure>
+<img src="img/15c-divergences.png" alt="The list of divergences.">
+<figcaption><b>Divergences (1)</b> in the Immortal Game: the book gives 18.♗d6 a ! and the engine prefers 18.d4. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<p>The check points out a <code>!</code> that loses more than 1.5 pawns against the engine's move, a <code>?</code> that is the engine's own move, an evaluation sign two bands away from the evaluation (a <code>+−</code> below +0.70), a “White to play and win” the evaluation doesn't bear out, an exercise with a second line that also wins, and a mate in n with no mate or with more than one key; below depth 18 nothing is judged. A divergence may be a misreading rather than the book's error: check the diagram and the move on the page before you note an erratum.</p>
+
+<!-- ============================================================ 9 -->
+<h1 id="c9"><span class="num">9</span>In the book and the Library</h1>
+<p><b>In the book (n)</b>, in the board's footer bar, counts how many places of the open book hold the position shown: the moves of the book's PGN that lead to it and the diagrams read as it. A click opens the list in the moves' place; ‹ <b>Moves</b> or <kbd>Esc</kbd> go back.</p>
+<figure>
+<img src="img/16-in-the-book.png" alt="The In the book list open on the board.">
+<figcaption>The <b>In the book</b> list, at the position of the diagram on page 1. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>This position</h2>
+<ul>
+<li><b>The book plays here</b>: each move the book's games play from that position, played again on the board's real position, the main line's in semibold, with the author's sign, how many games play it and, with the book aligned to its PGN, the game's page. A click or <kbd>Enter</kbd> plays the move, and the list follows the new position, the keyboard on its first move. A move the board can't play is greyed out and says why (<b>Castling isn't allowed on this board.</b>).</li>
+<li><b>Where in the book</b>: each move of the PGN that reaches the position (the game, the move, main line or variation, and whether it got there by another order of moves, a <i>transposition</i>), which opens the game on the board at that move, and each diagram read as the position, which opens on its page and in the Diagrams tab.</li>
+</ul>
+<p><kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> go from row to row. While it looks for the new position, the previous list stays in view, dimmed, and the keyboard stays on it.</p>
+<h2>By material</h2>
+<div class="two">
+<div>
+<p>The switch at the top changes <b>This position</b> to <b>By material</b>: the <b>Material</b> field takes the signature (such as <code>KRP-KR</code>: White's pieces, then Black's, in the order K Q R B N P, in English letters in every language), <b>Either side</b> looks with the colours swapped too, and <b>Pawns:</b> picks <b>Doubled</b>, <b>Isolated</b> or <b>Passed</b>. The list gives the stretches of the book's PGN that have them (positions in a row of one line, such as “Game 1 · Rook ending: 1.d6 – 2…Rd8”, main line or variation, with <b>Positions: 4</b>), each opening its game at its first move, and the diagrams read that have them, which open on their page.</p>
+<p><b>Chess</b> ▸ <b>Find in the book by material…</b> opens the list this way, with the keyboard in the field.</p>
+</div>
+<figure style="flex:0.9">
+<img src="img/17-material.png" alt="The In the book list by material.">
+<figcaption><b>In the book</b> ▸ <b>By material</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<h2>What In the book looks at</h2>
+<p>In the book never reads the book: it looks at the book's PGN and at what has already been read, in this session or kept on disk. With nothing read, it says <b>Read the book (Detect diagrams or Text) to search.</b> A diagram you corrected is found by the position you gave it. When the diagrams read can't be looked at, it still answers from the PGN, with an amber note about the diagrams.</p>
+
+<h2>The Library</h2>
+<p><b>Chess</b> ▸ <b>Library…</b> (desktop only) reads the chess books of the folders you choose once, so that a position, a move, a player, an event or an opening can be found in all of them without opening them. It is a dialog with two views, <b>Books</b> and <b>Search</b>, and it works with no PDF open.</p>
+<figure>
+<img src="img/29-library-books.png" alt="The Library on the Books view, with a folder built.">
+<figcaption>The <b>Library</b> on the <b>Books</b> view, with the sample book's folder already built. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h3>Books</h3>
+<p><b>Add a folder…</b> chooses a folder, and <b>Remove</b> takes one out: its books leave the Library, and the files stay where they are. A folder inside one already chosen is refused. Each book says where it stands, in words: read (with its pages, its diagrams, those to review and its games), <b>Not read yet</b>, stopped partway, <b>In the cloud: never opened</b>, or skipped, with the reason (<b>Skipped: copying not allowed</b>, <b>Skipped: does not open</b>, <b>Skipped: larger than 1 GB</b>, <b>Skipped: a link, never followed</b>, <b>Skipped: no longer there</b>…). An encrypted book asks <b>Encrypted: read it into the Library?</b>, with <b>Yes</b> (and then <b>Leave out</b>): the yes is remembered, and every build reads the book from then on.</p>
+<h3>Building</h3>
+<p>Nothing is read until you ask: never when the app opens, never by watching the folders. Beforehand, the dialog says what it will read and roughly how long that takes (<b>To read: 38 books, 16,944 pages, ≈ 1 h 2 min (an estimate)</b>), and on how many cores (<b>Reads on 4 of the 16 cores of this computer.</b>). <b>Build</b> reads, in the background and one book at a time, every book whose index is not up to date, each opened from its file, apart from the documents you have open. The build's row says the book and the page, with <b>Stop</b>; <b>Continue</b> goes on from there, and the pages already read are kept.</p>
+<p>Closing the dialog leaves the build running: its row, with <b>Stop</b> and <b>Open the Library</b>, stays at the foot of the page area. Quitting the app stops it between two pages, losing nothing that was read. One build at a time: while another window, another PdfCraft or the <code>chess_library_build</code> tool holds the Library, the dialog says so and <b>Build</b> waits. A build that did not finish is said the next time, with <b>Continue</b>.</p>
+<h3>Search</h3>
+<div class="two">
+<div>
+<p>Fill in <b>Position (FEN)</b> (or use <b>From the board</b>, the Board tab's position; <b>Either side to move</b> compares the pieces alone), <b>Move (SAN)</b> (<code>Bxh7+</code>), <b>Player</b>, <b>Event</b> or <b>Opening (ECO)</b> (<code>B9</code> finds <code>B90</code>), then press <b>Search</b> or <kbd>Enter</kbd>. What is found comes book by book, each row with the page as the book numbers it and the diagram or the move; <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> go from row to row.</p>
+<p>A result opens in the tab already showing its book, or else opens the PDF at its page and outlines the move (or opens the diagram). A book that changed since the Library read it is said so, and only its page is shown; a PDF that is no longer there is never opened. Opening the Library again shows the same query and the same results.</p>
+</div>
+<figure style="flex:0.9">
+<img src="img/30-library-search.png" alt="The Library on the Search view, with a result.">
+<figcaption>The <b>Search</b> view: <b>Move (SAN)</b> <code>Qb8+</code> finds the Opera Game's 16.♛b8+ twice, in the main line (p. 1) and in a variation of the solutions (p. 4). <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<p><b>Look in the Library</b>, in the board's <b>In the book</b> list, takes the board's position to every book of the Library. The Library keeps its files in the app's data folder (<code>chess\library</code>: the catalog and an index per book, up to 128 MB), apart from the readings of the books you open. On the command line the same is done by <code>chess_library_build</code>, <code>_status</code>, <code>_clear</code> and <code>_find</code> (chapter 20).</p>
+
+<!-- ============================================================ 10 -->
+<h1 id="c10"><span class="num">10</span>The move list</h1>
+<p>The board's game is laid out as in a book: in the Board tab, under the board, and, with <b>Move list beside the page</b> (the icon in the board's header, or the command), in a column of its own beside the PDF. In that column, <b>Left</b> and <b>Right</b> choose its side, and − and + (<b>Smaller text</b> and <b>Larger text</b>) change the size of the text, from 70 % to 300 %.</p>
+<figure>
+<img src="img/18-move-list-beside.png" alt="The move list beside the page.">
+<figcaption>The <b>Move list beside the page</b>, in running text, with figurines. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<ul>
+<li><strong>Header:</strong> the players (with their Elo, when there is one), then the event, site, date and round, each only when its tag says something. A click opens <b>Game details</b>. The result (<code>1-0</code>, <code>0-1</code>, <code>½-½</code>, <code>*</code>) comes after the last move of the main line.</li>
+<li><strong>Variations</strong> in brackets, with a bar on their left and a ˅ that folds or unfolds them. Comments in italics.</li>
+<li><strong>Signs</strong> as coloured chips (green for !, orange for ?…). A coloured dot says the move has drawings: with the pointer over it, the drawings show on the board.</li>
+<li><strong>Preview:</strong> with the pointer resting on a move for 400 ms (or the keyboard on it), a small board shows the position after the move; <kbd>Esc</kbd> closes it and the keyboard stays on the move. The preview can be turned off in Preferences.</li>
+<li>The moves a capture has just added are tinted for a moment. A click on a move goes to it; the right button opens the move's menu. Each time the move shown changes, a screen reader says it in words (“2. knight f3 · variation 1 · with comment · Good move”; <b>Start of the game</b>).</li>
+</ul>
+<p>The choice of <b>Figurines</b>, <b>Letters in your language</b> or <b>English letters</b> holds for every move the app shows: the list, the variation trail, the comment fields, the capture's headline, the board's header and the engine's lines (with Portuguese letters, <code>1…Cf6</code>).</p>
+
+<h2>Clocks and evaluations from lichess and chess.com</h2>
+<p>A game downloaded from lichess or chess.com has a clock, and often an evaluation, in every move's comment: <code>{[%eval 0.17] [%clk 0:03:00]}</code>. These commands — <code>[%clk]</code>, <code>[%eval]</code>, <code>[%emt]</code>, <code>[%evp]</code>, <code>[%tqu]</code>, any other <code>[%word …]</code>, and ChessBase's diagram mark <code>[#]</code> — are not words a person wrote, so the app does not show them as a comment:</p>
+<ul>
+<li>the move list, the comment shown large under the board, the spoken name of a move and the books made from games (<b>Export as book</b>, chapter 15) show only the comment's words;</li>
+<li>a move whose comment holds nothing but commands shows no comment, doesn't break the <b>Columns</b> layout and is not said to be “with comment”;</li>
+<li>with <b>Show the clock and the evaluation the PGN gives each move</b> on (Preferences, chapter 17; off at first), each move shows them as two small badges after its signs (<code>+0.17</code>, <code>3:00</code>); the tooltip and a screen reader say what each is (<b>Evaluation: +0.17</b>, <b>Clock: 2:58</b>).</li>
+</ul>
+<p>Nothing is lost: the game keeps the commands as they were read, its PGN writes them back where they were (each one whole on one line), and the comment editor shows them, so you can edit or delete them.</p>
+
+<h2>The move's menu</h2>
+<div class="two">
+<div>
+<ul>
+<li><strong>Structure:</strong> <b>Promote one level</b>, <b>Make this the main line</b>, <b>Demote</b>, <b>Delete variation</b>, <b>Move variation up</b> and <b>Move variation down</b>, <b>Cut after this move</b>, <b>Threat (null move)</b> and <b>Show in PDF</b>. What doesn't apply is greyed out. When the operation could act on several variations on the way to the move, they are listed, the nearest first.</li>
+<li>The signs of the move and of the evaluation (under <b>Move glyphs</b> and <b>Evaluation glyphs</b>, ticked when the move already has them) and <b>Remove all glyphs</b>, which act on that move without going to it.</li>
+<li><b>Diagram here</b>: shows a small board after the move and writes <code>$220</code> into the PGN.</li>
+<li><b>Copy line with figurines</b> (<code>18.♘d5! ♕xe1 19.♘xe7+</code>) and <b>Copy line (letters)</b>, from the start of the variation, or of the game, up to the move.</li>
+<li><b>Delete from this move</b> and <b>New game from this position</b>.</li>
+</ul>
+</div>
+<figure style="flex:0.75">
+<img src="img/19-move-menu.png" alt="A move's menu.">
+<figcaption>A right-click on 12…♜d8, in the <b>Move list beside the page</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ 11 -->
+<h1 id="c11"><span class="num">11</span>The tool rail</h1>
+<p>The rail is the column of buttons on the board's left. A button with a small triangle is a group: it shows the tool used last, and a long press, a right-click, or <kbd>Enter</kbd> / <kbd>↓</kbd> with the keyboard on it opens the others. Each button's key works while the chess key scope is on (see below) and <b>One-key shortcuts (B, C, F, G, O, X, signs)</b> is on in Preferences.</p>
+<table>
+<tr><th style="width:36%">Button (top to bottom)</th><th style="width:16%">Key</th><th>Does</th></tr>
+<tr><td><b>Navigate</b></td><td><kbd>Esc</kbd></td><td>A click on a move goes to it. <kbd>Esc</kbd> also puts down any other tool.</td></tr>
+<tr><td><b>Set up a position</b></td><td></td><td>The set-up in the board's place (chapter 7).</td></tr>
+<tr><td>The <b>Structure</b> group</td><td><kbd>Shift</kbd>+<kbd>S</kbd> switches</td><td>The operations on variations (chapter 14).</td></tr>
+<tr><td>The <b>Capture</b> group (<b>Capture (automatic)</b>)</td><td><kbd>X</kbd>; <kbd>Shift</kbd>+<kbd>X</kbd> switches</td><td>Armed, a text selection on the page goes into the game (chapter 12). The group's menu also has <b>Paste as</b> ▸ and <b>Underline captured text on the page</b>.</td></tr>
+<tr><td><b>Capture as a comment</b></td><td><kbd>C</kbd></td><td>Armed, the selection becomes the move's comment.</td></tr>
+<tr><td><b>OCR area</b></td><td><kbd>O</kbd></td><td>On a scanned page, captures what the chess OCR reads in a rectangle.</td></tr>
+<tr><td>Three groups of signs</td><td>typed</td><td>The 28 most common signs (chapter 13).</td></tr>
+<tr><td><b>Glyph brush</b></td><td><kbd>B</kbd></td><td>Armed, each move clicked in the list gets (or loses) the brush's sign.</td></tr>
+<tr><td><b>Move comment</b></td><td><kbd>Enter</kbd></td><td>Opens the move's comment, with the comment before the move.</td></tr>
+<tr><td><b>Glyph palette</b></td><td><kbd>G</kbd></td><td>A floating window of figurines, signs and characters.</td></tr>
+<tr><td><b>Follow the move on the page</b></td><td><kbd>F</kbd></td><td>The page follows the move shown (chapter 16).</td></tr>
+<tr><td><b>Show in PDF</b></td><td></td><td>Scrolls the page to where the move was printed.</td></tr>
+<tr><td><b>Undo</b>, <b>Redo</b></td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>The game's history. The name says what would be undone (“Undo …”).</td></tr>
+<tr><td><b>Chess in its own window</b></td><td></td><td>The board and the tabs in a separate window (desktop only).</td></tr>
+</table>
+<p>When the rail doesn't fit the panel's height, the buttons left over go, in order, under ⋯ <b>More board tools</b>, at the rail's foot; at 1366 × 768, <b>Chess in its own window</b> and the last buttons are there, and their keys still work.</p>
+<p>With the one-key shortcuts off, the letters, <kbd>Shift</kbd> with a group's letter and the typed signs do nothing; the rail's buttons and the command search still work, and the buttons' names stop mentioning the letters.</p>
+<h2>The chess key scope</h2>
+<p>The chess key scope follows the keyboard focus. A control of the chess panels with the focus, or a change to the game, gives the keyboard and Undo to the game; <kbd>Tab</kbd> to a control outside them, <kbd>F6</kbd>, a click on the page or in another panel (Tools, the Inspector's other panels) turn it off, and the arrows turn the pages again. While the game has the keyboard, the keys above go to the board before anything else: <kbd>Delete</kbd> deletes a variation (never a page or an annotation), and the arrows walk the game. A divider between panels that has the focus keeps its arrows. The keys stay quiet while a text field has the focus, while a menu is open and under a dialog.</p>
+
+<!-- ============================================================ 12 -->
+<h1 id="c12"><span class="num">12</span>Capturing printed moves</h1>
+<p>Capturing turns the book's printed moves into a game without playing them one by one: you select the text on the page and it goes into the board's game, as the line, a variation or a comment, signs included.</p>
+<h2>Step by step, with the sample book</h2>
+<ol>
+<li>Open the diagram on page 1 on the board (a double-click, or <b>Open on the board</b>). The new game starts at move 13, because that is the bold number under the diagram.</li>
+<li>Press <kbd>X</kbd> (or the <b>Capture (automatic)</b> button). The page's tool switches to Select, and a chip in the page's corner says what is armed.</li>
+<li>On the page, select from <code>13.♖xd7!</code> to <code>15.♗xd7+ ♘xd7</code> and let go. The moves go in at once: the main line in bold, the variation (<code>14...♕b4 15.♗xf6 ♕xb3 16.axb3</code> also loses.) as a variation, its text as a comment, and the ! sign on 13.♖xd7.</li>
+</ol>
+<figure>
+<img src="img/20-capture.png" alt="Capture armed, and the moves captured.">
+<figcaption>One selection and no <kbd>Enter</kbd>: the list gets the line and the variation, and the notice at the foot of the page says how many moves went in, with <b>Undo</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>The capture modes</h2>
+<table>
+<tr><th style="width:30%">Mode</th><th>Does</th></tr>
+<tr><td><b>Capture (automatic)</b></td><td>Reads the text as the book sets it: a bold first move continues the main line, and anything else becomes a variation where its numbers fit. Prose becomes comments, brackets become variations, and <code>!</code>, <code>±</code>… become signs.</td></tr>
+<tr><td><b>Capture as the line</b></td><td>Continues the line of the move shown. A different move already there becomes a variation.</td></tr>
+<tr><td><b>Capture as a variation</b></td><td>A variation of the main line.</td></tr>
+<tr><td><b>Capture as a sub-variation</b></td><td>A variation of the line of the move shown, or of a line outside it.</td></tr>
+<tr><td><b>Capture as a comment</b> (<kbd>C</kbd>)</td><td>The text becomes the comment of the move shown, its moves in English SAN. The chip's options put the comment before the move, and replace the existing one instead of adding to it. Capturing text the comment already says warns: <b>The comment says that already.</b></td></tr>
+</table>
+<p><kbd>Shift</kbd>+<kbd>X</kbd> steps through the modes; the chip's ▾ switches the mode too.</p>
+<h3>Capturing without arming anything</h3>
+<ul>
+<li><b>Send to PGN</b> ▸, in the bar that shows beside a selection (or in the page's right-click menu), captures the selection in the mode you pick.</li>
+<li><kbd>Ctrl</kbd>+<kbd>V</kbd> with the chess scope on (and no text field in use) captures the clipboard's text. <b>Paste as</b> ▸, in the rail's Capture group menu, picks the mode.</li>
+<li><kbd>Ctrl</kbd>+<kbd>C</kbd> on the page captures too when <b>Also capture what is copied (Ctrl+C)</b> is on in the chip's menu (it is off at first).</li>
+</ul>
+<p>The selection grows to whole moves (“20.Nx” becomes “20.Nxf6+”). It is read from the page's characters, not from copied text: a figurine font's pieces are pieces, and a bold move is bold. The language is the document's (as the Text tab read it), never guessed from the selection: <code>Rc7</code> is a rook in English and a king in Portuguese.</p>
+<h2>Where a capture goes</h2>
+<ol>
+<li>The selection's first move decides, by its printed number, at which half-move the text is played.</li>
+<li>The candidate lines are the line of the move shown, the line it branched from, and so on out to the main line.</li>
+<li>Each possible place is tried on a copy of the game. The place that plays the most moves wins, then the one with the fewest moves that did not play, then the innermost line.</li>
+<li>Renumbering is a choice of its own: when the text's numbers fit nowhere, the text can be read from the move shown as if its numbers had been printed for it (<code>12.Raxe1</code> after <code>19...Kh7</code> is played as <code>20.Raxe1</code>). That never happens without the preview.</li>
+</ol>
+<h2>The preview: when a capture asks first</h2>
+<p>A capture goes straight in, as one undo step, only when the whole text was read, it fits one place only, that place is on the line of the move shown, and nothing was demoted or renumbered. Otherwise a preview opens beside the selection and says why:</p>
+<table>
+<tr><th style="width:24%">Reason</th><th>Means</th></tr>
+<tr><td>ambiguous</td><td>Another place plays as many moves.</td></tr>
+<tr><td>incomplete</td><td>Part of the text was not read: a move that did not play, a bracket with no partner, text after a result, a sign with no place…</td></tr>
+<tr><td>outer line</td><td>The place is on a line outside the line of the move shown.</td></tr>
+<tr><td>tip extension</td><td>As a variation, it found no move to be an alternative to, and extended the end of a line.</td></tr>
+<tr><td>renumbered</td><td>The text was read with its numbers adjusted.</td></tr>
+<tr><td>implied close</td><td>A missing closing bracket was assumed.</td></tr>
+<tr><td>demotes</td><td>A move already there became a variation.</td></tr>
+<tr><td>no fit</td><td>No place plays any move.</td></tr>
+<tr><td>too long</td><td>More than 64 KiB of text: nothing was read.</td></tr>
+</table>
+<p>The preview shows where the text goes (<b>Variation of 18…Qxe1</b>), <b>Insert in</b> to pick another place, <b>Renumber</b> when the numbers can be adjusted, <b>Piece letters</b> (the language of the text's piece letters) and the moves as chips: ✓ played, ✗ where it stopped and why, grey not read, bold for the main line. The buttons are <b>Apply</b> (<kbd>Enter</kbd>), <b>Apply and keep the rest as a comment</b> (what was not read is never thrown away) and <b>Cancel</b> (<kbd>Esc</kbd>).</p>
+<h3>Correcting a move that did not play</h3>
+<p>In the preview, a ✗ chip is a button. It opens, under the chips, <b>Legal moves near it</b> (the reading settled on, the moves an ambiguous reading allows, such as <code>Rd1</code>: <code>Rad1</code>, <code>Rhd1</code>, or the three closest legal moves; none is applied until you click it), a <b>Correction</b> field with the move as printed (the <b>Glyph palette</b> types into it; <kbd>Enter</kbd> or <b>Read again</b> reads it again) and, for text from the OCR area, the characters read, the doubtful ones underlined. Each correction rewrites the move where it was printed and reads the whole text again. Nothing goes into the game before <b>Apply</b>.</p>
+<h2>The OCR area, and collecting for retraining</h2>
+<p><b>OCR area</b> (<kbd>O</kbd>): on a scanned page, draw a rectangle. The chess OCR reads what is inside it, and the result goes in as a capture, with the preview. <b>Collect corrected characters for retraining</b> (in the chip's menu, optional, desktop only) saves each character of the OCR area that you correct as a 32 × 32 grey picture in a folder you choose, in the layout of ChessVisionOFF's review queue, to train the OCR's glyph model. Nothing is overwritten, at most 2,000 pictures are saved a session, and for an encrypted document the question about your chess work applies. Nothing is trained in the app, and nothing leaves the computer.</p>
+<h2>Text already captured</h2>
+<p>Every captured move remembers where it was printed. <b>Underline captured text on the page</b>, in the Capture group's menu, underlines those moves on the page, so you can see what is left to transcribe. A document that doesn't allow copying doesn't allow capturing either. Up to 64 KiB of text goes in one capture.</p>
+
+<!-- ============================================================ 13 -->
+<h1 id="c13"><span class="num">13</span>Signs and comments</h1>
+<p>PdfCraft knows every sign of the PGN standard (codes 1–139) and of the ChessPad extension (140–146 and 238–255): 164 codes. The 28 used most are on the rail, in three groups, each sign named by what it means (“Good move”, “White is slightly better”):</p>
+<table>
+<tr><th style="width:22%">Group</th><th>Signs</th><th style="width:22%">Rule</th></tr>
+<tr><td><b>Move glyphs</b></td><td>! ? !! ?? !? ?!, only move □, novelty N</td><td>One per move: a new one replaces the old.</td></tr>
+<tr><td><b>Evaluation glyphs</b></td><td>= ∞ ⩲ ⩱ ± ∓ +− −+ and compensation</td><td>One per move.</td></tr>
+<tr><td><b>Other glyphs</b></td><td>zugzwang, development, initiative, attack, counterplay, time trouble, with the idea, aimed against, better is, worse is, editorial comment</td><td>They add up.</td></tr>
+</table>
+<p>A sign goes on the move shown, with the code for the side it speaks of. Clicking a sign the move already has takes it off. Each change is one undo step.</p>
+<h2>Four ways to put a sign</h2>
+<ul>
+<li><strong>Typing it</strong>, with the chess scope on and no field in use: <code>! ? !! ?? !? ?! = += =+ +/- -/+ +- -+ ~</code>; <code>0</code> takes the move's signs off. A typed sign waits for its next character as long as Preferences say (<b>A typed sign waits for its next character</b>: 0.6 s, 1 s, 1.5 s, 2 s or <b>Until Enter</b>). <kbd>Enter</kbd> puts the sign on at once, without opening the comment, and <kbd>Esc</kbd> drops it; any other chess key puts the sign on before it acts.</li>
+<li><strong>The <b>Glyph brush</b></strong> (<kbd>B</kbd>): each move clicked in the list gets the brush's sign, or loses it. The move shown doesn't change. <kbd>Esc</kbd> puts the brush down.</li>
+<li><strong>The move's menu</strong> (right-click in the list): the move's signs, the evaluation's, and <b>Remove all glyphs</b>.</li>
+<li><strong>The <b>Glyph palette</b></strong> (<kbd>G</kbd>), described next.</li>
+</ul>
+<h2>The sign palette</h2>
+<div class="two">
+<div>
+<p>A small window floating beside the rail, the <b>Glyph palette</b>; you can drag it, and it opens again where you left it.</p>
+<ul>
+<li><b>Figurines and signs</b>: the figurines and ½ – × † ‡.</li>
+<li><b>Move glyphs</b>, <b>Evaluation glyphs</b>, <b>Other glyphs</b> and <b>Positional glyphs</b>: space ○, play along the file ⇔, along the diagonal ⇗, in the centre ⊞, on the kingside ⟫ and on the queenside ⟪, weak point ✕, endgame ⊥, pawn structures and bishop structures.</li>
+<li><b>More assessments</b> (folded at first): the assessments the PGN numbers but books write out in words, in sections. The <b>Filter assessments</b> field finds them by name or by <code>$n</code>.</li>
+</ul>
+<p>A sign clicked goes on the move shown (or comes off it). The other characters go to the end of the comment. If a text field was in use (a comment, the FEN, the PGN, a capture's correction), the character is typed at that field's cursor.</p>
+</div>
+<figure style="flex:0.7">
+<img src="img/21-palette.png" alt="The sign palette.">
+<figcaption>The <b>Glyph palette</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<h2>How signs show</h2>
+<p>In the list, a sign comes after its move, as a chip. Where the interface's fonts lack the symbol, it is painted. An assessment with no symbol shows by its name, small and muted, with its <code>$n</code> in the tooltip. The PGN and copied text keep the real character, or the <code>$n</code>.</p>
+<h2>Diagrams in a game</h2>
+<p><b>Diagram here</b>, in a move's menu, shows a small board after the move and is kept in the PGN as <code>$220</code>. A PGN made by another program marks its diagrams in its own way, and PdfCraft reads them all as diagrams, keeping each mark as it was read: <code>$221</code> (ChessPad, a diagram from Black's side), <code>$201</code> (Scid and ChessDB) and ChessBase's comment <code>{[#]}</code>. When you take a diagram off, every mark on that move goes. PdfCraft itself writes <code>$220</code>, except in a PGN exported for ChessBase, which gets ChessBase's own <code>{[#]}</code> (chapter 18).</p>
+<h2>Comments before and after the move</h2>
+<p><b>Comment</b>, in the board's footer bar, opens the fields of the move shown under the moves: the comment after the move and the comment before it. <kbd>Enter</kbd>, or <b>Move comment</b> on the rail, takes the keyboard there. Typing in a comment counts as one undo step per visit to the field, not one per key. A comment holds up to 64 KiB, read or edited; past that, the field says so. A comment's commands (<code>[%clk …]</code>, <code>[%eval …]</code>, drawings) are in the field too, as they were read, and you can edit or delete them (chapter 10).</p>
+<p>In the PGN, a comment before a move goes after the variations of the move before it (<code>1. e4 {A} (1. d4 d5) {B} 1... e5</code>). The PGN has no place for it before a move that continues its line with no variations: there the editor warns you, and only the PGN file loses that place; the game and the autosave keep it. In Preferences, <b>Show the move's comment in large type under the board</b> shows the comment large, under the board (its words only, without the commands).</p>
+
+<!-- ============================================================ 14 -->
+<h1 id="c14"><span class="num">14</span>Variations, structure and Undo</h1>
+<p>Each operation is one undo step, and can be reversed exactly: promoting and then demoting, or moving up and then down, gives back the same tree, comments before the moves included.</p>
+<table>
+<tr><th style="width:30%">Operation</th><th style="width:20%">Key</th><th>Does</th></tr>
+<tr><td><b>Promote one level</b></td><td><kbd>Ctrl</kbd>+<kbd>↑</kbd></td><td>The variation continues the line it branched from, and that line's move becomes the first variation.</td></tr>
+<tr><td><b>Make this the main line</b></td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd></td><td>Promotes all the way. When that would nest the old line too deep, it says <b>Not done: variations would nest too deep.</b></td></tr>
+<tr><td><b>Demote</b></td><td><kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>The reverse of promoting.</td></tr>
+<tr><td><b>Move variation up</b> / <b>Move variation down</b></td><td><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd></td><td>Reorders the variations of one fork. The line itself never moves.</td></tr>
+<tr><td><b>Delete variation</b></td><td><kbd>Delete</kbd></td><td>Deletes the variation and its moves. The move shown goes back to the fork.</td></tr>
+<tr><td><b>Cut after this move</b></td><td><kbd>Shift</kbd>+<kbd>Delete</kbd></td><td>Deletes every move after the one shown, variations included.</td></tr>
+<tr><td><b>Threat (null move)</b></td><td></td><td>The side to move passes, and the moves after show the other side's threat, as books do (<code>12... --</code>). Written <code>--</code> in the PGN. Refused when the side to move is in check.</td></tr>
+</table>
+<p><kbd>Backspace</kbd> only goes back a move: it deletes nothing. A variation that starts by repeating the main line's move, in a PGN read, never takes the main line's place.</p>
+<h2>Deleted moves are never lost</h2>
+<p>Whatever takes moves out of the game is told (<b>5 moves deleted</b> <b>(2 variations)</b>), with <b>Undo</b>. The game as it was also goes into the document's trash, with the very step that took the moves, whichever panel is showing: a move deleted in the <b>Move list beside the page</b> counts, and so does a longer PGN loaded over the game. The trash is kept with the autosave (the newest 30); <b>Deleted moves (3)…</b>, under the list of games, shows it, and <b>Open as a new game</b> brings one back, even in a later session.</p>
+<h2>Undo</h2>
+<p>The game has a history of its own, apart from the document's. Every change is a step: a move, a capture, a sign, a comment, a drawing, a structure change, the game's details, a position or a PGN loaded. Walking the moves is not a change. <b>Undo</b> and <b>Redo</b> follow the chess key scope (chapter 11): with the keyboard in the chess panels, they undo in the game; after a click on the page, in the document. The rail's Undo always acts on the game. The history keeps up to 200 steps (64 MiB) per game, and is not carried from one session to the next.</p>
+
+<!-- ============================================================ 15 -->
+<h1 id="c15"><span class="num">15</span>The document's games</h1>
+<div class="two">
+<div>
+<p>Each open document has its own games, and the board shows the active one. Switching documents switches the games. <b>Game</b> ▾ ▸ <b>Games in this document (2)</b> opens the list in the moves' place, by the games and their players; with no players, it shows the event, the diagram the game came from (“Diagram 1, p. 1”) or its number.</p>
+<ul>
+<li><b>New game</b> makes a blank game; <b>New game from this position</b> starts one at the move shown.</li>
+<li><b>Open PGN…</b> adds every game of a file, up to 256 games per document (past that, adding is refused, with a notice).</li>
+<li><b>Save PGN…</b> writes the game shown; <b>Save all games as PGN…</b> writes the whole list, in its order. Saving is refused for a document that doesn't allow copying.</li>
+<li><b>Export as book</b> ▾ (Word, EPUB, HTML, RTF, Markdown) writes the list's games as a book, a page per game: the players as the title, the event, site, date and round under it, the main line in bold, and a diagram after each move marked for one. A comment's commands (a clock, an evaluation) stay out of it: only the words go in.</li>
+</ul>
+</div>
+<figure style="flex:0.8">
+<img src="img/22-games.png" alt="The list of the document's games.">
+<figcaption><b>Games in this document (2)</b>, in the moves' place. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+<p><b>Game details</b> (in <b>Game</b> ▾, or a click on the move list's header) edits White, Black, event, site, date, round and result, written as the PGN's tags; a value longer than 256 bytes is cut, with a notice. <b>Edit the FEN and the PGN</b>, in FEN/PGN ▾, shows the two fields in the moves' place: edit one and press <kbd>Enter</kbd> (FEN) or <b>Load PGN</b>. With an illegal position on the board there is no game: the <b>Game details</b> fields and the list's <b>Rename…</b> (the menu item, the pencil and <kbd>F2</kbd>) are off and say why (<b>The board shows a position that is not legal: correct it in the diagram editor first.</b>). A FEN typed over a game with moves asks: <b>New game with this position</b> or <b>Replace this game</b>. Text typed in the PGN field stays as you typed it while you play, marked <b>PGN edited</b>, with <b>Load</b> and <b>Discard</b>; with several games in the field, the first goes on the board and the others join the list.</p>
+<h2>A game's menu</h2>
+<p><b>Rename…</b> (<kbd>F2</kbd>): White, Black, event, site, date and round, in one undo step; the date is <code>YYYY.MM.DD</code>, with <code>?</code> for what isn't known (<code>1992.??.??</code>). <b>Duplicate</b>, and moving up and down (<kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd>; you can also drag the row). <b>Delete…</b> (<kbd>Delete</kbd>) asks first; deleting the last game leaves a blank one.</p>
+<p><kbd>Ctrl</kbd>+click adds a game to the selection or takes it out, and <kbd>Shift</kbd>+click selects a range; on a row with the keyboard, <kbd>Shift</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd> extends the selection, <kbd>Ctrl</kbd>+<kbd>A</kbd> selects every game and <kbd>Ctrl</kbd>+<kbd>Space</kbd> picks the row. The menu, the buttons and the keys then act on all the games selected, in a single undo step. Undo also takes back changes to the list: deletions, new games, duplicates, a PGN opened, a diagram opened on the board (“Undo Load the diagram”).</p>
+<h2>Reading and writing PGN</h2>
+<ul>
+<li>A PGN with a BOM, or in Latin-1 / Windows-1252, is read whole, accents included, and the notice says when a file was not UTF-8. Spellings of books and websites (<code>e8Q</code>, <code>a8=q</code>, <code>e.p.</code>, <code>…</code>, a <code>±</code> alone or glued to the move) are read; <code>1/2</code> and <code>½-½</code> are a draw.</li>
+<li>A <code>;</code> comment or a <code>%</code> line holding a <code>{</code> doesn't merge the following games into one; tags on one line or indented are read as tags, and in a tag's value only <code>\\</code> and <code>\"</code> are escapes (<code>C:\games</code> stays as written). A comment between <code>)</code> and the next move goes before that move.</li>
+<li>A comment's commands (<code>[%clk]</code>, <code>[%eval]</code>, <code>[%csl]</code>…) are kept where they were read and written back there, each whole on one line; the move list shows only the comment's words (chapter 10).</li>
+<li>The reading notice (“Read with changes: …”) says what was cut, dropped, repaired or ignored, and why a game stopped (an illegal move, an ambiguous move, a game already holding 10,000 moves). A slightly wrong FEN opens repaired; the rest of a line after a move that can't be played becomes a comment where the reading stopped.</li>
+<li>The <code>Result</code> read is written back as read, <code>*</code> too; a mate or a stalemate that disagrees is counted in the notice. A game of another variant (Chess960, Crazyhouse…) is refused whole, with its name.</li>
+<li>Every PGN PdfCraft writes comes out of one writer, with lines of at most 79 characters (<b>Copy PGN</b> too); <code>PlyCount</code> follows the moves, and an <code>ECO</code> read is left out once the main line changes before move 10. <b>Write PGN files with a byte order mark (BOM)</b>, in Preferences, puts the BOM in.</li>
+<li>Before writing games read only up to a move that can't be played, <b>Save all games as PGN…</b> names them, with the move where they stopped: <b>Save them as they are</b> or <b>Cancel</b>.</li>
+</ul>
+<h2>Autosave</h2>
+<p>Two seconds after the last change, when the document closes and when you quit, each document's games are written to <code>chess\games</code>, one file per document (<code>&lt;hash&gt;.games.json</code>), the same file the command line reads and changes; it doesn't record the PDF's path. A thread of its own writes it, never the window, so a slow disk doesn't hold up the app. When you open the document again, the games come back, with the move shown, the board's side, where each move was printed and the comments before the moves.</p>
+<ul>
+<li>Each save merges with what the file already has, game by game: games a tool imported or another window added stay and join the list (<b>Chess games restored: 2</b>), and a game deleted here stays deleted there.</li>
+<li>A diagram opened and not yet touched doesn't count: it gives its place to the next diagram opened and is not saved.</li>
+<li>Quitting, <b>Close</b> and <b>Close all</b> wait up to 2 s for the saves still pending. When there are games the autosave doesn't keep (or a save that didn't finish), they ask <b>Chess games not saved</b>: <b>Save all games as PGN…</b>, quit or close without saving (<b>Quit without saving</b>, <b>Close without saving</b>), or <b>Cancel</b>.</li>
+<li>A file written by a newer PdfCraft is only read, with a note in the list (<b>Saved by a newer PdfCraft: these games are only read here.</b>); a new file that can't be read becomes <code>….games.json.bad</code> at the next save. The <code>.games</code> files of earlier builds (in the recovery folder) are brought in at every start and never renamed or rewritten.</li>
+<li>Inserting or deleting pages before a game, in the session or between sessions, takes <b>Show in PDF</b> to the right page; if the page is gone, the move has no page.</li>
+</ul>
+<h2>Protected documents</h2>
+<p>For an encrypted document, the app asks once, before keeping anything of it: <b>Keep your chess work on this protected document?</b> (<b>Keep them</b> · <b>Don't keep</b>). The answer holds for the corrections, the book's PGN, the games, the character samples, and the reading and cipher kept, all together. Until you answer, and after <b>Don't keep</b>, nothing is written, and the work stays in memory until the document is closed; what is kept is not encrypted. The games of a document that doesn't allow copying are never kept.</p>
+
+<!-- ============================================================ 16 -->
+<h1 id="c16"><span class="num">16</span>The chess window and Follow the move on the page</h1>
+<h2>Chess in its own window</h2>
+<p><b>Chess in its own window</b>, the rail's last button (in a low window, under ⋯ <b>More board tools</b>), moves the board and the tabs into a separate window. The PDF can then fill the main window, and the chess can go to another monitor.</p>
+<ul>
+<li>From 760 pt wide, the window shows the board on the left and, beside it, a column with the tabs <b>Moves</b>, <b>Diagrams</b> and <b>Text</b>; in a window of 960 × 704, the moves and the footer bar fit whole. The window opens on the tab the column was showing (<b>Moves</b> for the Board tab). Narrower, it shows a strip to switch between them.</li>
+<li>The window's <b>Diagrams</b> tab works as the Chess column's: a diagram opened from the window's list is edited right there, in the list's place, with ‹ <b>Diagrams</b> and <kbd>Esc</kbd> to go back.</li>
+<li>In the window the board can grow up to 1,200 pt. The chess keys go to its own rail, and the app's shortcuts still work.</li>
+<li>Closing the window, or <b>Back to the main window</b>, returns the board to the Chess column. Its size, place and tab are remembered, along with the monitor it was on; if that monitor is gone, it opens beside the main window.</li>
+</ul>
+<h2>Following the move on the page</h2>
+<p>A captured move, or a move of a game opened from the Text tab or from the page, remembers where it was printed. <b>Show in PDF</b> scrolls the page to the move shown and outlines it, if it isn't in view already. <b>Follow the move on the page</b> (<kbd>F</kbd>, on and off for the session) does that at every change of move: walking the game walks the book, with the board in the column or in its own window. A move with no place on the page (played on the board, or typed) shows nothing, and the button's name says so.</p>
+
+<!-- ============================================================ 17 -->
+<h1 id="c17"><span class="num">17</span>Preferences and appearance</h1>
+<p>The <b>Preferences</b> have an index of their sections on the left (<b>General</b>, <b>Appearance</b>, <b>Documents and view</b>, <b>Reading colours</b>, <b>Identity</b>, <b>Fill &amp; Sign</b>, <b>Date format</b>, <b>Chess</b>, <b>JavaScript</b>): a click takes you to a section; otherwise they scroll only by their scroll bar. <b>Close</b> stays at the bottom, always in view.</p>
+<figure>
+<img src="img/23-preferences.png" alt="Preferences on the Chess section.">
+<figcaption>The <b>Preferences</b>, with the index of sections on the left, on the <b>Chess</b> section. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>The Chess section</h2>
+<p>In the order they come:</p>
+<table style="break-before: auto">
+<tr><th style="width:40%">Setting</th><th>Choices</th></tr>
+<tr><td><b>Board theme</b></td><td>Themes, coordinates, frame, marked squares and the side to move (below).</td></tr>
+<tr><td><b>Highlight the last move</b></td><td><b>Filled squares</b>, <b>Border</b>, <b>Corners</b>, <b>Arrow</b> and other marks, or <b>None</b>, and its <b>Strength</b>.</td></tr>
+<tr><td><b>Pieces in the move list</b></td><td><b>Figurines</b> (from the board's set), <b>Letters in your language</b> (R D T B C in Portuguese) or <b>English letters</b> (K Q R B N). Holds for every move the app shows.</td></tr>
+<tr><td><b>Show the move's comment in large type under the board</b></td><td>Turns the large comment on (its words only, without the commands of chapter 10).</td></tr>
+<tr><td><b>Show the clock and the evaluation the PGN gives each move</b></td><td>Off at first. On, the clock (<code>[%clk]</code> or <code>[%emt]</code>) and the evaluation (<code>[%eval]</code>) in the comments of a game downloaded from lichess or chess.com show as two small badges after each move (chapter 10).</td></tr>
+<tr><td><b>Show a move's position when the pointer rests on it</b></td><td>Turns the preview on or off, in the move list and on the moves printed on the page.</td></tr>
+<tr><td><b>Playing a different move</b>; <b>Stepping forward at a fork</b></td><td><b>Start a variation</b>, <b>Ask</b> or <b>Replace the continuation</b>; <b>Follow the line remembered</b> or <b>Ask</b>.</td></tr>
+<tr><td><b>One-key shortcuts (B, C, F, G, O, X, signs)</b></td><td>Turns the rail's one-letter keys and the typed signs on or off (chapter 11).</td></tr>
+<tr><td><b>A typed sign waits for its next character</b></td><td>0.6 s, 1 s, 1.5 s, 2 s or <b>Until Enter</b> (chapter 13).</td></tr>
+<tr><td><b>Classic diagram editor</b></td><td>The editor inside the panel, as in older versions.</td></tr>
+<tr><td><b>Move list</b></td><td><b>Running text</b> or <b>Columns</b> (number | White | Black, broken at comments and variations), and the text's size.</td></tr>
+<tr><td>Chess pieces: <b>Board</b> and <b>Diagrams</b></td><td>The piece sets of the analysis boards and of the redrawn diagrams (below).</td></tr>
+<tr><td><b>Chess models</b>: <b>Chess models…</b>, <b>Check again</b></td><td>The models' folder (chapter 2).</td></tr>
+<tr><td><b>Chess engine</b></td><td><b>Search threads</b>, <b>Hash table</b> and <b>Endgame tables (Syzygy)</b> (chapter 8).</td></tr>
+<tr><td><b>Write PGN files with a byte order mark (BOM)</b></td><td>Off: PGN in UTF-8 without a BOM.</td></tr>
+</table>
+<p>Numbers are written with your language's separator (12,691 moves in English, 12.691 in Portuguese). The chess panel is wholly translated into the 22 languages of the interface, and the Black side is named as a side, not as a colour.</p>
+<h2>Chess pieces</h2>
+<p>There are two independent choices: <b>Board</b> (the analysis and study boards) and <b>Diagrams</b> (the diagrams redrawn on the page, in the editor and in the exports). The grid shows each set in a small picture, with the chosen set's author and licence:</p>
+<ul>
+<li><b>Auto</b>: the program's own order. First <code>PDFCRAFT_CHESS_PIECES</code>, then a diagram font in the <code>fonts</code> folder (Chess Merida when it is there, never a font whose licence forbids embedding), then an installed Chess Merida, then a <code>pieces</code> folder of pictures.</li>
+<li>The sets that come with the program: eight open ones from lichess (Chessnut, RhosGFX, kiwen suwi, Firi, <b>Fantasy</b>, <b>Spatial</b>, <b>Celtic</b>, <b>Shapes</b>) and twelve drawn for PdfCraft (<b>Classic</b>, <b>Tokens</b>, <b>Pixel Art</b>, Bauhaus, <b>Facets</b>, <b>Stained Glass</b>, Moves, <b>Chubby</b>, Art Deco, <b>Gothic</b>, <b>Wood</b>, <b>Sketch</b>). Common names are translated (Stained Glass is Vitral in Portuguese); the sets' own names stay as they are.</li>
+<li>Chess fonts: every diagram font in the <code>fonts</code> folder, or installed in Windows, whose character map has been checked, one per family (Marroquin's, Chess 7, Chess Alpha, the DG cuts, Utrecht, OpenChessFont, DiagramTTF…).</li>
+<li><b>Plain shapes</b>: geometric pieces, always available.</li>
+</ul>
+<figure>
+<img src="img/24-pieces.png" alt="The grid of piece sets in Preferences.">
+<figcaption>The end of the grid of piece sets (the chess fonts and <b>Plain shapes</b>) and the import buttons. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<table>
+<tr><th style="width:28%">Button</th><th>Does</th></tr>
+<tr><td><b>Import a folder…</b></td><td>Copies a folder of 12 PNG or SVG pictures (<code>wK wQ wR wB wN wP bK bQ bR bB bN bP</code>), each filling one square, on a transparent background. Large PNG pictures (up to 2,048 px) are reduced before they are traced.</td></tr>
+<tr><td><b>Import from a web page…</b></td><td>Takes a set of SVG pieces out of a saved HTML page (its <code>data:</code> images keyed <code>wK</code> … <code>bP</code>). Each piece goes through the safe reader (a piece nested or chained more than 32 levels deep, or one that would expand past 200,000 elements, is refused with the reason), and the set is marked “unknown licence: personal use”.</td></tr>
+<tr><td><b>Import fonts…</b></td><td>Copies fonts into the <code>fonts</code> folder beside the program, several at once. A diagram font becomes a set; a figurine font starts writing the moves in the exports. A file identical to one already there is left as it is, and a different one with the same name asks before replacing it.</td></tr>
+</table>
+<p>Importing runs in the background: meanwhile, the buttons' row says <b>Importing…</b> and the buttons are off. Replacing a set swaps the whole set at once: if something fails halfway (a piece held open by another program, a full disk), the old set stays whole, and a file of yours in the set's folder that is no piece is kept.</p>
+<p><strong>Licences.</strong> PdfCraft distributes none of these fonts: each keeps its own licence. Chess Adventurer and Chess Cases forbid embedding; they are listed and can be chosen, but Auto never picks them. Diagrams and exports drawn with such pieces carry the fonts with them: fine for personal use, but not for publishing.</p>
+<h2>Board theme</h2>
+<div class="two">
+<div>
+<p>The theme is for the boards you play and study on; the diagrams on the page and in the exports keep their own colours. Choose it in Preferences or from the <b>Board theme</b> icon in the board's header.</p>
+<ul>
+<li>14 plain themes (Brown, the default, Light wood, Walnut, Blue, Ice blue, Green, Olive, Grey, Graphite, Purple, Pink, Sand, Coral and High contrast) and 4 with a texture the program makes (Wood, Marble, Paper and Book print), their names on two lines.</li>
+<li><b>Coordinates</b> <b>On the squares</b>, <b>Beside the board</b> or none, always at a contrast of 4.5:1 or better; a <b>Frame</b>, none, <b>Thin</b> or <b>Double</b>; <b>Marked squares</b> as a <b>Ring</b> or <b>Filled</b>; a <b>Dot</b> on the side to move.</li>
+</ul>
+</div>
+<figure style="flex:0.8">
+<img src="img/25-theme.png" alt="The Board theme menu.">
+<figcaption>The <b>Board theme</b> menu. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
+
+<!-- ============================================================ 18 -->
+<h1 id="c18"><span class="num">18</span>Exporting the book</h1>
+<p><b>Export book…</b> (the file icon at the top of the Diagrams tab, the Text tab's ⋯ menu, or <b>Export chess book…</b> in the <b>Chess</b> menu) opens the <b>Export chess book</b> dialog. Everything goes out with your corrections, the book's PGN and the document's games.</p>
+<figure>
+<img src="img/26-export.png" alt="The Export chess book dialog.">
+<figcaption>The export dialog, with the summary of what will come out. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<table>
+<tr><th style="width:26%">Field</th><th>Choices</th></tr>
+<tr><td><b>Format</b></td><td><b>PGN — games</b>, <b>PGN — exercises</b>, <b>Anki — cards</b>, <b>Exercise sheet (PDF)</b>, <b>EPUB — e-book</b>, <b>HTML — web page</b>, Word, RTF and Markdown.</td></tr>
+<tr><td><b>Pages</b></td><td><b>All pages</b>, or <b>Pages from</b> 1 <b>to</b> 4.</td></tr>
+<tr><td><b>Book's language</b></td><td>As the book says (the PDF's <code>/Lang</code>, else the language of the prose's words), or one of 18 languages. A PDF that says it is in Japanese, or in another language with no chess notation of its own, shows as <b>As the book says (ja)</b>.</td></tr>
+<tr><td><b>Diagram descriptions</b></td><td><b>Letters (Kg1)</b> or <b>Words (king g1)</b>, for a screen reader (not in the PGN).</td></tr>
+<tr><td>For the PGN of games</td><td><b>Diagrams as PGN games</b> (only those not in a game, all, or none) and where the games come from (<b>PGN games from</b>): the book's PGN, with the book's text, or the text read from the PDF.</td></tr>
+<tr><td><b>PGN for</b> (the PGN of games and of exercises)</td><td><b>Standard PGN</b> (the default: every sign as read), Lichess or ChessBase, for the program you will open the file in (below). Remembered.</td></tr>
+</table>
+<p>At the bottom, the dialog says what will come out (<b>Pages: 4</b> · <b>Diagrams: 4</b> · <b>Games from the book's PGN: 2</b> · <b>Your games, linked first: 2</b> · <b>Language: English</b>) and, with diagrams still to review, the warning with <b>Review first</b>. <b>Export…</b> asks where to write the file. The format, the PGN's choices and the descriptions are remembered between sessions; the pages and the language while the document is open.</p>
+<p>The export uses what <b>Detect diagrams</b> (or an earlier export) has already read of the document as it is: after the book is detected, exporting doesn't read the pages again, and after an edit only the pages it changed are read. It runs in the background: the Text and Diagrams tabs show the page it has reached, with a bar and <b>Stop</b> (stopping writes nothing). An export never writes over the open PDF or the book's PGN. At the end, a window says where the file was written, what the export noted and, for the exercises, how many went in and why some were left out; <b>Open folder</b> shows the file.</p>
+<h2>The formats</h2>
+<ul>
+<li><b>PGN — games</b>: with the book's PGN, its games with every line, the book's text as comments and <code>$220</code> where a diagram shows a move; lines that only the book has go in as variations commented <code>{only in the book}</code>. Then the diagrams as games, if chosen. A comment's commands (<code>[%clk 0:03:00]</code>) go back where they were read, each whole on one line.</li>
+<li><b>EPUB — e-book</b> (its cover is the book's first page), <b>HTML — web page</b> (a single file, its fonts embedded), Word (<code>.docx</code>), RTF and Markdown (the diagrams' pictures in a folder beside it). Under each legal, accepted diagram goes a link to its analysis on lichess.</li>
+<li><b>PGN — exercises</b>: the book's numbered exercises with the solution read, as standard problems (<code>SetUp</code>/<code>FEN</code>, the solution as the main line, the statement before the first move), to train with in ChessBase, a lichess study or Chessable.</li>
+<li><b>Anki — cards</b>: the same exercises as a text file that Anki's <i>File ▸ Import</i> reads (front: the diagram's picture and the statement; back: the solution) and a <code>&lt;name&gt;_diagrams</code> folder of pictures, to copy into Anki's <code>collection.media</code> folder. Importing again updates the cards.</li>
+<li><b>Exercise sheet (PDF)</b>: the book's numbered diagrams in a new PDF to print, with <b>Per page</b> (4, 6 or 9) and <b>With the solutions</b>, remembered for next time. Each diagram is drawn as Redraw draws it, captioned <code>Nº 185 · p. 40 · White to move</code>, and the solutions come at the end, in the order of the numbers; a numbered diagram whose solution was not read goes in too, and the key says “solution not read”. The summary counts the exercises of the pages already read, without reading anything (<b>Pages not read yet: 12 (counted when exported)</b>), and the export reads the rest. When every page chosen is read and there is no exercise, the dialog says why and <b>Export…</b> is off. The sheet is proposed as <code>book - exercises.pdf</code> and is never written over an open PDF.</li>
+</ul>
+<figure class="half">
+<img src="img/27-sheet.png" alt="The dialog with the Exercise sheet chosen.">
+<figcaption><b>Exercise sheet (PDF)</b> on the sample book: its exercises are headings, not numbered diagrams, so the dialog says why and <b>Export…</b> is off. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>PGN for Lichess or ChessBase</h2>
+<p style="break-after: avoid">Lichess and ChessBase each read the PGN in their own way, and <b>PGN for</b> writes it the way the program you choose keeps it:</p>
+<ul>
+<li><b>Standard PGN</b>: every code as read, Black's own sign codes too.</li>
+<li>Lichess: lichess knows only White's code of a sign that has one for each side, so Black's are written as White's (<code>$37</code> as <code>$36</code>; the sign stays on Black's move, which says whose it is). A sign lichess doesn't know goes at the start of the move's comment, as its symbol or name (<code>$245</code> as <code>{⊥}</code>, a diagram as <code>{Diagram}</code>), and the engine's evaluation from <b>Check with the engine…</b> goes as <code>[%eval -1.50]</code> instead of a written comment.</li>
+<li>ChessBase: Black's codes are written as White's too, since ChessBase drops them when it saves, and a diagram goes as ChessBase's own mark, the comment <code>{[#]}</code>, since ChessBase ignores and drops <code>$220</code>. Every other sign is written as read.</li>
+</ul>
+<p>In the <b>PGN — exercises</b> for ChessBase, each exercise's statement starts with ChessBase's training question, so ChessBase's training mode can ask it: <code>{[%tqu "En","White to move (№ 185).","","","d1d8","",10] Page 275 · diagram 1 of 6}</code>. It holds the language (one of ChessBase's tabs: En, De, Fr, Es, It, Ne and Pt; a book in any other language gets En, its text left in its own language), the question (the side to move and the exercise's number), the answer (the solution's first move, as its two squares) and a score of 10; the rest of the statement follows it. ChessBase was only seen asking plain moves, so an exercise whose first move castles or promotes is written without the question, and the window at the end of the export counts them (<b>Without ChessBase's training question: 2</b>). In the question, a <code>"</code> is written as <code>'</code> and the square brackets as round ones.</p>
+<h2>What goes into the exported book, and what does not</h2>
+<ul>
+<li>HTML, EPUB, Word, RTF and Markdown are written in the book's language, not in the language of its piece letters: an English book set with figurines comes out in English (“Diagram 1, page 17: White to move”, <code>lang="en"</code>).</li>
+<li>The printed page number, the running head and the text inside a diagram are left out; a game's header stays. A book whose PDF has no page labels is paged, in its EPUB, by the numbers it prints.</li>
+<li>A move printed wrong that the book's PGN or a document's game plays comes out, in HTML and EPUB, with the position they give, marked, and the text as it was printed.</li>
+<li>For a screen reader, in HTML and EPUB, signs and figurines are said by their names in the book's language (<code>±</code> is <i>White is clearly better</i>; <code>♞</code> on a White move is <i>White knight</i>), in English, Portuguese, Spanish, French, German, Italian, Russian and Polish, and in English for the others; each diagram carries its position in words; each EPUB page has a title, and the contents follow the levels of the headings. In Word and RTF, a sign's name comes in brackets after it.</li>
+<li>In Word, each diagram goes in twice: as an SVG drawing, which Word 2016 and later (Windows, Mac, the web, phones) show and print sharp at any size, and as a 432-pixel picture of 64 colours for a reader that can't draw the SVG (older Word, some other programs), sharp on screen and a little softer in print. A position the book prints again is stored once. A book of 748 pages and 999 diagrams went from 118.5 MB to 21.2 MB. RTF, Markdown and Anki keep 900-pixel pictures. A Word or RTF file draws at most 30,000 positions (and 1 GB of pictures); a diagram of a new position past that comes out as its FEN, and the export says how many did. No book comes near it.</li>
+<li>In Markdown, a paragraph printed <code>---</code> stays text, and a file name with a space or a <code>#</code> doesn't break the links. An EPUB or a Word file that would pass 4 GB or 65,535 files is refused with an error.</li>
+</ul>
+<h2>The exports' fonts</h2>
+<p>HTML and EPUB use the fonts of <code>PDFCRAFT_CHESS_TEXT_FONT</code> or, without that variable, those of the <code>fonts</code> folder beside the program, each for what it draws: a figurine font that draws pieces on the letters K Q R B N only for the piece letters of the moves (“Kasparov” in the prose stays a word); a font with the Unicode chess symbols only for those symbols; ISChess for the signs it draws. A WOFF or WOFF2 font, or one that only allows embedding bitmaps, is not embedded.</p>
+<div class="box"><h3>On this computer</h3><p>With DiagPDF's fonts imported into <code>dist/app/fonts</code>, the exports write the moves with HastingsFigurine, the first figurine font by name. To use another, leave only that one in the folder, or point to it with <code>PDFCRAFT_CHESS_TEXT_FONT</code>.</p></div>
+<h2>Redrawing diagrams and links in the PDF</h2>
+<p><b>Redraw in the PDF…</b> (the ⋯ menu of the editor's footer) draws the corrected position over the original diagram, with the pieces chosen for <b>Diagrams</b>, in one undo step, and only that page is read again. <b>Add lichess link</b> puts a label with the analysis link under the diagram. The label and link PdfCraft puts carry a mark of their own: putting them again replaces only a pair with that mark, of the same diagram. These two actions change the PDF and show <b>Undo</b> in their notice; corrections alone never change the PDF. <b>Make the book's bookmarks…</b> (chapter 3) changes the PDF too, in one undo step.</p>
+
+<!-- ============================================================ 19 -->
+<h1 id="c19"><span class="num">19</span>Keyboard and screen reader</h1>
+<p>The game's keys work while the chess key scope is on, and never while a text field has the focus; the one-letter keys only with the one-key shortcuts on. On macOS, <kbd>Ctrl</kbd> is <kbd>⌘</kbd> and <kbd>Alt</kbd> is <kbd>⌥</kbd>. The editor's keys are in chapter 4. <kbd>F1</kbd>, on the board, opens the sheet of chess shortcuts (also <b>Chess shortcuts</b> in the <b>Chess</b> menu).</p>
+<figure>
+<img src="img/28-shortcuts.png" alt="The sheet of chess shortcuts.">
+<figcaption>The <b>Chess shortcuts</b> sheet. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<h2>The board and the game</h2>
+<table>
+<tr><th style="width:34%">Key</th><th>Does</th></tr>
+<tr><td><kbd>←</kbd> (or <kbd>Backspace</kbd>), <kbd>→</kbd></td><td>Back a move, forward a move.</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd> (or with <kbd>Alt</kbd>)</td><td>Move the variation up or down.</td></tr>
+<tr><td><kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Shift</kbd>+<kbd>End</kbd></td><td>The start of the game, the end of the line, the end of the main line.</td></tr>
+<tr><td><kbd>Page Up</kbd>, <kbd>Page Down</kbd></td><td>The previous and the next variation.</td></tr>
+<tr><td><kbd>M</kbd></td><td><b>Type a move</b>: goes to the <b>Move</b> field.</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Puts the armed tool down (Navigate), cancels a preview, closes a list open in the moves' place, or dismisses an error.</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Opens the move's comment, or applies a preview.</td></tr>
+<tr><td><kbd>X</kbd>, <kbd>Shift</kbd>+<kbd>X</kbd></td><td>Arms Capture; switches to the next mode.</td></tr>
+<tr><td><kbd>C</kbd></td><td>Arms <b>Capture as a comment</b>.</td></tr>
+<tr><td><kbd>O</kbd></td><td>Turns the <b>OCR area</b> on and off.</td></tr>
+<tr><td><kbd>B</kbd></td><td>Arms the <b>Glyph brush</b>.</td></tr>
+<tr><td><kbd>G</kbd></td><td>Opens and closes the <b>Glyph palette</b>.</td></tr>
+<tr><td><kbd>F</kbd></td><td>Turns <b>Follow the move on the page</b> on and off.</td></tr>
+<tr><td><kbd>Shift</kbd>+<kbd>S</kbd></td><td>Switches the tool shown in the Structure group.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>Promote one level, make it the main line, demote.</td></tr>
+<tr><td><kbd>Delete</kbd>; <kbd>Shift</kbd>+<kbd>Delete</kbd></td><td>Delete the variation; cut after the move shown.</td></tr>
+<tr><td><kbd>Backspace</kbd></td><td>Back a move (like <kbd>←</kbd>).</td></tr>
+<tr><td><code>! ? = + - / ~</code></td><td>Type a sign; <code>0</code> takes the signs off.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Undo and redo in the game.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Capture the clipboard's text.</td></tr>
+<tr><td><kbd>Alt</kbd>+click</td><td>On the board, on two squares: an arrow (on the same square twice, a circle). On a move printed on the page: opens its game.</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>; <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>8</kbd>; <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>…<kbd>H</kbd></td><td>Say the pieces; those of a rank; those of a file.</td></tr>
+<tr><td><kbd>F1</kbd></td><td>The sheet of chess shortcuts.</td></tr>
+<tr><td><kbd>F6</kbd></td><td><b>Leave the chess panel</b>: takes the keyboard out of the chess panels; below 1,000 pt, switches between the page and the Chess column.</td></tr>
+</table>
+<h2>The list of games (a row with the keyboard)</h2>
+<table>
+<tr><th style="width:34%">Key</th><th>Does</th></tr>
+<tr><td><kbd>F2</kbd></td><td>Rename.</td></tr>
+<tr><td><kbd>Delete</kbd>, <kbd>Backspace</kbd></td><td>Delete.</td></tr>
+<tr><td><kbd>Alt</kbd>+<kbd>↑</kbd>, <kbd>Alt</kbd>+<kbd>↓</kbd></td><td>Move.</td></tr>
+<tr><td><kbd>Shift</kbd>+<kbd>↑</kbd>, <kbd>Shift</kbd>+<kbd>↓</kbd></td><td>Extend the selection.</td></tr>
+<tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd>, <kbd>Ctrl</kbd>+<kbd>Space</kbd></td><td>Select every game; pick the row.</td></tr>
+<tr><td><kbd>Enter</kbd></td><td>Show the game.</td></tr>
+</table>
+<h2>The Chess column with the keyboard</h2>
+<ul>
+<li>The <b>Diagrams</b>, <b>Text</b> and <b>Board</b> tabs are read as tabs (“2 of 3”), and <kbd>←</kbd> and <kbd>→</kbd> go from one to the next.</li>
+<li>Every control of the column, of the chess window, of the move list and of the chess questions shows, while it has the keyboard, a 2 pt ring in the accent colour; a control <kbd>Tab</kbd> reaches below the foot of the list, of the Text tab or of the editor scrolls into view.</li>
+<li>When opening the column collapses the Tools panel while the keyboard was in it, the keyboard goes to the tab shown.</li>
+<li>The chess questions open with the keyboard on the first button that changes nothing (<b>Review first</b>, <b>Confirm correction</b>, <b>Cancel</b>), <kbd>Esc</kbd> closes them, and the keyboard goes back to the control it came from.</li>
+</ul>
+<h2>What a screen reader hears</h2>
+<ul>
+<li>Every chess notice and error, as it appears; an error stays until it is dismissed.</li>
+<li>The move shown, at each change: “2. knight f3 · variation 1 · with comment · Good move”.</li>
+<li>The analysis board by its name (“Board, White to move, move 7”), never its FEN, and, like the editor's board, as a grid of squares, with the square the keyboard is on.</li>
+<li>Each move of the Text tab in words, with its state and its link to the PGN.</li>
+<li>A row of the Diagrams list with its whole state.</li>
+</ul>
+
+<!-- ============================================================ 20 -->
+<h1 id="c20"><span class="num">20</span>Automation from the command line</h1>
+<p>Every chess feature is also an automation tool, which <code>pdfcraft-cli</code> runs without opening the app (and which the MCP server offers, when it is turned on). <code>pdfcraft-cli tools</code> lists them all, with their arguments. Every path is confined to the folder given with <code>--root</code>; with <code>--root</code>, the app's data folder is outside it, and the tools that write ask for a <code>store</code> (or <code>reference_store</code>) inside the root. The reading notes the tools give are in English.</p>
+<table>
+<tr><th style="width:36%">Tool</th><th>Does</th></tr>
+<tr><td><code>chess_status</code></td><td>Which models, piece set and engine are available, and why not; the version and the build.</td></tr>
+<tr><td><code>chess_detect</code>, <code>chess_read</code>, <code>chess_diagram_states</code></td><td>Detect and read the diagrams (FEN, legality, side to move, doubtful squares, repairs, lichess link); count them by state.</td></tr>
+<tr><td><code>chess_document</code></td><td>The book as headings, paragraphs and diagrams, with its games as variation trees; JSON and PGN. Takes the book's PGN and the games.</td></tr>
+<tr><td><code>chess_correction_list</code>, <code>_set</code>, <code>_delete</code>; <code>chess_page_verify</code></td><td>The corrections kept, and marking a page as checked.</td></tr>
+<tr><td><code>chess_reference_set</code>, <code>_status</code>, <code>_clear</code></td><td>Keep, show and remove the book's PGN.</td></tr>
+<tr><td><code>chess_replace_diagram</code>, <code>chess_add_lichess_links</code>, <code>chess_bookmarks</code></td><td>Redraw a diagram; put a label and link under every legal, accepted diagram; make the book's bookmarks (with <code>dry_run</code>) and the index of its games as CSV or Markdown.</td></tr>
+<tr><td><code>chess_game</code>, <code>chess_pgn_edit</code>, <code>chess_games</code></td><td>The board with no document; editing a game's moves; a PGN collection, or with <code>doc</code> the games kept for a document.</td></tr>
+<tr><td><code>chess_export_html</code>, <code>_epub</code>, <code>_docx</code>, <code>_rtf</code>, <code>_markdown</code>, <code>_pgn</code></td><td>The book's exports, with <code>text_lang</code> and <code>descriptions</code>; <code>_pgn</code> with <code>dialect</code> (<code>standard</code>, <code>lichess</code> or <code>chessbase</code>), as <b>PGN for</b> in chapter 18.</td></tr>
+<tr><td><code>chess_export_exercises</code>, <code>chess_export_anki</code>, <code>chess_export_worksheet</code></td><td>The exercises as a PGN of problems (with <code>dialect</code>, and for ChessBase the training question, listing in <code>training_left_out</code> those written without it), as Anki cards or as a sheet to print (A4 or Letter).</td></tr>
+<tr><td><code>chess_games_book</code></td><td>The games of a PGN made into a book.</td></tr>
+<tr><td><code>chess_errata</code></td><td>The errata of the book's notation, as CSV or Markdown: a printing error (<code>misprint</code>), something to check (<code>check</code>) and, with <code>evals_store</code>, a <code>!</code> the engine refutes.</td></tr>
+<tr><td><code>chess_engine_review</code>, <code>chess_evals</code>, <code>chess_mate</code></td><td>The book says × the calculation says, from the evaluations kept; the evaluations; the mate solver.</td></tr>
+<tr><td><code>chess_move_at</code>, <code>chess_position_find</code>, <code>chess_pattern_find</code></td><td>The printed move at a point of the page; where a position, or a material and a pawn structure, appear in what has already been read.</td></tr>
+<tr><td><code>chess_library_build</code>, <code>_find</code>, <code>_status</code>, <code>_clear</code></td><td>The Library without the app: read the folders and index each book (<code>dirs</code>, one book at a time, <code>max_books</code> a call), show each book's state, take out one book's index or all of them, and find a position, a move, a player, an event, an opening or a material in all of them without reading a page (in the app, <b>Chess</b> ▸ <b>Library…</b>, chapter 9).</td></tr>
+<tr><td><code>chess_review_pack_export</code>, <code>_import</code></td><td>A book's review taken to another computer.</td></tr>
+<tr><td><code>chess_cache_status</code>, <code>chess_cache_clear</code>, <code>chess_store_migrate</code></td><td>The reading kept on disk; bringing in an old <code>.pdfcraft/</code> folder.</td></tr>
+<tr><td><code>chess_read_area</code>, <code>chess_glyph_sample</code>, <code>chess_diagram_crop</code></td><td>The chess OCR in a rectangle; a 32 × 32 sample for retraining the OCR's glyph model; a diagram's picture cut from its page.</td></tr>
+<tr><td><code>chess_pieces</code>, <code>chess_pieces_import</code></td><td>List and choose the piece sets; import a folder, a web page, a font or a folder of fonts.</td></tr>
+</table>
+<p>Examples: <code>pdfcraft-cli chess scan book.pdf</code> prints the diagrams detected; <code>pdfcraft-cli run chess_pieces --root .</code> lists the piece sets; <code>pdfcraft-cli --version</code> prints the version and the build. The <code>ocr</code> argument chooses the pages to read with OCR: <code>auto</code> (the default), <code>off</code> (a born-digital book) or <code>all</code> (a scanned book); <code>cache</code> uses and keeps the reading on disk.</p>
+
+<!-- ============================================================ 21 -->
+<h1 id="c21"><span class="num">21</span>Limits and troubleshooting</h1>
+<table>
+<tr><th style="width:34%">What happens</th><th>What to do</th></tr>
+<tr><td><b>No analysis engine installed</b></td><td>Put the engine in the <code>engine</code> folder beside the program (in it or in a folder inside it), or use <b>Choose engine…</b>. The <code>PDFCRAFT_CHESS_ENGINE</code> variable works too.</td></tr>
+<tr><td>Drawn diagrams stay <b>Not read</b></td><td>The piece model is missing. Check <b>Chess models…</b> in Preferences, or open the app with <code>abrir-xadrez.cmd</code>.</td></tr>
+<tr><td>A page with no moves in the Text tab</td><td>Its text layer may be poor, or missing. Use <b>Read with OCR</b>, or choose <b>Scanned (chess OCR on every page)</b> in <b>Book origin</b>.</td></tr>
+<tr><td>A line stops in the middle</td><td>A move that can't be played (a misprint, a misread diagram, a line read onto the wrong branch) stops the line. The moves after it stay “not reached” until a numbered move finds its place. Correct the diagram, or capture the passage with the preview.</td></tr>
+<tr><td>The wrong side to move</td><td>Set <b>To move</b> and <b>Move number:</b> in the editor. With no caption and no bold move number under the diagram, the program assumes White is to move.</td></tr>
+<tr><td>A capture asks first (the preview)</td><td>See its reason in the table of chapter 12. <b>Insert in</b> and <b>Renumber</b> settle most cases.</td></tr>
+<tr><td>In the book says nothing was read</td><td>Detect the diagrams, or open the Text tab on the pages you care about, or load the book's PGN: In the book never reads the book by itself.</td></tr>
+<tr><td>A lichess game's moves all look commented</td><td>That was an earlier build, which showed the clock and evaluation commands as comments. This one shows only the words; turn on <b>Show the clock and the evaluation the PGN gives each move</b> to see the clock and the evaluation (chapter 10).</td></tr>
+<tr><td>An export with another font's figurines</td><td>See “The exports' fonts” in chapter 18.</td></tr>
+<tr><td>Piece or font changes don't show</td><td>After fonts are imported, the choices on Auto change at once. A copy of PdfCraft that was already open before the import must be started again.</td></tr>
+</table>
+<h2>Known limits</h2>
+<ul>
+<li>More than four columns are read as four at most. A table set in columns (an index of games) is read column by column, like text.</li>
+<li>On a scanned page, a reading with c and e swapped (a scan loses the bar of the e) is tried when the printed move doesn't play. The move is played only when exactly one reading is legal, and it is flagged for review.</li>
+<li>A PGN file keeps the comment before a move only where it has a place for it (the autosave always keeps it).</li>
+<li>The game's undo history and the games list's don't carry from one session to the next; importing a review is not undone by Undo.</li>
+<li>The progress bar doesn't estimate the time left yet. Reading a page with OCR can't be stopped once it has started.</li>
+<li>In the book doesn't count the moves the reading found in the text that no PGN has, and gives the page where a game starts, not the move's own page.</li>
+<li>A game the command line, another window or an imported review changed or deleted while the document is open shows so only when you open the document again (games added come in at once).</li>
+<li>Making the bookmarks again adds another tree. The list of errata exists only through the tools.</li>
+<li>From the app, the exercise sheet is A4 only (Letter through the tool). An exercise's caption and statement don't yet say the goal the book prints (“and win”). Anki's pictures are copied into <code>collection.media</code> by hand.</li>
+<li>The PGNs written for Lichess and ChessBase follow what each program was seen to keep, but no such file has yet been imported into lichess or ChessBase, and the exercises with ChessBase's training question have not yet been opened in ChessBase's training. The list of signs lichess knows is the published one, not checked on the site.</li>
+<li>The Word file was checked from the inside, not opened in Word, LibreOffice or Google Docs.</li>
+<li>An export's notes and the reason a sheet was refused are in English.</li>
+<li>In an encrypted book, the Text tab's reading is not kept yet, even after <b>Keep them</b>. No button of the app clears the reading kept; only the <code>chess_cache_clear</code> tool does.</li>
+<li>In a folder of more than 4,096 entries (such as Downloads), a PGN with the PDF's name beyond the first 4,096 is not offered: use <b>Load the book's PGN…</b>.</li>
+<li>If PdfCraft closes suddenly with the engine on, the engine may stay open (Stockfish quits by itself).</li>
+<li>Piece sets by other authors draw gradients flat, in their first colour. The DG cuts have frames and labels of their own, which are read but not drawn.</li>
+</ul>
+<h2>Where to read more</h2>
+<p>The technical guide, <code>docs/chess.md</code> in the repository, has this help's chapters and, in “How well it reads”, how well PdfCraft reads books; the plans and each version's notes are in <code>docs/chess/</code>. This help also exists in Portuguese: <i>Ajuda - Ferramentas de Xadrez.pdf</i>.</p>
+</body>
+</html>
