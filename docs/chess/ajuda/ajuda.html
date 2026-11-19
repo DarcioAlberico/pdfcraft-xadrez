@@ -47,6 +47,9 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 .cover .title { font-size: 34pt; font-weight: 700; color: #12324f; margin: 4pt 0; }
 .cover .sub { font-size: 15pt; color: #34495e; margin-bottom: 18pt; }
 .cover p { max-width: 150mm; color: #34495e; }
+.cover .edition { font-size: 13pt; font-weight: 600; color: #12324f; margin-bottom: 10pt; }
+.selo { font-size: 7.6pt; color: #5d6874; border: 0.6pt solid #b9c4cf; border-radius: 2pt; padding: 0 2pt; white-space: nowrap; }
+pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5; padding: 4pt 6pt; margin: 3pt 0 7pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }
 .toc { list-style: none; padding: 0; font-size: 11pt; }
 .toc li { display: flex; margin: 0 0 4pt; }
 .toc .cn { width: 22pt; color: #2a6db0; font-weight: 600; }
@@ -63,7 +66,8 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <div class="kicker">GUIA DE AJUDA</div>
 <div class="title">PdfCraft</div>
 <div class="sub">Ferramentas de xadrez — como ler, revisar, estudar e exportar livros de xadrez em PDF</div>
-<p>Versão do programa descrita: <span class="build-id">build 7496134 2026-11-19</span> (o <code>main</code> de 19/11/2026, o mesmo do <code>dist/app</code>). O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build que está instalado.</p>
+<p class="edition">Versão 1.0.0 · <span class="build-id">build bc3f895 2026-11-19</span></p>
+<p>Esta ajuda descreve a versão 1.0.0 das ferramentas de xadrez, no build acima (o <code>main</code> de 19/11/2026, o mesmo do <code>dist/app</code>). <b>Ajuda</b> ▸ <b>Sobre o PdfCraft</b> e o <code>pdfcraft-cli --version</code> dizem a versão e o build que estão instalados (capítulo 2).</p>
 <p>As figuras foram feitas no próprio PdfCraft, em português, numa janela de 1366 × 768, com um livro de exemplo de 4 páginas: duas partidas de domínio público (Morphy, Paris 1858; Anderssen–Kieseritzky, Londres 1851) com comentários escritos para este guia, dois exercícios e as soluções. Cada figura diz na legenda o build de onde veio.</p>
 </section>
 
@@ -101,12 +105,12 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>abrir no tabuleiro um lance impresso com um duplo clique na página, e transcrever trechos inteiros selecionando o texto;</li>
 <li>alinhar o livro ao PGN que acompanha a edição digital (Chessable, Forward Chess…);</li>
 <li>ver em que lugares do livro aparece a posição do tabuleiro, ou um material e uma estrutura de peões;</li>
-<li>exportar o livro como PGN, EPUB, HTML, Word, RTF ou Markdown, e os exercícios como uma folha para imprimir, um PGN de problemas ou cartões do Anki.</li>
+<li>exportar o livro como PGN (o padrão, ou escrito para o lichess ou para o ChessBase), EPUB, HTML, Word, RTF ou Markdown, e os exercícios como uma folha para imprimir, um PGN de problemas (com a pergunta de treino do ChessBase, se quiser) ou cartões do Anki.</li>
 </ul>
 <p>Tudo roda no seu computador. Nada é enviado para fora.</p>
 <figure>
 <img src="img/01-visao-geral.png" alt="O livro de exemplo com a coluna Xadrez aberta na aba Diagramas.">
-<figcaption>O livro de exemplo depois de <b>Detectar diagramas</b>: a página à esquerda, com a marca de cada diagrama, e a coluna <b>Xadrez</b> à direita, na aba <b>Diagramas</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O livro de exemplo depois de <b>Detectar diagramas</b>: a página à esquerda, com a marca de cada diagrama, e a coluna <b>Xadrez</b> à direita, na aba <b>Diagramas</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Onde ficam as ferramentas</h2>
@@ -122,15 +126,15 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>O botão de xadrez da barra da direita aparece sozinho, com um ponto, quando o documento é um livro composto numa fonte de xadrez ou tem um PGN ao lado, antes mesmo de você detectar alguma coisa. Toda ferramenta de xadrez também é um comando: aperte <kbd>Ctrl</kbd>+<kbd>K</kbd> e digite parte do nome, como “analisar”, “tabuleiro”, “exportar livro” ou “variante”. Com o teclado no tabuleiro, <kbd>F1</kbd> abre a folha dos atalhos de xadrez.</p>
 <figure class="half">
 <img src="img/02-menu-xadrez.png" alt="O menu Xadrez aberto.">
-<figcaption>O menu <b>Xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu <b>Xadrez</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 
 <h2>A largura da janela decide o leiaute</h2>
 <p>A coluna <b>Xadrez</b> se ajusta à largura da janela, medida em pontos (pt) depois do tamanho da interface:</p>
 <ul>
-<li><b>Até 999 pt</b> (uma tela de 1366 × 768 com a interface a 150 % ou mais): a coluna toma o lugar da página. <kbd>F6</kbd> ou o botão <b>Mostrar a página (F6)</b> alternam entre as duas.</li>
-<li><b>De 1.000 a 1.599 pt</b>: uma coluna de 360 pt ao lado da página. O editor de um diagrama abre no lugar da lista.</li>
-<li><b>De 1.600 pt em diante</b>: duas colunas, com o editor do diagrama (ou o tabuleiro) ao lado da lista. A partir de 1.920 pt as colunas têm 420 pt e o tabuleiro do editor vai até 380 pt.</li>
+<li><strong>Até 999 pt</strong> (uma tela de 1366 × 768 com a interface a 150 % ou mais): a coluna toma o lugar da página. <kbd>F6</kbd> ou o botão <b>Mostrar a página (F6)</b> alternam entre as duas.</li>
+<li><strong>De 1.000 a 1.599 pt</strong>: uma coluna de 360 pt ao lado da página. O editor de um diagrama abre no lugar da lista.</li>
+<li><strong>De 1.600 pt em diante</strong>: duas colunas, com o editor do diagrama (ou o tabuleiro) ao lado da lista. A partir de 1.920 pt as colunas têm 420 pt e o tabuleiro do editor vai até 380 pt.</li>
 </ul>
 <p>Abaixo de 1.920 pt, ao abrir o painel de xadrez, o painel <b>Ferramentas</b> é recolhido uma vez por sessão, com o aviso <b>Painel Ferramentas recolhido</b> e <b>Desfazer</b>. Uma coluna que você redimensionou na sessão fica como está. Um leiaute salvo por um build anterior a 14/11 abre sem as abas antigas do tabuleiro e do Diagrama, na aba que aparecia. O modo Ler tem a mesma coluna, com as mesmas abas e o mesmo editor.</p>
 
@@ -152,7 +156,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>Cada modelo é conferido antes de carregar (operações, constantes e tamanho dos tensores) e, quando há um <code>.parity.json</code> ao lado, depois de carregar. Um modelo recusado, que pediria memória demais ou encadeia mais de 256 operações, aparece como inválido, com o motivo, e o programa continua.</p>
 
 <h2>Onde colocar cada coisa</h2>
-<table>
+<table style="break-inside: avoid">
 <tr><th style="width:14%">Pasta</th><th>Conteúdo</th></tr>
 <tr><td><code>models</code></td><td>Os modelos de leitura. O PdfCraft os procura primeiro na pasta escolhida nas Preferências, depois na indicada por <code>PDFCRAFT_MODELS</code>, depois em <code>models</code> e, por fim, na pasta do programa.</td></tr>
 <tr><td><code>fonts</code></td><td>Fontes de diagrama (viram conjuntos de peças) e fontes de figurinas e sinais (usadas nas exportações). <b>Importar fontes…</b>, nas Preferências, as copia para cá. Uma fonte WOFF ou WOFF2 não é embutida nas exportações, porque a licença dela não pode ser conferida: converta-a para TTF ou OTF.</td></tr>
@@ -167,7 +171,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>Builds lado a lado</h2>
 <ul>
 <li>Cada cópia do PdfCraft numa pasta tem a própria instância: abrir um PDF pelo <code>pdfcraft.exe</code> de <code>dist/app/anterior-…</code> abre nele, não no build atual. Evite corrigir diagramas nos dois ao mesmo tempo.</li>
-<li>O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build (<code>0.9.0, build 7496134 2026-11-19</code>). <b>Ajuda</b> ▸ <b>Verificar atualizações…</b> não consulta a rede: diz “PdfCraft Xadrez <i>build</i>: as versões novas vêm da pasta dist/app.”</li>
+<li><b>Ajuda</b> ▸ <b>Sobre o PdfCraft</b> (na aba <b>Sobre</b>, sob o nome) e o <code>pdfcraft-cli --version</code> dizem a versão e o build: <code>1.0.0, build bc3f895 2026-11-19 (PdfCraft 0.9.0)</code>. Primeiro vem a versão das ferramentas de xadrez, a edição que esta ajuda descreve (1.0.0); depois o build, o commit e a data em que o programa foi compilado, que separa duas cópias da mesma versão; entre parênteses, a versão do PdfCraft em que o xadrez foi construído. A ferramenta <code>chess_status</code> dá os mesmos dados (capítulo 20). <b>Ajuda</b> ▸ <b>Verificar atualizações…</b> não consulta a rede: diz “PdfCraft Xadrez <i>build</i>: as versões novas vêm da pasta dist/app.”</li>
 <li>Ao gravar as preferências, este build mantém as que um build mais novo gravou e que ele não conhece. Os builds anteriores a 12/11 ainda as apagam.</li>
 </ul>
 
@@ -199,7 +203,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ol>
 <figure class="half">
 <img src="img/03-detectar.png" alt="O alto da aba Diagramas, com o menu Onde detectar aberto.">
-<figcaption>O alto da aba <b>Diagramas</b>, com o menu <b>Onde detectar</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O alto da aba <b>Diagramas</b>, com o menu <b>Onde detectar</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <p>No alto da aba ficam <b>Detectar diagramas</b> ▾, <b>Exportar livro…</b> (o ícone de arquivo), <b>Tabuleiro</b> e o ⋯ <b>Mais ações de xadrez</b>. Numa coluna estreita, <b>Tabuleiro</b> fica só com o ícone e <b>Detectar diagramas</b> é cortado com “…”; o nome inteiro fica na dica.</p>
 <p>No computador, a detecção usa vários núcleos (até quatro, deixando um para o resto do programa): a lista se enche por lotes de páginas, na ordem do livro. Na web, ela lê uma página por vez.</p>
@@ -226,7 +230,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>O lado que joga vem, nesta ordem, do que a página diz:</p>
 <ul>
 <li>a legenda do diagrama ou o título da página sobre os diagramas, em palavras (“Pretas jogam”, “Brancas jogam e ganham”, “Black to move”, “Weiß am Zug”, “Pretas jogam em todas as posições”) — só linhas curtas sem lances, nunca a análise;</li>
-<li>o primeiro número de lance em negrito sob o diagrama, na mesma coluna e antes do próximo diagrama: <code>23.♘f3</code> diz que as brancas jogam, e <code>23...♖xe4</code>, que as pretas jogam, no lance 23 (um número na fonte normal é prosa e é ignorado);</li>
+<li>o primeiro número de lance em negrito sob o diagrama, na mesma coluna e antes do próximo diagrama (sob um diagrama centrado na coluna, também a linha que começa na margem): <code>23.♘f3</code> diz que as brancas jogam, e <code>23...♖xe4</code>, que as pretas jogam, no lance 23 (um número na fonte normal é prosa e é ignorado);</li>
 <li>um problema “Mate em 2” (<code>#2</code>, “Mate in 2”, até 3 lances): quando a página não diz quem joga, joga o lado que dá mate, se só um deles dá.</li>
 </ul>
 <p>Quando a própria posição desmente o lado impresso (o lado que não joga estaria em xeque), vale a posição, e o diagrama vai para revisão. Sem nada disso, o lado fica suposto: as brancas jogam, e as exportações dizem “lado não informado”.</p>
@@ -240,7 +244,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.9">
 <img src="img/04-lista.png" alt="A lista de diagramas com o menu de uma linha aberto.">
-<figcaption>A lista, com o menu ⋯ de uma linha. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A lista, com o menu ⋯ de uma linha. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p>Na página, cada diagrama tem uma marca na cor do estado, com o número numa aba; um clique escolhe o diagrama, com a ferramenta Selecionar ou com a Mão. Um duplo clique no diagrama da página o abre no tabuleiro.</p>
@@ -262,22 +266,22 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure class="half">
 <img src="img/05-mais-acoes.png" alt="O menu Mais ações de xadrez aberto.">
-<figcaption>O menu <b>Mais ações de xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu <b>Mais ações de xadrez</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h3>Avisos no painel</h3>
 <p>Sob o cabeçalho do painel aparece um aviso por vez: âmbar quando falta o modelo de peças (“só são lidos os diagramas compostos em fonte de xadrez”) ou quando o documento mudou desde a detecção; vermelho, com ícone, quando um modelo não carregou ou o tabuleiro não pôde ser desenhado.</p>
 
 <!-- ============================================================ 4 -->
 <h1 id="c4"><span class="num">4</span>O editor do diagrama: corrigir uma posição</h1>
-<p>Um clique num diagrama da lista, em <b>Revisar agora</b> ou numa marca da página abre o editor. Numa coluna só, ele toma o lugar da lista; com duas colunas (a partir de 1.600 pt), abre na segunda. <b>‹ Diagramas</b> e <kbd>Esc</kbd> voltam à lista, sem descartar nada; numa coluna estreita o botão vira só a seta. O modo Ler e a janela de xadrez têm o mesmo editor.</p>
+<p>Um clique num diagrama da lista, em <b>Revisar agora</b> ou numa marca da página abre o editor. Numa coluna só, ele toma o lugar da lista; com duas colunas (a partir de 1.600 pt), abre na segunda. ‹ <b>Diagramas</b> e <kbd>Esc</kbd> voltam à lista, sem descartar nada; numa coluna estreita o botão vira só a seta. O modo Ler e a janela de xadrez têm o mesmo editor.</p>
 <figure>
 <img src="img/06-editor.png" alt="O editor com o Exercício 2.">
-<figcaption>O Exercício 2 do livro, impresso sem o rei preto. A posição lida é ilegal, e por isso ficou a revisar. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O Exercício 2 do livro, impresso sem o rei preto. A posição lida é ilegal, e por isso ficou a revisar. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>O que há no editor</h2>
 <ul>
-<li><strong>Cabeçalho:</strong> <b>‹ Diagramas</b>, a página e o diagrama (“Pág. 3 · diagrama 2 de 2”; um clique mostra o diagrama na página) e as setas ‹ › com o contador curto (1/1; o texto inteiro na dica). As setas andam pelos diagramas do filtro escolhido (sem filtro, pelos a revisar).</li>
-<li><b>Lido | Original</b> (<kbd>Alt</kbd>+<kbd>O</kbd>): <b>Original</b> mostra, no mesmo quadrado do tabuleiro, a imagem do diagrama na própria página, do mesmo tamanho, para conferir casa por casa sem dar zoom na página. A imagem é a que a vista da página desenhou: uma página ainda não desenhada diz isso, com <b>Mostrar na página</b>. A escolha fica para o próximo diagrama. No fim da mesma linha aparece <b>Alterações não confirmadas</b> quando há um rascunho, num lugar reservado (o tabuleiro não pula).</li>
+<li><strong>Cabeçalho:</strong> ‹ <b>Diagramas</b>, a página e o diagrama (“Pág. 3 · diagrama 2 de 2”; um clique mostra o diagrama na página) e as setas ‹ › com o contador curto (1/1; o texto inteiro na dica). As setas andam pelos diagramas do filtro escolhido (sem filtro, pelos a revisar).</li>
+<li><b>Lido</b> | <b>Original</b> (<kbd>Alt</kbd>+<kbd>O</kbd>): <b>Original</b> mostra, no mesmo quadrado do tabuleiro, a imagem do diagrama na própria página, do mesmo tamanho, para conferir casa por casa sem dar zoom na página. A imagem é a que a vista da página desenhou: uma página ainda não desenhada diz isso, com <b>Mostrar na página</b>. A escolha fica para o próximo diagrama. No fim da mesma linha aparece <b>Alterações não confirmadas</b> quando há um rascunho, num lugar reservado (o tabuleiro não pula).</li>
 <li><strong>Tabuleiro e paleta:</strong> peças brancas, peças pretas e a borracha. Casas duvidosas ficam contornadas, e a segunda leitura de cada uma está a um clique (por exemplo, <b>Esvaziar a casa</b>).</li>
 <li><b>Quem joga</b> (<b>Brancas</b> · <b>Pretas</b>) e <b>Lance nº:</b>.</li>
 <li><strong>Detalhes:</strong> o roque por extenso, a FEN, <b>Virar tabuleiro</b> e <b>Restaurar a leitura automática</b>. Um direito de roque que as peças já não permitem sai sozinho.</li>
@@ -288,7 +292,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 
 <figure class="small">
 <img src="img/06b-original.png" alt="O editor em Original, com a imagem do diagrama na página.">
-<figcaption><b>Original</b>: a imagem do Exercício 2 na própria página, no quadrado do tabuleiro. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption><b>Original</b>: a imagem do Exercício 2 na própria página, no quadrado do tabuleiro. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Exemplo: corrigir o diagrama com erro</h2>
@@ -314,7 +318,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.85">
 <img src="img/07-editor-menu.png" alt="O menu do rodapé do editor.">
-<figcaption>O menu ⋯ do rodapé. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu ⋯ do rodapé. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -345,7 +349,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A aba <b>Texto</b> mostra a página da tela lida como documento de xadrez: títulos, parágrafos, lances e diagramas, com o número que o livro imprime (“Texto reconhecido da página xvii”).</p>
 <figure>
 <img src="img/08-texto.png" alt="A página 1 do livro de exemplo na aba Texto.">
-<figcaption>A página 1 do livro de exemplo na aba <b>Texto</b>, com o menu ⋯ da aba aberto. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A página 1 do livro de exemplo na aba <b>Texto</b>, com o menu ⋯ da aba aberto. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>A linha do alto e o menu da aba</h2>
 <p>A linha do alto diz a página lida e de onde ela veio (a camada de texto ou o OCR de xadrez), com <b>Ler com OCR</b> e o menu ⋯ da aba:</p>
@@ -380,7 +384,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 
 <h2>Lances impressos na página</h2>
-<p>Não é preciso passar pela aba Texto: um <b>duplo clique num lance impresso na página</b> abre a partida dele no tabuleiro, naquele lance (a posição depois dele). A partida é a do PGN do livro quando o lance está ligado a ele, senão a da página, lida através das páginas vizinhas; a mesma partida, sem mudança, é mostrada de novo, não acrescentada. A palavra continua selecionada; <kbd>Alt</kbd>+clique faz o mesmo sem selecionar.</p>
+<p>Não é preciso passar pela aba Texto: um <strong>duplo clique num lance impresso na página</strong> abre a partida dele no tabuleiro, naquele lance (a posição depois dele). A partida é a do PGN do livro quando o lance está ligado a ele, senão a da página, lida através das páginas vizinhas; a mesma partida, sem mudança, é mostrada de novo, não acrescentada. A palavra continua selecionada; <kbd>Alt</kbd>+clique faz o mesmo sem selecionar.</p>
 <ul>
 <li>Sobre um lance que a aba Texto já leu, o ponteiro vira mão e o lance ganha um sublinhado na cor de destaque. Com o ponteiro parado 0,4 s, um tabuleiro pequeno com a posição depois do lance aparece ao lado dele (embaixo, ou em cima perto do pé da janela), sem cobri-lo; o ponteiro pode ir até o tabuleiro sem que ele suma. Ele some quando o ponteiro sai dos dois, ao rolar, ao mudar o zoom ou a página e quando o duplo clique abre a partida; <kbd>Esc</kbd> o fecha, e o teclado fica onde estava.</li>
 <li>Numa página ainda não lida, o gesto lê a página primeiro, com <b>Lendo a página…</b> na base da página, e então abre o lance.</li>
@@ -408,6 +412,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>Os parágrafos não se partem no meio da frase onde o leiaute muda o tipo ou o peso da linha, e uma linha em branco separa dois.</li>
 <li>Uma casa citada numa frase (“um xeque incômodo em h5”, “não chega a d3”) fica no texto, sem virar lance. Um lance em negrito continua lance.</li>
 <li>Rótulos em maiúsculas (<code>A)</code>, <code>B2.1)</code>) separam linhas irmãs como <code>a)</code>; texto entre colchetes sem lance volta ao comentário com os colchetes.</li>
+<li>Num livro de partidas que imprime os exercícios do capítulo antes da primeira partida, o <code>1.e4</code> das brancas que nenhum diagrama anterior pode jogar começa da posição inicial, e o diagrama fica com o exercício. O cabeçalho de uma partida sem número (“Partida 1”, depois “Carlsen (2810) – Caruana (2675)” e a linha do evento embaixo) é lido como cabeçalho, e a partida começa nele. Um diagrama impresso depois de uma análise em tipo normal mostra onde a linha em negrito está: a partida continua depois dele por essa linha, sem começar outra no diagrama.</li>
 <li>Uma página em notação descritiva (<code>P-K4</code>, <code>C3AR</code>) diz nas notas que essa notação não é suportada, em vez de ficar sem partidas e sem explicação.</li>
 <li>Um documento guarda até 20.000 partidas lidas; as páginas vão na ordem do livro, e uma partida só continua na página seguinte.</li>
 </ul>
@@ -422,7 +427,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure class="half">
 <img src="img/09-oferta.png" alt="A oferta do PGN que está ao lado do PDF.">
-<figcaption>A oferta do PGN que está ao lado do PDF. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A oferta do PGN que está ao lado do PDF. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <p>O PGN é indexado em segundo plano, sem travar a janela, e a aba Texto diz <b>Indexando o PGN do livro…</b> enquanto isso. Um PGN com BOM ou em Latin-1/Windows-1252 é lido inteiro, com os acentos. O PdfCraft indexa até cerca de 250 mil lances: um PGN maior continua guardado, e o aviso diz que só os primeiros lances dele estão ligados ao livro.</p>
 
@@ -430,7 +435,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Alinhar o livro ao PGN</b> (no menu ⋯ da aba Texto, onde depois vira <b>Alinhar de novo</b>, ou pela pesquisa de comandos) lê o livro todo e liga cada página às partidas do PGN, mostrando nas abas Texto e Diagramas a página em que está, com uma barra e <b>Parar</b>. Parar não grava nada e deixa a ligação do livro como estava. Enquanto o livro é alinhado, a aba Texto continua lendo a página mostrada. No fim, o aviso diz o resultado (“O livro está ligado ao PGN: 84 de 95 lances (6 lidos do PGN), 0 em conflito.”), com <b>Desfazer</b>.</p>
 <figure>
 <img src="img/10-alinhado.png" alt="O livro de exemplo alinhado ao PGN.">
-<figcaption>O livro de exemplo depois de <b>Alinhar o livro ao PGN</b>: os diagramas que estão no PGN passam a <b>Confirmado pelo PGN</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O livro de exemplo depois de <b>Alinhar o livro ao PGN</b>: os diagramas que estão no PGN passam a <b>Confirmado pelo PGN</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>O que muda com o PGN</h2>
 <ul>
@@ -449,7 +454,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A aba <b>Tabuleiro</b> da coluna Xadrez é o tabuleiro de análise e estudo. Ela não rola: cada região tem o seu lugar, e só a lista de lances rola.</p>
 <figure>
 <img src="img/11-tabuleiro.png" alt="A aba Tabuleiro com a Partida da Ópera e desenhos.">
-<figcaption>A aba <b>Tabuleiro</b> com a Partida da Ópera no lance 12…Td8, aberta do diagrama da página 1, com setas e uma casa marcada. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A aba <b>Tabuleiro</b> com a Partida da Ópera no lance 12…Td8, aberta do lance impresso na página 1 (<kbd>Alt</kbd>+clique), com setas e uma casa marcada. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:24%">Região (de cima para baixo)</th><th>O que tem</th></tr>
@@ -472,18 +477,18 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li><b>No livro (n)</b>: quantos lugares do livro aberto têm a posição mostrada; abre a lista no lugar dos lances (capítulo 9).</li>
 <li>FEN/PGN ▾: <b>Copiar FEN</b>, <b>Copiar PGN</b>, <b>Copiar só a linha principal</b>, <b>Copiar sem comentários</b> e <b>Copiar sem sinais de avaliação</b>; <b>Abrir no lichess</b> (do lado em que o diagrama de origem está impresso, mesmo com a vista virada), volta à <b>Posição inicial padrão</b> e abre <b>Editar o FEN e o PGN</b> no lugar dos lances.</li>
 </ul>
-<p>Uma lista aberta no lugar dos lances volta com <b>‹ Lances</b> ou <kbd>Esc</kbd>.</p>
+<p>Uma lista aberta no lugar dos lances volta com ‹ <b>Lances</b> ou <kbd>Esc</kbd>.</p>
 </div>
 <figure style="flex:0.8">
 <img src="img/12-fen-pgn.png" alt="O menu FEN/PGN aberto.">
-<figcaption>O menu FEN/PGN ▾. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu FEN/PGN ▾. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h3>O menu ⋯ do tabuleiro</h3>
 <p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; e o diagrama de onde a partida veio.</p>
 <figure class="half">
 <img src="img/14c-menu-motor.png" alt="O menu do tabuleiro com o motor iniciado.">
-<figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Abrir uma posição ou partida no tabuleiro</h2>
@@ -524,7 +529,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/13-montar.png" alt="A ferramenta Montar posição.">
-<figcaption>A ferramenta <b>Montar posição</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A ferramenta <b>Montar posição</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -533,7 +538,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Analisar</b>, no cabeçalho do tabuleiro (ou <b>Analisar a posição</b> no menu <b>Xadrez</b>), liga o motor UCI, que analisa a posição mostrada até a profundidade 30. Ele recomeça a cada mudança de posição e pausa quando o tabuleiro não está à vista.</p>
 <figure>
 <img src="img/14-motor.png" alt="O Stockfish analisando com três linhas.">
-<figcaption>O Stockfish analisando a posição depois de 12…Td8, com três linhas. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O Stockfish analisando a posição depois de 12…Td8, com três linhas. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <ul>
 <li>As linhas (1, 2 ou 3, em <b>Linhas:</b> no menu ⋯) mostram a avaliação para as brancas (<code>+0,40</code>, <code>#3</code>) na notação escolhida para a lista (capítulo 17). Um clique num lance de uma linha joga a linha até ele: lances que já estão na partida são seguidos, e os outros começam uma variante.</li>
@@ -545,13 +550,13 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>O programa do motor</h2>
 <p>O motor vem da pasta <code>engine</code> ao lado do programa (capítulo 2), de <code>PDFCRAFT_CHESS_ENGINE</code> ou de <b>Escolher motor…</b>. O menu ⋯ do tabuleiro diz de que programa ele foi iniciado (ou tentado) e de onde. Um programa que não responde como motor UCI em 5 s é recusado (<i>Esse programa não respondeu como um motor de xadrez UCI.</i>) e encerrado na hora. Desligar a análise, escolher outro motor ou sair encerra o motor antes de o PdfCraft seguir. Sem motor, o painel explica como conseguir um: <b>Escolher motor…</b>, <b>Abrir stockfishchess.org</b> ou <b>Agora não</b>. O programa, o número de linhas e se a análise está ligada ficam lembrados.</p>
 <h2>Preferências do motor</h2>
-<div class="two">
+<div class="two" style="break-inside: avoid">
 <div>
 <p>No fim da seção <b>Xadrez</b> das Preferências, o grupo <b>Motor de xadrez</b> tem <b>Threads de busca</b>, <b>Tabela de hash</b> e <b>Tabelas de finais (Syzygy)</b> (<b>Escolher pasta…</b>, <b>Esquecer</b>), cada uma no <b>Padrão do motor</b> até você escolher, e lembradas para a próxima sessão. Depois que um motor começou na sessão, só aparece o que ele aceita, e o resto é nomeado: <i>Este motor não aceita: …</i></p>
 </div>
 <figure style="flex:1">
 <img src="img/15-prefs-motor.png" alt="O grupo Motor de xadrez nas Preferências.">
-<figcaption>O fim da seção <b>Xadrez</b> das Preferências: <b>Modelos de xadrez</b>, <b>Motor de xadrez</b> e o BOM do PGN. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O fim da seção <b>Xadrez</b> das Preferências: <b>Modelos de xadrez</b>, <b>Motor de xadrez</b> e o BOM do PGN. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -559,27 +564,27 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Conferir com o motor…</b> (no menu ⋯ da aba Texto e no menu <b>Xadrez</b>; só no app de mesa) põe o motor para conferir o que o livro diz. O diálogo pede as páginas e <b>Até a profundidade</b> (18) ou <b>Segundos por posição</b> (0,3). <b>Contar as posições</b> lê as páginas, com uma barra, e diz antes de começar quantas posições o motor vai analisar e quanto tempo isso leva (“Posições a conferir: 12.000 (≈ 1 h)”), deixando de fora as que as avaliações guardadas já têm nessa profundidade.</p>
 <figure class="half">
 <img src="img/15b-conferir.png" alt="O diálogo Conferir com o motor depois de contar as posições.">
-<figcaption>O diálogo <b>Conferir com o motor</b> no livro de exemplo, depois de <b>Contar as posições</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O diálogo <b>Conferir com o motor</b> no livro de exemplo, depois de <b>Contar as posições</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <p><b>Começar a conferência</b> roda em segundo plano, com a linha “Conferindo com o motor: posição 5 de 12 (faltam …)” e <b>Parar</b> na aba Texto; o que o motor já achou fica guardado, e <b>Continuar a conferência (faltam n)</b>, no ⋯ e no diálogo, pede só as que faltam. Depois, cada lance da aba Texto mostra a avaliação da posição depois dele, e <b>Divergências (n)</b> (no ⋯ da aba, e o botão ≠ n no alto dela quando há alguma) mostra a lista no lugar do texto da página: a página como o livro a numera, o que o livro diz, o que o cálculo diz, a fonte (motor ou solucionador de mate) e <b>Mostrar no PDF</b>; ‹ Texto e <kbd>Esc</kbd> voltam.</p>
 <div class="two" style="break-inside: avoid">
 <figure>
 <img src="img/08b-texto-avaliado.png" alt="A aba Texto com a avaliação depois de cada lance.">
-<figcaption>A aba <b>Texto</b> depois da conferência: a avaliação depois de cada lance, e o ≠ 1 no alto. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A aba <b>Texto</b> depois da conferência: a avaliação depois de cada lance, e o ≠ 1 no alto. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <figure>
 <img src="img/15c-divergencias.png" alt="A lista de divergências.">
-<figcaption><b>Divergências (1)</b> na Imortal: o livro dá ! a 18.♗d6, e o motor prefere 18.d4. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption><b>Divergências (1)</b> na Imortal: o livro dá ! a 18.♗d6, e o motor prefere 18.d4. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p>A conferência aponta o <code>!</code> que perde mais de 1,5 peão para o lance do motor, o <code>?</code> que é o próprio lance do motor, o sinal de avaliação a duas faixas da avaliação (um <code>+−</code> abaixo de +0,70), o “Brancas jogam e ganham” que a avaliação desmente, o exercício com uma segunda linha que também ganha e o mate em n sem mate ou com mais de uma chave; abaixo da profundidade 18 nada é julgado. Uma divergência pode ser um erro de leitura, e não do livro: confira o diagrama e o lance na página antes de anotar a errata.</p>
 
 <!-- ============================================================ 9 -->
 <h1 id="c9"><span class="num">9</span>No livro e a Biblioteca</h1>
-<p><b>No livro (n)</b>, na barra do pé do tabuleiro, conta quantos lugares do livro aberto têm a posição mostrada: os lances do PGN do livro que chegam a ela e os diagramas lidos com ela. Um clique abre a lista no lugar dos lances; <b>‹ Lances</b> ou <kbd>Esc</kbd> voltam.</p>
+<p><b>No livro (n)</b>, na barra do pé do tabuleiro, conta quantos lugares do livro aberto têm a posição mostrada: os lances do PGN do livro que chegam a ela e os diagramas lidos com ela. Um clique abre a lista no lugar dos lances; ‹ <b>Lances</b> ou <kbd>Esc</kbd> voltam.</p>
 <figure>
 <img src="img/16-no-livro.png" alt="A lista No livro aberta no tabuleiro.">
-<figcaption>A lista <b>No livro</b>, na posição do diagrama da página 1. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A lista <b>No livro</b>, na posição do diagrama da página 1. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>Esta posição</h2>
 <ul>
@@ -595,7 +600,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.9">
 <img src="img/17-material.png" alt="A lista No livro por material.">
-<figcaption><b>No livro</b> ▸ <b>Por material</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption><b>No livro</b> ▸ <b>Por material</b>, com <b>Peões:</b> <b>Passados</b>: as duas partidas do PGN do livro têm peões passados. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h2>O que No livro olha</h2>
@@ -605,7 +610,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Xadrez</b> ▸ <b>Biblioteca…</b> (só no app de mesa) lê uma vez os livros de xadrez das pastas que você escolher, para que uma posição, um lance, um jogador, um evento ou uma abertura sejam achados em todos eles sem abri-los. É um diálogo com duas vistas, <b>Livros</b> e <b>Pesquisar</b>, que funciona sem nenhum PDF aberto.</p>
 <figure>
 <img src="img/29-biblioteca-livros.png" alt="A Biblioteca na vista Livros, com uma pasta construída.">
-<figcaption>A <b>Biblioteca</b> na vista <b>Livros</b>, com a pasta do livro de exemplo já construída. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A <b>Biblioteca</b> na vista <b>Livros</b>, com a pasta do livro de exemplo já construída. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h3>Livros</h3>
 <p><b>Acrescentar uma pasta…</b> escolhe uma pasta, e <b>Remover</b> tira uma: os livros dela saem da Biblioteca, e os arquivos ficam onde estão. Uma pasta dentro de outra já escolhida é recusada. Cada livro diz em que pé está, em palavras: lido (com as páginas, os diagramas, os a revisar e as partidas), <b>Ainda não lido</b>, parado no meio, <b>Na nuvem: nunca aberto</b> ou pulado, com o motivo (<b>Pulado: cópia não permitida</b>, <b>Pulado: não abre</b>, <b>Pulado: maior que 1 GB</b>, <b>Pulado: um link, nunca seguido</b>, <b>Pulado: não está mais lá</b>…). Um livro criptografado pergunta <b>Cifrado: ler na Biblioteca?</b>, com <b>Sim</b> (e depois <b>Deixar de fora</b>): o sim fica guardado, e toda construção lê o livro dali em diante.</p>
@@ -620,7 +625,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.9">
 <img src="img/30-biblioteca-pesquisar.png" alt="A Biblioteca na vista Pesquisar, com um resultado.">
-<figcaption>A vista <b>Pesquisar</b>: <b>Lance (SAN)</b> <code>Qb8+</code> acha o 16.♛b8+ da Partida da Ópera duas vezes, na linha principal (p. 1) e numa variante das soluções (p. 4). <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A vista <b>Pesquisar</b>: <b>Lance (SAN)</b> <code>Qb8+</code> acha o 16.♛b8+ da Partida da Ópera duas vezes, na linha principal (p. 1) e numa variante das soluções (p. 4). <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p><b>Procurar na Biblioteca</b>, na lista <b>No livro</b> do tabuleiro, leva a posição do tabuleiro para todos os livros da Biblioteca. A Biblioteca guarda os arquivos dela na pasta de dados do app (<code>chess\library</code>: o catálogo e um índice por livro, até 128 MB), à parte das leituras dos livros que você abre. Pela linha de comando, o mesmo é <code>chess_library_build</code>, <code>_status</code>, <code>_clear</code> e <code>_find</code> (capítulo 20).</p>
@@ -630,30 +635,57 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A partida do tabuleiro aparece como num livro: na aba Tabuleiro, sob o tabuleiro, e, com <b>Lista de lances ao lado da página</b> (o ícone no cabeçalho do tabuleiro, ou o comando), numa coluna própria ao lado do PDF. Nessa coluna, <b>Esquerda</b> e <b>Direita</b> escolhem o lado, e − e + (<b>Texto menor</b> e <b>Texto maior</b>) mudam o tamanho da letra, de 70 % a 300 %.</p>
 <figure>
 <img src="img/18-lista-ao-lado.png" alt="A lista de lances ao lado da página.">
-<figcaption>A <b>Lista de lances ao lado da página</b>, em texto corrido, com figurinhas. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A <b>Lista de lances ao lado da página</b>, em texto corrido, com figurinhas. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <ul>
 <li><strong>Cabeçalho:</strong> jogadores (com Elo, quando houver), depois evento, local, data e rodada, cada um só quando a etiqueta diz algo. Um clique abre <b>Dados da partida</b>. O resultado (<code>1-0</code>, <code>0-1</code>, <code>½-½</code>, <code>*</code>) vem depois do último lance da linha principal.</li>
-<li><strong>Variantes</strong> entre parênteses, com uma barra à esquerda e um ˅ para recolher ou expandir. Comentários em itálico.</li>
+<li><strong>Variantes</strong> entre parênteses, com uma barra à esquerda e um ˅ para recolher ou expandir. Comentários em itálico, só com as palavras que alguém escreveu: os comandos que outros programas põem no comentário, como o relógio de uma partida do lichess, não aparecem (veja abaixo).</li>
 <li><strong>Sinais</strong> como fichas coloridas (verde para !, laranja para ?…). Um ponto colorido diz que o lance tem desenhos: com o ponteiro sobre ele, os desenhos aparecem no tabuleiro.</li>
 <li><strong>Prévia:</strong> com o ponteiro parado sobre um lance por 400 ms (ou com o teclado nele), aparece uma miniatura da posição depois do lance; <kbd>Esc</kbd> a fecha e o teclado fica no lance. A prévia pode ser desligada nas Preferências.</li>
 <li>Os lances que uma captura acabou de pôr ficam coloridos por um instante. Um clique num lance vai até ele; o botão direito abre o menu do lance. A cada lance mostrado, o leitor de tela diz o lance em palavras (“2. cavalo f3 · variante 1 · com comentário · Bom lance”; “Início da partida”).</li>
 </ul>
 <p>A escolha <b>Figurinhas</b>, <b>Letras no seu idioma</b> ou <b>Letras em inglês</b> vale para todo lance que o app mostra: a lista, a trilha da variante, os campos de comentário, o título da captura, o cabeçalho do tabuleiro e as linhas do motor (em português, <code>1…Cf6</code>).</p>
+
+<h2>Partidas baixadas do lichess e do chess.com</h2>
+<p>Uma partida baixada do lichess ou do chess.com traz, no comentário de cada lance, o relógio e muitas vezes a avaliação do motor, escritos como comandos entre colchetes: <code>{[%eval 0.17] [%clk 0:03:00]}</code>. Ninguém escreveu esses comandos para serem lidos, então a lista de lances não os mostra, nem o comentário vazio que sobraria deles. O mesmo vale para o comentário em letra grande sob o tabuleiro, para o nome falado do lance e para o livro feito de partidas (<b>Exportar como livro</b>, capítulo 15). Um lance cujo comentário só tem comandos não conta como comentado: não quebra o leiaute <b>Colunas</b>, não é dito “com comentário” e o lance das pretas depois dele segue sem número (<code>1.e4 e5</code>, não <code>1.e4 1…e5</code>). Um comentário escrito por alguém continua aparecendo, em itálico, sem os comandos.</p>
+<p>Ficam fora da tela o relógio (<code>[%clk]</code>), o tempo gasto no lance (<code>[%emt]</code>), a avaliação (<code>[%eval]</code>), o perfil de avaliação (<code>[%evp]</code>) e a pergunta de treino (<code>[%tqu]</code>) do ChessBase, a marca de diagrama do ChessBase (<code>[#]</code>, capítulo 13) e qualquer outro comando <code>[%palavra …]</code>. Nada disso é apagado: o campo do comentário mostra os comandos, para você editar ou apagar (capítulo 13), e o PGN gravado ou copiado os devolve no mesmo lugar.</p>
+<h3>O relógio e a avaliação como selos</h3>
+<p>Com <b>Mostrar o relógio e a avaliação que o PGN dá a cada lance</b> ligada nas Preferências (capítulo 17; ela vem desligada), cada lance que tem esses comandos mostra dois selos pequenos, depois dos sinais dele:</p>
+<ul>
+<li><strong>a avaliação</strong>, do ponto de vista das brancas, em peões, como o PGN a escreve: <span class="selo">+0.17</span>, <span class="selo">−1.50</span>, <span class="selo">0.00</span>; num mate, <span class="selo">#3</span> (as brancas dão mate em 3) ou <span class="selo">#−2</span> (as pretas dão mate em 2);</li>
+<li><strong>o relógio</strong>: o tempo que restava a quem jogou, depois do lance (<code>[%clk]</code>), ou, sem ele, o tempo gasto no lance (<code>[%emt]</code>), sem as horas zeradas (<code>0:02:58</code> fica <span class="selo">2:58</span>).</li>
+</ul>
+<p>A dica de cada selo, e o leitor de tela, dizem o que ele é: “Avaliação: +0.17”, “Relógio: 2:58”. O perfil de avaliação do ChessBase (<code>[%evp]</code>) não tem selo. A opção só muda a tela: o PGN gravado é o mesmo com ela ligada ou desligada.</p>
+<table>
+<tr><th style="width:24%">Exemplo</th><th>Como fica</th></tr>
+<tr><td>O PGN baixado (as primeiras jogadas)</td><td><code>1. e4 { [%eval 0.32] [%clk 0:03:00] } 1... e5 { [%eval 0.31] [%clk 0:03:00] } 2. Nf3 { [%eval 0.31] [%clk 0:02:58] } 2... Nc6 { [%eval 0.31] [%clk 0:02:57] } 3. Bb5 { [%eval 0.22] [%clk 0:02:55] A espanhola. } 3... a6 { [%eval 0.38] [%clk 0:02:56] }</code></td></tr>
+<tr><td>A lista de lances, como vem</td><td>1.e4 e5 2.♘f3 ♞c6 3.♗b5 <i>A espanhola.</i> 3…a6</td></tr>
+<tr><td>Com os selos</td><td>1.e4 <span class="selo">+0.32</span> <span class="selo">3:00</span> e5 <span class="selo">+0.31</span> <span class="selo">3:00</span> 2.♘f3 <span class="selo">+0.31</span> <span class="selo">2:58</span> ♞c6 <span class="selo">+0.31</span> <span class="selo">2:57</span> 3.♗b5 <span class="selo">+0.22</span> <span class="selo">2:55</span> <i>A espanhola.</i> 3…a6 <span class="selo">+0.38</span> <span class="selo">2:56</span></td></tr>
+</table>
+<div class="two" style="break-inside: avoid">
+<figure>
+<img src="img/18b-lichess.png" alt="A lista de lances de uma partida do lichess, sem os selos.">
+<figcaption>Uma partida de exemplo no formato do lichess (as avaliações são do Stockfish; os relógios, inventados): na lista, só os lances e os comentários escritos. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<figure>
+<img src="img/18c-selos.png" alt="A mesma lista com o relógio e a avaliação como selos.">
+<figcaption>A mesma partida com <b>Mostrar o relógio e a avaliação que o PGN dá a cada lance</b>: a avaliação e o relógio depois de cada lance. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+</div>
 <h2>O menu do lance</h2>
 <div class="two">
 <div>
 <ul>
 <li><strong>Estrutura:</strong> <b>Promover um nível</b>, <b>Tornar esta a linha principal</b>, <b>Rebaixar</b>, <b>Excluir variante</b>, <b>Mover variante para cima</b> e <b>Mover variante para baixo</b>, <b>Cortar depois deste lance</b>, <b>Ameaça (lance nulo)</b> e <b>Mostrar no PDF</b>. O que não se aplica aparece apagado. Quando a operação poderia agir em várias variantes no caminho até o lance, elas são listadas, a mais próxima primeiro.</li>
 <li><b>Sinais do lance</b> e <b>Sinais de avaliação</b> (marcados quando o lance já os tem) e <b>Remover todos os sinais</b>, que agem naquele lance sem ir até ele.</li>
-<li><b>Diagrama aqui</b>: mostra um pequeno tabuleiro depois do lance e grava <code>$220</code> no PGN.</li>
+<li><b>Diagrama aqui</b>: mostra um pequeno tabuleiro depois do lance e grava <code>$220</code> no PGN (as marcas que outros programas usam estão no capítulo 13).</li>
 <li><b>Copiar linha com figurinas</b> (<code>18.♘d5! ♕xe1 19.♘xe7+</code>) e <b>Copiar linha (letras)</b>, do início da variante ou da partida até o lance.</li>
 <li><b>Apagar a partir deste lance</b> e <b>Nova partida a partir desta posição</b>.</li>
 </ul>
 </div>
 <figure style="flex:0.75">
 <img src="img/19-menu-lance.png" alt="O menu de um lance.">
-<figcaption>Botão direito sobre 12…♜d8, na <b>Lista de lances ao lado da página</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>Botão direito sobre 12…♜d8, na <b>Lista de lances ao lado da página</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -678,7 +710,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><b>Xadrez em janela própria</b></td><td></td><td>Tabuleiro e abas numa janela separada (só no computador).</td></tr>
 </table>
 <p>Quando o trilho não cabe na altura do painel, os botões que sobram vão, em ordem, para ⋯ <b>Mais ferramentas do tabuleiro</b>, ao pé do trilho; a 1366 × 768, <b>Xadrez em janela própria</b> e os últimos botões ficam ali, e as teclas deles continuam valendo.</p>
-<p>Com <b>Atalhos de uma tecla</b> desligado, as letras, <kbd>Shift</kbd> com a letra do grupo e os sinais digitados não fazem nada; os botões do trilho e a pesquisa de comandos continuam, e os nomes dos botões deixam de citar as letras.</p>
+<p>Com <b>Atalhos de uma tecla (B, C, F, G, O, X, sinais)</b> desligado, as letras, <kbd>Shift</kbd> com a letra do grupo e os sinais digitados não fazem nada; os botões do trilho e a pesquisa de comandos continuam, e os nomes dos botões deixam de citar as letras.</p>
 <h2>O escopo de xadrez</h2>
 <p>O escopo de xadrez segue o foco do teclado. Um controle dos painéis de xadrez com o foco, ou uma mudança na partida, dá o teclado e o Desfazer para a partida; <kbd>Tab</kbd> até um controle fora deles, <kbd>F6</kbd>, um clique na página ou em outro painel (Ferramentas, os outros painéis do Inspetor) o desligam, e as setas voltam a virar a página. Enquanto a partida tem o teclado, as teclas acima vão para o tabuleiro antes de tudo: <kbd>Delete</kbd> apaga uma variante (nunca uma página ou anotação), e as setas andam pela partida. Um divisor entre os painéis com o foco fica com as setas dele. As teclas ficam quietas quando um campo de texto tem o foco, quando um menu está aberto e sob uma janela de diálogo.</p>
 
@@ -693,7 +725,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ol>
 <figure>
 <img src="img/20-captura.png" alt="A captura armada e os lances capturados.">
-<figcaption>Uma seleção, nenhum <kbd>Enter</kbd>: a lista recebe a linha e a variante, e o aviso no pé da página diz quantos lances entraram, com <b>Desfazer</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>Uma seleção, nenhum <kbd>Enter</kbd>: a lista recebe a linha e a variante, e o aviso no pé da página diz quantos lances entraram, com <b>Desfazer</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>Os modos de captura</h2>
 <table>
@@ -709,7 +741,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <ul>
 <li><b>Enviar ao PGN</b> ▸, na barra que aparece ao lado de uma seleção (ou no menu do botão direito da página), captura a seleção no modo que você escolher.</li>
 <li><kbd>Ctrl</kbd>+<kbd>V</kbd> com o escopo de xadrez ativo (e nenhum campo de texto em uso) captura o texto da área de transferência. <b>Colar como</b> ▸, no menu do grupo Captura do trilho, escolhe o modo.</li>
-<li><kbd>Ctrl</kbd>+<kbd>C</kbd> na página também captura quando <b>Capturar também o que for copiado</b> está ligado no menu do chip (vem desligado).</li>
+<li><kbd>Ctrl</kbd>+<kbd>C</kbd> na página também captura quando <b>Capturar também o que for copiado (Ctrl+C)</b> está ligado no menu do chip (vem desligado).</li>
 </ul>
 <p>A seleção cresce até lances inteiros (“20.Cx” vira “20.Cxf6+”). Ela é lida dos caracteres da página, não do texto copiado: as peças de uma fonte de figurinas são peças, e um lance em negrito é negrito. O idioma é o do documento (como a aba Texto o leu), nunca adivinhado pela seleção: <code>Rc7</code> é torre em inglês e rei em português.</p>
 <h2>Onde a captura entra</h2>
@@ -771,14 +803,26 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.7">
 <img src="img/21-paleta.png" alt="A Paleta de sinais.">
-<figcaption>A <b>Paleta de sinais</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A <b>Paleta de sinais</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h2>Como os sinais aparecem</h2>
 <p>Na lista, o sinal vem depois do lance, como ficha. Quando as fontes da interface não têm o símbolo, ele é pintado. Uma avaliação sem símbolo aparece pelo nome, pequena e discreta, com o <code>$n</code> na dica. O PGN e o texto copiado guardam o caractere real, ou o <code>$n</code>.</p>
+<h2>As marcas de diagrama</h2>
+<p><b>Diagrama aqui</b>, no menu do lance, mostra um pequeno tabuleiro depois do lance, na lista, e o PdfCraft grava a marca no PGN como <code>$220</code>. Um PGN lido também põe o diagrama onde as outras marcas publicadas o põem:</p>
+<table>
+<tr><th style="width:22%">Marca</th><th>De onde vem</th></tr>
+<tr><td><code>$220</code></td><td>A marca que o PdfCraft grava. Não é do padrão PGN: o lichess e o ChessBase não a leem (capítulo 18).</td></tr>
+<tr><td><code>$221</code></td><td>O ChessPad: o diagrama do lado das pretas.</td></tr>
+<tr><td><code>$201</code></td><td>O Scid e o ChessDB.</td></tr>
+<tr><td><code>{[#]}</code></td><td>O ChessBase, que grava um diagrama como esse comentário e apaga o <code>$201</code>, o <code>$220</code> e o <code>$221</code> ao gravar (visto no ChessBase 26, em 19/11/2026).</td></tr>
+</table>
+<p>A marca fica como foi lida: um PGN do Scid gravado de novo pelo PdfCraft continua com o <code>$201</code>, e o <code>[#]</code> continua no comentário, sem aparecer na lista; um diagrama que você põe é gravado como <code>$220</code>. Tirar o diagrama tira todas as marcas do lance, o <code>[#]</code> também. Na exportação, <b>PGN para</b> grava a marca como o lichess ou o ChessBase a entendem (capítulo 18).</p>
 <h2>Comentários antes e depois do lance</h2>
 <p><b>Comentário</b>, na barra do pé do tabuleiro, abre sob os lances os campos do lance mostrado: o comentário depois do lance e o comentário antes dele. <kbd>Enter</kbd>, ou <b>Comentário do lance</b> no trilho, leva o teclado até lá. Escrever num comentário conta como um passo de desfazer por visita ao campo, não um por tecla. Um comentário guarda até 64 KiB, lido ou editado; passando disso, o campo avisa.</p>
 <p>No PGN, um comentário antes de um lance fica depois das variantes do lance anterior (<code>1. e4 {A} (1. d4 d5) {B} 1... e5</code>). O PGN só não tem lugar para ele antes de um lance que continua a linha sem variantes: aí o editor avisa, e só o arquivo PGN perde esse lugar; a partida e o salvamento automático o guardam. Nas Preferências, <b>Mostrar o comentário do lance, em letra grande, sob o tabuleiro</b> mostra o comentário em destaque.</p>
+<h3>Comandos dentro do comentário</h3>
+<p>Outros programas gravam no comentário comandos entre colchetes: o relógio <code>[%clk 0:02:58]</code> e a avaliação <code>[%eval 0.17]</code> do lichess e do chess.com, o tempo gasto <code>[%emt …]</code>, o perfil de avaliação <code>[%evp …]</code> e a pergunta de treino <code>[%tqu …]</code> do ChessBase, a marca de diagrama <code>[#]</code>. A lista de lances, o comentário em letra grande e o leitor de tela mostram só as palavras (capítulo 10). O campo do comentário mostra o texto inteiro, com os comandos, para você editar ou apagar: apagar <code>[%clk 0:02:58]</code> do campo tira o relógio daquele lance. No PGN, cada comando volta no lugar onde foi lido, inteiro numa linha.</p>
 
 <!-- ============================================================ 14 -->
 <h1 id="c14"><span class="num">14</span>Variantes, estrutura e Desfazer</h1>
@@ -795,7 +839,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </table>
 <p><kbd>Backspace</kbd> só volta um lance: não apaga nada. Uma variante que começa repetindo o lance da linha principal, num PGN lido, não toma o lugar dela.</p>
 <h2>Lances apagados nunca se perdem</h2>
-<p>Tudo o que tira lances da partida é avisado (“5 lances apagados (2 variantes)”), com <b>Desfazer</b>. A partida como estava também vai para uma lixeira do documento, com o próprio passo que tirou os lances, com qualquer painel à vista: um lance excluído na <b>Lista de lances ao lado da página</b> e um PGN mais longo carregado por cima da partida também contam. A lixeira é guardada com o salvamento automático (as 30 mais recentes); <b>Lances apagados</b>, sob a lista de partidas, a mostra, e <b>Abrir como nova partida</b> traz uma de volta, mesmo numa sessão posterior.</p>
+<p>Tudo o que tira lances da partida é avisado (“5 lances apagados (2 variantes)”), com <b>Desfazer</b>. A partida como estava também vai para uma lixeira do documento, com o próprio passo que tirou os lances, com qualquer painel à vista: um lance excluído na <b>Lista de lances ao lado da página</b> e um PGN mais longo carregado por cima da partida também contam. A lixeira é guardada com o salvamento automático (as 30 mais recentes); <b>Lances apagados (3)…</b>, sob a lista de partidas (o número diz quantas versões a lixeira guarda), a mostra, e <b>Abrir como nova partida</b> traz uma de volta, mesmo numa sessão posterior.</p>
 <h2>Desfazer</h2>
 <p>A partida tem um histórico próprio, separado do documento. Toda mudança é um passo: lance, captura, sinal, comentário, desenho, estrutura, dados da partida, posição ou PGN carregado. Andar pelos lances não é mudança. <b>Desfazer</b> e <b>Refazer</b> seguem o escopo de xadrez (capítulo 11): com o teclado nos painéis de xadrez, desfazem na partida; depois de um clique na página, no documento. O Desfazer do trilho sempre age na partida. O histórico guarda até 200 passos (64 MiB) por partida e não passa de uma sessão para outra.</p>
 
@@ -803,17 +847,17 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h1 id="c15"><span class="num">15</span>As partidas do documento</h1>
 <div class="two">
 <div>
-<p>Cada documento aberto tem as suas partidas, e o tabuleiro mostra a ativa. Trocar de documento troca as partidas. <b>Partida</b> ▾ ▸ <b>Partidas do documento</b> abre a lista no lugar dos lances, pelas partidas e seus jogadores; sem jogadores, aparece o evento, o diagrama de origem (“Diagrama 1, p. 1”) ou o número.</p>
+<p>Cada documento aberto tem as suas partidas, e o tabuleiro mostra a ativa. Trocar de documento troca as partidas. <b>Partida</b> ▾ ▸ <b>Partidas do documento (2)</b> abre a lista no lugar dos lances, pelas partidas e seus jogadores; sem jogadores, aparece o evento, o diagrama de origem (“Diagrama 1, p. 1”) ou o número.</p>
 <ul>
 <li><b>Nova partida</b> cria uma partida em branco; <b>Nova partida a partir desta posição</b> começa no lance mostrado.</li>
 <li><b>Abrir PGN…</b> acrescenta todas as partidas de um arquivo, até o limite de 256 partidas por documento (além dele, acrescentar é recusado com aviso).</li>
 <li><b>Salvar PGN…</b> grava a partida mostrada; <b>Salvar todas as partidas em PGN…</b> grava a lista inteira, na ordem. Salvar é recusado num documento que não permite copiar.</li>
-<li><b>Exportar como livro</b> ▾ (Word, EPUB, HTML, RTF, Markdown) escreve as partidas da lista como um livro, uma página por partida: os jogadores como título, evento, local, data e rodada embaixo, a linha principal em negrito e um diagrama depois de cada lance marcado com diagrama.</li>
+<li><b>Exportar como livro</b> ▾ (Word, EPUB, HTML, RTF, Markdown) escreve as partidas da lista como um livro, uma página por partida: os jogadores como título, evento, local, data e rodada embaixo, a linha principal em negrito e um diagrama depois de cada lance marcado com diagrama (qualquer das marcas do capítulo 13). Dos comentários vão só as palavras: o relógio e a avaliação de uma partida baixada ficam de fora.</li>
 </ul>
 </div>
 <figure style="flex:0.8">
 <img src="img/22-partidas.png" alt="A lista de partidas do documento.">
-<figcaption><b>Partidas do documento</b>, no lugar dos lances. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption><b>Partidas do documento (2)</b>, no lugar dos lances. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p><b>Dados da partida</b> (em <b>Partida</b> ▾, ou um clique no cabeçalho da lista de lances) edita brancas, pretas, evento, local, data, rodada e resultado, gravados como etiquetas do PGN; um valor de mais de 256 bytes é cortado, com aviso. <b>Editar o FEN e o PGN</b>, em FEN/PGN ▾, mostra os dois campos no lugar dos lances: edite um e aperte <kbd>Enter</kbd> (FEN) ou <b>Carregar PGN</b>. Com uma posição ilegal no tabuleiro não há partida: os campos de <b>Dados da partida</b> e o <b>Renomear…</b> da lista (o item do menu, o lápis e <kbd>F2</kbd>) ficam desligados e dizem por quê (“O tabuleiro mostra uma posição ilegal: corrija-a antes no editor de diagramas.”). Uma FEN digitada numa partida com lances pergunta: <b>Nova partida com esta posição</b> ou <b>Substituir esta partida</b>. Texto digitado no campo PGN fica como você digitou enquanto você joga, marcado <b>PGN editado</b>, com <b>Carregar</b> e <b>Descartar</b>; com várias partidas no campo, a primeira vai para o tabuleiro e as outras entram na lista.</p>
@@ -824,9 +868,10 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <ul>
 <li>Um PGN com BOM ou em Latin-1/Windows-1252 é lido inteiro, com os acentos, e o aviso diz quando o arquivo não era UTF-8. Grafias de livro e de site (<code>e8Q</code>, <code>a8=q</code>, <code>e.p.</code>, <code>…</code>, <code>±</code> solto ou colado ao lance) são lidas; <code>1/2</code> e <code>½-½</code> são empate.</li>
 <li>Um comentário <code>;</code> ou uma linha <code>%</code> com <code>{</code> não junta as partidas seguintes numa só; etiquetas na mesma linha ou recuadas são lidas como etiquetas, e num valor de etiqueta só <code>\\</code> e <code>\"</code> são escapes (<code>C:\jogos</code> fica como está). Um comentário entre <code>)</code> e o lance seguinte vai antes desse lance.</li>
-<li>O aviso de leitura (<b>Lido com mudanças</b>) diz o que foi cortado, descartado, consertado ou ignorado, e por que uma partida parou (lance ilegal, lance ambíguo, partida já com 10.000 lances). Uma FEN um pouco errada abre consertada; o resto da linha depois de um lance impossível vira comentário onde a leitura parou.</li>
+<li>O aviso de leitura (“Lido com mudanças: …”) diz o que foi cortado, descartado, consertado ou ignorado, e por que uma partida parou (lance ilegal, lance ambíguo, partida já com 10.000 lances). Uma FEN um pouco errada abre consertada; o resto da linha depois de um lance impossível vira comentário onde a leitura parou.</li>
 <li>O <code>Result</code> lido é gravado como lido, <code>*</code> também; um mate ou afogamento que discorda é contado no aviso. Uma partida de outra variante (Chess960, Crazyhouse…) é recusada inteira, com o nome.</li>
-<li>Todo PGN que o PdfCraft grava sai de um escritor só, com linhas de no máximo 79 caracteres (<b>Copiar PGN</b> também); <code>PlyCount</code> acompanha os lances, e um <code>ECO</code> lido sai quando a linha principal muda antes do 10º lance. <b>Gravar arquivos PGN com marca de ordem de bytes (BOM)</b>, nas Preferências, põe o BOM.</li>
+<li>Um PGN como o ChessBase o grava é lido inteiro: o BOM, finais de linha misturados, o <code>[Event</code> colado ao resultado da partida anterior, uma etiqueta repetida, todos os lances numa linha só e os comandos dele no comentário (<code>[%evp …]</code> antes do 1º lance, <code>[%tqu …]</code>, <code>[#]</code>).</li>
+<li>Todo PGN que o PdfCraft grava sai de um escritor só, com linhas de no máximo 79 caracteres (<b>Copiar PGN</b> também), sem nunca partir um comando como <code>[%clk 0:02:58]</code> entre duas linhas; <code>PlyCount</code> acompanha os lances, e um <code>ECO</code> lido sai quando a linha principal muda antes do 10º lance. <b>Gravar arquivos PGN com marca de ordem de bytes (BOM)</b>, nas Preferências, põe o BOM. Para levar o PGN ao lichess ou ao ChessBase, a exportação do livro tem <b>PGN para</b> (capítulo 18).</li>
 <li>Antes de gravar partidas lidas só até um lance impossível, <b>Salvar todas as partidas em PGN…</b> as nomeia, com o lance onde pararam: <b>Salvar assim mesmo</b> ou <b>Cancelar</b>.</li>
 </ul>
 <h2>Salvamento automático</h2>
@@ -847,7 +892,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Xadrez em janela própria</b>, o último botão do trilho (numa janela baixa, em ⋯ <b>Mais ferramentas do tabuleiro</b>), leva o tabuleiro e as abas para uma janela separada. Assim o PDF ocupa a janela principal, e o xadrez pode ir para outro monitor.</p>
 <ul>
 <li>A partir de 760 pt de largura, a janela mostra o tabuleiro à esquerda e, ao lado, uma coluna com as abas <b>Lances</b>, <b>Diagramas</b> e <b>Texto</b>; numa janela de 960 × 704, os lances e a barra do pé cabem inteiros. A janela abre na aba que a coluna mostrava (<b>Lances</b> para a aba Tabuleiro). Mais estreita, ela mostra uma faixa para alternar.</li>
-<li>A aba <b>Diagramas</b> da janela é como a da coluna Xadrez: o diagrama aberto na lista da janela é editado ali mesmo, no lugar da lista, com <b>‹ Diagramas</b> e <kbd>Esc</kbd> de volta.</li>
+<li>A aba <b>Diagramas</b> da janela é como a da coluna Xadrez: o diagrama aberto na lista da janela é editado ali mesmo, no lugar da lista, com ‹ <b>Diagramas</b> e <kbd>Esc</kbd> de volta.</li>
 <li>Na janela, o tabuleiro pode crescer até 1.200 pt. As teclas de xadrez vão para o trilho dela, e os atalhos do app continuam funcionando.</li>
 <li>Fechar a janela, ou <b>Voltar para a janela principal</b>, devolve o tabuleiro à coluna Xadrez. Tamanho, lugar e aba ficam lembrados, com o monitor em que a janela estava; se aquele monitor sumiu, ela abre ao lado da janela principal.</li>
 </ul>
@@ -859,7 +904,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>As <b>Preferências</b> têm à esquerda um índice das seções (<b>Geral</b>, <b>Aparência</b>, <b>Documentos e visualização</b>, <b>Cores de leitura</b>, <b>Identidade</b>, <b>Preencher e assinar</b>, <b>Formato de data</b>, <b>Xadrez</b>, <b>JavaScript</b>): um clique leva à seção, que de resto só rola pela barra de rolagem. <b>Fechar</b> fica embaixo, sempre à vista.</p>
 <figure>
 <img src="img/23-preferencias.png" alt="As Preferências na seção Xadrez.">
-<figcaption>As <b>Preferências</b>, com o índice das seções à esquerda, na seção <b>Xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>As <b>Preferências</b>, com o índice das seções à esquerda, na seção <b>Xadrez</b>, com a opção nova <b>Mostrar o relógio e a avaliação que o PGN dá a cada lance</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>A seção Xadrez</h2>
 <p>Na ordem em que aparecem:</p>
@@ -868,8 +913,9 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><b>Tema do tabuleiro</b></td><td>Temas, coordenadas, moldura, casas marcadas e quem joga (veja abaixo).</td></tr>
 <tr><td><b>Destacar o último lance</b></td><td><b>Casas pintadas</b>, anel ou seta, e a intensidade.</td></tr>
 <tr><td><b>Peças na lista de lances</b></td><td><b>Figurinhas</b> (do conjunto do tabuleiro), <b>Letras no seu idioma</b> (R D T B C) ou <b>Letras em inglês</b> (K Q R B N). Vale para todo lance que o app mostra.</td></tr>
-<tr><td><b>Mostrar o comentário do lance, em letra grande, sob o tabuleiro</b></td><td>Liga o comentário em destaque.</td></tr>
+<tr><td><b>Mostrar o comentário do lance, em letra grande, sob o tabuleiro</b></td><td>Liga o comentário em destaque (só as palavras, sem comandos como <code>[%clk]</code>).</td></tr>
 <tr><td><b>Mostrar a posição ao passar o ponteiro sobre um lance</b></td><td>Liga ou desliga a prévia, na lista de lances e nos lances impressos na página.</td></tr>
+<tr><td><b>Mostrar o relógio e a avaliação que o PGN dá a cada lance</b></td><td>Desligada de início. Ligada, o relógio (<code>[%clk]</code> ou <code>[%emt]</code>) e a avaliação (<code>[%eval]</code>) de uma partida baixada aparecem como dois selos pequenos depois de cada lance (capítulo 10).</td></tr>
 <tr><td><b>Ao jogar um lance diferente</b>; ao avançar numa bifurcação</td><td><b>Criar variante</b>, <b>Perguntar</b> ou <b>Substituir a continuação</b>; seguir a linha lembrada ou perguntar.</td></tr>
 <tr><td><b>Atalhos de uma tecla (B, C, F, G, O, X, sinais)</b></td><td>Liga ou desliga as teclas de uma letra do trilho e os sinais digitados (capítulo 11).</td></tr>
 <tr><td><b>Um sinal digitado espera o caractere seguinte</b></td><td>0,6 s, 1 s, 1,5 s, 2 s ou <b>Até o Enter</b> (capítulo 13).</td></tr>
@@ -891,7 +937,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure>
 <img src="img/24-pecas.png" alt="A grade de conjuntos de peças nas Preferências.">
-<figcaption>A grade de conjuntos de peças e os botões de importação. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A grade de conjuntos de peças e os botões de importação. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:28%">Botão</th><th>Faz</th></tr>
@@ -902,7 +948,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A importação roda em segundo plano: enquanto isso, a linha dos botões diz <b>Importando…</b> e os botões ficam desligados. Substituir um conjunto troca o conjunto inteiro de uma vez: se algo falhar no meio (uma peça aberta por outro programa, disco cheio), o conjunto antigo fica inteiro, e um arquivo seu na pasta do conjunto que não é peça é mantido.</p>
 <p><strong>Licenças.</strong> O PdfCraft não distribui nenhuma dessas fontes: cada uma mantém a sua licença. Chess Adventurer e Chess Cases proíbem a incorporação; elas aparecem e podem ser escolhidas, mas o Automático nunca as escolhe. Diagramas e exportações com essas peças levam as fontes junto: tudo bem para uso pessoal, mas não para publicar.</p>
 <h2>Tema do tabuleiro</h2>
-<div class="two">
+<div class="two" style="break-inside: avoid">
 <div>
 <p>O tema vale para os tabuleiros em que você joga e estuda; os diagramas na página e nas exportações mantêm as cores deles. Escolha nas Preferências ou pelo ícone <b>Tema do tabuleiro</b> no cabeçalho do tabuleiro.</p>
 <ul>
@@ -912,7 +958,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/25-tema.png" alt="O menu Tema do tabuleiro.">
-<figcaption>O menu <b>Tema do tabuleiro</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O menu <b>Tema do tabuleiro</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -921,7 +967,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Exportar livro…</b> (o ícone de arquivo no alto da aba Diagramas, o menu ⋯ da aba Texto, ou <b>Exportar livro de xadrez…</b> no menu <b>Xadrez</b>) abre o diálogo <b>Exportar livro de xadrez</b>. Tudo sai com as suas correções, o PGN do livro e as partidas do documento.</p>
 <figure>
 <img src="img/26-exportar.png" alt="O diálogo Exportar livro.">
-<figcaption>O diálogo de exportação, com o resumo do que vai sair. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>O diálogo de exportação com <b>PGN — partidas</b>: <b>PGN para</b> e, embaixo, o resumo do que vai sair. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:26%">Campo</th><th>Escolhas</th></tr>
@@ -929,22 +975,61 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><b>Páginas</b></td><td><b>Todas as páginas</b>, ou <b>Páginas de</b> 1 <b>até</b> 4.</td></tr>
 <tr><td><b>Idioma do livro</b></td><td>Como o livro diz (o <code>/Lang</code> do PDF, senão o das palavras da prosa), ou um dos 18 idiomas. Um PDF que se diz em japonês, ou noutro idioma sem notação de xadrez própria, aparece como “Como o livro diz (ja)”.</td></tr>
 <tr><td><b>Descrição dos diagramas</b></td><td><b>Letras (Rg1)</b> ou <b>Palavras (rei g1)</b>, para o leitor de tela (fora do PGN).</td></tr>
+<tr><td><b>PGN para</b> (nos PGNs de partidas e de exercícios)</td><td><b>PGN padrão</b> (o de sempre), Lichess ou ChessBase: o programa em que o PGN vai ser aberto (veja “PGN para o lichess ou o ChessBase”, abaixo).</td></tr>
 <tr><td>No PGN de partidas</td><td><b>Diagramas como partidas no PGN</b> (só os que não estão numa partida, todos ou nenhum) e de onde vêm as partidas: o PGN do livro, com o texto do livro, ou o texto lido do PDF.</td></tr>
 </table>
-<p>Embaixo, o diálogo diz o que vai sair (“Páginas: 4 · Diagramas: 4 · Partidas do PGN do livro: 2 · As suas partidas, ligadas primeiro: 2 · Idioma: Português”) e, com diagramas a revisar, o aviso com <b>Revisar primeiro</b>. <b>Exportar…</b> pergunta onde gravar. O formato e as escolhas do PGN e das descrições ficam lembrados entre sessões; as páginas e o idioma, enquanto o documento está aberto.</p>
-<p>A exportação aproveita o que <b>Detectar diagramas</b> (ou uma exportação anterior) já leu do documento como está: depois de detectar o livro, exportar não lê as páginas de novo, e depois de uma edição só as páginas que ela mudou são lidas. Ela roda em segundo plano: as abas Texto e Diagramas mostram a página em que ela está, com uma barra e <b>Parar</b> (parar não grava nada). Uma exportação nunca grava por cima do PDF aberto nem do PGN do livro. No fim, uma janela diz onde o arquivo foi gravado, o que a exportação anotou e, nos exercícios, quantos entraram e por que alguns ficaram de fora; <b>Abrir pasta</b> mostra o arquivo.</p>
+<p>Embaixo, o diálogo diz o que vai sair (“Páginas: 4 · Diagramas: 4 · Partidas do PGN do livro: 2 · As suas partidas, ligadas primeiro: 3 · Idioma: Português”) e, com diagramas a revisar, o aviso com <b>Revisar primeiro</b>. <b>Exportar…</b> pergunta onde gravar. O formato, as escolhas do PGN (<b>PGN para</b> também) e as das descrições ficam lembrados entre sessões; as páginas e o idioma, enquanto o documento está aberto.</p>
+<p>A exportação aproveita o que <b>Detectar diagramas</b> (ou uma exportação anterior) já leu do documento como está: depois de detectar o livro, exportar não lê as páginas de novo, e depois de uma edição só as páginas que ela mudou são lidas. Ela roda em segundo plano: as abas Texto e Diagramas mostram a página em que ela está, com uma barra e <b>Parar</b> (parar não grava nada). Uma exportação nunca grava por cima do PDF aberto nem do PGN do livro. No fim, uma janela diz onde o arquivo foi gravado, o que a exportação anotou e, nos exercícios, quantos entraram, por que alguns ficaram de fora e, no PGN para o ChessBase, quantos saíram sem a pergunta de treino (<b>Sem a pergunta de treino do ChessBase: 2</b>); <b>Abrir pasta</b> mostra o arquivo.</p>
 <h2>Os formatos</h2>
 <ul>
-<li><b>PGN — partidas</b>: com o PGN do livro, as partidas dele com todas as linhas, o texto do livro como comentários e <code>$220</code> onde um diagrama mostra um lance; linhas que só existem no livro entram como variantes marcadas <code>{só no livro}</code>. Depois, os diagramas como partidas, se escolhido.</li>
+<li><b>PGN — partidas</b>: com o PGN do livro, as partidas dele com todas as linhas, o texto do livro como comentários e <code>$220</code> onde um diagrama mostra um lance; linhas que só existem no livro entram como variantes marcadas <code>{só no livro}</code>. Depois, os diagramas como partidas, se escolhido. Os comandos de um comentário (<code>[%clk 0:03:00]</code>) saem onde foram lidos.</li>
 <li><b>EPUB — livro digital</b> (a capa é a primeira página do livro), <b>HTML — página da web</b> (um arquivo só, com as fontes embutidas), Word (<code>.docx</code>), RTF e Markdown (as imagens dos diagramas numa pasta ao lado). Sob cada diagrama legal aceito vai um link para a análise no lichess.</li>
-<li><b>PGN — exercícios</b>: os exercícios numerados do livro com a solução lida, como problemas padrão (<code>SetUp</code>/<code>FEN</code>, a solução como linha principal, o enunciado antes do 1º lance), para treinar no ChessBase, num estudo do lichess ou no Chessable.</li>
+<li><b>PGN — exercícios</b>: os exercícios numerados do livro com a solução lida, como problemas padrão (<code>SetUp</code>/<code>FEN</code>, a solução como linha principal, o enunciado antes do 1º lance), para treinar no ChessBase, num estudo do lichess ou no Chessable. Com <b>PGN para</b>: ChessBase, cada exercício leva a pergunta de treino do ChessBase (veja abaixo).</li>
 <li><b>Anki — cartões</b>: os mesmos exercícios como um arquivo de texto que <i>Arquivo ▸ Importar</i> do Anki lê (frente: a figura do diagrama e o enunciado; verso: a solução) e uma pasta <code>&lt;nome&gt;_diagrams</code> com as figuras, para copiar na pasta <code>collection.media</code> do Anki. Importar de novo atualiza os cartões.</li>
 <li><b>Folha de exercícios (PDF)</b>: os diagramas numerados do livro num PDF novo para imprimir, com <b>Por página</b> (4, 6 ou 9) e <b>Com as soluções</b>, lembrados para a próxima vez. Cada diagrama é desenhado como o Redesenhar desenha, com a legenda <code>Nº 185 · p. 40 · Brancas jogam</code>, e as soluções vêm no fim, na ordem dos números; um diagrama numerado sem solução lida também entra, e o gabarito diz “solução não lida”. O resumo conta os exercícios das páginas já lidas, sem ler nada (“Páginas ainda não lidas: 12 (contadas ao exportar)”), e a exportação lê o resto. Com todas as páginas escolhidas lidas e nenhum exercício, o diálogo diz por quê e <b>Exportar…</b> fica desligado. A folha é proposta como <code>livro - exercícios.pdf</code> e nunca é gravada sobre um PDF aberto.</li>
 </ul>
 <figure class="half">
 <img src="img/27-folha.png" alt="O diálogo com a Folha de exercícios escolhida.">
-<figcaption><b>Folha de exercícios (PDF)</b> no livro de exemplo: os exercícios dele são títulos, não diagramas numerados, então o diálogo diz por quê e <b>Exportar…</b> fica desligado. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption><b>Folha de exercícios (PDF)</b> no livro de exemplo: os exercícios dele são títulos, não diagramas numerados, então o diálogo diz por quê e <b>Exportar…</b> fica desligado. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
+
+<h2>PGN para o lichess ou o ChessBase</h2>
+<p>Cada programa lê o PGN do seu jeito, e alguns jogam fora o que não conhecem. <b>PGN para</b>, no diálogo, aparece com <b>PGN — partidas</b> e com <b>PGN — exercícios</b> e grava o PGN para o programa em que ele vai ser aberto. A dica do campo resume a diferença.</p>
+<figure class="half">
+<img src="img/26b-pgn-para.png" alt="O diálogo com PGN — exercícios e o menu PGN para aberto.">
+<figcaption><b>PGN — exercícios</b> com o menu <b>PGN para</b> aberto. <span class="build">build bc3f895 2026-11-19</span></figcaption>
+</figure>
+<table>
+<tr><th style="width:17%">Escolha</th><th>O que muda no PGN</th></tr>
+<tr><td><b>PGN padrão</b></td><td>Nada: cada sinal como foi lido, também os códigos próprios das pretas (<code>$37</code>, as pretas têm a iniciativa), e o diagrama como <code>$220</code>. É o PGN de sempre, para o Scid, o ChessPad, o Chessable ou outra cópia do PdfCraft.</td></tr>
+<tr><td>Lichess</td><td>O lichess conhece 24 sinais: os seis do lance e o lance único (! ? !! ?? !? ?! □), igualdade, posição incerta, as seis avaliações (⩲ ⩱ ± ∓ +− −+), zugzwang, desenvolvimento, iniciativa, ataque, compensação, contrajogo, apuro de tempo, com a ideia e novidade. De um sinal que tem um código para cada lado, ele só conhece o das brancas, então o das pretas é gravado como o das brancas (<code>$37</code> como <code>$36</code>, <code>$23</code> como <code>$22</code>, <code>$133</code> como <code>$132</code>): o sinal fica no lance das pretas, que diz de quem ele é. Um sinal que o lichess não conhece vai para o início do comentário do lance, como o seu símbolo ou nome (<code>{⊥}</code>), e uma marca de diagrama como <code>{Diagram}</code>. A avaliação do motor (de <b>Conferir com o motor…</b>, capítulo 8) vai como o comando do próprio lichess, <code>[%eval -1.50]</code>, em vez de <code>{Motor: …}</code>.</td></tr>
+<tr><td>ChessBase</td><td>Os códigos das pretas também como os das brancas, porque o ChessBase apaga os das pretas ao gravar. A marca de diagrama como a do próprio ChessBase, o comentário <code>{[#]}</code>, porque ele ignora e apaga o <code>$220</code>. Os outros sinais, como foram lidos. No PGN de exercícios, a pergunta de treino (abaixo).</td></tr>
+</table>
+<p>Um exemplo, a Imortal depois de 17.♘d5, com um diagrama depois de 17…♛xb2 e o sinal “as pretas têm contrajogo” nesse lance:</p>
+<table style="break-inside: avoid">
+<tr><th style="width:17%">PGN para</th><th>O que é gravado</th></tr>
+<tr><td><b>PGN padrão</b></td><td><code>17. Nd5 Qxb2 $133 $220 18. Bd6 $1 Bxg1</code></td></tr>
+<tr><td>Lichess</td><td><code>17. Nd5 Qxb2 $132 {Diagram} 18. Bd6 $1 Bxg1</code></td></tr>
+<tr><td>ChessBase</td><td><code>17. Nd5 Qxb2 $132 {[#]} 18. Bd6 $1 Bxg1</code></td></tr>
+</table>
+<p>O mesmo vale para a ferramenta <code>chess_export_pgn</code>, com <code>dialect</code> (capítulo 20). A escolha não muda a partida guardada nem os outros formatos: só o arquivo gravado.</p>
+
+<h3>A pergunta de treino do ChessBase nos exercícios</h3>
+<p>Com <b>PGN — exercícios</b> e <b>PGN para</b>: ChessBase, o enunciado de cada exercício abre com a pergunta de treino do ChessBase, o comando <code>[%tqu …]</code>, na forma que o ChessBase 26 mostrou ler e gravar. Num livro em português, um exercício sai assim:</p>
+<pre>{[%tqu "Pt","Brancas jogam (№ 185).","","","d1d8","",10] Pág. 275 · diagrama 1 de 6}</pre>
+<ul>
+<li><code>"Pt"</code>: a aba de idioma da pergunta no ChessBase, a do idioma do livro (En, De, Fr, Es, It, Ne ou Pt). Um livro em outro idioma ganha a aba En, com o texto no idioma dele.</li>
+<li><code>"Brancas jogam (№ 185)."</code>: a pergunta, com quem joga e o número do exercício.</li>
+<li><code>"d1d8"</code>: a resposta, o 1º lance da solução escrito com a casa de saída e a de chegada (aqui, de d1 para d8). Só uma resposta, sem alternativas.</li>
+<li><code>10</code>: a pontuação da resposta.</li>
+<li>Depois do comando, o resto do enunciado, como nos outros dialetos (<code>Pág. 275 · diagrama 1 de 6</code>).</li>
+</ul>
+<p>O que fica de fora, e por quê:</p>
+<ul>
+<li>Um exercício cujo 1º lance é um roque ou uma promoção sai sem a pergunta: a sessão no ChessBase só mostrou lances simples, e o jeito de escrever esses dois não foi visto. O exercício continua no PGN, com a solução, e a janela do fim da exportação conta quantos ficaram sem ela (<b>Sem a pergunta de treino do ChessBase: 2</b>).</li>
+<li>Como o ChessBase escreve aspas e colchetes dentro da pergunta também não foi visto: na pergunta e no resto do enunciado, <code>"</code> sai como <code>'</code>, e <code>[</code> <code>]</code> saem como <code>(</code> <code>)</code>.</li>
+<li>Com <b>PGN padrão</b> ou Lichess, e nos cartões do Anki, não há pergunta de treino.</li>
+</ul>
 <h2>O que vai e o que não vai para o livro exportado</h2>
 <ul>
 <li>HTML, EPUB, Word, RTF e Markdown saem no idioma do livro, não no das letras das peças: um livro brasileiro com figurinas sai em português (“Diagrama 1, pág. 17: brancas jogam”, <code>lang="pt"</code>).</li>
@@ -953,6 +1038,14 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>Para o leitor de tela, no HTML e no EPUB, os sinais e as figurinas são ditos pelo nome no idioma do livro (<code>±</code> é <i>As brancas estão claramente melhor</i>; <code>♞</code> num lance das brancas é <i>Cavalo branco</i>), em português, espanhol, francês, alemão, italiano, russo e polonês, e em inglês nos outros; cada diagrama traz a posição em palavras; cada página do EPUB tem título, e o sumário segue os níveis dos títulos. No Word e no RTF, o nome do sinal sai entre parênteses depois dele.</li>
 <li>No Markdown, um parágrafo impresso <code>---</code> continua texto, e um nome de arquivo com espaço ou <code>#</code> não quebra os links. Um EPUB ou Word que passaria de 4 GB ou de 65.535 arquivos é recusado com erro.</li>
 </ul>
+<h3>Os diagramas no Word</h3>
+<p>No arquivo do Word (<code>.docx</code>), cada diagrama vai de dois jeitos:</p>
+<ul>
+<li><strong>em SVG</strong>, um desenho em vetor, que o Word 2016 em diante (no Windows, no Mac, na web e no celular) mostra e imprime nítido em qualquer tamanho;</li>
+<li><strong>numa imagem de reserva</strong>, de 432 pixels e até 64 cores, para quem não lê o SVG (o Word anterior a 2016 e alguns outros programas). Nos 7,6 cm do diagrama ela tem 144 pontos por polegada: nítida na tela, um pouco mais suave numa impressão do Word antigo.</li>
+</ul>
+<p>Uma posição que o livro imprime de novo é guardada uma vez só no arquivo, e as imagens são gravadas com paleta de cores. Por isso o arquivo é pequeno: um livro de aberturas de 748 páginas e 999 diagramas, que dava um Word de 118,5 MB, dá 21,2 MB, e a exportação levou 26 s em vez de 41 s. O RTF, o Markdown e os cartões do Anki não levam o SVG: a imagem é tudo o que eles mostram, então ela continua com 900 pixels (até 256 cores, também com paleta).</p>
+<p>Um arquivo do Word ou RTF desenha no máximo 30.000 posições e 1 GB de imagens. Um diagrama de uma posição nova depois disso sai como a sua FEN, na legenda, e as notas da exportação dizem quantos saíram assim. Nenhum livro chega perto disso: o de 748 páginas tem 991 posições.</p>
 <h2>As fontes das exportações</h2>
 <p>O HTML e o EPUB usam as fontes de <code>PDFCRAFT_CHESS_TEXT_FONT</code> ou, sem essa variável, as da pasta <code>fonts</code> ao lado do programa, cada uma para o que desenha: uma fonte de figurinas que desenha peças nas letras K Q R B N só nas letras de peça dos lances (“Kasparov” na prosa continua uma palavra); uma fonte com os símbolos Unicode de xadrez só nesses símbolos; a ISChess nos sinais que ela desenha. Uma fonte WOFF ou WOFF2, ou que só permite embutir bitmaps, não é embutida.</p>
 <div class="box"><h3>No seu computador</h3><p>Com as fontes do DiagPDF importadas para <code>dist/app/fonts</code>, as exportações escrevem os lances com a HastingsFigurine, a primeira figurina pela ordem do nome. Para usar outra, deixe na pasta só a figurina desejada, ou aponte para ela com <code>PDFCRAFT_CHESS_TEXT_FONT</code>.</p></div>
@@ -961,10 +1054,10 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 
 <!-- ============================================================ 19 -->
 <h1 id="c19"><span class="num">19</span>Teclado e leitor de tela</h1>
-<p>As teclas da partida funcionam com o escopo de xadrez ativo e nunca enquanto um campo de texto tem o foco; as de uma letra, só com <b>Atalhos de uma tecla</b> ligado. No macOS, <kbd>Ctrl</kbd> é <kbd>⌘</kbd> e <kbd>Alt</kbd> é <kbd>⌥</kbd>. As teclas do editor estão no capítulo 4. <kbd>F1</kbd>, no tabuleiro, abre a folha dos atalhos de xadrez (também <b>Atalhos de xadrez</b> no menu <b>Xadrez</b>).</p>
+<p>As teclas da partida funcionam com o escopo de xadrez ativo e nunca enquanto um campo de texto tem o foco; as de uma letra, só com <b>Atalhos de uma tecla (B, C, F, G, O, X, sinais)</b> ligado. No macOS, <kbd>Ctrl</kbd> é <kbd>⌘</kbd> e <kbd>Alt</kbd> é <kbd>⌥</kbd>. As teclas do editor estão no capítulo 4. <kbd>F1</kbd>, no tabuleiro, abre a folha dos atalhos de xadrez (também <b>Atalhos de xadrez</b> no menu <b>Xadrez</b>).</p>
 <figure>
 <img src="img/28-atalhos.png" alt="A folha dos atalhos de xadrez.">
-<figcaption>A folha <b>Atalhos de xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
+<figcaption>A folha <b>Atalhos de xadrez</b>. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
 <h2>Tabuleiro e partida</h2>
 <table>
@@ -1014,7 +1107,8 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>O que o leitor de tela ouve</h2>
 <ul>
 <li>Todo aviso e todo erro do xadrez, na hora; um erro fica até ser dispensado.</li>
-<li>O lance mostrado, a cada mudança: “2. cavalo f3 · variante 1 · com comentário · Bom lance”.</li>
+<li>O lance mostrado, a cada mudança: “2. cavalo f3 · variante 1 · com comentário · Bom lance” (“com comentário” só quando o comentário tem palavras, não só o relógio de uma partida baixada).</li>
+<li>Com os selos ligados, cada um pelo nome: “Avaliação: +0.17”, “Relógio: 2:58”.</li>
 <li>O tabuleiro de análise pelo nome (“Tabuleiro, Brancas jogam, lance 7”), nunca a FEN, e, como o do editor, como uma grade de casas, com a casa onde o teclado está.</li>
 <li>Cada lance da aba Texto em palavras, com o estado e a ligação ao PGN.</li>
 <li>A linha da lista de diagramas com o estado inteiro.</li>
@@ -1025,15 +1119,15 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>Toda função de xadrez também é uma ferramenta de automação, que o <code>pdfcraft-cli</code> roda sem abrir o app (e que o servidor MCP oferece, quando ligado). <code>pdfcraft-cli tools</code> lista todas, com os argumentos. Todos os caminhos ficam presos à pasta dada em <code>--root</code>; com <code>--root</code>, a pasta de dados do app fica fora dela, e as ferramentas que gravam pedem <code>store</code> (ou <code>reference_store</code>) dentro da raiz. As notas da leitura que as ferramentas dão continuam em inglês.</p>
 <table>
 <tr><th style="width:36%">Ferramenta</th><th>Faz</th></tr>
-<tr><td><code>chess_status</code></td><td>Quais modelos, conjunto de peças e motor estão disponíveis, e por que não; o build.</td></tr>
+<tr><td><code>chess_status</code></td><td>Quais modelos, conjunto de peças e motor estão disponíveis, e por que não; a versão das ferramentas de xadrez (<code>edition</code>, 1.0.0), a do PdfCraft (<code>version</code>) e o build.</td></tr>
 <tr><td><code>chess_detect</code>, <code>chess_read</code>, <code>chess_diagram_states</code></td><td>Detectam e leem os diagramas (FEN, legalidade, quem joga, casas duvidosas, reparos, link do lichess); contam por estado.</td></tr>
 <tr><td><code>chess_document</code></td><td>O livro como títulos, parágrafos e diagramas, com as partidas em árvores de variantes; JSON e PGN. Aceita o PGN do livro e as partidas.</td></tr>
 <tr><td><code>chess_correction_list</code>, <code>_set</code>, <code>_delete</code>; <code>chess_page_verify</code></td><td>As correções guardadas, e marcar uma página como conferida.</td></tr>
 <tr><td><code>chess_reference_set</code>, <code>_status</code>, <code>_clear</code></td><td>Guardam, mostram e removem o PGN do livro.</td></tr>
 <tr><td><code>chess_replace_diagram</code>, <code>chess_add_lichess_links</code>, <code>chess_bookmarks</code></td><td>Redesenham um diagrama; põem rótulo e link sob todo diagrama legal e aceito; criam os marcadores do livro (com <code>dry_run</code>) e o índice das partidas em CSV ou Markdown.</td></tr>
-<tr><td><code>chess_game</code>, <code>chess_pgn_edit</code>, <code>chess_games</code></td><td>O tabuleiro sem documento; a edição dos lances de uma partida; uma coleção PGN, ou com <code>doc</code> as partidas guardadas de um documento.</td></tr>
-<tr><td><code>chess_export_html</code>, <code>_epub</code>, <code>_docx</code>, <code>_rtf</code>, <code>_markdown</code>, <code>_pgn</code></td><td>As exportações do livro, com <code>text_lang</code> e <code>descriptions</code>.</td></tr>
-<tr><td><code>chess_export_exercises</code>, <code>chess_export_anki</code>, <code>chess_export_worksheet</code></td><td>Os exercícios como PGN de problemas, cartões do Anki ou folha para imprimir (A4 ou Carta).</td></tr>
+<tr><td><code>chess_game</code>, <code>chess_pgn_edit</code>, <code>chess_games</code></td><td>O tabuleiro sem documento; a edição dos lances de uma partida (o PGN dela também com <code>dialect</code>); uma coleção PGN, ou com <code>doc</code> as partidas guardadas de um documento.</td></tr>
+<tr><td><code>chess_export_html</code>, <code>_epub</code>, <code>_docx</code>, <code>_rtf</code>, <code>_markdown</code>, <code>_pgn</code></td><td>As exportações do livro, com <code>text_lang</code> e <code>descriptions</code>; a do PGN também com <code>dialect</code>: <code>standard</code>, <code>lichess</code> ou <code>chessbase</code> (o <b>PGN para</b> do diálogo, capítulo 18).</td></tr>
+<tr><td><code>chess_export_exercises</code>, <code>chess_export_anki</code>, <code>chess_export_worksheet</code></td><td>Os exercícios como PGN de problemas, cartões do Anki ou folha para imprimir (A4 ou Carta). O PGN de exercícios também aceita <code>dialect</code>; com <code>chessbase</code>, o resultado lista em <code>training_left_out</code> os exercícios que saíram sem a pergunta de treino, com o motivo (<code>castling</code> ou <code>promotion</code>).</td></tr>
 <tr><td><code>chess_games_book</code></td><td>As partidas de um PGN viram um livro.</td></tr>
 <tr><td><code>chess_errata</code></td><td>As erratas da notação do livro, em CSV ou Markdown: erro impresso (<code>misprint</code>), a conferir (<code>check</code>) e, com <code>evals_store</code>, o <code>!</code> que o motor refuta.</td></tr>
 <tr><td><code>chess_engine_review</code>, <code>chess_evals</code>, <code>chess_mate</code></td><td>O livro diz × o cálculo diz, a partir das avaliações guardadas; as avaliações; o solucionador de mate.</td></tr>
@@ -1072,6 +1166,9 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li>Criar os marcadores de novo acrescenta outra árvore. A lista de erratas só existe pelas ferramentas.</li>
 <li>Pelo app, a folha de exercícios sai só em A4 (Carta, pela ferramenta). A legenda e o enunciado dos exercícios ainda não dizem o objetivo impresso (“e ganham”). Nos cartões do Anki, as figuras são copiadas à mão para a <code>collection.media</code>.</li>
 <li>As notas de uma exportação e o motivo de uma folha recusada continuam em inglês.</li>
+<li>Os PGNs para o lichess e para o ChessBase ainda não foram importados nesses programas: a lista de sinais do lichess é a que ele publica, e a pergunta de treino segue o que uma sessão no ChessBase 26 mostrou, sem roque nem promoção como 1º lance e com uma resposta só.</li>
+<li>Os arquivos do Word foram conferidos por dentro, não abertos no Word, no LibreOffice ou no Google Docs. O Word anterior a 2016 imprime os diagramas pela imagem de reserva, um pouco mais suave que o SVG.</li>
+<li>O perfil de avaliação do ChessBase (<code>[%evp]</code>) não tem selo na lista de lances.</li>
 <li>Num livro criptografado, a leitura da aba Texto ainda não é guardada, mesmo depois de <b>Guardar</b>. Nenhum botão do app limpa a leitura guardada; só a ferramenta <code>chess_cache_clear</code>.</li>
 <li>Numa pasta com mais de 4.096 itens (como Downloads), um PGN com o nome do PDF fora dos primeiros 4.096 não é oferecido: use <b>Carregar PGN do livro…</b>.</li>
 <li>Se o PdfCraft fechar de repente com o motor ligado, o motor pode ficar aberto (o Stockfish sai sozinho).</li>
