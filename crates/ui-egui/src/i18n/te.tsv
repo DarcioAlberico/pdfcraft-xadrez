@@ -3775,3 +3775,9 @@ pawn structure	Passed	అడ్డులేని
 	{path} is a link, which the Library never opens.	{path} ఒక లింక్, దాన్ని లైబ్రరీ ఎప్పుడూ తెరవదు.
 	{path} can't be opened.	{path} తెరవబడదు.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	చివరి నిర్మాణం మధ్యలో ఆగిపోయింది (PdfCraft మూసివేయబడింది, లేదా లోపంతో ఆగిపోయింది): కొనసాగించు అది ఆగిన చోటు నుండి కొనసాగిస్తుంది.
+	Show the clock and the evaluation the PGN gives each move	PGN ప్రతి ఎత్తుకు ఇచ్చే గడియారం, మూల్యాంకనాన్ని చూపు
+	Evaluation: {value}	మూల్యాంకనం: {value}
+	Clock: {time}	గడియారం: {time}
+	PGN for	PGN దేని కోసం
+	Standard PGN	ప్రామాణిక PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	ప్రతి పక్షానికి వేర్వేరు కోడ్ ఉన్న గుర్తులో Lichess, ChessBase తెల్లవారి కోడ్‌ను మాత్రమే ఉంచుతాయి: నల్లవారి కోడ్‌లు తెల్లవారి కోడ్‌లుగా రాయబడతాయి. Lichess కోసం, దానికి తెలియని గుర్తు ఎత్తు వ్యాఖ్యలోకి వెళ్తుంది, ఇంజిన్ మూల్యాంకనం [%eval]గా; ChessBase కోసం, చిత్రం దాని స్వంత గుర్తుతో.

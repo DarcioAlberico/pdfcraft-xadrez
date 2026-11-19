@@ -277,9 +277,51 @@ pub const DIAGRAM: u16 = 220;
 /// The diagram marker, the board seen from Black's side (see [`DIAGRAM`]).
 pub const DIAGRAM_FROM_BLACK: u16 = 221;
 
-/// Whether `code` marks a diagram ([`DIAGRAM`] or [`DIAGRAM_FROM_BLACK`]).
+/// The diagram marker of Scid and ChessDB (plan A9-F7, R6-06): read as [`DIAGRAM`] is, and kept
+/// as it was read; PdfCraft writes its own mark, [`DIAGRAM`]. ChessBase knows none of the three
+/// glyphs (it drops them when it saves, the D18 session): it writes a diagram as the comment
+/// `{[#]}` ([`crate::pgn::DIAGRAM_COMMAND`]), which the ChessBase dialect writes.
+pub const DIAGRAM_SCID: u16 = 201;
+
+/// Whether `code` marks a diagram: [`DIAGRAM`] or [`DIAGRAM_FROM_BLACK`] (ChessPad's), or
+/// [`DIAGRAM_SCID`] (Scid's and ChessDB's), the marks the public tables of NAGs list (decision
+/// D18).
 pub fn is_diagram(code: u16) -> bool {
-    matches!(code, DIAGRAM | DIAGRAM_FROM_BLACK)
+    matches!(code, DIAGRAM | DIAGRAM_FROM_BLACK | DIAGRAM_SCID)
+}
+
+/// The glyphs lichess knows, the codes R6-06 lists from its published table: the move's quality
+/// (1–7), the evaluations (10, 13–19), zugzwang (22), development (32), initiative (36), attack
+/// (40), compensation (44), counterplay (132), time trouble (138), "with the idea" (140) and the
+/// novelty (146). White's code of each pair only.
+pub const LICHESS: [u16; 24] = [1, 2, 3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18, 19, 22, 32, 36, 40, 44, 132, 138, 140, 146];
+
+/// White's code of the pair whose Black code `code` is (`$37` is `$36`, `$23` is `$22`); any other
+/// code as it is. What the Lichess and ChessBase dialects write: both show only White's code of a
+/// pair, and the glyph on Black's move says whose it is (R6-06; ChessBase drops `$37`, `$23` and
+/// `$133` when it saves, the D18 session).
+pub fn white_code(code: u16) -> u16 {
+    by_code(code).filter(|n| n.black_code == Some(code)).map_or(code, |n| n.code)
+}
+
+/// `code` as the Lichess dialect writes it (plan A9-F7): `Ok` with the code to write, White's
+/// when `code` is Black's code of a pair ([`white_code`]), when lichess knows it; else `Err` with
+/// what the move's comment says instead, so it is not lost: the sign (`⊥`), the name of a glyph
+/// without one ("Slight space advantage"), "Diagram" for a diagram mark, or `$n` for a code no
+/// table names.
+pub fn lichess(code: u16) -> Result<u16, String> {
+    let entry = by_code(code);
+    let white = white_code(code);
+    if LICHESS.contains(&white) {
+        return Ok(white);
+    }
+    Err(match (entry, code) {
+        (Some(Nag { glyph: Some(g), .. }), _) => (*g).to_owned(),
+        (Some(n), _) => n.name.to_owned(),
+        (None, DIAGRAM_FROM_BLACK) => "Diagram (from Black)".to_owned(),
+        (None, c) if is_diagram(c) => "Diagram".to_owned(),
+        (None, c) => format!("${c}"),
+    })
 }
 
 /// The entry for a PGN code (either side's).

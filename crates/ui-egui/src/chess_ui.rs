@@ -201,6 +201,9 @@ pub struct ChessState {
     /// No preview of a move's position when the pointer rests on it (plan HC13; shown by
     /// default).
     pub no_move_preview: bool,
+    /// The clock and the evaluation a game's PGN gives each move (`[%clk]`, `[%eval]`), as badges
+    /// after the move in the move list (plan A9-F7; off by default).
+    pub move_badges: bool,
     /// What a step forward at a fork and a move played beside the reply there do (plan A8 V3).
     pub variation_rules: crate::chess_moves_tree::VariationRules,
     /// Preferences' piece picker while it is shown.

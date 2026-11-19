@@ -1704,10 +1704,19 @@ fn chess_pgn_edit_says_what_it_kept_as_a_comment_and_writes_as_asked() {
     );
     let one = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [], "variations": "depth:1", "nags": "none" }));
     assert_eq!(one["movetext"], "1. e4 e5 {(d5)} (1... c5 {Sicilian} 2. Nf3) 2. Nf3", "{one:#}");
-    for (key, value) in [("variations", "depth:x"), ("comments", "some"), ("nags", "")] {
+    for (key, value) in [("variations", "depth:x"), ("comments", "some"), ("nags", ""), ("dialect", "fritz")] {
         let e = auto.call("chess_pgn_edit", &json!({ "pgn": pgn, "ops": [], key: value })).unwrap_err();
         assert!(e.to_string().contains(key), "{key}: {e}");
     }
+    // Plan A9-F7: the dialect. Lichess: Black's code as White's, an unknown glyph as its sign in
+    // the comment, the clock kept; ChessBase: Black's code as White's, the diagram as {[#]}.
+    let signs = "1. e4 e5 $37 {[%clk 0:03:00]} 2. Nf3 $245 $220 *";
+    let lichess = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": signs, "ops": [], "dialect": "lichess" }));
+    assert_eq!(lichess["movetext"], "1. e4 e5 $36 {[%clk 0:03:00]} 2. Nf3 {Diagram \u{22a5}}", "{lichess:#}");
+    let chessbase = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": signs, "ops": [], "dialect": "chessbase" }));
+    assert_eq!(chessbase["movetext"], "1. e4 e5 $36 {[%clk 0:03:00]} 2. Nf3 $245 {[#]}", "{chessbase:#}");
+    let standard = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": signs, "ops": [], "dialect": "standard" }));
+    assert_eq!(standard["movetext"], "1. e4 e5 $37 {[%clk 0:03:00]} 2. Nf3 $220 $245", "{standard:#}");
 }
 
 /// Plan HC11: next_variation and prev_variation walk the variations in reading order, four levels

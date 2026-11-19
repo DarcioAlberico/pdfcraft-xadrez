@@ -415,6 +415,8 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     if ui.add(crate::widgets::checkbox(&mut preview, tl!("Show a move's position when the pointer rests on it"))).changed() {
         app.chess.no_move_preview = !preview;
     }
+    // The clock and the evaluation a downloaded game's PGN gives each move (plan A9-F7).
+    ui.add(crate::widgets::checkbox(&mut app.chess.move_badges, tl!("Show the clock and the evaluation the PGN gives each move")));
     // Variations (plan A8 V3).
     use crate::chess_moves_tree::{AtFork, NewMove};
     let rules = &mut app.chess.variation_rules;

@@ -95,24 +95,31 @@ impl Game {
         out
     }
 
-    /// Whether move `node` is marked for a diagram ([`crate::nag::DIAGRAM`], or the one from
-    /// Black's side).
+    /// Whether move `node` is marked for a diagram: a glyph ([`crate::nag::DIAGRAM`], the one from
+    /// Black's side, or Scid's `$201`: [`nag::is_diagram`]), or ChessBase's `{[#]}` in its comment
+    /// (plan A9-F7, the D18 session).
     pub fn has_diagram(&self, node: NodeId) -> bool {
-        self.nodes.get(node).is_some_and(|n| n.nags.iter().any(|&c| nag::is_diagram(c)))
+        self.nodes.get(node).is_some_and(|n| n.nags.iter().any(|&c| nag::is_diagram(c)) || crate::pgn::has_diagram_command(&n.comment))
     }
 
-    /// Mark move `node` for a diagram, or take the mark off (both diagram codes). Returns whether
-    /// the game changed: not for the start, a move not in the game, or a move that has as many
-    /// glyphs as it may.
+    /// Mark move `node` for a diagram, or take the mark off (every diagram glyph, and ChessBase's
+    /// `[#]` in its comment). Returns whether the game changed: not for the start, a move not in
+    /// the game, or a move that has as many glyphs as it may.
     pub fn toggle_diagram(&mut self, node: NodeId) -> bool {
         if node == 0 || node >= self.nodes.len() {
             return false;
         }
         if self.has_diagram(node) {
-            for code in [nag::DIAGRAM, nag::DIAGRAM_FROM_BLACK] {
+            for code in [nag::DIAGRAM, nag::DIAGRAM_FROM_BLACK, nag::DIAGRAM_SCID] {
                 if self.nags(node).contains(&code) {
                     self.toggle_nag(node, code);
                 }
+            }
+            if let Some(n) = self.nodes.get_mut(node)
+                && crate::pgn::has_diagram_command(&n.comment)
+            {
+                n.comment = crate::pgn::without_diagram_command(&n.comment);
+                self.revision = super::fresh_revision();
             }
             true
         } else {
@@ -288,6 +295,45 @@ mod tests {
         assert_eq!(g.movetext(), "1. e4");
         assert!(!g.toggle_diagram(0), "the start has no move to mark");
         assert!(!g.toggle_diagram(99));
+    }
+
+    /// Plan A9-F7 (R6-06, decision D18): Scid's and ChessDB's diagram mark `$201` is a diagram, as
+    /// ChessPad's `$220`/`$221` are; it is kept as read, left out of the text like them, and taken
+    /// off with the diagram. PdfCraft's own mark stays `$220`.
+    #[test]
+    fn scid_s_diagram_mark_is_a_diagram() {
+        assert!(nag::is_diagram(201) && nag::is_diagram(220) && nag::is_diagram(221));
+        assert!(!nag::is_diagram(200) && !nag::is_diagram(202));
+        let mut g = game("1. e4 e5 2. Nf3 $201 *");
+        let nf3 = at(&g, &[0, 0, 0]);
+        assert!(g.has_diagram(nf3));
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 $201", "kept as read");
+        assert_eq!(g.line_text(nf3, false), "1.e4 e5 2.Nf3");
+        assert!(g.toggle_diagram(nf3), "taken off");
+        assert!(!g.has_diagram(nf3));
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3");
+        assert!(g.toggle_diagram(nf3), "put back as PdfCraft's own mark");
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 $220");
+    }
+
+    /// Plan A9-F7 (the D18 session): ChessBase writes a diagram as the comment `{[#]}`. It is a
+    /// diagram mark, kept as read on a round trip, and taken off with the diagram (the comment's
+    /// other words stay).
+    #[test]
+    fn chessbase_s_diagram_comment_is_a_diagram() {
+        let mut g = game("1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 {[#]} d5 6. Nf3 {Quiet [#] development} *");
+        let (bd3, nf3) = (at(&g, &[0, 0, 0, 0, 0, 0, 0, 0, 0]), at(&g, &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+        assert!(g.has_diagram(bd3) && g.has_diagram(nf3));
+        assert!(!g.has_diagram(at(&g, &[0])));
+        assert!(g.movetext().contains("5. Bd3 {[#]} 5... d5 6. Nf3 {Quiet [#] development}"), "{}", g.movetext());
+        let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!(back.pgn(), g.pgn());
+        assert!(g.toggle_diagram(nf3));
+        assert!(!g.has_diagram(nf3));
+        assert_eq!(g.comment(nf3), "Quiet development");
+        assert!(g.toggle_diagram(bd3));
+        assert_eq!(g.comment(bd3), "");
+        assert!(g.movetext().contains("5. Bd3 d5"), "{}", g.movetext());
     }
 
     /// Plan HC11: next and previous variation walk the variations in reading order, four levels

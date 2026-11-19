@@ -172,9 +172,12 @@ impl Page {
                     level = level.saturating_sub(1);
                     self.para.push(text(")"));
                 }
+                // The comment's prose: a book never prints a `[%clk]` or `[%eval]` command (plan
+                // A9-F7, R6-01).
                 Token::Comment { text: comment, .. } => {
-                    if !comment.trim().is_empty() {
-                        self.para.push(text(comment.trim()));
+                    let prose = pdfcraft_chess::pgn::prose(&comment);
+                    if !prose.trim().is_empty() {
+                        self.para.push(text(prose.trim()));
                     }
                 }
                 Token::Move { node, number, color, numbered, san, nags, depth } => {
@@ -203,7 +206,9 @@ impl Page {
                     for &code in nags.iter().filter(|c| !nag::is_diagram(**c)) {
                         self.para.push(Inline::Nag { code, source_rect: None, review: Vec::new() });
                     }
-                    if let Some(code) = nags.iter().copied().find(|c| nag::is_diagram(*c))
+                    // A diagram glyph, or ChessBase's `{[#]}` in the move's comment (plan A9-F7).
+                    let mark = nags.iter().copied().find(|c| nag::is_diagram(*c)).or_else(|| game.has_diagram(node).then_some(nag::DIAGRAM));
+                    if let Some(code) = mark
                         && let Some(fen) = fen
                     {
                         self.diagram(&fen, code == nag::DIAGRAM_FROM_BLACK);

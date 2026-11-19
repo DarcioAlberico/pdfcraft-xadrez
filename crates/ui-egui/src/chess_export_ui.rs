@@ -30,6 +30,7 @@ use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::ScanStamp;
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::describe::Naming;
+use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::PgnDialect;
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::LangTag;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
@@ -218,8 +219,8 @@ impl SheetChoices {
 
 /// The export dialog's choices that are remembered (plan A9-X2; the PGN's, P9c's open item): the
 /// format, which diagrams the PGN gives a game of their own, where the PGN's games come from, how
-/// the diagrams' descriptions name the pieces and how the exercise sheet is laid out (plan
-/// A9-N12b).
+/// the diagrams' descriptions name the pieces, how the exercise sheet is laid out (plan
+/// A9-N12b) and the program the PGN is for (plan A9-F7).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ExportChoices {
     pub format: ExportFormat,
@@ -227,6 +228,7 @@ pub struct ExportChoices {
     pub source: PgnSource,
     pub naming: Naming,
     pub sheet: SheetChoices,
+    pub dialect: PgnDialect,
 }
 
 impl ExportChoices {
@@ -245,6 +247,7 @@ impl ExportChoices {
             "descriptions": self.naming.name(),
             "per_page": self.sheet.per_page.count(),
             "solutions": self.sheet.solutions,
+            "dialect": self.dialect.name(),
         })
     }
 
@@ -261,6 +264,7 @@ impl ExportChoices {
                 per_page: value.get("per_page").and_then(serde_json::Value::as_u64).and_then(PerPage::of).unwrap_or(sheet.per_page),
                 solutions: value.get("solutions").and_then(serde_json::Value::as_bool).unwrap_or(sheet.solutions),
             },
+            dialect: PgnDialect::from_name(text("dialect")).unwrap_or_default(),
         }
     }
 }
@@ -477,6 +481,10 @@ impl PdfCraftApp {
         options.text_lang = kept.lang.map(|lang| if declared.lang() == Some(lang) { declared.clone() } else { LangTag::of(lang) });
         options.naming = self.chess.export.naming;
         options.positions = self.chess.export.positions;
+        // The program the PGN is for (plan A9-F7); Anki's cards are no PGN.
+        if matches!(format, ExportFormat::Pgn | ExportFormat::Exercises) {
+            options.pgn_style.dialect = self.chess.export.dialect;
+        }
         options.exercises = matches!(format, ExportFormat::Exercises | ExportFormat::Anki);
         options.anki = format == ExportFormat::Anki;
         options.reference = self.export_reference(id, format);
@@ -814,6 +822,9 @@ fn fields(ui: &mut egui::Ui, d: &mut ExportDialog, book_pgn: bool) {
             });
         });
     }
+    if matches!(format, ExportFormat::Pgn | ExportFormat::Exercises) {
+        dialect_row(ui, d);
+    }
     if format == ExportFormat::Pgn {
         row(ui, tl!("Diagrams as PGN games"), |ui, label| {
             let choices =
@@ -843,6 +854,26 @@ fn fields(ui: &mut egui::Ui, d: &mut ExportDialog, book_pgn: bool) {
             });
         }
     }
+}
+
+/// The program a PGN export is for (plan A9-F7): standard PGN, lichess or ChessBase. The
+/// programs' names are the same in every language.
+fn dialect_row(ui: &mut egui::Ui, d: &mut ExportDialog) {
+    row(ui, tl!("PGN for"), |ui, label| {
+        let name = |dialect: PgnDialect| match dialect {
+            PgnDialect::Standard => tl!("Standard PGN"),
+            PgnDialect::Lichess => "Lichess",
+            PgnDialect::ChessBase => "ChessBase",
+        };
+        let combo = egui::ComboBox::from_id_salt("chess-export-dialect").selected_text(name(d.choices.dialect)).show_ui(ui, |ui| {
+            for dialect in PgnDialect::ALL {
+                ui.selectable_value(&mut d.choices.dialect, dialect, name(dialect));
+            }
+        });
+        combo.response.labelled_by(label.id).on_hover_text(tl!(
+            "Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark."
+        ));
+    });
 }
 
 /// The diagrams not checked yet in the pages chosen, inside the dialog, with Review first.
@@ -971,8 +1002,11 @@ mod tests {
             source: PgnSource::Text,
             naming: Naming::Words,
             sheet: SheetChoices { per_page: PerPage::Six, solutions: false },
+            dialect: PgnDialect::Lichess,
         };
         assert_eq!(ExportChoices::from_json(&c.to_json()), c);
+        assert_eq!(ExportChoices::from_json(&serde_json::json!({ "dialect": "chessbase" })).dialect, PgnDialect::ChessBase);
+        assert_eq!(ExportChoices::from_json(&serde_json::json!({ "dialect": "fritz" })).dialect, PgnDialect::Standard);
         assert_eq!(ExportChoices::from_json(&serde_json::json!({ "format": "tiff", "positions": 3 })), ExportChoices::default());
         assert_eq!(ExportChoices::from_json(&serde_json::Value::Null), ExportChoices::default());
         for f in ExportFormat::ALL {

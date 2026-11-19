@@ -4148,3 +4148,9 @@ pawn structure	Passed	حرة
 	{path} is a link, which the Library never opens.	{path} رابط، والمكتبة لا تفتح الروابط أبدًا.
 	{path} can't be opened.	تعذّر فتح {path}.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	توقّف البناء الأخير قبل اكتماله (أُغلق PdfCraft، أو توقّف بسبب خطأ): متابعة تكمل من حيث توقّف.
+	Show the clock and the evaluation the PGN gives each move	عرض الساعة والتقييم اللذين يعطيهما PGN لكل نقلة
+	Evaluation: {value}	التقييم: {value}
+	Clock: {time}	الساعة: {time}
+	PGN for	PGN لبرنامج
+	Standard PGN	PGN قياسي
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	لا يحتفظ Lichess وChessBase إلا برمز الأبيض للعلامة التي لها رمز لكل جانب: تُكتب علامات الأسود كعلامات الأبيض. في Lichess تذهب العلامة التي لا يعرفها إلى تعليق النقلة، وتقييم المحرك كـ [%eval]؛ وفي ChessBase يُكتب المخطط بعلامته الخاصة.

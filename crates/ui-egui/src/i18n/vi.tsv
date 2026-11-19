@@ -4125,3 +4125,9 @@ pawn structure	Passed	Tốt thông
 	{path} is a link, which the Library never opens.	{path} là một liên kết, Thư viện không bao giờ mở liên kết.
 	{path} can't be opened.	Không thể mở {path}.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Lần xây dựng gần nhất bị dừng giữa chừng (PdfCraft đã đóng, hoặc dừng do lỗi): Tiếp tục sẽ đi tiếp từ chỗ đã dừng.
+	Show the clock and the evaluation the PGN gives each move	Hiện đồng hồ và đánh giá mà PGN ghi cho mỗi nước đi
+	Evaluation: {value}	Đánh giá: {value}
+	Clock: {time}	Đồng hồ: {time}
+	PGN for	PGN dành cho
+	Standard PGN	PGN tiêu chuẩn
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess và ChessBase chỉ giữ mã của Trắng cho ký hiệu có mã riêng cho mỗi bên: mã của Đen được ghi như mã của Trắng. Với Lichess, ký hiệu nó không biết được đưa vào chú thích của nước đi, và đánh giá của engine thành [%eval]; với ChessBase, sơ đồ được ghi bằng dấu riêng của nó.

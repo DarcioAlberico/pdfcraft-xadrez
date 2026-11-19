@@ -4087,3 +4087,9 @@ pawn structure	Passed	Passati
 	{path} is a link, which the Library never opens.	{path} è un collegamento, che la Biblioteca non apre mai.
 	{path} can't be opened.	Impossibile aprire {path}.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	L'ultima costruzione è stata interrotta (PdfCraft si è chiuso o si è fermato per un errore): Continua riprende da dove era rimasta.
+	Show the clock and the evaluation the PGN gives each move	Mostra l'orologio e la valutazione che il PGN dà a ogni mossa
+	Evaluation: {value}	Valutazione: {value}
+	Clock: {time}	Orologio: {time}
+	PGN for	PGN per
+	Standard PGN	PGN standard
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess e ChessBase tengono solo il codice del Bianco di un segno che ne ha uno per ciascun colore: quelli del Nero vengono scritti come quelli del Bianco. Per Lichess, un segno che non conosce va nel commento della mossa e la valutazione del motore come [%eval]; per ChessBase, un diagramma con il suo segno.

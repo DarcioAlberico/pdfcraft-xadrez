@@ -3840,3 +3840,9 @@ pawn structure	Passed	通路兵
 	{path} is a link, which the Library never opens.	{path} 是一个链接，书库从不打开链接。
 	{path} can't be opened.	无法打开 {path}。
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	上次构建中途中断（PdfCraft 已关闭，或因错误停止）：“继续”会从中断处接着读。
+	Show the clock and the evaluation the PGN gives each move	显示 PGN 为每步棋给出的时钟和评估
+	Evaluation: {value}	评估：{value}
+	Clock: {time}	时钟：{time}
+	PGN for	PGN 用于
+	Standard PGN	标准 PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	对于黑白双方各有代码的符号，Lichess 和 ChessBase 只保留白方的代码：黑方的代码写成白方的代码。用于 Lichess 时，它不认识的符号写进该步的注释，引擎评估写成 [%eval]；用于 ChessBase 时，局面图写成它自己的标记。
