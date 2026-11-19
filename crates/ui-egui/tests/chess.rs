@@ -6251,7 +6251,8 @@ fn the_export_dialogs_choices_are_remembered() {
             "source": "book",
             "descriptions": "words",
             "per_page": 4,
-            "solutions": true
+            "solutions": true,
+            "dialect": "standard"
         }),
         "the settings keep the dialog's choices"
     );
