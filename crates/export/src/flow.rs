@@ -10,7 +10,8 @@
 //! - a [`Figure`] is a picture with its text alternative (`wp:docPr descr` in Word,
 //!   `wzDescription` in RTF) and a caption paragraph under it, in Word's `Caption` style, the
 //!   picture kept with it on one page (`keepNext`); Word also gets its SVG when it has one
-//!   (`asvg:svgBlip`, the PNG kept as the fallback older readers show);
+//!   (`asvg:svgBlip`, the PNG kept as the fallback older readers show), and the same picture
+//!   shown again is the same media part, stored once (plan A9-X1b);
 //! - a link is a real hyperlink, for `http`, `https` and `mailto` addresses only
 //!   ([`super::link_target`]);
 //! - the document's language is the default of every run (`w:lang`; `\deflang` and `\lang` in
@@ -18,6 +19,8 @@
 //!   its font table, so a reader can see which ones must be installed.
 //!
 //! Every text is escaped for its format and stripped of what XML does not allow.
+
+use std::collections::HashMap;
 
 use super::{Zip, emu, esc, link_target, png_size, rtf_text};
 
@@ -148,8 +151,11 @@ fn docx_runs(runs: &[Run], links: &mut Vec<String>) -> String {
 pub fn docx(doc: &FlowDoc) -> Result<Vec<u8>, crate::ZipError> {
     let mut body = String::new();
     let mut links: Vec<String> = Vec::new();
-    let mut media: Vec<&[u8]> = Vec::new();
-    let mut svgs: Vec<(usize, &str)> = Vec::new();
+    // Each picture once, however many figures show it (plan A9-X1b): a book prints a position
+    // again, and the same drawing is the same media part, its PNG and its SVG.
+    let mut media: Vec<(&[u8], Option<&str>)> = Vec::new();
+    let mut stored: HashMap<(&[u8], Option<&str>), usize> = HashMap::new();
+    let mut figures = 0usize;
     for block in &doc.blocks {
         match block {
             FlowBlock::Heading { level, runs } => {
@@ -158,26 +164,30 @@ pub fn docx(doc: &FlowDoc) -> Result<Vec<u8>, crate::ZipError> {
             }
             FlowBlock::Para(runs) => body.push_str(&format!("<w:p>{}</w:p>", docx_runs(runs, &mut links))),
             FlowBlock::Figure(f) => {
-                media.push(&f.png);
-                let n = media.len();
+                let key = (f.png.as_slice(), f.svg.as_deref());
+                let n = *stored.entry(key).or_insert_with(|| {
+                    media.push(key);
+                    media.len()
+                });
+                // Every drawing has an id of its own, its picture shared or not.
+                figures = figures.saturating_add(1);
+                let id = figures;
                 // The SVG as an extension of the picture: Word 2016 and later draw it, others the
                 // PNG (plan A8 P9a).
-                let svg_blip = match f.svg.as_deref() {
-                    Some(svg) => {
-                        svgs.push((n, svg));
-                        format!("<a:extLst><a:ext uri=\"{SVG_EXT}\"><asvg:svgBlip xmlns:asvg=\"{SVG_NS}\" r:embed=\"rIdSvg{n}\"/></a:ext></a:extLst>")
-                    }
-                    None => String::new(),
+                let svg_blip = if f.svg.is_some() {
+                    format!("<a:extLst><a:ext uri=\"{SVG_EXT}\"><asvg:svgBlip xmlns:asvg=\"{SVG_NS}\" r:embed=\"rIdSvg{n}\"/></a:ext></a:extLst>")
+                } else {
+                    String::new()
                 };
                 let side = if f.side_pt.is_finite() && f.side_pt > 0.0 { f.side_pt.min(468.0) } else { 216.0 };
                 let (cx, cy) = (emu(side), emu(side));
                 let alt = esc(&f.alt.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>());
                 body.push_str(&format!(
                     "<w:p><w:pPr><w:pStyle w:val=\"Figure\"/></w:pPr><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">\
-<wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:docPr id=\"{n}\" name=\"Diagram {n}\" descr=\"{alt}\"/>\
+<wp:extent cx=\"{cx}\" cy=\"{cy}\"/><wp:docPr id=\"{id}\" name=\"Diagram {id}\" descr=\"{alt}\"/>\
 <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>\
 <a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">\
-<pic:pic><pic:nvPicPr><pic:cNvPr id=\"{n}\" name=\"diagram{n}.png\" descr=\"{alt}\"/><pic:cNvPicPr/></pic:nvPicPr>\
+<pic:pic><pic:nvPicPr><pic:cNvPr id=\"{id}\" name=\"diagram{n}.png\" descr=\"{alt}\"/><pic:cNvPicPr/></pic:nvPicPr>\
 <pic:blipFill><a:blip r:embed=\"rIdImg{n}\">{svg_blip}</a:blip><a:stretch><a:fillRect/></a:stretch></pic:blipFill>\
 <pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>\
 </a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
@@ -228,7 +238,7 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
             "<Relationship Id=\"rIdImg{n}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/diagram{n}.png\"/>"
         ));
     }
-    for (n, _) in &svgs {
+    for n in media.iter().zip(1..).filter(|((_, svg), _)| svg.is_some()).map(|(_, n)| n) {
         doc_rels.push_str(&format!(
             "<Relationship Id=\"rIdSvg{n}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/diagram{n}.svg\"/>"
         ));
@@ -253,11 +263,11 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
     z.add("word/document.xml", document.as_bytes(), true)?;
     z.add("word/styles.xml", styles.as_bytes(), true)?;
     z.add("word/_rels/document.xml.rels", doc_rels.as_bytes(), true)?;
-    for (i, png) in media.iter().enumerate() {
-        z.add(&format!("word/media/diagram{}.png", i + 1), png, false)?;
-    }
-    for (n, svg) in &svgs {
-        z.add(&format!("word/media/diagram{n}.svg"), svg.as_bytes(), true)?;
+    for ((png, svg), n) in media.iter().zip(1usize..) {
+        z.add(&format!("word/media/diagram{n}.png"), png, false)?;
+        if let Some(svg) = svg {
+            z.add(&format!("word/media/diagram{n}.svg"), svg.as_bytes(), true)?;
+        }
     }
     z.finish()
 }
@@ -487,6 +497,85 @@ mod tests {
         assert!(rich.starts_with(r"{\rtf1\ansi\deff0\deflang1046{\fonttbl"), "{rich}");
         assert!(rich.contains(r"{\lang1031 Zug}"), "{rich}");
         assert!(rich.contains(r"\picwgoal4320\pichgoal4320"), "a side that is not a number is three inches: {rich}");
+    }
+
+    /// The names of the files in a zip archive, in its order.
+    fn names(zip: &[u8]) -> Vec<String> {
+        let at = |i: usize, n: usize| zip[i..i + n].iter().rev().fold(0usize, |v, b| v << 8 | *b as usize);
+        let mut i = 0;
+        let mut out = Vec::new();
+        while zip[i..].starts_with(b"PK\x03\x04") {
+            let (size, name_len) = (at(i + 18, 4), at(i + 26, 2));
+            out.push(String::from_utf8(zip[i + 30..i + 30 + name_len].to_vec()).unwrap());
+            i += 30 + name_len + size;
+        }
+        out
+    }
+
+    /// Plan A9-X1b (R8-09): a picture shown again is stored once, its PNG and its SVG, and each
+    /// figure refers to it; every drawing keeps an id of its own (Word refuses a file whose
+    /// drawings share one). A picture with another SVG, or none, is another part.
+    #[test]
+    fn a_picture_shown_again_is_stored_once() {
+        let png = |b: u8| b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x02\0\0\0\x03".iter().copied().chain([b]).collect::<Vec<u8>>();
+        let svg = |s: &str| Some(format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><title>{s}</title></svg>"));
+        let figure = |png: Vec<u8>, svg: Option<String>, alt: &str| {
+            FlowBlock::Figure(Figure { png, svg, side_pt: 216.0, alt: alt.into(), caption: vec![Run::text(alt)] })
+        };
+        let doc = FlowDoc {
+            title: "Repeats".into(),
+            lang: "en".into(),
+            blocks: vec![
+                figure(png(1), svg("a"), "first"),
+                FlowBlock::Para(vec![Run::text("between")]),
+                figure(png(2), svg("b"), "second"),
+                figure(png(1), svg("a"), "first again"),
+                figure(png(1), svg("c"), "same png, other svg"),
+                figure(png(1), None, "same png, no svg"),
+            ],
+        };
+        let word = docx(&doc).unwrap();
+        let media: Vec<String> = names(&word).into_iter().filter(|n| n.starts_with("word/media/")).collect();
+        assert_eq!(
+            media,
+            [
+                "word/media/diagram1.png",
+                "word/media/diagram1.svg",
+                "word/media/diagram2.png",
+                "word/media/diagram2.svg",
+                "word/media/diagram3.png",
+                "word/media/diagram3.svg",
+                "word/media/diagram4.png",
+            ]
+        );
+        let xml = part(&word, "word/document.xml");
+        let body = roxmltree::Document::parse(&xml).unwrap();
+        let ids: Vec<&str> = body.descendants().filter(|n| n.has_tag_name("docPr")).filter_map(|n| n.attribute("id")).collect();
+        assert_eq!(ids, ["1", "2", "3", "4", "5"], "every drawing its own id");
+        const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+        let blips: Vec<&str> = body.descendants().filter(|n| n.has_tag_name("blip")).filter_map(|n| n.attribute((R, "embed"))).collect();
+        assert_eq!(blips, ["rIdImg1", "rIdImg2", "rIdImg1", "rIdImg3", "rIdImg4"]);
+        let svgs: Vec<&str> = body.descendants().filter(|n| n.has_tag_name("svgBlip")).filter_map(|n| n.attribute((R, "embed"))).collect();
+        assert_eq!(svgs, ["rIdSvg1", "rIdSvg2", "rIdSvg1", "rIdSvg3"]);
+        let rels = part(&word, "word/_rels/document.xml.rels");
+        let rels = roxmltree::Document::parse(&rels).unwrap();
+        let targets: Vec<(&str, &str)> = rels
+            .descendants()
+            .filter_map(|n| Some((n.attribute("Id")?, n.attribute("Target")?)))
+            .filter(|(id, _)| id.starts_with("rIdImg") || id.starts_with("rIdSvg"))
+            .collect();
+        assert_eq!(
+            targets,
+            [
+                ("rIdImg1", "media/diagram1.png"),
+                ("rIdImg2", "media/diagram2.png"),
+                ("rIdImg3", "media/diagram3.png"),
+                ("rIdImg4", "media/diagram4.png"),
+                ("rIdSvg1", "media/diagram1.svg"),
+                ("rIdSvg2", "media/diagram2.svg"),
+                ("rIdSvg3", "media/diagram3.svg"),
+            ]
+        );
     }
 
     #[test]

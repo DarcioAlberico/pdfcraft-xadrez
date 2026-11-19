@@ -21,9 +21,10 @@
 //!    `reference_bench` on those with a book PGN, against the baselines `--baseline` made from
 //!    `main`, losing no move (`--allow-lost 0`), and `ocr_bench --gate` on the OCR ground truth.
 //!
-//!    Then **4b, performance** (when the walker, the vision, the stores or the games' autosave
-//!    changed): the `perf_` tests in release (`--ignored`), each of which asserts a count first
-//!    and prints `PERF <name> <ms>`; a time above twice the baseline's fails.
+//!    Then **4b, performance** (when the walker, the vision, the stores, the games' autosave or
+//!    the Word export changed): the `perf_` tests in release (`--ignored`), each of which asserts
+//!    a count first (the Word export's, its file's size) and prints `PERF <name> <ms>`; a time
+//!    above twice the baseline's fails.
 //! 5. **Full** (`--full` only): the engine's ignored scan-cache test on a book of 703 pages
 //!    (plan A9-Q4b), `cargo xtask chess-bench` on the 38 books against the baseline's run
 //!    (`--allow-lost 0`), and `cargo xtask fuzz` (with the models given, also the hostile ones it

@@ -977,13 +977,16 @@ impl Automation {
         }
         options.link_text = link_text;
         options.links = a.opt_bool("links")?.unwrap_or(true);
-        options.diagram_px = match a.opt_int("diagram_px")? {
-            None => chess::office::DEFAULT_DIAGRAM_PX,
-            Some(n) => u32::try_from(n)
-                .ok()
-                .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
-                .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
-        };
+        // Not given: each format's own (Word's is the fallback of its SVG; plan A9-X1b).
+        options.diagram_px = a
+            .opt_int("diagram_px")?
+            .map(|n| {
+                u32::try_from(n)
+                    .ok()
+                    .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
+                    .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))
+            })
+            .transpose()?;
         options.style = theme_style(a)?;
         options.review_marks = a.opt_bool("review_marks")?;
         // HTML and EPUB show figurines with the user's font when there is one.
