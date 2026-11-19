@@ -3868,3 +3868,9 @@ pawn structure	Passed	Περαστά
 	{path} is a link, which the Library never opens.	Το {path} είναι σύνδεσμος, που η Βιβλιοθήκη δεν ανοίγει ποτέ.
 	{path} can't be opened.	Το {path} δεν μπορεί να ανοίξει.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Η τελευταία κατασκευή διακόπηκε (το PdfCraft έκλεισε ή σταμάτησε σε σφάλμα): η Συνέχεια συνεχίζει από εκεί που ήταν.
+	Show the clock and the evaluation the PGN gives each move	Εμφάνιση του ρολογιού και της αξιολόγησης που δίνει το PGN σε κάθε κίνηση
+	Evaluation: {value}	Αξιολόγηση: {value}
+	Clock: {time}	Ρολόι: {time}
+	PGN for	PGN για
+	Standard PGN	Τυπικό PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Το Lichess και το ChessBase κρατούν μόνο τον κωδικό των λευκών για ένα σύμβολο που έχει κωδικό για κάθε πλευρά: των μαύρων γράφονται ως των λευκών. Για το Lichess, ένα σύμβολο που δεν γνωρίζει μπαίνει στο σχόλιο της κίνησης και η αξιολόγηση της μηχανής ως [%eval]· για το ChessBase, ένα διάγραμμα με το δικό του σημάδι.

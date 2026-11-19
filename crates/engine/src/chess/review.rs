@@ -27,6 +27,7 @@ use std::fmt::Write as _;
 use pdfcraft_chess::fen::Fen;
 use pdfcraft_chess::game::Game as Played;
 use pdfcraft_chess::judge::{self, Band, Judged, Limits, Outcome, Value, Verdict};
+use pdfcraft_chess::pgn_style::PgnDialect;
 use pdfcraft_chess::placement::Color;
 use pdfcraft_chess::stipulation::Goal;
 use pdfcraft_chessvision::doc::games::GameScore;
@@ -1029,11 +1030,15 @@ mod running {
 }
 
 /// The comment the PGN export gives a move the engine disagrees with (plan A9-N17a, decision C:
-/// `{Motor: …}`; the `[%eval]` command comes with F7, which owns that dialect): the label in the
-/// book's language (`text_lang`), then the engine's values as a ChessBase reader reads them, value
-/// and depth (`−1.50/22`), its best move instead and the engine's name.
-pub fn engine_comment(d: &Divergence, text_lang: &str) -> Option<String> {
+/// `{Motor: …}`): the label in the book's language (`text_lang`), then the engine's values as a
+/// ChessBase reader reads them, value and depth (`−1.50/22`), its best move instead and the
+/// engine's name. In the Lichess dialect (plan A9-F7, the dialect's one writer), lichess's command
+/// instead, the value after the move for White: `[%eval -1.50]` ([`pdfcraft_chess::pgn::eval_command`]).
+pub fn engine_comment(d: &Divergence, text_lang: &str, dialect: PgnDialect) -> Option<String> {
     let Computed::Engine(e) = &d.computed else { return None };
+    if dialect == PgnDialect::Lichess {
+        return pdfcraft_chess::pgn::eval_command(e.value);
+    }
     let label = match text_lang.split(['-', '_']).next().unwrap_or_default().to_ascii_lowercase().as_str() {
         "pt" | "es" => "Motor",
         "fr" => "Moteur",
@@ -1061,16 +1066,16 @@ pub struct EngineReview {
     pub limits: Limits,
 }
 
-/// The engine's comments ([`engine_comment`], labelled in the book's language `lang`) added to the
-/// moves of `doc`'s games that `review` says the engine disagrees with, after the book's own
-/// comment: what the PGN export writes. A move the reader did not play (the book's PGN's) has no
-/// node, and gets none. How many.
-pub fn annotate(doc: &mut ChessDoc, review: &Review, lang: &str) -> usize {
+/// The engine's comments ([`engine_comment`], labelled in the book's language `lang`, or
+/// lichess's `[%eval]` in its `dialect`) added to the moves of `doc`'s games that `review` says the
+/// engine disagrees with, after the book's own comment: what the PGN export writes. A move the
+/// reader did not play (the book's PGN's) has no node, and gets none. How many.
+pub fn annotate(doc: &mut ChessDoc, review: &Review, lang: &str, dialect: PgnDialect) -> usize {
     let mut added = 0usize;
     for d in &review.divergences {
         let Place::Move(at) = d.at else { continue };
         let Some(node) = at.find(doc).and_then(|m| m.game) else { continue };
-        let Some(comment) = engine_comment(d, lang) else { continue };
+        let Some(comment) = engine_comment(d, lang, dialect) else { continue };
         let Some(n) = doc.games.get_mut(node.game).and_then(|g| g.score.nodes.get_mut(node.node)) else { continue };
         // What appending writes now: as the comment writes it (spaces collapsed, `}` as `)`), and
         // only what the comment's cap lets in. A second run finds it, whole or as the piece the

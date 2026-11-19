@@ -7,9 +7,17 @@
 //! as Windows-1252 (ISO 8859-1 with printable characters where Latin-1 has C1 controls), and a
 //! leading byte order mark is dropped. Deciding for the whole file instead would turn every UTF-8
 //! game of a joined collection into mojibake for the sake of one Latin-1 game.
+//!
+//! A comment's `[%…]` commands (`[%clk]`, `[%eval]`) are told apart from its prose here too
+//! ([`split_commands`], plan A9-F7).
 
+mod commands;
 mod writer;
 
+pub use commands::{
+    Command, DIAGRAM_COMMAND, diagram_command_as, eval_command, has_diagram_command, has_prose, join_commands, prose, shown_clock, shown_eval,
+    split_commands, without_diagram_command,
+};
 pub use writer::{ECO_PLIES, LINE_WIDTH, WriteOptions, comment_letters, movetext, write, write_games};
 
 /// Largest PGN file read, in bytes: a collection opened, a book's PGN, the games a tool reads
@@ -199,6 +207,62 @@ mod tests {
                 assert!(text.contains("Réti, Richard") && text.contains("São Paulo") && text.contains("Peña, Ñuño"), "{name}");
             }
         }
+    }
+
+    /// Plan A9-F7: a file shaped as ChessBase 26 writes one (what the D18 session saw, written
+    /// here by hand): a byte order mark, CRLF lines and an LF game in one file, the next `[Event`
+    /// right after a result with no blank line, a tag twice and the tags it adds, the whole move
+    /// text on one line, its evaluation profile before the first move, a diagram as `{[#]}`, a
+    /// Black move after a comment with no `5...`, and a training question with the comment's prose
+    /// after it. Every game reads whole, and is written back with its commands where they were.
+    #[test]
+    fn a_pgn_as_chessbase_writes_it_reads_whole() {
+        let mut bytes = BOM.to_vec();
+        bytes.extend_from_slice(
+            b"[Event \"Marks\"]\r\n[Site \"?\"]\r\n[Date \"2026.11.11\"]\r\n[Round \"1\"]\r\n[White \"White\"]\r\n[Black \"Black\"]\r\n\
+              [Result \"*\"]\r\n[Annotator \"someone\"]\r\n[ECO \"E59\"]\r\n[WhiteFideId \"-1\"]\r\n[WhiteFideId \"-1\"]\r\n[PlyCount \"20\"]\r\n\
+              [GameId \"1234567890\"]\r\n[EventDate \"2026.??.??\"]\r\n\r\n\
+              {[%evp 0,19,10,17,14,32767,32767,10]} 1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 5. Bd3 {[#]} d5 6. Nf3 c5 7. O-O Nc6 8. a3 Bxc3 9. bxc3 dxc4 10. Bxc4 Qc7 *\r\n\r\n\
+              [Event \"Copied\"]\n[Result \"1/2-1/2\"]\n\n1. e4 c5 2. Nf3 d6 1/2-1/2\n\
+              [Event \"Signs\"]\r\n[Result \"*\"]\r\n\r\n\
+              1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O $36 {The initiative.} Be7 6. Re1 b5 7. Bb3 d6 *\r\n\r\n\
+              [Event \"Exercise\"]\r\n[Result \"*\"]\r\n[SetUp \"1\"]\r\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1\"]\r\n[PlyCount \"1\"]\r\n\r\n\
+              {[%tqu \"En\",\"Mate in 1.\",\"\",\"\",\"d1d8\",\"\",10,\"h2h3\",\"\",5] White to play and mate.} 1. Rd8# *\r\n\r\n",
+        );
+        let (text, encoding) = decode(&bytes);
+        assert_eq!(encoding, PgnEncoding::Utf8Bom);
+        let games = crate::game::split_pgn(&text, 10);
+        assert_eq!(games.len(), 4, "{games:#?}");
+        let read: Vec<crate::game::Game> = games
+            .iter()
+            .map(|g| {
+                let (game, stopped) = crate::game::Game::from_pgn(g).unwrap();
+                assert_eq!(stopped, None, "{g}");
+                game
+            })
+            .collect();
+        let [marks, copied, signs, exercise] = read.as_slice() else { panic!("four games") };
+        // The first: twenty plies, the profile before them, the diagram after 5.Bd3.
+        assert_eq!(marks.main_line().len(), 21);
+        assert_eq!(marks.tag("WhiteFideId"), Some("-1"));
+        assert_eq!((marks.tag("GameId"), marks.tag("EventDate")), (Some("1234567890"), Some("2026.??.??")));
+        assert_eq!(prose(marks.comment(0)), "");
+        let bd3 = marks.main_line()[9];
+        assert!(marks.has_diagram(bd3) && prose(marks.comment(bd3)).is_empty());
+        let written = marks.pgn();
+        assert!(written.contains("{[%evp 0,19,10,17,14,32767,32767,10]} 1. d4") && written.contains("5. Bd3 {[#]} 5... d5"), "{written}");
+        // The LF game, and the one after it with no blank line between.
+        assert_eq!((copied.tag("Event"), copied.result().as_str(), copied.main_line().len()), (Some("Copied"), "1/2-1/2", 5));
+        let line = signs.main_line();
+        assert_eq!((signs.san(line[10]), signs.nags(line[9]), signs.comment(line[9])), ("Be7", &[36][..], "The initiative."));
+        // The training question is a command, the prose after it the comment's words.
+        let (words, commands) = split_commands(exercise.comment(0));
+        assert_eq!((words.as_str(), commands.len()), ("White to play and mate.", 1));
+        assert!(
+            exercise
+                .movetext()
+                .starts_with("{[%tqu \"En\",\"Mate in 1.\",\"\",\"\",\"d1d8\",\"\",10,\"h2h3\",\"\",5] White to play and mate.} 1. Rd8#")
+        );
     }
 
     proptest::proptest! {

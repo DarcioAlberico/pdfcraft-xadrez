@@ -371,7 +371,7 @@ fn the_style_leaves_out_variations_comments_and_glyphs() {
     let main = write_game_with(&g, PgnStyle { variations: Variations::Depth(0), ..PgnStyle::FULL });
     assert_eq!(tags(&main), tags(&full));
     assert!(!main.contains("Kf1") && moves(&main).contains("24. O-O-O $146 O-O *"), "{main}");
-    let bare = write_game_with(&g, PgnStyle { variations: Variations::Depth(0), comments: false, nags: false });
+    let bare = write_game_with(&g, PgnStyle { variations: Variations::Depth(0), comments: false, nags: false, ..PgnStyle::FULL });
     assert_eq!(tags(&bare), tags(&full));
     assert_eq!(moves(&bare), "23... exd3 24. O-O-O O-O *", "{bare}");
     let back = read_games(&bare);

@@ -684,12 +684,14 @@ fn moves(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rect) -> O
 }
 
 /// The move shown's comment, large (plan HC12), in at most three lines: a longer one ends in "…"
-/// and is whole in its tooltip and accessible name.
+/// and is whole in its tooltip and accessible name. Its prose only: a comment of `[%clk]` and
+/// `[%eval]` commands, as every move of a lichess game has, shows nothing (plan A9-F7, R6-01).
 fn comment_large(ui: &mut egui::Ui, t: &Tokens, state: &chess_board_ui::BoardState) {
     if state.is_illegal() {
         return;
     }
-    let comment = state.game().comment(state.game().current());
+    let comment = pdfcraft_engine::chess::pdfcraft_chess::pgn::prose(state.game().comment(state.game().current()));
+    let comment = comment.as_ref();
     if comment.trim().is_empty() {
         return;
     }

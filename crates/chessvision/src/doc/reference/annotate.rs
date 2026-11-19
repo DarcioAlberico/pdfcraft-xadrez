@@ -224,7 +224,8 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, pos
     }
     for at in &marked {
         let Some(game) = games.get_mut(at.game).and_then(Option::as_mut) else { continue };
-        if at.node > 0 && !game.nags(at.node).iter().any(|&c| pdfcraft_chess::nag::is_diagram(c)) {
+        // A move ChessBase marked (`{[#]}`, plan A9-F7) is marked already.
+        if at.node > 0 && !game.has_diagram(at.node) {
             game.toggle_nag(at.node, pdfcraft_chess::nag::DIAGRAM);
             made.diagrams = made.diagrams.saturating_add(1);
         }

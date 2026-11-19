@@ -323,9 +323,10 @@ pub struct BoardState {
     /// While a step forward asks which reply (`AtFork::Ask`): the one picked, by its index among
     /// the move shown's replies.
     pub(crate) choosing: Option<usize>,
-    /// The notation's tokens and the game revision they are of: worked out once per change, not
-    /// every frame (plan A8 V3).
-    tokens_cache: Option<(u64, std::sync::Arc<Vec<Token>>)>,
+    /// The notation's tokens (each comment as its prose, plan A9-F7) and the clock and evaluation
+    /// each move's comment commands give, with the game revision they are of: worked out once per
+    /// change, not every frame (plan A8 V3).
+    tokens_cache: Option<(u64, std::sync::Arc<Vec<Token>>, Badges)>,
     /// The previous and the next variation from the move shown (plan HC11), with the revision and
     /// the move they are for: each walks the whole game, so they are worked out once per change.
     variation_steps: Option<(u64, NodeId, Option<NodeId>, Option<NodeId>)>,
@@ -815,17 +816,31 @@ impl BoardState {
         }
     }
 
-    /// The notation's tokens of the game shown, from the cache while the game is unchanged.
+    /// The notation's tokens of the game shown, from the cache while the game is unchanged: each
+    /// comment as its prose, without its `[%clk]`/`[%eval]`/… commands (plan A9-F7, R6-01), so a
+    /// comment of commands only is empty and the notation shows no comment there.
     pub(crate) fn tokens(&mut self) -> std::sync::Arc<Vec<Token>> {
+        self.notation_cache().0
+    }
+
+    /// The clock and the evaluation move `node`'s comment commands give (plan A9-F7), from the
+    /// cache while the game is unchanged.
+    pub(crate) fn badges(&mut self, node: NodeId) -> Option<MoveBadges> {
+        self.notation_cache().1.get(&node).cloned()
+    }
+
+    /// The tokens and the badges, worked out once per revision of the game.
+    fn notation_cache(&mut self) -> (std::sync::Arc<Vec<Token>>, Badges) {
         let revision = self.game().revision();
-        if let Some((r, tokens)) = &self.tokens_cache
+        if let Some((r, tokens, badges)) = &self.tokens_cache
             && *r == revision
         {
-            return tokens.clone();
+            return (tokens.clone(), badges.clone());
         }
-        let tokens = std::sync::Arc::new(self.game().tokens());
-        self.tokens_cache = Some((revision, tokens.clone()));
-        tokens
+        let (tokens, badges) = shown_tokens(self.game());
+        let (tokens, badges) = (std::sync::Arc::new(tokens), std::sync::Arc::new(badges));
+        self.tokens_cache = Some((revision, tokens.clone(), badges.clone()));
+        (tokens, badges)
     }
 
     /// The first moves of the previous and the next variation in reading order from the move
@@ -2158,6 +2173,11 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
         r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
     }
     glyphs_after(ui, t, nags, small);
+    if crate::chess_figurines::badges(ui.ctx())
+        && let Some(badges) = state.badges(node)
+    {
+        badges_after(ui, t, &badges);
+    }
     if state.game().has_diagram(node) {
         let name = crate::i18n::fmt(tl!("Diagram after {move}"), &[("move", &crate::chess_tools::move_name(state.game(), node))]);
         let d = ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
@@ -2497,6 +2517,78 @@ fn glyphs(nags: &[u16], mut drawable: impl FnMut(&str) -> bool) -> String {
 
 /// After a move's label in the notation: its painted signs, then its assessments without a sign
 /// by name, small and muted, each with its `$n` as the tooltip (see `chess_annotate`'s notes).
+/// The badges of a game's moves, by move ([`shown_tokens`]).
+type Badges = std::sync::Arc<HashMap<NodeId, MoveBadges>>;
+
+/// The clock and the evaluation a move's comment commands give (`[%clk]` or `[%emt]`, `[%eval]`),
+/// as its badges show them (plan A9-F7).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct MoveBadges {
+    pub clock: Option<String>,
+    pub eval: Option<String>,
+}
+
+/// `game`'s tokens as the notation shows them, each comment as its prose (plan A9-F7, R6-01: a
+/// lichess game has a clock in every move's comment, and each move used to read as commented,
+/// the command in italics), and the badges of the moves whose comments have a clock or an
+/// evaluation. The game keeps the comments whole, and its PGN writes them back.
+pub(crate) fn shown_tokens(game: &Game) -> (Vec<Token>, HashMap<NodeId, MoveBadges>) {
+    use pdfcraft_engine::chess::pdfcraft_chess::pgn;
+    let mut tokens = game.tokens();
+    let mut badges = HashMap::new();
+    for token in &mut tokens {
+        let Token::Comment { node, text, before } = token else { continue };
+        // Every command starts with a bracket (`[%clk …]`, ChessBase's `[#]`).
+        if !text.contains('[') {
+            continue;
+        }
+        let (prose, commands) = pgn::split_commands(text);
+        if !*before {
+            let found = MoveBadges { clock: pgn::shown_clock(&commands), eval: pgn::shown_eval(&commands) };
+            if found != MoveBadges::default() {
+                badges.insert(*node, found);
+            }
+        }
+        *text = prose;
+    }
+    // A Black move is numbered after what is not a move (plan A9-F7): a comment now empty no
+    // longer shows, so the move after it reads on from the White move (`1. e4 e5`, not
+    // `1. e4 1... e5`), as after no comment.
+    let mut after_move = false;
+    for token in &mut tokens {
+        match token {
+            Token::Comment { text, .. } if text.is_empty() => {}
+            Token::Move { color, numbered, .. } => {
+                if *color == Color::Black {
+                    *numbered = !after_move;
+                }
+                after_move = true;
+            }
+            _ => after_move = false,
+        }
+    }
+    (tokens, badges)
+}
+
+/// A move's clock and evaluation (plan A9-F7), small and muted after its glyphs, when the
+/// preference shows them; each named in its tooltip and for assistive technology.
+fn badges_after(ui: &mut egui::Ui, t: &Tokens, badges: &MoveBadges) {
+    let parts = [(badges.eval.as_deref(), tl!("Evaluation: {value}"), "value"), (badges.clock.as_deref(), tl!("Clock: {time}"), "time")];
+    for (text, name, key) in parts {
+        let Some(text) = text else { continue };
+        let name = crate::i18n::fmt(name, &[(key, text)]);
+        // One widget that never breaks, so the running text wraps it as a whole (a frame around a
+        // label is laid out before the row knows it must wrap, and was painted past the list's
+        // edge; a label that may break spans two lines); its border painted around it, the
+        // spaces its margin.
+        let label = egui::Label::new(egui::RichText::new(format!(" {text} ")).small().color(t.text_muted)).selectable(false).extend();
+        let r = ui.add(label.sense(egui::Sense::hover()));
+        ui.painter().rect_stroke(r.rect, 3.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &name));
+        r.on_hover_text(name);
+    }
+}
+
 fn glyphs_after(ui: &mut egui::Ui, t: &Tokens, nags: &[u16], small: bool) {
     let color = if small { t.text_muted } else { t.text };
     for &code in nags {
@@ -3028,6 +3120,46 @@ mod tests {
         assert_eq!(shape, ["1:e4:e5", "break(1)", "2:Nf3:-", "break(4)", "2:-:Nc6", "3:Bb5:-"]);
         // Nothing to pair: no row.
         assert!(column_items(&[]).is_empty());
+    }
+
+    /// Plan A9-F7 (R6-01): a game downloaded from lichess has `[%eval]` and `[%clk]` in every
+    /// move's comment. The notation shows no comment on those moves (the comment of commands only
+    /// is empty, its prose), the columns pair them unbroken, a move's spoken name says no comment,
+    /// and the badges have the clock and the evaluation; the game keeps the commands for its PGN.
+    #[test]
+    fn a_lichess_game_shows_no_comment_on_its_moves() {
+        let pgn = "1. e4 { [%eval 0.17] [%clk 0:03:00] } 1... e5 { [%eval 0.19] [%clk 0:03:00] } \
+                   2. Nf3 { [%eval 0.15] [%clk 0:02:58] } 2... Nc6 { Solid. [%eval 0.2] [%clk 0:02:57] } 3. Bb5 { [#] } *";
+        let mut b = BoardState { pgn_text: pgn.into(), ..BoardState::default() };
+        let _ = b.load_pgn();
+        let tokens = b.tokens();
+        let comments: Vec<&str> =
+            tokens.iter().filter_map(|t| if let Token::Comment { text, .. } = t { Some(text.as_str()) } else { None }).collect();
+        assert_eq!(comments, ["", "", "", "Solid.", ""], "the prose of each comment");
+        // Black's moves after a hidden comment read on, unnumbered; after words, numbered.
+        let numbered: Vec<bool> = tokens.iter().filter_map(|t| if let Token::Move { numbered, .. } = t { Some(*numbered) } else { None }).collect();
+        assert_eq!(numbered, [true, false, true, false, true]);
+        let refs: Vec<&Token> = tokens.iter().collect();
+        let pairs: Vec<String> = column_items(&refs)
+            .iter()
+            .map(|item| match item {
+                ColItem::Pair { number, .. } => format!("{number}"),
+                ColItem::Break(held) => format!("break({})", held.len()),
+            })
+            .collect();
+        assert_eq!(pairs, ["1", "2", "break(1)", "3"], "only Solid. breaks the columns");
+        let line = b.game().main_line();
+        let (e4, nc6, bb5) = (line[1], line[4], line[5]);
+        let name = crate::chess_tools::move_spoken(b.game(), e4);
+        assert!(!name.contains("with comment"), "{name}");
+        assert!(crate::chess_tools::move_spoken(b.game(), nc6).contains("with comment"));
+        assert_eq!(b.badges(e4), Some(MoveBadges { clock: Some("3:00".into()), eval: Some("+0.17".into()) }));
+        assert_eq!(b.badges(nc6).and_then(|m| m.clock).as_deref(), Some("2:57"));
+        assert_eq!(b.badges(bb5), None);
+        assert!(b.game().has_diagram(bb5), "ChessBase's diagram mark");
+        // The game keeps them, and its PGN writes them back.
+        assert_eq!(b.game().comment(e4), "[%eval 0.17] [%clk 0:03:00]");
+        assert!(b.game().movetext().starts_with("1. e4 {[%eval 0.17] [%clk 0:03:00]} 1... e5"), "{}", b.game().movetext());
     }
 
     /// Plan HC12: each quality chip's sign reads on its fill at 4.5:1, and no two chips share a

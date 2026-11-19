@@ -6,3 +6,4 @@ Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige 
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| A9-F7 | (ainda não no `main`) | 10 — A lista de lances; 13 — Sinais e comentários (Diagrama aqui); 17 — Preferências e aparência (a seção Xadrez); 18 — Exportar o livro (o diálogo) | Os comandos de um comentário (`[%clk]`, `[%eval]`, `[%emt]`, `[%evp]`, `[%tqu]`, `[#]` do ChessBase) não aparecem mais: um lance de uma partida do lichess não fica "comentado", o comentário grande mostra só as palavras, e o nome falado não diz "com comentário". Preferência nova, desligada: **Mostrar o relógio e a avaliação que o PGN dá a cada lance** (dois selos depois do lance). `$201` (Scid, ChessDB) e o `{[#]}` do ChessBase são marcas de diagrama. O diálogo de exportação ganhou **PGN para** (nos PGNs de partidas e de exercícios): **PGN padrão**, **Lichess** ou **ChessBase**. Nenhum rótulo que a ajuda cita mudou. |

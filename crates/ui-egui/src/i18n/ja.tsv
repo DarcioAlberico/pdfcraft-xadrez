@@ -3877,3 +3877,9 @@ pawn structure	Passed	パスポーン
 	{path} is a link, which the Library never opens.	{path} はリンクです。ライブラリはリンクを開きません。
 	{path} can't be opened.	{path} を開けません。
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	前回の構築は途中で終わりました（PdfCraft が閉じられたか、エラーで止まりました）：「続行」で中断したところから続けます。
+	Show the clock and the evaluation the PGN gives each move	PGN が各指し手に付けた時計と評価値を表示
+	Evaluation: {value}	評価値: {value}
+	Clock: {time}	時計: {time}
+	PGN for	PGN の出力先
+	Standard PGN	標準の PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess と ChessBase は、白黒それぞれにコードがある記号について白のコードしか保持しません。黒のコードは白のコードとして書き出されます。Lichess では、認識されない記号は指し手のコメントに入り、エンジンの評価値は [%eval] になります。ChessBase では、局面図は ChessBase 独自の印になります。

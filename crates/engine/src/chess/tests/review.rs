@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use pdfcraft_chess::game::Game as Played;
 use pdfcraft_chess::judge::{Band, Limits, Value};
+use pdfcraft_chess::pgn_style::PgnDialect;
 use pdfcraft_chess::stipulation::Goal;
 use pdfcraft_chess::uci::{Bound, Score};
 use pdfcraft_chessvision::doc::{Block, ChessDoc, DiagramAt};
@@ -144,16 +145,38 @@ fn the_pgn_gets_the_engines_comment_on_the_move() {
     evals.keep(&after(&["e4", "e5"]), eval(22, 50, "d2d4"));
     evals.keep(&after(&["e4", "e5", "Nf3"]), eval(22, -150, "b8c6"));
     let r = review::divergences(&doc, &[], &evals, &Limits::default());
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 1);
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Standard), 1);
     let node = doc.games[0].score.nodes.iter().find(|n| n.san == "Nf3").unwrap();
     assert_eq!(node.comment, "Engine: \u{2212}1.50/22; 2.d4 +0.50/22 (Stockfish 17)");
     // Once only.
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 0);
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Standard), 0);
     let book = pdfcraft_chessvision::doc::markdown::PgnBook { title: None, labels: vec![] };
     let pgn = pdfcraft_chessvision::doc::markdown::pgn_export(&doc, &book, Default::default(), Default::default()).pgn;
     assert!(pgn.contains("{Engine: \u{2212}1.50/22; 2.d4 +0.50/22 (Stockfish 17)}"), "{pgn}");
     // In a Portuguese book, the label is "Motor".
-    assert!(review::engine_comment(&r.divergences[0], "pt-BR").unwrap().starts_with("Motor: "));
+    assert!(review::engine_comment(&r.divergences[0], "pt-BR", PgnDialect::Standard).unwrap().starts_with("Motor: "));
+}
+
+/// Plan A9-F7: in the Lichess dialect the engine's word is lichess's evaluation command, the value
+/// after the move for White, instead of `{Engine: …}`; the PGN export writes it in the move's
+/// comment, and the dialect's glyphs with it.
+#[test]
+fn the_lichess_pgn_gets_the_engines_value_as_an_eval_command() {
+    let mut doc = read_book();
+    let mut evals = file();
+    evals.keep(&after(&["e4", "e5"]), eval(22, 50, "d2d4"));
+    evals.keep(&after(&["e4", "e5", "Nf3"]), eval(22, -150, "b8c6"));
+    let r = review::divergences(&doc, &[], &evals, &Limits::default());
+    assert_eq!(review::engine_comment(&r.divergences[0], "pt-BR", PgnDialect::Lichess).as_deref(), Some("[%eval -1.50]"));
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Lichess), 1);
+    let node = doc.games[0].score.nodes.iter().find(|n| n.san == "Nf3").unwrap();
+    assert_eq!(node.comment, "[%eval -1.50]");
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Lichess), 0, "once only");
+    let book = pdfcraft_chessvision::doc::markdown::PgnBook { title: None, labels: vec![] };
+    let style = pdfcraft_chess::pgn_style::PgnStyle { dialect: PgnDialect::Lichess, ..Default::default() };
+    let pgn = pdfcraft_chessvision::doc::markdown::pgn_export(&doc, &book, Default::default(), style).pgn;
+    assert!(pgn.contains("Nf3 $1 {[%eval -1.50]}") || pgn.contains("Nf3 {[%eval -1.50]}"), "{pgn}");
+    assert!(!pgn.contains("Engine:"), "{pgn}");
 }
 
 /// An exercise (a numbered diagram) asks for two lines, and a second winning line is another
@@ -388,8 +411,13 @@ fn the_engines_comment_is_added_once_whatever_its_characters() {
     evals.keep(&after(&["e4", "e5"]), Eval::new(22, Score::Centipawns(50), Bound::Exact, &["d2d4".to_owned()], Some("Stock}fish  17"), 1).unwrap());
     evals.keep(&after(&["e4", "e5", "Nf3"]), eval(22, -150, "b8c6"));
     let r = review::divergences(&doc, &[], &evals, &Limits::default());
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 1);
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 0, "{:?}", doc.games[0].score.nodes.iter().map(|n| &n.comment).collect::<Vec<_>>());
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Standard), 1);
+    assert_eq!(
+        review::annotate(&mut doc, &r, "en", PgnDialect::Standard),
+        0,
+        "{:?}",
+        doc.games[0].score.nodes.iter().map(|n| &n.comment).collect::<Vec<_>>()
+    );
 }
 
 /// How [`fake`] behaves once given a position.
@@ -588,7 +616,7 @@ fn an_engines_comment_cut_at_the_comments_cap_is_added_once() {
     evals.keep(&after(&["e4", "e5", "Nf3"]), Eval::new(22, Score::Centipawns(-150), Bound::Exact, &["b8c6".to_owned()], name, 1).unwrap());
     let r = review::divergences(&doc, &[], &evals, &Limits::default());
     let d = r.divergences.iter().find(|d| matches!(d.computed, Computed::Engine(_))).unwrap_or_else(|| panic!("{r:#?}"));
-    let full = review::engine_comment(d, "en").unwrap();
+    let full = review::engine_comment(d, "en", PgnDialect::Standard).unwrap();
     // The book's comment leaves room for all of it but its last word (the engine's name), and 20
     // bytes more: the first words would fit again.
     let last = full.rsplit(' ').next().unwrap().len();
@@ -597,10 +625,10 @@ fn an_engines_comment_cut_at_the_comments_cap_is_added_once() {
     for n in &mut doc.games[0].score.nodes {
         n.comment = "x".repeat(room);
     }
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 1);
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Standard), 1);
     let once: Vec<String> = doc.games[0].score.nodes.iter().map(|n| n.comment.clone()).collect();
     assert!(once.iter().any(|c| c.len() > room && !c.contains(&full)), "cut: {once:?}");
-    assert_eq!(review::annotate(&mut doc, &r, "en"), 0);
+    assert_eq!(review::annotate(&mut doc, &r, "en", PgnDialect::Standard), 0);
     assert_eq!(doc.games[0].score.nodes.iter().map(|n| n.comment.clone()).collect::<Vec<_>>(), once, "nothing appended again");
 }
 

@@ -113,3 +113,37 @@ fn a_book_of_games_is_written_by_the_html_export() {
     // The JSON reads back.
     assert_eq!(ChessDoc::from_json(&doc.to_json().unwrap()).unwrap(), doc);
 }
+
+/// Plan A9-F7 (R6-01): a game downloaded from lichess has a clock and an evaluation in the
+/// comment of every move; the book made of it shows each comment's prose and no command, so its
+/// exports (HTML, EPUB, Word, RTF, Markdown) never print one. ChessBase's diagram mark, `{[#]}`
+/// in a move's comment, is a diagram like `$220`.
+#[test]
+fn a_book_of_lichess_games_prints_no_command() {
+    let pgn = "[Event \"Blitz\"]\n[White \"A\"]\n[Black \"B\"]\n\n\
+1. e4 { [%eval 0.17] [%clk 0:03:00] } 1... e5 { [%eval 0.19] [%clk 0:03:00] } \
+2. Nf3 { A developing move. [%eval 0.15] [%clk 0:02:58] } 2... d6 { [#] [%clk 0:02:57] } 3. d4 *\n";
+    let doc = from_games(&games(pgn), &FromGames::default());
+    let [page] = doc.pages.as_slice() else { panic!("{} pages", doc.pages.len()) };
+    assert_eq!(shape(page), ["heading", "paragraph", "paragraph", "diagram", "paragraph"]);
+    assert_eq!(paragraph(&page.blocks[2]), ["1.e4*", "1...e5*", "2.Nf3*", "A developing move.", "2...d6*"]);
+    let Block::Diagram(d) = &page.blocks[3] else { panic!() };
+    assert_eq!(d.shown().map(|s| s.fen), Some(after(&["e4", "e5", "Nf3", "d6"]).as_str()));
+    let text: String = page.blocks.iter().map(|b| super::plain_text(b.inlines())).collect::<Vec<_>>().join("\n");
+    assert!(!text.contains("[%") && !text.contains("[#]"), "{text}");
+    let md = crate::doc::markdown::write(
+        &doc,
+        &crate::doc::markdown::MarkdownOptions {
+            title: "Blitz",
+            figurines: crate::doc::html::Figurines::Letters(pdfcraft_chess::san::Lang::En),
+            diagrams: crate::doc::markdown::MarkdownDiagrams::Fen,
+            links: false,
+            link_text: "",
+            image_dir: "",
+            lang: "",
+            page_labels: &[],
+            naming: pdfcraft_chess::describe::Naming::Letters,
+        },
+    );
+    assert!(!md.contains("[%") && !md.contains("[#]") && md.contains("A developing move."), "{md}");
+}

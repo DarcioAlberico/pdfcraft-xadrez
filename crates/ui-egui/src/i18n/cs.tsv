@@ -3949,3 +3949,9 @@ pawn structure	Passed	Volní
 	{path} is a link, which the Library never opens.	{path} je odkaz, který knihovna nikdy neotevírá.
 	{path} can't be opened.	{path} nelze otevřít.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Poslední sestavení bylo přerušeno (PdfCraft se zavřel nebo se zastavil na chybě): Pokračovat naváže tam, kde skončilo.
+	Show the clock and the evaluation the PGN gives each move	Zobrazit hodiny a hodnocení, které PGN uvádí u každého tahu
+	Evaluation: {value}	Hodnocení: {value}
+	Clock: {time}	Hodiny: {time}
+	PGN for	PGN pro
+	Standard PGN	Standardní PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess a ChessBase uchovávají u značky, která má kód pro každou stranu, jen kód bílého: kódy černého se zapisují jako kódy bílého. Pro Lichess jde značka, kterou nezná, do komentáře k tahu a hodnocení enginu jako [%eval]; pro ChessBase se diagram zapisuje jeho vlastní značkou.

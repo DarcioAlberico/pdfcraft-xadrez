@@ -4123,3 +4123,9 @@ pawn structure	Passed	Laisvi
 	{path} is a link, which the Library never opens.	{path} yra nuoroda, kurios Biblioteka niekada neatidaro.
 	{path} can't be opened.	{path} neįmanoma atidaryti.
 	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Paskutinis kūrimas buvo nutrauktas (PdfCraft užsidarė arba sustojo dėl klaidos): Tęsti tęsia nuo ten, kur sustojo.
+	Show the clock and the evaluation the PGN gives each move	Rodyti laikrodį ir įvertinimą, kuriuos PGN pateikia kiekvienam ėjimui
+	Evaluation: {value}	Įvertinimas: {value}
+	Clock: {time}	Laikrodis: {time}
+	PGN for	PGN skirtas
+	Standard PGN	Standartinis PGN
+	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess ir ChessBase iš ženklo, turinčio kodą kiekvienai pusei, išlaiko tik baltųjų kodą: juodųjų kodai rašomi kaip baltųjų. Lichess atveju ženklas, kurio jis nežino, patenka į ėjimo komentarą, o variklio įvertinimas – kaip [%eval]; ChessBase atveju diagrama rašoma jo paties žyme.
