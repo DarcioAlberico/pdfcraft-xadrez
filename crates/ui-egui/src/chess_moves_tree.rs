@@ -212,12 +212,12 @@ pub(crate) fn has_variations(tokens: &[Token]) -> bool {
 /// Do what the tree's menu or trail asked for.
 pub(crate) fn apply(state: &mut BoardState, asked: Option<TreeAction>) {
     match asked {
-        Some(TreeAction::Go(node)) => state.game.go_to_node(node),
+        Some(TreeAction::Go(node)) => state.walk(|game| game.go_to_node(node)),
         Some(TreeAction::ExpandAll) => {
             state.folded.clear();
             state.main_only = false;
         }
-        Some(TreeAction::CollapseAll) => state.folded = state.game.variation_starts().into_iter().collect(),
+        Some(TreeAction::CollapseAll) => state.folded = state.game().variation_starts().into_iter().collect(),
         Some(TreeAction::MainOnly(on)) => state.main_only = on,
         None => {}
     }
@@ -251,7 +251,7 @@ pub(crate) fn tree_menu(ui: &mut egui::Ui, t: &Tokens, state: &BoardState) -> Op
 /// not fit are left out from the second on, with a "…" in their place (the trail's last
 /// segments, nearest the move shown, are the ones kept; its whole is its accessible name).
 pub(crate) fn trail(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, room: f32) -> Option<TreeAction> {
-    let game = &state.game;
+    let game = state.game();
     let current = game.current();
     let holding = variations_holding(game, current);
     let &innermost = holding.last()?;
@@ -336,16 +336,16 @@ fn game_parent_of(game: &Game, node: NodeId) -> NodeId {
 /// (and a line of the moves' region).
 /// Whether the move shown is at a fork (and the row was drawn).
 pub(crate) fn continuations(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, room: f32) -> bool {
-    let current = state.game.current();
-    let replies = state.game.replies(current).to_vec();
+    let current = state.game().current();
+    let replies = state.game().replies(current).to_vec();
     if replies.len() < 2 {
         state.choosing = None;
         return false;
     }
-    let remembered = state.game.next_reply(current);
+    let remembered = state.game().next_reply(current);
     let choosing = state.choosing.filter(|k| *k < replies.len());
     let mut pick = None;
-    let names: Vec<String> = replies.iter().map(|&reply| crate::chess_tools::move_name(&state.game, reply)).collect();
+    let names: Vec<String> = replies.iter().map(|&reply| crate::chess_tools::move_name(state.game(), reply)).collect();
     let marked = |i: usize| match choosing {
         Some(k) => k == i,
         None => replies.get(i).copied() == remembered,
@@ -401,7 +401,9 @@ pub(crate) fn continuations(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardStat
     }
     if let Some(i) = pick {
         state.choosing = None;
-        state.game.forward_to(i);
+        state.walk(|game| {
+            game.forward_to(i);
+        });
         state.selected = None;
     }
     true
@@ -411,7 +413,7 @@ pub(crate) fn continuations(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardStat
 /// go into it, Esc into the main line, ← leaves the question. Whether the key was taken.
 pub(crate) fn choose_key(state: &mut BoardState, key: ChooseKey) -> bool {
     let Some(k) = state.choosing else { return false };
-    let n = state.game.replies(state.game.current()).len();
+    let n = state.game().replies(state.game().current()).len();
     if n < 2 {
         state.choosing = None;
         return false;
@@ -421,11 +423,15 @@ pub(crate) fn choose_key(state: &mut BoardState, key: ChooseKey) -> bool {
         ChooseKey::Down => state.choosing = Some(if k + 1 >= n { 0 } else { k + 1 }),
         ChooseKey::Enter => {
             state.choosing = None;
-            state.game.forward_to(k.min(n - 1));
+            state.walk(|game| {
+                game.forward_to(k.min(n - 1));
+            });
         }
         ChooseKey::Main => {
             state.choosing = None;
-            state.game.forward_to(0);
+            state.walk(|game| {
+                game.forward_to(0);
+            });
         }
         ChooseKey::Leave => state.choosing = None,
     }
@@ -445,7 +451,7 @@ pub(crate) enum ChooseKey {
 /// While the move shown is the one a move played just made into a variation: "Variation created:
 /// 2…Nf6", with Make main line and Undo.
 pub(crate) fn created_notice(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
-    let Some(node) = state.created_variation.filter(|&n| n == state.game.current()) else {
+    let Some(node) = state.created_variation.filter(|&n| n == state.game().current()) else {
         state.created_variation = None;
         return;
     };
@@ -455,7 +461,7 @@ pub(crate) fn created_notice(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSta
     let mut keep = false;
     let ask = state.rules.new_move == NewMove::Ask;
     ui.horizontal_wrapped(|ui| {
-        let text = crate::i18n::fmt(tl!("Variation created: {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+        let text = crate::i18n::fmt(tl!("Variation created: {move}"), &[("move", &crate::chess_tools::move_name(state.game(), node))]);
         ui.label(egui::RichText::new(text).small().color(t.text_muted));
         if ask {
             // Asked (plan A8 V3): a new variation (as it is), a new main line, the continuation
@@ -473,12 +479,12 @@ pub(crate) fn created_notice(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSta
         state.created_variation = None;
     } else if replace {
         state.edit(|s| {
-            replace_continuation(&mut s.game);
+            replace_continuation(s.game_mut()?);
             Some(ChessEdit::DeleteMoves)
         });
         state.created_variation = None;
     } else if make_main {
-        state.edit(|s| match s.game.promote(node) {
+        state.edit(|s| match s.game_mut()?.promote(node) {
             Ok(()) => Some(ChessEdit::MakeMainLine),
             // A line that would nest the old one too deep is left as it is, and said (plan
             // A9-F5, A1-19: it was silent).

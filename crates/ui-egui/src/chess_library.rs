@@ -1085,11 +1085,7 @@ impl PdfCraftApp {
 
 /// The position the board shows, as a FEN (its own, when it is not legal).
 pub(crate) fn board_fen(chess: &crate::chess_ui::ChessState) -> String {
-    let state = chess.board();
-    match &state.illegal {
-        Some((_, fen)) => fen.clone(),
-        None => state.game.fen(),
-    }
+    chess.board().current_fen()
 }
 
 /// The first path of a book and why it is not opened, when none was looked at.

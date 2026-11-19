@@ -374,12 +374,12 @@ impl StudyState {
             self.settable = Some(snap.settable);
         }
         self.evals.note(doc, self.sent.as_deref(), &snap);
-        let want = (self.setup.is_none() && board.illegal.is_none()).then(|| board.game.fen());
+        let want = (self.setup.is_none() && !board.is_illegal()).then(|| board.game().fen());
         if want != self.sent {
             self.evals.finish();
             match &want {
                 // With the moves since the last capture or pawn move (plan A9-N8).
-                Some(_) => engine.analyse_game(&board.game),
+                Some(_) => engine.analyse_game(board.game()),
                 None => engine.stop(),
             }
             self.sent = want;
@@ -390,8 +390,8 @@ impl StudyState {
     #[cfg(not(target_arch = "wasm32"))]
     fn snapshot(&self, board: &BoardState) -> Option<pdfcraft_engine::chess::analysis::Snapshot> {
         let snap = self.engine.as_ref()?.snapshot();
-        let fen = board.game.fen();
-        Some(snap).filter(|s| board.illegal.is_none() && s.fen.as_deref().is_none_or(|f| f == fen))
+        let fen = board.game().fen();
+        Some(snap).filter(|s| !board.is_illegal() && s.fen.as_deref().is_none_or(|f| f == fen))
     }
 }
 
@@ -497,7 +497,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
         (crate::chess_editor::not_legal_text(&why), Tokens::get(ui.ctx()).danger_text)
     };
     ui.add(egui::Label::new(egui::RichText::new(text).small().color(colour)).wrap());
-    let has_moves = !board.game.is_empty();
+    let has_moves = !board.game().is_empty();
     ui.horizontal_wrapped(|ui| {
         if has_moves {
             let tip = tl!("Play from this position as a new game. The game on the board stays in the list with its moves.");
@@ -647,7 +647,7 @@ fn engine_says(study: &StudyState, board: &BoardState) -> Option<EngineSays> {
         }));
     }
     let snap = study.snapshot(board)?;
-    if board.game.legal_moves().is_empty() {
+    if board.game().legal_moves().is_empty() {
         return Some(EngineSays::NoMoves);
     }
     Some(EngineSays::Lines(Box::new(snap)))
@@ -711,7 +711,7 @@ pub(crate) fn engine_rows(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, boa
         }
         EngineSays::Lines(snap) => snap.lines,
     };
-    let fen = board.game.fen();
+    let fen = board.game().fen();
     let mut play = None;
     let shown = usize::try_from(study.lines).unwrap_or(1).clamp(1, crate::chess_board_tab::MAX_ENGINE_LINES);
     for (i, line) in lines.iter().take(shown).enumerate() {
@@ -1072,7 +1072,7 @@ mod tests {
     fn a_line_plays_onto_the_board_as_far_as_it_goes() {
         let mut b = BoardState::default();
         b.play_uci_line(&["e2e4".into(), "e7e5".into(), "e1e3".into(), "g1f3".into()]);
-        assert_eq!(b.game.movetext(), "1. e4 e5");
+        assert_eq!(b.game().movetext(), "1. e4 e5");
         assert!(b.message.is_some(), "the move that could not be played is reported");
     }
 

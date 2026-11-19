@@ -362,7 +362,7 @@ fn the_board_looks_for_its_position_in_the_library() {
     h.get_by_label("Close").click();
     h.run_steps(2);
     assert!(!h.state().chess.library.is_open(), "closed: {}", tree(&h));
-    h.state_mut().chess.board_mut().game = Game::from_fen(&spanish()).unwrap();
+    h.state_mut().chess.board_mut().set_game(Game::from_fen(&spanish()).unwrap());
     h.state_mut().show_chess_board();
     h.run_steps(3);
     h.get_by_label("In the book").click();

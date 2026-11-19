@@ -95,7 +95,7 @@ fn corrections(h: &mut Harness<'static, PdfCraftApp>) -> usize {
 /// The games of the document's list that have moves, by their movetext.
 fn games(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
     let c = h.state().chess.games.collection();
-    let mut out: Vec<String> = c.iter().filter(|e| e.moves() > 0).map(|e| e.board.game.movetext()).collect();
+    let mut out: Vec<String> = c.iter().filter(|e| e.moves() > 0).map(|e| e.board.game().movetext()).collect();
     out.sort();
     out
 }

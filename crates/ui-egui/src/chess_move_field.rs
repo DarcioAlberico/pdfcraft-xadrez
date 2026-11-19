@@ -180,7 +180,7 @@ fn promotion_of(english: &str) -> Option<PieceKind> {
 /// Do what `typed` asks on `state`'s board: what to say (empty when the move shown's own
 /// announcement says it), or why it can't be done.
 pub(crate) fn run(state: &mut BoardState, typed: Typed) -> Result<String, String> {
-    let not_legal = || tl!("The board shows a position that is not legal: correct it in the diagram editor first.").to_owned();
+    let not_legal = || crate::chess_board_ui::illegal_reason().to_owned();
     let lang = crate::chess_figurines::interface_lang();
     match typed {
         Typed::Pieces => Ok(pieces_on(&state.placement(), |_| true).unwrap_or_else(|| tl!("The board is empty.").to_owned())),
@@ -199,18 +199,18 @@ pub(crate) fn run(state: &mut BoardState, typed: Typed) -> Result<String, String
             })
         }
         Typed::Draw(mark) => Ok(draw(state, mark)),
-        _ if state.illegal.is_some() => Err(not_legal()),
+        _ if state.is_illegal() => Err(not_legal()),
         Typed::SideToMove => {
-            let side = describe::to_move(state.game.side_to_move(), lang);
+            let side = describe::to_move(state.game().side_to_move(), lang);
             let mut chars = side.chars();
             Ok(chars.next().map(|c| c.to_uppercase().chain(chars).collect()).unwrap_or_default())
         }
         Typed::LastMove => {
-            let node = state.game.current();
-            Ok(if state.game.ply() == 0 {
+            let node = state.game().current();
+            Ok(if state.game().ply() == 0 {
                 tl!("No move yet: the start of the game.").to_owned()
             } else {
-                crate::chess_tools::move_spoken(&state.game, node)
+                crate::chess_tools::move_spoken(state.game(), node)
             })
         }
         Typed::Unclear => Err(tl!("Not understood. Type a move (Nf3, e2e4), or p, u, s, f e, r 4, arrow e2e4 red, circle d5.").to_owned()),
@@ -240,7 +240,7 @@ fn play(state: &mut BoardState, text: &str, lang: Lang) -> Result<String, String
     let needs_piece = |example: &str| {
         crate::i18n::fmt(tl!("Illegal move: {move} needs the piece the pawn becomes, as in {example}."), &[("move", text), ("example", example)])
     };
-    let mut probe = state.game.clone();
+    let mut probe = state.game().clone();
     if is_uci(text) {
         match probe.play_uci(text) {
             Ok(()) => {}
@@ -253,7 +253,7 @@ fn play(state: &mut BoardState, text: &str, lang: Lang) -> Result<String, String
             Err(_) => (San::read(text, Lang::En).map_err(|_| crate::i18n::fmt(tl!("{move} is not a move."), &[("move", text)]))?, Lang::En),
         };
         if probe.play_san(&san.write(Lang::En, Style::Letters)).is_err() {
-            return Err(match refused(&state.game, &san, letters) {
+            return Err(match refused(state.game(), &san, letters) {
                 Some(Refused::Ambiguous(moves)) => {
                     crate::i18n::fmt(tl!("Illegal move: {move} is ambiguous, it could be {moves}."), &[("move", text), ("moves", &moves.join(", "))])
                 }
@@ -396,7 +396,7 @@ mod tests {
         let mut state = BoardState::default();
         state.load_fen(fen, false, None);
         let said = parse(line).map_or_else(|| Err("nothing typed".to_owned()), |t| run(&mut state, t));
-        (said, state.game.san(state.game.current()).to_owned())
+        (said, state.game().san(state.game().current()).to_owned())
     }
 
     const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -667,7 +667,7 @@ impl PdfCraftApp {
                 _ => parts.push(tl!("Games: read from the text").to_owned()),
             }
             // The user's own games are linked first (plan A9-N2): they are in every format.
-            let yours = self.chess.games.games_of(d.doc).iter().filter(|b| b.illegal.is_none() && !b.game.is_empty()).count();
+            let yours = self.chess.games.games_of(d.doc).iter().filter(|b| !b.is_illegal() && !b.game().is_empty()).count();
             if yours > 0 {
                 parts.push(crate::i18n::fmt(tl!("Your games, linked first: {n}"), &[("n", &yours.to_string())]));
             }

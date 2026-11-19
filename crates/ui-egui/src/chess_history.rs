@@ -8,7 +8,8 @@
 //! not one per key. Walking the moves is not a change and is never undone.
 //!
 //! The history is capped twice: at [`MAX_STEPS`] steps and at [`MAX_BYTES`] of estimated memory
-//! ([`Snapshot::bytes`]); the oldest steps go first.
+//! ([`Snapshot::bytes`]); the oldest steps go first. The same [`History`] keeps the document's
+//! corrections (`chess_fixes`) and the diagram editor's positions (`chess_editor`, plan A9-I6b).
 //!
 //! **Which history Undo goes to** (D12, the scope of the last action): a click in the chess
 //! panels or a change to the game puts Undo and Redo on the game; a click on the page or in
@@ -19,10 +20,10 @@
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, Token};
-use pdfcraft_engine::chess::pdfcraft_chess::placement::Placement;
+use pdfcraft_engine::chess::pdfcraft_chess::fen::Position;
+use pdfcraft_engine::chess::pdfcraft_chess::game::Token;
 
-use crate::chess_board_ui::Source;
+use crate::chess_board_ui::{BoardContent, Source};
 use crate::chess_ui::ChessState;
 
 /// Most steps kept (undo and redo together).
@@ -86,7 +87,8 @@ pub enum ChessEdit {
     /// A diagram of the document put on the board; as a step of the list of games, a diagram
     /// opened on the board as a new game (double-click, Open on the board).
     LoadDiagram,
-    /// A position set up on the study board.
+    /// A position set up on the study board; also each change of the diagram editor's position
+    /// (`chess_editor`, plan A9-I6b), whose steps are never named on screen.
     SetUp,
     /// Back to the standard start position.
     StandardStart,
@@ -188,8 +190,8 @@ pub(crate) trait Estimate {
 /// The board as a step found it.
 #[derive(Clone)]
 pub(crate) struct Snapshot {
-    pub game: Game,
-    pub illegal: Option<(Placement, String)>,
+    /// The game, or the illegal position in its place.
+    pub content: BoardContent,
     pub source: Option<Source>,
     pub flipped: bool,
 }
@@ -199,9 +201,18 @@ impl Estimate for Snapshot {
     /// [`NODE_BYTES`] for each move, variations included, and one for the start. Counting the PGN
     /// text costs a pass over the game, once per step.
     fn bytes(&self) -> usize {
-        let moves = self.game.tokens().iter().filter(|t| matches!(t, Token::Move { .. })).count();
-        let text = self.game.pgn().len().saturating_add(self.illegal.as_ref().map_or(0, |(_, fen)| fen.len()));
+        let game = self.content.game();
+        let moves = game.tokens().iter().filter(|t| matches!(t, Token::Move { .. })).count();
+        let text = game.pgn().len().saturating_add(self.content.illegal_fen().map_or(0, str::len));
         moves.saturating_add(1).saturating_mul(NODE_BYTES).saturating_add(text)
+    }
+}
+
+/// A position of the diagram editor (plan A9-I6b): its own size, which holds the 64 squares, the
+/// side to move, castling, en passant and the move numbers inline.
+impl Estimate for Position {
+    fn bytes(&self) -> usize {
+        std::mem::size_of::<Position>()
     }
 }
 
@@ -260,6 +271,16 @@ impl<S: Estimate> History<S> {
         self.past.push_back(step);
         self.edits = self.edits.wrapping_add(1);
         self.fit();
+    }
+
+    /// The last step goes on (one more change of the same run, as the diagram editor's move
+    /// number while it is dragged): it is as new as now ([`next_seq`]) and, as a new step would,
+    /// drops whatever could be redone. Nothing when there is no step to undo.
+    pub(crate) fn extend_last(&mut self) {
+        let Some(last) = self.past.back_mut() else { return };
+        last.seq = next_seq();
+        self.future.clear();
+        self.bytes = self.past.iter().map(|s| s.bytes).fold(0, usize::saturating_add);
     }
 
     /// Step back: `current` goes to the redo side and the state before the last step comes back,
@@ -473,6 +494,7 @@ pub(crate) fn pressed_in(ui: &egui::Ui) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 
     /// A state that only says how big it is.
     #[derive(Debug, PartialEq)]
@@ -548,7 +570,7 @@ mod tests {
     #[test]
     fn a_games_estimate_grows_with_its_moves_and_text() {
         let mut game = Game::standard();
-        let snap = |game: &Game| Snapshot { game: game.clone(), illegal: None, source: None, flipped: false };
+        let snap = |game: &Game| Snapshot { content: BoardContent::Game(game.clone()), source: None, flipped: false };
         let empty = snap(&game).bytes();
         assert!(empty >= NODE_BYTES);
         for mv in ["e2e4", "e7e5", "g1f3"] {

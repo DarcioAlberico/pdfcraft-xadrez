@@ -63,14 +63,14 @@ impl DeleteWatch {
     /// left it, when that is new this frame.
     pub(crate) fn see(&mut self, game: u64, board: &BoardState) -> Option<usize> {
         let mut deleted = None;
-        let revision = board.game.revision();
+        let revision = board.game().revision();
         let step = board.history.seq(true).unwrap_or(0);
         let fresh = step > self.newest_step;
         self.newest_step = self.newest_step.max(step);
         match self.seen {
             Some(seen) if seen.game == game && seen.revision == revision => {}
             seen => {
-                let (moves, variations) = counts(&board.game);
+                let (moves, variations) = counts(board.game());
                 if let Some(before) = seen.filter(|s| s.game == game)
                     && fresh
                     && moves < before.moves
@@ -127,7 +127,7 @@ mod tests {
 
     fn board(pgn: &str) -> BoardState {
         let mut board = BoardState::default();
-        board.game = Game::from_pgn(pgn).unwrap().0;
+        board.set_game(Game::from_pgn(pgn).unwrap().0);
         board
     }
 
@@ -140,8 +140,8 @@ mod tests {
         assert_eq!(w.text(), None);
         // Cut after 1. e4: four moves, two variations.
         b.edit(|s| {
-            s.game.go_to(1);
-            s.game.truncate();
+            s.game_mut().unwrap().go_to(1);
+            s.game_mut().unwrap().truncate();
             Some(ChessEdit::DeleteMoves)
         });
         assert_eq!(w.see(1, &b), Some(5));
@@ -155,7 +155,7 @@ mod tests {
         assert_eq!(w.text(), None, "an undo is no deletion");
         // Undoing a move played takes a move away, and is no deletion either.
         b.edit(|s| {
-            s.game.play_san("Nc6").ok()?;
+            s.game_mut().unwrap().play_san("Nc6").ok()?;
             Some(ChessEdit::Play("Nc6".into()))
         });
         w.see(1, &b);
@@ -164,9 +164,9 @@ mod tests {
         assert_eq!(w.text(), None);
         // One move, and another game shown, which is not this one's deletion.
         b.edit(|s| {
-            s.game.go_to(usize::MAX);
-            s.game.back();
-            s.game.truncate();
+            s.game_mut().unwrap().go_to(usize::MAX);
+            s.game_mut().unwrap().back();
+            s.game_mut().unwrap().truncate();
             Some(ChessEdit::DeleteMoves)
         });
         w.see(1, &b);

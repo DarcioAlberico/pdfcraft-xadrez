@@ -1622,7 +1622,7 @@ impl PdfCraftApp {
     /// interface's thread ([`export_with_games`]).
     pub(crate) fn export_games(&self, id: DocId) -> Option<String> {
         let games = self.chess.games.games_of(id);
-        let text: Vec<String> = games.iter().filter(|b| b.illegal.is_none() && !b.game.is_empty()).map(|b| b.game.pgn()).collect();
+        let text: Vec<String> = games.iter().filter(|b| !b.is_illegal() && !b.game().is_empty()).map(|b| b.game().pgn()).collect();
         (!text.is_empty()).then(|| text.join("\n"))
     }
 
