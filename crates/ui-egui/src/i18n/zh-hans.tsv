@@ -3756,6 +3756,10 @@ progress bar	Progress	进度
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	无法在书中查找：{e}
 	The diagrams read couldn't be looked at: {e}	无法查看已读取的局面图：{e}
+# fix: pawn structure words
+pawn structure	Passed	通路兵
+# fix: the board rail's More button
+	More board tools	更多棋盘工具
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	已跳过：不允许复制
 	Encrypted: read it into the Library?	已加密：要读入书库吗？

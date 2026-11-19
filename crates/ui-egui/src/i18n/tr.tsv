@@ -3787,6 +3787,10 @@ progress bar	Progress	İlerleme
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Kitapta arama yapılamadı: {e}
 	The diagrams read couldn't be looked at: {e}	Okunan diyagramlara bakılamadı: {e}
+# fix: pawn structure words
+pawn structure	Passed	Geçer
+# fix: the board rail's More button
+	More board tools	Diğer tahta araçları
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Atlandı: kopyalamaya izin verilmiyor
 	Encrypted: read it into the Library?	Şifreli: Kitaplığa okunsun mu?

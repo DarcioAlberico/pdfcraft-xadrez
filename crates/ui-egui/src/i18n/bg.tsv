@@ -3755,6 +3755,10 @@ progress bar	Progress	Напредък
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Книгата не можа да бъде претърсена: {e}
 	The diagrams read couldn't be looked at: {e}	Прочетените диаграми не можаха да бъдат прегледани: {e}
+# fix: pawn structure words
+pawn structure	Passed	Проходни
+# fix: the board rail's More button
+	More board tools	Още инструменти за дъската
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Пропусната: копирането не е разрешено
 	Encrypted: read it into the Library?	Шифрована: да се прочете ли в Библиотеката?

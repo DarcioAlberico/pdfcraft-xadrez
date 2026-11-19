@@ -1,11 +1,12 @@
 # Ajuda do xadrez — o que ficou velho
 
-A ajuda em PDF (`dist/app/Ajuda - Ferramentas de Xadrez.pdf`, 36 pp., 2026-10-31) descreve o build de `cc2d484c`. A fonte HTML e as imagens se perderam numa pasta temporária; o texto está em [`texto-2026-10-31.txt`](texto-2026-10-31.txt), extraído por `pdfcraft-cli text`, e os geradores (`gen_book.py`, `toc.py`, `sheet.py`) estão fora do repositório, em `C:/Python-Chess2/analise-9-local/ajuda/`.
+A ajuda em PDF (`Ajuda - Ferramentas de Xadrez.pdf`) descreve o build que a capa dela nomeia: `f720627 2026-11-18`, refeita no passo A9-E1. A fonte é [`ajuda.html`](ajuda.html), nesta pasta; [`README.md`](README.md) diz como refazer o PDF e onde ficam as figuras e os geradores. O texto da ajuda anterior (31/10, build `cc2d484c`) fica em [`texto-2026-10-31.txt`](texto-2026-10-31.txt).
 
-Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível acrescenta aqui uma linha com o capítulo que ficou velho. O passo A9-E1 refaz a ajuda e o guia a partir desta lista e a esvazia.
+Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige `ajuda.html` no mesmo PR ou acrescenta aqui uma linha com o capítulo que ficou velho (os capítulos são os da ajuda refeita). A próxima revisão da ajuda refaz as capturas a partir desta lista e a esvazia.
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| A9-N15c | (ainda não no `main`) | 20 — Automação pela linha de comando (a biblioteca); provavelmente um capítulo novo | O diálogo da Biblioteca no app (a busca do N15b numa janela) não tinha entrado quando a ajuda foi refeita: a ajuda só cita as ferramentas `chess_library_build`, `_find`, `_status` e `_clear` e diz que o app ainda não tem o painel. |
 | (#254) | #254 | 2 — O que é preciso: modelos, fontes e motor | O motor numa pasta dentro de `engine/` passou a ser achado; não é mais preciso copiar o `.exe` direto para `dist/app/engine`. |
 | A9-G12 | #259 | 13 — As partidas do documento (Salvamento automático) | Um arquivo de partidas gravado por um PdfCraft mais novo (versão maior) não é mais renomeado `….games.bad`: as partidas do próprio documento são só lidas, com aviso e a nota "Salvas por um PdfCraft mais novo: aqui estas partidas são só lidas." na lista; os arquivos de outros livros nunca são tocados. |
 | A9-E2 | (este PR) | 1 — Instalar e abrir (e o Sobre) | Cada cópia do PdfCraft numa pasta tem a própria instância: abrir um PDF com o build guardado em `dist/app/anterior-…` abre nele, não no build atual. O Sobre e o `--version` dizem o build (`0.9.0, build 5f757af 2026-11-11`, ou `dev`). Ajuda ▸ Verificar atualizações não consulta mais a rede: diz "PdfCraft Xadrez <build>: as versões novas vêm da pasta dist/app." |

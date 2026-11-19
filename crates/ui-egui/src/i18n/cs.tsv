@@ -3865,6 +3865,10 @@ progress bar	Progress	Průběh
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	V knize nebylo možné hledat: {e}
 	The diagrams read couldn't be looked at: {e}	Přečtené diagramy nebylo možné projít: {e}
+# fix: pawn structure words
+pawn structure	Passed	Volní
+# fix: the board rail's More button
+	More board tools	Další nástroje šachovnice
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Přeskočeno: kopírování není povoleno
 	Encrypted: read it into the Library?	Šifrováno: načíst do knihovny?

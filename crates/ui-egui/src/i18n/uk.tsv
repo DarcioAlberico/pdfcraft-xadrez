@@ -3813,6 +3813,10 @@ progress bar	Progress	Хід виконання
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Не вдалося виконати пошук у книзі: {e}
 	The diagrams read couldn't be looked at: {e}	Не вдалося переглянути прочитані діаграми: {e}
+# fix: pawn structure words
+pawn structure	Passed	Прохідні
+# fix: the board rail's More button
+	More board tools	Інші інструменти дошки
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Пропущено: копіювання заборонено
 	Encrypted: read it into the Library?	Зашифрована: прочитати до Бібліотеки?

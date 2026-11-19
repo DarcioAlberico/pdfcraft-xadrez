@@ -3690,6 +3690,10 @@ progress bar	Progress	పురోగతి
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	పుస్తకంలో వెతకలేకపోయాం: {e}
 	The diagrams read couldn't be looked at: {e}	చదివిన చిత్రాలను పరిశీలించలేకపోయాం: {e}
+# fix: pawn structure words
+pawn structure	Passed	అడ్డులేని
+# fix: the board rail's More button
+	More board tools	మరిన్ని బోర్డు సాధనాలు
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	దాటవేయబడింది: కాపీ చేయడానికి అనుమతి లేదు
 	Encrypted: read it into the Library?	ఎన్‌క్రిప్ట్ అయింది: లైబ్రరీలోకి చదవాలా?

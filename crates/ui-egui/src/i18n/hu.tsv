@@ -3790,6 +3790,10 @@ progress bar	Progress	Előrehaladás
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	A könyvben nem sikerült keresni: {e}
 	The diagrams read couldn't be looked at: {e}	A beolvasott diagramokat nem sikerült átnézni: {e}
+# fix: pawn structure words
+pawn structure	Passed	Szabad
+# fix: the board rail's More button
+	More board tools	További táblaeszközök
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Kihagyva: a másolás nem engedélyezett
 	Encrypted: read it into the Library?	Titkosítva: beolvassa a Könyvtárba?

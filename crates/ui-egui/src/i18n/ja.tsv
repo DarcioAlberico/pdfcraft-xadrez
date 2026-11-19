@@ -3793,6 +3793,10 @@ progress bar	Progress	進行状況
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	本を検索できませんでした: {e}
 	The diagrams read couldn't be looked at: {e}	読み取った局面図を調べられませんでした: {e}
+# fix: pawn structure words
+pawn structure	Passed	パスポーン
+# fix: the board rail's More button
+	More board tools	その他の盤ツール
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	スキップ：コピーが許可されていません
 	Encrypted: read it into the Library?	暗号化：ライブラリに読み込みますか？

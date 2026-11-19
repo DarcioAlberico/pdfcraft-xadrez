@@ -3792,6 +3792,10 @@ progress bar	Progress	Fortschritt
 # A9-N3b: In the book's failures
 	The book couldn't be searched: {e}	Das Buch konnte nicht durchsucht werden: {e}
 	The diagrams read couldn't be looked at: {e}	Die gelesenen Diagramme konnten nicht durchgesehen werden: {e}
+# fix: pawn structure words
+pawn structure	Passed	Frei
+# fix: the board rail's More button
+	More board tools	Weitere Brettwerkzeuge
 # A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
 	Skipped: copying not allowed	Übersprungen: Kopieren nicht erlaubt
 	Encrypted: read it into the Library?	Verschlüsselt: in die Bibliothek einlesen?
