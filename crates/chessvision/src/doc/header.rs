@@ -11,6 +11,18 @@
 //! brackets, the date after the last comma and the annotator in square brackets. The spaces
 //! around the dash and before the brackets come and go. They fill the game's tags
 //! ([`GameHeader::apply`]).
+//!
+//! Collections of one player's or one match's games number them in a label above instead
+//! (Huschenbeth, *Carlsen vs. Caruana*):
+//!
+//! ```text
+//! Game 1
+//! Carlsen (2810) - Caruana (2675)
+//! Corus-A, Wijk aan Zee (13), 31.01.2010
+//! ```
+//!
+//! The players' line then has no number ([`bare_players_line`]) and is a header only with the
+//! event's line under it; the label ([`game_label`]) is the header's too.
 
 use super::games::{GameScore, Tag};
 
@@ -22,6 +34,11 @@ pub const MAX_NAME_CHARS: usize = 60;
 pub const MAX_EVENT_CHARS: usize = 120;
 /// Most characters of a round (`5.3`).
 pub const MAX_ROUND_CHARS: usize = 8;
+/// Most words of a player's name in a players' line without the game's number
+/// ([`bare_players_line`]): `José Raúl Capablanca y Graupera`.
+pub const MAX_NAME_WORDS: usize = 5;
+/// The word of a game's label ([`game_label`]), in the languages the books come in.
+const GAME_WORDS: [&str; 7] = ["Game", "Partida", "Partie", "Partita", "Spiel", "Partij", "Jogo"];
 
 /// The players and the event a game's header names.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -74,15 +91,47 @@ pub(crate) fn players_line(text: &str) -> Option<GameHeader> {
     if !rest.starts_with(char::is_whitespace) {
         return None;
     }
-    let rest = rest.trim();
-    let (rest, eco) = match rest.strip_suffix(']').and_then(|r| r.rsplit_once('[')) {
+    players(rest.trim())
+}
+
+/// The players' line `text` reads as without the game's number in front (`Carlsen (2810) -
+/// Caruana (2675)`), as books print it under a `Game 1` label ([`game_label`]). Without the number
+/// a name and a dash are all it shows, so it is a header only with an event's line under it (the
+/// caller's part, [`event_line`]); a side of more than [`MAX_NAME_WORDS`] words is a sentence.
+pub(crate) fn bare_players_line(text: &str) -> Option<GameHeader> {
+    let text = text.trim();
+    if text.starts_with('(') {
+        return None;
+    }
+    let header = players(text)?;
+    let words = |name: &str| name.split_whitespace().count();
+    (words(&header.white) <= MAX_NAME_WORDS && words(&header.black) <= MAX_NAME_WORDS).then_some(header)
+}
+
+/// White with a rating in brackets or none, a dash, Black likewise, and an opening's code in
+/// square brackets or none.
+fn players(text: &str) -> Option<GameHeader> {
+    let (rest, eco) = match text.strip_suffix(']').and_then(|r| r.rsplit_once('[')) {
         Some((before, code)) if is_eco(code) => (before.trim_end(), Some(code.to_owned())),
-        _ => (rest, None),
+        _ => (text, None),
     };
     let (white, black) = split_players(rest)?;
     let (white, white_elo) = with_rating(white);
     let (black, black_elo) = with_rating(black);
     Some(GameHeader { white: name(white)?, black: name(black)?, white_elo, black_elo, eco, ..GameHeader::default() })
+}
+
+/// Whether `text` is a game's label as a collection prints it over the players' line: `Game 1`,
+/// `Partida 12`, `Partie 3`, `Partita 4`, `Spiel 5`, `Partij 6`, `Jogo 7`, a colon or full stop
+/// after the number or none.
+pub(crate) fn game_label(text: &str) -> bool {
+    let t = text.trim().trim_end_matches([':', '.']);
+    let Some((word, number)) = t.split_once(char::is_whitespace) else { return false };
+    let number = number.trim();
+    GAME_WORDS.iter().any(|w| word.eq_ignore_ascii_case(w))
+        && !number.is_empty()
+        && number.len() <= MAX_GAME_NUMBER_DIGITS
+        && number.chars().all(|c| c.is_ascii_digit())
 }
 
 /// The event's line `text` reads as, when it is one, into `header`: the event with its round in
@@ -213,6 +262,36 @@ mod tests {
             ["Carlsen — Anand", "(18) Kubbel", "(3) Vachier-Lagrave", "(a) Smith — Jones", "(1)Smith — Jones", "(12345) A — B", "(2) 1.e4 — 1.d4"]
         {
             assert_eq!(players_line(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_players_line_without_its_number_and_a_games_label() {
+        let h = bare_players_line("Carlsen (2810) - Caruana (2675)").unwrap();
+        assert_eq!((h.white.as_str(), h.black.as_str()), ("Carlsen", "Caruana"));
+        assert_eq!((h.white_elo.as_deref(), h.black_elo.as_deref()), (Some("2810"), Some("2675")));
+        let h = bare_players_line("Magnus Carlsen – Fabiano Caruana").unwrap();
+        assert_eq!((h.white.as_str(), h.black.as_str(), h.white_elo), ("Magnus Carlsen", "Fabiano Caruana", None));
+        assert_eq!(
+            bare_players_line("José Raúl Capablanca y Graupera - Lasker").map(|h| h.white),
+            Some("José Raúl Capablanca y Graupera".to_owned())
+        );
+        // The numbered form is players_line's; a sentence, one name, a name's own hyphen: none.
+        for text in [
+            "(1) Carlsen - Caruana",
+            "This was played in the last round and the game was drawn - a pity",
+            "Vachier-Lagrave",
+            "Carlsen",
+            "1.e4 - 1.d4",
+            "",
+        ] {
+            assert_eq!(bare_players_line(text), None, "{text}");
+        }
+        for text in ["Game 1", "Game 12:", "Partida 3", "partie 4.", "Partita 5", "Spiel 6", "Partij 7", "Jogo 8", " Game 71 "] {
+            assert!(game_label(text), "{text}");
+        }
+        for text in ["Game", "Game one", "Game 1 Carlsen", "Game 12345", "Games 2", "Example 5", "1 Game", ""] {
+            assert!(!game_label(text), "{text}");
         }
     }
 

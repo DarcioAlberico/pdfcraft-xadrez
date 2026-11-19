@@ -340,14 +340,14 @@ fn the_keys_follow_their_inputs_and_their_recipe_is_fixed() {
     ] {
         assert!(seen.insert(other), "{other:?}");
     }
-    // Frozen: the recipe of version 1, with SCAN_VERSION 2 (plan A9-N17a: a reading keeps its
-    // caption's goal).
+    // Frozen: the recipe of version 1, with SCAN_VERSION 3 (2: plan A9-N17a, a reading keeps its
+    // caption's goal; 3: the move number from a short line at the column's margin).
     assert_eq!(base.hex(), FROZEN_SCAN_KEY);
     assert_eq!(alone.hex(), FROZEN_ALONE_KEY);
 }
 
-const FROZEN_SCAN_KEY: &str = "fb53c254004bbfe0c902ba75ffd80e6853f2fd1fa018bb5baae8697d34dd3a5b";
-const FROZEN_ALONE_KEY: &str = "d1d3e90c28d7004f6718ba770a82365f8e1af5790024a1dadfda5fca71d4a3ef";
+const FROZEN_SCAN_KEY: &str = "30a870ed52c4d74c04cd50a24f4be1cf0e8f76debf796c4b74c691ff10060af0";
+const FROZEN_ALONE_KEY: &str = "c682abd222e89559ad51e80601dd5fc183bc0270d2b3fe90a267aa4972270ab4";
 
 /// An entry of version 1 as this build wrote it (a page of three diagrams: a font's, read; a
 /// vector board's and an image's, no model), frozen: every later build reads it, or raises

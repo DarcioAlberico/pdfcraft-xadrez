@@ -15,7 +15,9 @@
 //! - **Which diagram.** Books print two diagrams side by side and their texts after both, so the
 //!   diagram just before a first move is not always its own. When the first move is not legal
 //!   there but is from a diagram nearby (this page or the one before) that no game started from,
-//!   the game starts from that one, flagged [`ReviewFlag::DiagramMatchedByMove`]. A `1.` the open
+//!   the game starts from that one, flagged [`ReviewFlag::DiagramMatchedByMove`]. A White `1.`
+//!   that none of them can play and the initial position can starts from the initial position: a
+//!   game collection prints a chapter's exercises before its first game. A `1.` the open
 //!   game cannot play, or would take as another first move, starts a new game the same way. A move
 //!   of the other side one ply before the game's start (`1.f5+` after a game from `1...f5`) that
 //!   is a first move from the game's own diagram starts a second game from it: books give the
@@ -55,9 +57,10 @@
 //!   In a game with moves of both weights, a bold move after regular ones goes on from the last
 //!   bold move when it can be played there (an unnumbered one only when that bold move was
 //!   played), and a bold move played on the bold line makes it the main line, so analysis printed
-//!   first or going on from the main line's last move stays a variation. A bold move that only
-//!   fits inside the analysis changes nothing. Moves all of one weight (OCR text, documents read
-//!   before the weight was kept) are read as above.
+//!   first or going on from the main line's last move stays a variation. A diagram after such
+//!   analysis that shows the bold line's position is the game's: the game goes on past it. A
+//!   bold move that only fits inside the analysis changes nothing. Moves all of one weight (OCR
+//!   text, documents read before the weight was kept) are read as above.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it; after that
 //!   move's variations, the comment before the next move (`1.e4 {A} (1.d4 d5) {B} 1...e5`). An
 //!   annotation glyph belongs to the move it follows.
@@ -1260,6 +1263,19 @@ fn seed_fits(seed: &Seed, number: Option<MoveNumber>, san: &San) -> bool {
         .is_some_and(|(score, _, honour)| honour && score.start_board().is_some_and(|b| matches!(san.to_move_checked(&b), Ok((_, None)))))
 }
 
+/// Whether the reading strayed from the bold line into analysis on the main level and `shows` the
+/// position the bold line stands at: a diagram printed after the analysis shows the game's
+/// position, not the analysis's (Huschenbeth: `36...Kh8?`, then `36...exd5 37.exd5 cxd5` in
+/// regular type, then the diagram after `36...Kh8`).
+fn at_bold_tip(open: &Open, shows: impl Fn(Option<usize>) -> bool) -> bool {
+    open.strayed && open.bold_tip.is_some() && !open.bold_failed && shows(open.bold_tip)
+}
+
+/// Whether `san` is a legal first move from the initial position.
+fn fits_initial(san: &San) -> bool {
+    san.to_move(&Board::default()).is_ok()
+}
+
 /// Whether a FEN says Black is to move (one that does not say is White's, as FEN writes it).
 fn black_to_move(fen: &Fen) -> bool {
     fen.side() == Some(pdfcraft_chess::placement::Color::Black)
@@ -1864,7 +1880,9 @@ impl Walker {
         let Some(fen) = seed.fen.as_ref() else { return };
         let Some((open, game)) = self.open.as_ref().and_then(|o| Some((o, self.games.get(o.game)?))) else { return };
         let Some(main) = open.lines.first() else { return };
-        let same = game.score.board_after(main.cursor).is_some_and(|b| Fen::from_board(&b).placement_key() == fen.placement_key());
+        let shows =
+            |cursor: Option<usize>| game.score.board_after(cursor).is_some_and(|b| Fen::from_board(&b).placement_key() == fen.placement_key());
+        let same = shows(main.cursor) || at_bold_tip(open, shows);
         let at = DiagramAt::on(seed.page, seed.diagram);
         if same
             && let Some(game) = self.games.get_mut(open.game)
@@ -1945,6 +1963,10 @@ impl Walker {
     /// A game's header, its players and its event ([`super::header`]), set on `page` in `rect`:
     /// the open game ends, with the diagram that came while it was open and no move settled, and
     /// the next game to start in the header's column, on that page or the next, takes its tags.
+    /// A diagram before the header that no move has started from is no more the header's game's
+    /// than the open game is (a chapter's exercises printed before its first game): it waits as a
+    /// spare, and the game's `1.` starts from the initial position when that can play it, even
+    /// when the diagram could (`1.Nf3` and a knight on e5).
     /// A page of puzzles sets a header over each diagram, in two columns read across, so the
     /// other diagrams waiting stay, and a header waits for its own column's game; a newer header
     /// in the same column takes the place of one no game took. A game with no header in its
@@ -1954,6 +1976,11 @@ impl Walker {
         if self.held {
             self.anchor = Anchor::None;
             self.held_text.clear();
+        } else if self.open.is_none() {
+            // An unreadable diagram before it blocks the header's game no more.
+            if let Anchor::Seed(seed) = std::mem::take(&mut self.anchor) {
+                self.keep_spare(seed);
+            }
         }
         self.close();
         self.headers.retain(|(p, r, _)| p.saturating_add(1) >= page && !same_column(r.as_ref(), rect.as_ref()));
@@ -1991,9 +2018,10 @@ impl Walker {
     /// The first move after a diagram that came while a game was open. The game goes on when the
     /// diagram shows the position one of the open lines reached: the innermost such line goes on,
     /// and the lines inside it close (a magazine sets a diagram inside a variation, after the move
-    /// it shows). It also goes on when the move continues the main line (its number is the next
-    /// one, and it is legal there) and is not a first move from the diagram. Otherwise the game
-    /// ends and the move starts from the diagram.
+    /// it shows). So it does, from the bold line, when the diagram shows where the bold line
+    /// stands after analysis in regular type ([`at_bold_tip`]). It also goes on when the move
+    /// continues the main line (its number is the next one, and it is legal there) and is not a
+    /// first move from the diagram. Otherwise the game ends and the move starts from the diagram.
     fn resolve_held(&mut self, number: Option<MoveNumber>, san: &San) {
         self.held = false;
         let seed = match &self.anchor {
@@ -2001,27 +2029,27 @@ impl Walker {
             _ => None,
         };
         let fen = seed.and_then(|s| s.fen.as_ref());
-        let (shown, fits) = match self.open.as_ref().and_then(|o| Some((o, o.lines.first()?, self.games.get(o.game)?))) {
+        let (shown, fits, at_bold) = match self.open.as_ref().and_then(|o| Some((o, o.lines.first()?, self.games.get(o.game)?))) {
             Some((open, main, game)) => {
-                let shows = |line: &Line| {
-                    let board = game.score.board_after(line.cursor);
+                let shows = |cursor: Option<usize>| {
+                    let board = game.score.board_after(cursor);
                     fen.zip(board).is_some_and(|(f, b)| f.placement_key() == Fen::from_board(&b).placement_key())
                 };
-                let shown = open.lines.iter().rposition(shows);
+                let shown = open.lines.iter().rposition(|line| shows(line.cursor));
                 let board = game.score.board_after(main.cursor);
                 let next = number.is_some_and(|n| game.score.next_ply(main.cursor) == Some(ply_of(n)));
                 let fits = main.moved && main.skipped == 0 && next && board.is_some_and(|b| san.to_move(&b).is_ok());
-                (shown, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
+                (shown, fits && !seed.is_some_and(|s| seed_fits(s, number, san)), shown.is_none() && at_bold_tip(open, shows))
             }
-            None => (None, false),
+            None => (None, false, false),
         };
-        if shown.is_none() && !fits {
+        if shown.is_none() && !fits && !at_bold {
             self.close();
             // The text after the diagram is the first comment of the game that starts from it.
             self.held_text.keep_since_diagram();
             return;
         }
-        let same = shown.is_some();
+        let same = shown.is_some() || at_bold;
         // The lines up to the one the diagram shows stay open; without one, the main line.
         let keep = shown.unwrap_or(0).saturating_add(1);
         let anchor = std::mem::take(&mut self.anchor);
@@ -2030,6 +2058,17 @@ impl Walker {
         {
             while open.lines.len() > keep {
                 pop_line(game, open);
+            }
+            // The diagram shows where the bold line stands: the reading goes back to it from the
+            // analysis it strayed into.
+            if at_bold && let [line] = open.lines.as_mut_slice() {
+                *line = Line {
+                    pending: std::mem::take(&mut line.pending),
+                    after_variations: line.after_variations,
+                    cursor: open.bold_tip,
+                    moved: true,
+                    ..Line::default()
+                };
             }
             if !same && let Anchor::Seed(s) = &anchor {
                 game.flags.push(GameFlag {
@@ -2089,6 +2128,13 @@ impl Walker {
                     self.keep_spare(seed);
                     Anchor::Seed(spare)
                 }
+                // A `1.` that neither diagram can play and the initial position can: a game
+                // collection's game from its first move, after diagrams that are not its own (a
+                // chapter's exercises printed before its first game).
+                None if number == Some(first) && fits_initial(san) => {
+                    self.keep_spare(seed);
+                    Anchor::None
+                }
                 None => Anchor::Seed(seed),
             },
             Anchor::Blocked => match self.take_spare(number, san, loc.page) {
@@ -2098,7 +2144,7 @@ impl Walker {
                 }
                 None => Anchor::Blocked,
             },
-            Anchor::None if number.is_some_and(|n| n.number == 1) && !(number == Some(first) && san.to_move(&Board::default()).is_ok()) => {
+            Anchor::None if number.is_some_and(|n| n.number == 1) && !(number == Some(first) && fits_initial(san)) => {
                 match self.take_spare(number, san, loc.page) {
                     Some(spare) => {
                         matched = true;
@@ -2222,7 +2268,7 @@ impl Walker {
             && (game.origin == GameOrigin::Initial
                 || (game.score.start_ply().is_some_and(|p| p > ply_of(first).saturating_add(1))
                     && !playable(&game.score, main, number, san)
-                    && san.to_move(&Board::default()).is_ok()))
+                    && fits_initial(san)))
         {
             self.close();
             self.anchor = Anchor::None;
