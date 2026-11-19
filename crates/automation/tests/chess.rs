@@ -1345,6 +1345,52 @@ fn chess_export_docx_and_rtf_carry_the_diagram_as_an_image() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The side and colour type (3: paletted) of the PNG a zip file stores as `name` (Word stores its
+/// pictures uncompressed, right after their name).
+fn stored_png(zip: &[u8], name: &str) -> (u32, u8) {
+    let at = zip.windows(name.len()).position(|w| w == name.as_bytes()).unwrap_or_else(|| panic!("{name} missing")) + name.len();
+    let png = &zip[at..];
+    assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n", "{name}");
+    (u32::from_be_bytes(png[16..20].try_into().unwrap()), png[25])
+}
+
+/// Plan A9-X1b: `diagram_px`, a number as an old script or MCP call passes it, still sizes the
+/// pictures of every tool that takes it (Word, RTF, Markdown, a games book; Anki's cards in their
+/// own test); left out, each format's own: Word's PNG the 432 px fallback of its SVG, RTF's and
+/// Markdown's 900 px, all paletted. The reply's `bytes` is the file's size.
+#[test]
+fn diagram_px_given_or_left_out_sizes_each_formats_pictures() {
+    let (base, root) = workdir("diagram-px");
+    let (mut a, doc) = opened(&root);
+    for (px, want, out) in [(None, 432, "default.docx"), (Some(120), 120, "given.docx")] {
+        let mut args = json!({ "doc": doc, "out": out, "pieces": "geometric" });
+        if let Some(px) = px {
+            args["diagram_px"] = json!(px);
+        }
+        let reply = ok(&mut a, "chess_export_docx", args);
+        let bytes = std::fs::read(root.join(out)).unwrap();
+        assert_eq!(reply["bytes"].as_u64(), Some(bytes.len() as u64), "{reply:#}");
+        assert_eq!(stored_png(&bytes, "word/media/diagram1.png"), (want, 3), "{out}");
+        assert!(bytes.windows(23).any(|w| w == b"word/media/diagram1.svg"), "{out}: the SVG beside it");
+    }
+    ok(&mut a, "chess_export_rtf", json!({ "doc": doc, "out": "default.rtf", "pieces": "geometric" }));
+    let rtf = std::fs::read_to_string(root.join("default.rtf")).unwrap();
+    assert!(rtf.contains("\\picw900\\pich900"), "{rtf:.400}");
+    ok(&mut a, "chess_export_markdown", json!({ "doc": doc, "out": "default.md", "pieces": "geometric" }));
+    let png = std::fs::read(root.join("default_diagrams").join("diagram-p0001-1.png")).unwrap();
+    assert_eq!((u32::from_be_bytes(png[16..20].try_into().unwrap()), png[25]), (900, 3));
+    let pgn = "[White \"Morphy\"]\n[Black \"Duke\"]\n\n1.e4 e5 2.Nf3 d6 $220 3.d4 Bg4 1-0\n";
+    for (px, want, out) in [(None, 432, "games.docx"), (Some(96), 96, "games96.docx")] {
+        let mut args = json!({ "pgn": pgn, "format": "docx", "out": out, "pieces": "geometric" });
+        if let Some(px) = px {
+            args["diagram_px"] = json!(px);
+        }
+        ok(&mut a, "chess_games_book", args);
+        assert_eq!(stored_png(&std::fs::read(root.join(out)).unwrap(), "word/media/diagram1.png"), (want, 3), "{out}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Markdown: the read diagram is an image in a folder beside the file, with its FEN as alt text;
 /// the unread ones say so. PGN: the font diagram's position as a game. Both stay in the root.
 #[test]
