@@ -427,6 +427,31 @@ fn the_preview_offers_each_place_and_applies_the_one_chosen() {
     assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 (19... Kh8) 20. Raxe1 (20. Rfxe1)");
 }
 
+/// Plan A9-I6b (the review of #432): a capture waiting for the user is applied after the board
+/// turned to an illegal position. It is refused with the reason a capture started there is
+/// given, not said to have found nothing new; nothing is captured.
+#[test]
+fn a_capture_applied_after_the_board_turned_illegal_says_why() {
+    let mut h = harness();
+    play(&mut h, &["Nd5", "Qxe1", "Nxe7+", "Kh7", "Raxe1"]);
+    {
+        let game = h.state_mut().chess.board_mut().game_mut().unwrap();
+        let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
+        game.go_to_node(nxe7);
+        game.play_san("Kh8").unwrap();
+    }
+    h.state_mut().capture_pasted("20.Rfxe1", Some((CaptureMode::SubVariation, false)));
+    h.run_steps(2);
+    assert!(h.state().chess.capture.pending.is_some(), "an ambiguous capture is shown first");
+    // The board turns to an illegal position (no kings) while the capture waits.
+    h.state_mut().chess.board_mut().load_fen("8/8/8/8/8/8/8/8 w - - 0 1", false, None);
+    assert!(h.state().chess.board().is_illegal());
+    h.state_mut().take_said();
+    h.state_mut().apply_pending_capture(None, false);
+    assert_eq!(h.state().said(), Some("The board shows an illegal position: correct it before capturing moves into it."));
+    assert!(h.state().chess.capture.pending.is_none());
+}
+
 /// The preview of a page selection sits beside it; Esc closes it (the tool stays armed), and so
 /// does an edit to the document.
 #[test]

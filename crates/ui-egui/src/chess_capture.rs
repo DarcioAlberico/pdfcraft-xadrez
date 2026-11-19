@@ -624,8 +624,7 @@ impl PdfCraftApp {
     /// Plan `request` (off the interface thread when it is long), then apply it or keep it for the
     /// user to look at.
     pub(crate) fn start_capture(&mut self, request: Request) {
-        if self.chess.board().is_illegal() {
-            self.inform(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
+        if self.refuse_capture_on_illegal() {
             return;
         }
         // A new capture replaces the one waiting.
@@ -642,8 +641,23 @@ impl PdfCraftApp {
         self.finish_capture(request, plan, false);
     }
 
+    /// The board shows an illegal position (plan A9-I6b: its game takes no moves): say so, as a
+    /// capture started there is told, and whether it did. A plan made before the board became
+    /// illegal (one off the interface thread, or one waiting for the user) is refused the same
+    /// way, never applied to nothing and said to have found nothing new.
+    fn refuse_capture_on_illegal(&mut self) -> bool {
+        if !self.chess.board().is_illegal() {
+            return false;
+        }
+        self.inform(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
+        true
+    }
+
     /// A plan is made: say why nothing fits, keep it for the user, or apply it.
     fn finish_capture(&mut self, request: Request, plan: CapturePlan, replanned: bool) {
+        if self.refuse_capture_on_illegal() {
+            return;
+        }
         if self.chess.games.current_doc() != request.doc {
             self.inform(tl!("The capture was dropped: another document's games are shown now.").to_owned());
             return;
@@ -677,6 +691,9 @@ impl PdfCraftApp {
     /// adds what was not read to the comment of the last move it put in. A plan made on a game
     /// that has changed since is made again, once.
     fn apply_capture(&mut self, request: Request, plan: &CapturePlan, choice: Option<usize>, replanned: bool, keep_rest: bool) {
+        if self.refuse_capture_on_illegal() {
+            return;
+        }
         let kind = captured(plan, choice, request.mode);
         let rest = if keep_rest { candidate(plan, choice).map(leftover).unwrap_or_default() } else { String::new() };
         let (mut stale, mut rest_kept) = (false, true);
