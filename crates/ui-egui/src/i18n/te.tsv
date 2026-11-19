@@ -3694,3 +3694,84 @@ progress bar	Progress	పురోగతి
 pawn structure	Passed	అడ్డులేని
 # fix: the board rail's More button
 	More board tools	మరిన్ని బోర్డు సాధనాలు
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	దాటవేయబడింది: కాపీ చేయడానికి అనుమతి లేదు
+	Encrypted: read it into the Library?	ఎన్‌క్రిప్ట్ అయింది: లైబ్రరీలోకి చదవాలా?
+	Skipped: does not open	దాటవేయబడింది: తెరవడం లేదు
+	Skipped: larger than 1 GB	దాటవేయబడింది: 1 GB కంటే పెద్దది
+	Skipped: can't be read	దాటవేయబడింది: చదవలేము
+	Skipped: reading failed	దాటవేయబడింది: చదవడం విఫలమైంది
+	Skipped: now in the cloud	దాటవేయబడింది: ఇప్పుడు క్లౌడ్‌లో ఉంది
+	Skipped: a link, never followed	దాటవేయబడింది: ఒక లింక్, ఎప్పుడూ అనుసరించబడదు
+	Skipped: no longer there	దాటవేయబడింది: ఇక అక్కడ లేదు
+	Left as it was: its index can't be read now	అలాగే ఉంచబడింది: దాని సూచికను ఇప్పుడు చదవలేము
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	చదివిన పేజీలు: {pages} · రేఖాచిత్రాలు: {diagrams} · సమీక్షకు: {review} · ఆటలు: {games}
+	no piece model: picture diagrams not read	పావుల మోడల్ లేదు: చిత్రాలుగా ఉన్న రేఖాచిత్రాలు చదవబడలేదు
+	Stopped partway: Continue goes on from there	మధ్యలో ఆపబడింది: కొనసాగించు అక్కడి నుండి కొనసాగిస్తుంది
+	Not read yet	ఇంకా చదవలేదు
+	In the cloud: never opened	క్లౌడ్‌లో ఉంది: ఎప్పుడూ తెరవబడదు
+	Not kept: the Library is full (128 MB)	ఉంచబడలేదు: లైబ్రరీ నిండింది (128 MB)
+	Encrypted: you said yes	ఎన్‌క్రిప్ట్ అయింది: మీరు అవును అన్నారు
+	The Library needs the app's data folder, and there is none.	లైబ్రరీకి యాప్ డేటా ఫోల్డర్ అవసరం, కానీ అది లేదు.
+	Choose a folder of chess books	చదరంగం పుస్తకాల ఫోల్డర్‌ను ఎంచుకోండి
+	Books left out of the Library: {n}	లైబ్రరీ నుండి తీసివేసిన పుస్తకాలు: {n}
+	This folder is in the Library already, through {dir}.	ఈ ఫోల్డర్ ఇప్పటికే లైబ్రరీలో ఉంది, {dir} ద్వారా.
+	The Library has {n} folders already.	లైబ్రరీలో ఇప్పటికే ఫోల్డర్లు ఉన్నాయి: {n}.
+	The Library's folders couldn't be changed: {e}	లైబ్రరీ ఫోల్డర్లను మార్చలేకపోయాము: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	లైబ్రరీ నిర్మాణం ఆపబడింది: మిగిలిన పుస్తకాలు: {n}. కొనసాగించు అక్కడి నుండి కొనసాగిస్తుంది.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	లైబ్రరీ నిర్మించబడింది: ఇప్పుడు చదివిన పుస్తకాలు: {read}; లైబ్రరీలోని పుస్తకాలు: {indexed}.
+	The Library couldn't be built: {e}	లైబ్రరీని నిర్మించలేకపోయాము: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} క్లౌడ్‌లో ఉంది, ఈ కంప్యూటర్‌లో లేదు: తెరవబడదు.
+	{path} is no longer there: build the Library again to forget it.	{path} ఇక అక్కడ లేదు: దాన్ని మర్చిపోవడానికి లైబ్రరీని మళ్లీ నిర్మించండి.
+	This move is in the book's PGN, which gives no page for it.	ఈ ఎత్తు పుస్తకం PGNలో ఉంది, కానీ దానికి పేజీ ఇవ్వలేదు.
+	The move couldn't be outlined: page {page} reads differently now.	ఎత్తును గుర్తించలేకపోయాము: పేజీ {page} ఇప్పుడు వేరేలా చదవబడుతుంది.
+	Library	లైబ్రరీ
+	Books	పుస్తకాలు
+	Stopping after this page…	ఈ పేజీ తర్వాత ఆపుతోంది…
+	Building the Library: looking at the folders…	లైబ్రరీని నిర్మిస్తోంది: ఫోల్డర్లను చూస్తోంది…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	లైబ్రరీని నిర్మిస్తోంది: పుస్తకం {n}/{m} ({name}), పేజీ {p}/{q}
+	Building the Library: book {n} of {m} ({name})	లైబ్రరీని నిర్మిస్తోంది: పుస్తకం {n}/{m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	మీరు ఎంచుకున్న ఫోల్డర్లలోని పుస్తకాలు ఒకసారి చదవబడతాయి, తద్వారా ఒక స్థానం, ఎత్తు లేదా ఆటగాడు అన్నింటిలో దొరుకుతారు. మీరు నిర్మించే వరకు ఏదీ చదవబడదు.
+	No folder yet: add the folders where your chess books are.	ఇంకా ఫోల్డర్ లేదు: మీ చదరంగం పుస్తకాలు ఉన్న ఫోల్డర్లను జోడించండి.
+	Its books leave the Library; the files stay where they are.	దాని పుస్తకాలు లైబ్రరీ నుండి బయటకు వెళ్తాయి; ఫైళ్లు ఉన్నచోటే ఉంటాయి.
+	Add a folder…	ఫోల్డర్‌ను జోడించు…
+	The folders can't change while the Library is being built.	లైబ్రరీ నిర్మాణంలో ఉన్నప్పుడు ఫోల్డర్లను మార్చలేము.
+	Books in the Library: {n}	లైబ్రరీలోని పుస్తకాలు: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	చూడలేదు: లింకులు {links}, క్లౌడ్‌లోని ఫోల్డర్లు {cloud}, జాబితా చేయలేని ఫోల్డర్లు {unlisted}.
+	The folders hold more than a build looks at.	ఒక నిర్మాణం చూసే దానికంటే ఫోల్డర్లలో ఎక్కువ ఉంది.
+	Build	నిర్మించు
+	Reads on {n} of the {all} cores of this computer.	ఈ కంప్యూటర్‌లోని {all} కోర్లలో {n} కోర్లపై చదువుతుంది.
+	Counting the pages: book {n} of {m}…	పేజీలను లెక్కిస్తోంది: పుస్తకం {n}/{m}…
+	Every book is read: a build only looks for new or changed ones.	అన్ని పుస్తకాలు చదవబడ్డాయి: నిర్మాణం కొత్తవి లేదా మారినవి మాత్రమే వెతుకుతుంది.
+	To read: {books} books, {pages} pages, {time} (an estimate)	చదవాల్సినవి: పుస్తకాలు {books}, పేజీలు {pages}, {time} (అంచనా)
+	Books whose pages could not be counted: {n}	పేజీలను లెక్కించలేని పుస్తకాలు: {n}
+	Leave out	వదిలివేయి
+	Position (FEN)	స్థానం (FEN)
+	Move (SAN)	ఎత్తు (SAN)
+	Player	ఆటగాడు
+	Opening (ECO)	ఓపెనింగ్ (ECO)
+	From the board	బోర్డు నుండి
+	The position the Board tab shows	బోర్డు ట్యాబ్ చూపే స్థానం
+	Either side to move	ఏ వైపు ఎత్తైనా
+	Not a FEN: {e}	FEN కాదు: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	ఒక స్థానం (FEN), Bxh7+ వంటి ఎత్తు, ఆటగాడు, టోర్నమెంట్ లేదా B90 వంటి ఓపెనింగ్ కోడ్ రాయండి.
+	Looking in the Library…	లైబ్రరీలో వెతుకుతోంది…
+	The Library couldn't be searched: {e}	లైబ్రరీలో వెతకలేకపోయాము: {e}
+	No book of the Library is read yet: build it first, in Books.	లైబ్రరీలోని ఏ పుస్తకమూ ఇంకా చదవబడలేదు: ముందుగా పుస్తకాలు లో నిర్మించండి.
+	Books not read yet, not looked in: {n}	ఇంకా చదవని, చూడని పుస్తకాలు: {n}
+	Books whose index could not be read: {n}	సూచికను చదవలేని పుస్తకాలు: {n}
+	Nothing in the Library matches.	లైబ్రరీలో ఏదీ సరిపోలలేదు.
+	Open the Library	లైబ్రరీని తెరువు
+	Look in the Library	లైబ్రరీలో వెతుకు
+	Find this position in every book of the Library	ఈ స్థానాన్ని లైబ్రరీలోని అన్ని పుస్తకాలలో వెతుకు
+	Library…	లైబ్రరీ…
+	Folders	ఫోల్డర్లు
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	నిర్మాణం ముగిసినప్పుడు ఫోల్డర్ జోడించబడుతుంది.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	ఈ లైబ్రరీ యొక్క మరో నిర్మాణం నడుస్తోంది (మరో విండోలో, మరో PdfCraft లో లేదా కమాండ్ లైన్‌లో): అది ముగిసే వరకు వేచి ఉండండి.
+	The Library's catalog can't be read, so it isn't changed: {e}	లైబ్రరీ కేటలాగ్‌ను చదవలేకపోయాము, కాబట్టి అది మార్చబడదు: {e}
+	This book changed since the Library read it: build the Library again.	లైబ్రరీ చదివినప్పటి నుండి ఈ పుస్తకం మారింది: లైబ్రరీని మళ్లీ నిర్మించండి.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	ఎత్తు గుర్తించబడలేదు: దాని పేజీ సమయానికి చదవబడలేదు, లేదా మీరు వేరే చోటికి వెళ్లారు.
+	{path} is a link, which the Library never opens.	{path} ఒక లింక్, దాన్ని లైబ్రరీ ఎప్పుడూ తెరవదు.
+	{path} can't be opened.	{path} తెరవబడదు.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	చివరి నిర్మాణం మధ్యలో ఆగిపోయింది (PdfCraft మూసివేయబడింది, లేదా లోపంతో ఆగిపోయింది): కొనసాగించు అది ఆగిన చోటు నుండి కొనసాగిస్తుంది.

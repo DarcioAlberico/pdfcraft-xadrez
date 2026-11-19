@@ -766,6 +766,9 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     // A focused row of the Board tab's In the book list: ↑ ↓ Home End go to another row, not
     // through the game (plan A9-N3b).
     crate::chess_in_book::take_keys(&mut chess.in_book, ctx, &mut raw.events, free);
+    // A focused row of the Library's results (plan A9-N15c), in its dialog: the same keys.
+    #[cfg(not(target_arch = "wasm32"))]
+    crate::chess_library::take_keys(&mut chess.library, ctx, &mut raw.events);
     // The analysis board with the keyboard: the arrows walk its squares, Enter and Space play
     // (plan A9-N7b).
     crate::chess_board_ui::take_grid_keys(chess.games.board_mut(), ctx, &mut raw.events, free);

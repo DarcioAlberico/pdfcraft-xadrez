@@ -3788,3 +3788,83 @@ progress bar	Progress	Πρόοδος
 pawn structure	Passed	Περαστά
 # fix: the board rail's More button
 	More board tools	Περισσότερα εργαλεία σκακιέρας
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Παραλείφθηκε: δεν επιτρέπεται η αντιγραφή
+	Encrypted: read it into the Library?	Κρυπτογραφημένο: να διαβαστεί στη Βιβλιοθήκη;
+	Skipped: does not open	Παραλείφθηκε: δεν ανοίγει
+	Skipped: larger than 1 GB	Παραλείφθηκε: μεγαλύτερο από 1 GB
+	Skipped: can't be read	Παραλείφθηκε: δεν διαβάζεται
+	Skipped: reading failed	Παραλείφθηκε: η ανάγνωση απέτυχε
+	Skipped: now in the cloud	Παραλείφθηκε: τώρα στο cloud
+	Skipped: a link, never followed	Παραλείφθηκε: σύνδεσμος, δεν ακολουθείται ποτέ
+	Skipped: no longer there	Παραλείφθηκε: δεν υπάρχει πια
+	Left as it was: its index can't be read now	Έμεινε ως είχε: το ευρετήριό του δεν διαβάζεται τώρα
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Σελίδες που διαβάστηκαν: {pages} · διαγράμματα: {diagrams} · για έλεγχο: {review} · παρτίδες: {games}
+	no piece model: picture diagrams not read	χωρίς μοντέλο κομματιών: τα διαγράμματα-εικόνες δεν διαβάστηκαν
+	Stopped partway: Continue goes on from there	Σταμάτησε στη μέση: η Συνέχεια συνεχίζει από εκεί
+	Not read yet	Δεν διαβάστηκε ακόμη
+	In the cloud: never opened	Στο cloud: δεν ανοίγει ποτέ
+	Not kept: the Library is full (128 MB)	Δεν κρατήθηκε: η Βιβλιοθήκη είναι πλήρης (128 MB)
+	Encrypted: you said yes	Κρυπτογραφημένο: είπατε ναι
+	The Library needs the app's data folder, and there is none.	Η Βιβλιοθήκη χρειάζεται τον φάκελο δεδομένων της εφαρμογής, και δεν υπάρχει.
+	Choose a folder of chess books	Επιλέξτε φάκελο με βιβλία σκακιού
+	Books left out of the Library: {n}	Βιβλία που βγήκαν από τη Βιβλιοθήκη: {n}
+	This folder is in the Library already, through {dir}.	Αυτός ο φάκελος είναι ήδη στη Βιβλιοθήκη, μέσω {dir}.
+	The Library has {n} folders already.	Η Βιβλιοθήκη έχει ήδη φακέλους: {n}.
+	The Library's folders couldn't be changed: {e}	Οι φάκελοι της Βιβλιοθήκης δεν άλλαξαν: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Η κατασκευή της Βιβλιοθήκης σταμάτησε: βιβλία που μένουν: {n}. Η Συνέχεια συνεχίζει από εκεί.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Η Βιβλιοθήκη κατασκευάστηκε: βιβλία που διαβάστηκαν τώρα: {read}· βιβλία στη Βιβλιοθήκη: {indexed}.
+	The Library couldn't be built: {e}	Η Βιβλιοθήκη δεν κατασκευάστηκε: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	Το {path} είναι στο cloud, όχι σε αυτόν τον υπολογιστή: δεν ανοίγει.
+	{path} is no longer there: build the Library again to forget it.	Το {path} δεν υπάρχει πια: κατασκευάστε ξανά τη Βιβλιοθήκη για να το ξεχάσει.
+	This move is in the book's PGN, which gives no page for it.	Αυτή η κίνηση είναι στο PGN του βιβλίου, που δεν δίνει σελίδα γι' αυτήν.
+	The move couldn't be outlined: page {page} reads differently now.	Η κίνηση δεν πλαισιώθηκε: η σελίδα {page} διαβάζεται τώρα αλλιώς.
+	Library	Βιβλιοθήκη
+	Books	Βιβλία
+	Stopping after this page…	Διακοπή μετά από αυτή τη σελίδα…
+	Building the Library: looking at the folders…	Κατασκευή Βιβλιοθήκης: εξέταση φακέλων…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Κατασκευή Βιβλιοθήκης: βιβλίο {n} από {m} ({name}), σελίδα {p} από {q}
+	Building the Library: book {n} of {m} ({name})	Κατασκευή Βιβλιοθήκης: βιβλίο {n} από {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Τα βιβλία των φακέλων που επιλέγετε, διαβασμένα μία φορά, ώστε μια θέση, μια κίνηση ή ένας παίκτης να βρίσκεται σε όλα. Τίποτα δεν διαβάζεται πριν κατασκευάσετε.
+	No folder yet: add the folders where your chess books are.	Κανένας φάκελος ακόμη: προσθέστε τους φακέλους με τα βιβλία σκακιού σας.
+	Its books leave the Library; the files stay where they are.	Τα βιβλία του βγαίνουν από τη Βιβλιοθήκη· τα αρχεία μένουν εκεί που είναι.
+	Add a folder…	Προσθήκη φακέλου…
+	The folders can't change while the Library is being built.	Οι φάκελοι δεν αλλάζουν όσο κατασκευάζεται η Βιβλιοθήκη.
+	Books in the Library: {n}	Βιβλία στη Βιβλιοθήκη: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Δεν εξετάστηκαν: σύνδεσμοι {links}, φάκελοι στο cloud {cloud}, φάκελοι που δεν απαριθμούνται {unlisted}.
+	The folders hold more than a build looks at.	Οι φάκελοι περιέχουν περισσότερα από όσα εξετάζει μια κατασκευή.
+	Build	Κατασκευή
+	Reads on {n} of the {all} cores of this computer.	Διαβάζει σε {n} από τους {all} πυρήνες αυτού του υπολογιστή.
+	Counting the pages: book {n} of {m}…	Μέτρηση σελίδων: βιβλίο {n} από {m}…
+	Every book is read: a build only looks for new or changed ones.	Όλα τα βιβλία διαβάστηκαν: μια κατασκευή ψάχνει μόνο νέα ή αλλαγμένα.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Για ανάγνωση: βιβλία {books}, σελίδες {pages}, {time} (εκτίμηση)
+	Books whose pages could not be counted: {n}	Βιβλία των οποίων οι σελίδες δεν μετρήθηκαν: {n}
+	Leave out	Εξαίρεση
+	Position (FEN)	Θέση (FEN)
+	Move (SAN)	Κίνηση (SAN)
+	Player	Παίκτης
+	Opening (ECO)	Άνοιγμα (ECO)
+	From the board	Από τη σκακιέρα
+	The position the Board tab shows	Η θέση που δείχνει η καρτέλα Σκακιέρα
+	Either side to move	Παίζει οποιαδήποτε πλευρά
+	Not a FEN: {e}	Δεν είναι FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Γράψτε μια θέση (FEN), μια κίνηση όπως Bxh7+, έναν παίκτη, μια διοργάνωση ή έναν κωδικό ανοίγματος όπως B90.
+	Looking in the Library…	Αναζήτηση στη Βιβλιοθήκη…
+	The Library couldn't be searched: {e}	Η αναζήτηση στη Βιβλιοθήκη απέτυχε: {e}
+	No book of the Library is read yet: build it first, in Books.	Κανένα βιβλίο της Βιβλιοθήκης δεν έχει διαβαστεί: κατασκευάστε την πρώτα, στα Βιβλία.
+	Books not read yet, not looked in: {n}	Βιβλία που δεν διαβάστηκαν ακόμη, δεν εξετάστηκαν: {n}
+	Books whose index could not be read: {n}	Βιβλία των οποίων το ευρετήριο δεν διαβάστηκε: {n}
+	Nothing in the Library matches.	Τίποτα στη Βιβλιοθήκη δεν ταιριάζει.
+	Open the Library	Άνοιγμα Βιβλιοθήκης
+	Look in the Library	Αναζήτηση στη Βιβλιοθήκη
+	Find this position in every book of the Library	Αναζήτηση αυτής της θέσης σε όλα τα βιβλία της Βιβλιοθήκης
+	Library…	Βιβλιοθήκη…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Ο φάκελος θα προστεθεί όταν τελειώσει η κατασκευή.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Εκτελείται άλλη κατασκευή αυτής της Βιβλιοθήκης (σε άλλο παράθυρο, σε άλλο PdfCraft ή στη γραμμή εντολών): περιμένετε να τελειώσει.
+	The Library's catalog can't be read, so it isn't changed: {e}	Ο κατάλογος της Βιβλιοθήκης δεν διαβάζεται, οπότε δεν αλλάζει: {e}
+	This book changed since the Library read it: build the Library again.	Αυτό το βιβλίο άλλαξε από τότε που το διάβασε η Βιβλιοθήκη: κατασκευάστε ξανά τη Βιβλιοθήκη.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Η κίνηση δεν πλαισιώθηκε: η σελίδα της δεν διαβάστηκε εγκαίρως ή μετακινηθήκατε αλλού.
+	{path} is a link, which the Library never opens.	Το {path} είναι σύνδεσμος, που η Βιβλιοθήκη δεν ανοίγει ποτέ.
+	{path} can't be opened.	Το {path} δεν μπορεί να ανοίξει.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Η τελευταία κατασκευή διακόπηκε (το PdfCraft έκλεισε ή σταμάτησε σε σφάλμα): η Συνέχεια συνεχίζει από εκεί που ήταν.

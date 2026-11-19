@@ -100,8 +100,9 @@ pub(crate) fn key_tip(ctx: &egui::Context, template: &str, s: Shortcut) -> Strin
 }
 
 /// The registered commands this build has nothing to run for, left out of its menus and palette:
-/// on the web, the ones that need a process (plan A9-N17b: Check with the engine…).
-const DESKTOP_ONLY: [&str; 1] = ["chess.engine_review"];
+/// on the web, the ones that need a process (plan A9-N17b: Check with the engine…) or the files
+/// of the computer (plan A9-N15c: the Library).
+pub(crate) const DESKTOP_ONLY: [&str; 2] = ["chess.engine_review", "chess.library"];
 
 /// Whether command `id` is offered in this build's menus and palette ([`DESKTOP_ONLY`]).
 pub(crate) fn shown_here(id: &str) -> bool {
@@ -527,6 +528,9 @@ impl PdfCraftApp {
             // Plan A9-N17b: the book checked by an engine (desktop only; never shown on the web).
             #[cfg(not(target_arch = "wasm32"))]
             "chess.engine_review" => self.open_engine_review(),
+            // Plan A9-N15c: the Library of books (desktop only; never shown on the web).
+            #[cfg(not(target_arch = "wasm32"))]
+            "chess.library" => self.open_chess_library(),
             // Plan A9-I16 (R4-02): the chess tools by name, without the panel.
             "chess.board.show" => self.show_chess_board(),
             "chess.analyze" => self.analyze_chess_position(),

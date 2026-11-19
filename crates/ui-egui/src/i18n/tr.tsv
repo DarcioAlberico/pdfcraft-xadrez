@@ -3791,3 +3791,83 @@ progress bar	Progress	İlerleme
 pawn structure	Passed	Geçer
 # fix: the board rail's More button
 	More board tools	Diğer tahta araçları
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Atlandı: kopyalamaya izin verilmiyor
+	Encrypted: read it into the Library?	Şifreli: Kitaplığa okunsun mu?
+	Skipped: does not open	Atlandı: açılmıyor
+	Skipped: larger than 1 GB	Atlandı: 1 GB'tan büyük
+	Skipped: can't be read	Atlandı: okunamıyor
+	Skipped: reading failed	Atlandı: okuma başarısız oldu
+	Skipped: now in the cloud	Atlandı: artık bulutta
+	Skipped: a link, never followed	Atlandı: bir bağlantı, asla izlenmez
+	Skipped: no longer there	Atlandı: artık orada değil
+	Left as it was: its index can't be read now	Olduğu gibi bırakıldı: dizini şu anda okunamıyor
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Okunan sayfalar: {pages} · diyagramlar: {diagrams} · gözden geçirilecek: {review} · oyunlar: {games}
+	no piece model: picture diagrams not read	taş modeli yok: resim diyagramları okunmadı
+	Stopped partway: Continue goes on from there	Yarıda durduruldu: Devam Et oradan sürdürür
+	Not read yet	Henüz okunmadı
+	In the cloud: never opened	Bulutta: asla açılmaz
+	Not kept: the Library is full (128 MB)	Saklanmadı: Kitaplık dolu (128 MB)
+	Encrypted: you said yes	Şifreli: evet dediniz
+	The Library needs the app's data folder, and there is none.	Kitaplığın uygulamanın veri klasörüne ihtiyacı var, ama hiç yok.
+	Choose a folder of chess books	Satranç kitaplarının olduğu bir klasör seçin
+	Books left out of the Library: {n}	Kitaplıktan çıkarılan kitaplar: {n}
+	This folder is in the Library already, through {dir}.	Bu klasör zaten Kitaplıkta, {dir} üzerinden.
+	The Library has {n} folders already.	Kitaplıkta zaten {n} klasör var.
+	The Library's folders couldn't be changed: {e}	Kitaplığın klasörleri değiştirilemedi: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Kitaplığın oluşturulması durduruldu: kalan kitaplar: {n}. Devam Et oradan sürdürür.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Kitaplık oluşturuldu: şimdi okunan kitaplar: {read}; Kitaplıktaki kitaplar: {indexed}.
+	The Library couldn't be built: {e}	Kitaplık oluşturulamadı: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} bulutta, bu bilgisayarda değil: açılmıyor.
+	{path} is no longer there: build the Library again to forget it.	{path} artık orada değil: unutması için Kitaplığı yeniden oluşturun.
+	This move is in the book's PGN, which gives no page for it.	Bu hamle kitabın PGN'inde, ama onun sayfasını vermiyor.
+	The move couldn't be outlined: page {page} reads differently now.	Hamle çerçevelenemedi: {page} sayfası artık farklı okunuyor.
+	Library	Kitaplık
+	Books	Kitaplar
+	Stopping after this page…	Bu sayfadan sonra duruluyor…
+	Building the Library: looking at the folders…	Kitaplık oluşturuluyor: klasörlere bakılıyor…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Kitaplık oluşturuluyor: kitap {n}/{m} ({name}), sayfa {p}/{q}
+	Building the Library: book {n} of {m} ({name})	Kitaplık oluşturuluyor: kitap {n}/{m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Seçtiğiniz klasörlerdeki kitaplar bir kez okunur; böylece bir konum, bir hamle ya da bir oyuncu hepsinde bulunur. Siz oluşturana kadar hiçbir şey okunmaz.
+	No folder yet: add the folders where your chess books are.	Henüz klasör yok: satranç kitaplarınızın olduğu klasörleri ekleyin.
+	Its books leave the Library; the files stay where they are.	Kitapları Kitaplıktan çıkar; dosyalar oldukları yerde kalır.
+	Add a folder…	Klasör ekle…
+	The folders can't change while the Library is being built.	Kitaplık oluşturulurken klasörler değiştirilemez.
+	Books in the Library: {n}	Kitaplıktaki kitaplar: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Bakılmadı: bağlantılar {links}, buluttaki klasörler {cloud}, listelenemeyen klasörler {unlisted}.
+	The folders hold more than a build looks at.	Klasörlerde bir oluşturmanın baktığından fazlası var.
+	Build	Oluştur
+	Reads on {n} of the {all} cores of this computer.	Bu bilgisayarın {all} çekirdeğinden {n} tanesinde okur.
+	Counting the pages: book {n} of {m}…	Sayfalar sayılıyor: kitap {n}/{m}…
+	Every book is read: a build only looks for new or changed ones.	Her kitap okundu: bir oluşturma yalnızca yeni ya da değişmiş olanları arar.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Okunacak: {books} kitap, {pages} sayfa, {time} (tahmini)
+	Books whose pages could not be counted: {n}	Sayfaları sayılamayan kitaplar: {n}
+	Leave out	Dışarıda bırak
+	Position (FEN)	Konum (FEN)
+	Move (SAN)	Hamle (SAN)
+	Player	Oyuncu
+	Opening (ECO)	Açılış (ECO)
+	From the board	Tahtadan
+	The position the Board tab shows	Tahta sekmesinin gösterdiği konum
+	Either side to move	Sıra herhangi bir tarafta
+	Not a FEN: {e}	FEN değil: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Bir konum (FEN), Bxh7+ gibi bir hamle, bir oyuncu, bir etkinlik ya da B90 gibi bir açılış kodu yazın.
+	Looking in the Library…	Kitaplıkta aranıyor…
+	The Library couldn't be searched: {e}	Kitaplıkta aranamadı: {e}
+	No book of the Library is read yet: build it first, in Books.	Kitaplığın hiçbir kitabı henüz okunmadı: önce Kitaplar'da oluşturun.
+	Books not read yet, not looked in: {n}	Henüz okunmamış, bakılmamış kitaplar: {n}
+	Books whose index could not be read: {n}	Dizini okunamayan kitaplar: {n}
+	Nothing in the Library matches.	Kitaplıkta eşleşen bir şey yok.
+	Open the Library	Kitaplığı aç
+	Look in the Library	Kitaplıkta ara
+	Find this position in every book of the Library	Bu konumu Kitaplığın tüm kitaplarında ara
+	Library…	Kitaplık…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Klasör, oluşturma bittiğinde eklenecek.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Bu Kitaplığın başka bir oluşturması sürüyor (başka bir pencerede, başka bir PdfCraft'ta veya komut satırında): bitmesini bekleyin.
+	The Library's catalog can't be read, so it isn't changed: {e}	Kitaplığın kataloğu okunamıyor, bu yüzden değiştirilmiyor: {e}
+	This book changed since the Library read it: build the Library again.	Bu kitap, Kitaplık onu okuduktan sonra değişti: Kitaplığı yeniden oluşturun.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Hamle çerçevelenmedi: sayfası zamanında okunmadı ya da başka bir yere geçtiniz.
+	{path} is a link, which the Library never opens.	{path} bir bağlantı ve Kitaplık bağlantıları asla açmaz.
+	{path} can't be opened.	{path} açılamıyor.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Son oluşturma yarıda kesildi (PdfCraft kapandı ya da bir hatada durdu): Devam Et kaldığı yerden sürdürür.

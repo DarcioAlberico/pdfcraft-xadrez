@@ -6,9 +6,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use pdfcraft_chess::placement::Color;
+use sha2::Digest as _;
 
 use super::find::FindQuery;
 use super::index::{BookIndex, IndexMeta, IndexedPosition, Place};
+use super::plan::Plan;
 use super::walk::{Cap, Caps, walk};
 use super::*;
 use crate::chess::tests::{book_of_boards, no_model};
@@ -996,5 +998,228 @@ fn every_file_of_the_library_counts_toward_its_cap() {
     // A listing cut short says so.
     assert!(lib.files_within(1).truncated);
     assert!(!lib.files_within(100).truncated);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c: folders are chosen and left in the catalog alone (nothing is walked until a
+/// build); a folder inside a chosen one is refused, one around chosen ones takes their place;
+/// leaving a folder takes its books out of the catalog (a copy in another folder keeps that path)
+/// and their indexes with them, never the folder's files.
+#[test]
+fn folders_are_chosen_and_left_and_their_books_go() {
+    let base = fresh("folders");
+    let (a, b, lib) = (base.join("a"), base.join("b"), Library::new(base.join("library")));
+    std::fs::create_dir_all(a.join("inner")).unwrap();
+    std::fs::create_dir_all(&b).unwrap();
+    std::fs::write(a.join("one.pdf"), chapter("One")).unwrap();
+    std::fs::write(a.join("both.pdf"), chapter("Both")).unwrap();
+    std::fs::write(b.join("both.pdf"), chapter("Both")).unwrap();
+    std::fs::write(b.join("two.pdf"), chapter("Two")).unwrap();
+    // The inner folder first: the folder around it takes its place.
+    assert_eq!(lib.add_folder(&a.join("inner")).unwrap().dirs.len(), 1);
+    let chosen = lib.add_folder(&a).unwrap();
+    assert_eq!(chosen.dirs, [a.to_string_lossy().into_owned()]);
+    assert_eq!(lib.add_folder(&a.join("inner")), Err(ChangeError::Within(a.to_string_lossy().into_owned())));
+    assert_eq!(lib.add_folder(&a), Err(ChangeError::Within(a.to_string_lossy().into_owned())));
+    lib.add_folder(&b).unwrap();
+    assert!(lib.catalog().books.is_empty(), "nothing read before a build");
+    let dirs: Vec<PathBuf> = lib.catalog().dirs.iter().map(PathBuf::from).collect();
+    let built = build(&lib, &dirs, &options());
+    let one = hash_of(&built, "one.pdf");
+    let both = hash_of(&built, "both.pdf");
+    assert_eq!(lib.files().indexes.len(), 3);
+    let removed = lib.remove_folder(&a.to_string_lossy()).unwrap();
+    assert_eq!((removed.books, removed.orphans.clone()), (1, vec![one.clone()]), "{removed:?}");
+    let catalog = lib.catalog();
+    assert_eq!(catalog.dirs, [b.to_string_lossy().into_owned()]);
+    let kept = catalog.books.iter().find(|c| c.hash.as_deref() == Some(both.as_str())).unwrap();
+    assert_eq!(kept.paths, [b.join("both.pdf").to_string_lossy().into_owned()], "the copy in the other folder stays");
+    assert!(!lib.index_path(&one).exists() && lib.index_path(&both).exists());
+    assert!(a.join("one.pdf").exists(), "the folder's files are never touched");
+    // Leaving a folder not chosen changes nothing.
+    assert_eq!(lib.remove_folder(&a.to_string_lossy()).unwrap(), Removed::default());
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (D31 A): a yes to an encrypted book is kept in the catalog, and every build reads
+/// it, given or not in the options; a no puts it back among the books asked about.
+#[test]
+fn a_yes_kept_in_the_catalog_holds_for_every_build() {
+    let base = fresh("yes");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("ask.pdf"), encrypted(chapter("Locked"), -1)).unwrap();
+    let first = build(&lib, std::slice::from_ref(&books), &options());
+    assert_eq!(book(&first, "ask.pdf").book.reason, Some(Skip::Ask));
+    let hash = hash_of(&first, "ask.pdf");
+    assert_eq!(lib.allow("not a hash", true), Err(ChangeError::NotAHash));
+    assert_eq!(lib.allow(&hash.to_ascii_uppercase(), true).unwrap().allowed, std::slice::from_ref(&hash));
+    let yes = build(&lib, std::slice::from_ref(&books), &options());
+    assert_eq!(book(&yes, "ask.pdf").book.state, State::Indexed, "read with the yes the catalog keeps");
+    assert_eq!(lib.catalog().allowed, std::slice::from_ref(&hash), "kept by the build");
+    let again = build(&lib, std::slice::from_ref(&books), &options());
+    assert!(book(&again, "ask.pdf").run.is_some_and(|r| r.current), "current, not asked about again");
+    assert!(lib.allow(&hash, false).unwrap().allowed.is_empty());
+    let no = build(&lib, std::slice::from_ref(&books), &options());
+    assert_eq!(book(&no, "ask.pdf").book.reason, Some(Skip::Ask));
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c: before a build, the plan counts the books it would read and their pages (a copy
+/// once), reading no page and writing nothing; after it, those books are current; a book skipped
+/// for what does not change costs nothing.
+#[test]
+fn the_plan_counts_the_pages_a_build_would_read() {
+    let base = fresh("plan");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    std::fs::write(books.join("copy.pdf"), chapter("A")).unwrap();
+    std::fs::write(books.join("three.pdf"), two_font_book(&[helv(40.0, 11.0, "1.e4"), helv(40.0, 11.0, "1.d4"), helv(40.0, 11.0, "1.c4")])).unwrap();
+    std::fs::write(books.join("never.pdf"), encrypted(chapter("Never"), !0x10)).unwrap();
+    assert_eq!(lib.plan(Caps::default(), &|| false, &mut |_, _| {}), Plan::default(), "no folder chosen");
+    lib.add_folder(&books).unwrap();
+    let listing = || {
+        let mut names: Vec<String> = std::fs::read_dir(lib.dir()).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        names.sort();
+        names
+    };
+    let before = listing();
+    let mut told = Vec::new();
+    let plan = lib.plan(Caps::default(), &|| false, &mut |n, of| told.push((n, of)));
+    assert_eq!((plan.pdfs, plan.to_read, plan.pages, plan.uncounted, plan.current), (4, 3, 5, 0, 0), "{plan:?}");
+    assert_eq!(told.len(), 4);
+    assert_eq!(listing(), before, "nothing written");
+    assert_eq!(before, ["catalog.json", "library.flock"], "the catalog and the lock only");
+    build(&lib, std::slice::from_ref(&books), &options());
+    let after = lib.plan(Caps::default(), &|| false, &mut |_, _| {});
+    assert_eq!((after.current, after.skipped, after.to_read, after.pages), (2, 1, 0, 0), "{after:?}");
+    // Stopped at once: nothing counted.
+    assert!(lib.plan(Caps::default(), &|| true, &mut |_, _| {}).stopped);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c: a result is opened only when its PDF is on this computer: a file that is gone is
+/// said, and one whose data is in the cloud is never opened.
+#[test]
+fn a_book_is_opened_only_when_on_this_computer() {
+    let base = fresh("here");
+    std::fs::write(base.join("here.pdf"), chapter("Here")).unwrap();
+    let (size, _) = on_this_computer(&base.join("here.pdf")).unwrap();
+    assert_eq!(size, std::fs::metadata(base.join("here.pdf")).unwrap().len(), "its size, to tell a changed book");
+    assert_eq!(on_this_computer(&base.join("gone.pdf")), Err(Skip::Gone));
+    assert_eq!(on_this_computer(&base), Err(Skip::Gone), "a folder is no book");
+    #[cfg(windows)]
+    {
+        let away = base.join("away.pdf");
+        std::fs::write(&away, chapter("Away")).unwrap();
+        let out = std::process::Command::new("attrib").arg("+O").arg(&away).output().unwrap();
+        assert!(out.status.success(), "attrib +O: {}", String::from_utf8_lossy(&out.stderr));
+        assert_eq!(on_this_computer(&away), Err(Skip::InCloud));
+        let _ = std::process::Command::new("attrib").arg("-O").arg(&away).output();
+    }
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (the review of #431, 2): one build or change of a Library at a time, in this
+/// process or another: while one holds its lock, a build is refused as busy, a change too, and a
+/// clear takes nothing out; once it is let go of, they run.
+#[test]
+fn a_second_build_or_change_is_refused_while_one_holds_the_library() {
+    let base = fresh("lock");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    let held = lib.lock().unwrap();
+    assert!(lib.busy());
+    assert_eq!(lib.build(std::slice::from_ref(&books), &options(), &mut |_| true).err(), Some(BuildError::Busy));
+    assert_eq!(lib.add_folder(&books).err(), Some(ChangeError::Busy));
+    assert_eq!(lib.allow(&"0".repeat(64), true).err(), Some(ChangeError::Busy));
+    assert_eq!(lib.remove_folder("x").err(), Some(ChangeError::Busy));
+    assert!(lib.clear(None).busy);
+    assert!(BuildError::Busy.to_string().contains("another build"), "said in words");
+    drop(held);
+    assert!(!lib.busy());
+    lib.add_folder(&books).unwrap();
+    assert_eq!(build(&lib, std::slice::from_ref(&books), &options()).read, 1);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (the review of #431, 3): a stop is seen in the walk and while a book is read and
+/// hashed, not only at the next page: asked before the build, it reads nothing and ends stopped,
+/// the catalog no longer marked as being built; a chunked read asked to stop gives nothing.
+#[test]
+fn a_stop_is_seen_in_the_walk_and_while_a_book_is_hashed() {
+    let base = fresh("stop");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    std::fs::write(books.join("b.pdf"), chapter("B")).unwrap();
+    let stop = Arc::new(std::sync::atomic::AtomicBool::new(true));
+    let opts = BuildOptions { stop: Some(Arc::clone(&stop)), ..options() };
+    let built = build(&lib, std::slice::from_ref(&books), &opts);
+    assert!(built.stopped, "{built:?}");
+    assert!(built.books.is_empty() && built.walk.entries == 0, "the walk stopped before its first entry: {built:?}");
+    assert_eq!(built.read, 0, "nothing read once stopped");
+    assert_eq!(lib.catalog().building, None, "ended: no longer being built");
+    assert_eq!(read_hashing(&books.join("a.pdf"), 1 << 20, &|| true).unwrap(), None);
+    let whole = read_hashing(&books.join("a.pdf"), 1 << 20, &|| false).unwrap().unwrap();
+    assert_eq!(whole.1, <[u8; 32]>::from(sha2::Sha256::digest(&whole.0)), "the same hash, a chunk at a time");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (the review of #431, 3): while a build runs the catalog says so, the books it had
+/// kept; a build that ends takes the mark out (one cut short leaves it, for the panel to say).
+#[test]
+fn the_catalog_is_marked_while_a_build_runs() {
+    let base = fresh("marked");
+    let (books, lib) = (base.join("books"), Library::new(base.join("library")));
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chapter("A")).unwrap();
+    std::fs::write(books.join("b.pdf"), chapter("B")).unwrap();
+    build(&lib, std::slice::from_ref(&books), &options());
+    let mut seen = Vec::new();
+    lib.build(std::slice::from_ref(&books), &options(), &mut |p| {
+        let c = lib.catalog();
+        seen.push((p.book, c.building.is_some(), c.books.len()));
+        true
+    })
+    .unwrap();
+    assert!(seen.iter().all(|(_, marked, books)| *marked && *books == 2), "{seen:?}");
+    assert_eq!(lib.catalog().building, None);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (the review of #431, 8): a change never writes an empty catalog over one that
+/// can't be read: it is refused with why, and the file stays as it was.
+#[test]
+fn a_change_never_writes_over_a_catalog_it_cannot_read() {
+    let base = fresh("unread");
+    let lib = Library::new(base.join("library"));
+    std::fs::create_dir_all(lib.dir()).unwrap();
+    let catalog = lib.dir().join("catalog.json");
+    std::fs::write(&catalog, b"{ not a catalog").unwrap();
+    assert!(matches!(lib.add_folder(&base), Err(ChangeError::Unreadable(_))));
+    assert!(matches!(lib.allow(&"a".repeat(64), true), Err(ChangeError::Unreadable(_))));
+    assert!(matches!(lib.remove_folder("x"), Err(ChangeError::Unreadable(_))));
+    assert!(lib.clear(Some(&"a".repeat(64))).catalog_error.is_some());
+    assert_eq!(std::fs::read(&catalog).unwrap(), b"{ not a catalog", "left as it was");
+    assert!(lib.read_catalog().is_err());
+    assert_eq!(lib.catalog(), Catalog::default(), "a build still starts from an empty one");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// Plan A9-N15c (the review of #431, 12): on Windows a folder inside a chosen one is told without
+/// regard to case, as the file system names it.
+#[cfg(windows)]
+#[test]
+fn a_folder_within_a_chosen_one_is_told_without_regard_to_case() {
+    let base = fresh("case");
+    let lib = Library::new(base.join("library"));
+    let books = base.join("Books");
+    std::fs::create_dir_all(books.join("Inner")).unwrap();
+    lib.add_folder(&books).unwrap();
+    let lower = PathBuf::from(books.join("Inner").to_string_lossy().to_lowercase());
+    assert_eq!(lib.add_folder(&lower), Err(ChangeError::Within(books.to_string_lossy().into_owned())));
     let _ = std::fs::remove_dir_all(&base);
 }

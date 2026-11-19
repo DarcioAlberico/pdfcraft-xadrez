@@ -4043,3 +4043,83 @@ progress bar	Progress	Eiga
 pawn structure	Passed	Laisvi
 # fix: the board rail's More button
 	More board tools	Daugiau lentos įrankių
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Praleista: kopijuoti neleidžiama
+	Encrypted: read it into the Library?	Užšifruota: nuskaityti į Biblioteką?
+	Skipped: does not open	Praleista: neatsidaro
+	Skipped: larger than 1 GB	Praleista: didesnė nei 1 GB
+	Skipped: can't be read	Praleista: neįmanoma perskaityti
+	Skipped: reading failed	Praleista: nuskaityti nepavyko
+	Skipped: now in the cloud	Praleista: dabar debesyje
+	Skipped: a link, never followed	Praleista: nuoroda, niekada nesekama
+	Skipped: no longer there	Praleista: jos ten nebėra
+	Left as it was: its index can't be read now	Palikta kaip buvo: jos rodyklės dabar neįmanoma perskaityti
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Nuskaityta puslapių: {pages} · diagramų: {diagrams} · tikrintinų: {review} · partijų: {games}
+	no piece model: picture diagrams not read	nėra figūrų modelio: paveikslėlių diagramos nenuskaitytos
+	Stopped partway: Continue goes on from there	Sustabdyta pusiaukelėje: Tęsti tęs nuo ten
+	Not read yet	Dar nenuskaityta
+	In the cloud: never opened	Debesyje: niekada neatidaroma
+	Not kept: the Library is full (128 MB)	Neišsaugota: Biblioteka pilna (128 MB)
+	Encrypted: you said yes	Užšifruota: pasakėte taip
+	The Library needs the app's data folder, and there is none.	Bibliotekai reikia programos duomenų aplanko, o jo nėra.
+	Choose a folder of chess books	Pasirinkite aplanką su šachmatų knygomis
+	Books left out of the Library: {n}	Iš Bibliotekos išimtų knygų: {n}
+	This folder is in the Library already, through {dir}.	Šis aplankas jau yra Bibliotekoje, per {dir}.
+	The Library has {n} folders already.	Bibliotekoje jau yra aplankų: {n}.
+	The Library's folders couldn't be changed: {e}	Nepavyko pakeisti Bibliotekos aplankų: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Bibliotekos kūrimas sustabdytas: liko knygų: {n}. Tęsti tęs nuo ten.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Biblioteka sukurta: dabar nuskaityta knygų: {read}; knygų Bibliotekoje: {indexed}.
+	The Library couldn't be built: {e}	Nepavyko sukurti Bibliotekos: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} yra debesyje, ne šiame kompiuteryje: neatidaroma.
+	{path} is no longer there: build the Library again to forget it.	{path} nebėra: sukurkite Biblioteką iš naujo, kad ji jį pamirštų.
+	This move is in the book's PGN, which gives no page for it.	Šis ėjimas yra knygos PGN, kuriame jo puslapis nenurodytas.
+	The move couldn't be outlined: page {page} reads differently now.	Ėjimo nepavyko apibrėžti: {page} puslapis dabar skaitomas kitaip.
+	Library	Biblioteka
+	Books	Knygos
+	Stopping after this page…	Sustojama po šio puslapio…
+	Building the Library: looking at the folders…	Kuriama Biblioteka: peržiūrimi aplankai…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Kuriama Biblioteka: knyga {n} iš {m} ({name}), puslapis {p} iš {q}
+	Building the Library: book {n} of {m} ({name})	Kuriama Biblioteka: knyga {n} iš {m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Pasirinktų aplankų knygos, nuskaitytos vieną kartą, kad pozicija, ėjimas ar žaidėjas būtų randami visose. Niekas neskaitoma, kol nesukursite.
+	No folder yet: add the folders where your chess books are.	Aplankų dar nėra: pridėkite aplankus, kuriuose yra jūsų šachmatų knygos.
+	Its books leave the Library; the files stay where they are.	Jo knygos išeina iš Bibliotekos; failai lieka ten, kur yra.
+	Add a folder…	Pridėti aplanką…
+	The folders can't change while the Library is being built.	Aplankų negalima keisti, kol kuriama Biblioteka.
+	Books in the Library: {n}	Knygų Bibliotekoje: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Neperžiūrėta: nuorodų {links}, aplankų debesyje {cloud}, aplankų, kurių neįmanoma išvardyti {unlisted}.
+	The folders hold more than a build looks at.	Aplankuose yra daugiau, nei peržiūri vienas kūrimas.
+	Build	Kurti
+	Reads on {n} of the {all} cores of this computer.	Skaito naudodama {n} iš {all} šio kompiuterio branduolių.
+	Counting the pages: book {n} of {m}…	Skaičiuojami puslapiai: knyga {n} iš {m}…
+	Every book is read: a build only looks for new or changed ones.	Visos knygos nuskaitytos: kūrimas ieško tik naujų ar pakeistų.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Nuskaityti: knygų {books}, puslapių {pages}, {time} (įvertis)
+	Books whose pages could not be counted: {n}	Knygų, kurių puslapių nepavyko suskaičiuoti: {n}
+	Leave out	Neįtraukti
+	Position (FEN)	Pozicija (FEN)
+	Move (SAN)	Ėjimas (SAN)
+	Player	Žaidėjas
+	Opening (ECO)	Debiutas (ECO)
+	From the board	Iš lentos
+	The position the Board tab shows	Pozicija, kurią rodo skirtukas Lenta
+	Either side to move	Ėjimas bet kuriai pusei
+	Not a FEN: {e}	Tai ne FEN: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Įrašykite poziciją (FEN), ėjimą, pvz., Bxh7+, žaidėją, turnyrą arba debiuto kodą, pvz., B90.
+	Looking in the Library…	Ieškoma Bibliotekoje…
+	The Library couldn't be searched: {e}	Nepavyko ieškoti Bibliotekoje: {e}
+	No book of the Library is read yet: build it first, in Books.	Dar nenuskaityta nė viena Bibliotekos knyga: pirmiausia ją sukurkite, skiltyje Knygos.
+	Books not read yet, not looked in: {n}	Dar nenuskaitytų, neperžiūrėtų knygų: {n}
+	Books whose index could not be read: {n}	Knygų, kurių rodyklės nepavyko nuskaityti: {n}
+	Nothing in the Library matches.	Bibliotekoje niekas neatitinka.
+	Open the Library	Atidaryti Biblioteką
+	Look in the Library	Ieškoti Bibliotekoje
+	Find this position in every book of the Library	Ieškoti šios pozicijos visose Bibliotekos knygose
+	Library…	Biblioteka…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Aplankas bus pridėtas, kai kūrimas baigsis.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Vyksta kitas šios Bibliotekos kūrimas (kitame lange, kitame PdfCraft arba komandinėje eilutėje): palaukite, kol jis baigsis.
+	The Library's catalog can't be read, so it isn't changed: {e}	Bibliotekos katalogo nepavyksta perskaityti, todėl jis nekeičiamas: {e}
+	This book changed since the Library read it: build the Library again.	Ši knyga pasikeitė nuo tada, kai Biblioteka ją perskaitė: sukurkite Biblioteką iš naujo.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Ėjimas neapibrėžtas: jo puslapis nebuvo perskaitytas laiku arba jūs nuėjote kitur.
+	{path} is a link, which the Library never opens.	{path} yra nuoroda, kurios Biblioteka niekada neatidaro.
+	{path} can't be opened.	{path} neįmanoma atidaryti.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Paskutinis kūrimas buvo nutrauktas (PdfCraft užsidarė arba sustojo dėl klaidos): Tęsti tęsia nuo ten, kur sustojo.

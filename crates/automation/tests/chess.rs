@@ -5051,6 +5051,33 @@ fn the_library_is_built_listed_and_cleared_inside_the_root() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N15c (the review of #431, 2): while another build or change holds the Library (the
+/// desktop app's Library panel, another PdfCraft), `chess_library_build` is refused with why, and
+/// `chess_library_clear` takes nothing out and says so; once it is let go of, both work.
+#[test]
+fn a_library_held_by_another_build_is_said_never_written_over() {
+    use pdfcraft_engine::chess::library::Library;
+    let (base, root) = workdir("library-held");
+    let books = root.join("books");
+    std::fs::create_dir_all(&books).unwrap();
+    std::fs::write(books.join("a.pdf"), chess_pdf()).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let args = json!({ "dirs": ["books"], "library": "lib", "models_dir": "models", "workers": 1 });
+    assert_eq!(ok(&mut a, "chess_library_build", args.clone())["read"], 1);
+    let catalog = std::fs::read(root.join("lib").join("catalog.json")).unwrap();
+    let held = Library::new(root.join("lib")).lock().unwrap();
+    let refused = a.call("chess_library_build", &args).expect_err("a second build refused");
+    assert!(refused.to_string().contains("another build or change of this Library is running"), "{refused}");
+    let cleared = ok(&mut a, "chess_library_clear", json!({ "library": "lib" }));
+    assert_eq!((cleared["busy"].as_bool(), cleared["indexes"].as_u64()), (Some(true), Some(0)), "{cleared:#}");
+    assert!(cleared["why"].as_str().is_some_and(|w| w.contains("wait for it to end")), "{cleared:#}");
+    assert_eq!(std::fs::read(root.join("lib").join("catalog.json")).unwrap(), catalog, "the catalog as it was");
+    drop(held);
+    assert_eq!(ok(&mut a, "chess_library_build", args)["read"], 0, "let go of: built, nothing new to read");
+    assert_eq!(ok(&mut a, "chess_library_clear", json!({ "library": "lib" }))["busy"], false);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan A9-N15b: `chess_library_find` looks through every book of the Library: a position by its
 /// FEN or by its moves, a SAN, a player's games; by book, with the page as it numbers it, the move
 /// as numbered and the game; at most `max` listed, all counted; confined like the other tools.

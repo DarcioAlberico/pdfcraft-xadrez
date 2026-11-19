@@ -3793,3 +3793,83 @@ progress bar	Progress	Орындалу барысы
 pawn structure	Passed	Өтпелі
 # fix: the board rail's More button
 	More board tools	Басқа тақта құралдары
+# A9-N15c: the Library (Chess ▸ Library…): its folders, its books' states, the build and its estimate, the search and its results.
+	Skipped: copying not allowed	Өткізілді: көшіруге рұқсат жоқ
+	Encrypted: read it into the Library?	Шифрланған: Кітапханаға оқылсын ба?
+	Skipped: does not open	Өткізілді: ашылмайды
+	Skipped: larger than 1 GB	Өткізілді: 1 ГБ-тан үлкен
+	Skipped: can't be read	Өткізілді: оқылмайды
+	Skipped: reading failed	Өткізілді: оқу сәтсіз аяқталды
+	Skipped: now in the cloud	Өткізілді: енді бұлтта
+	Skipped: a link, never followed	Өткізілді: сілтеме, ешқашан ілесілмейді
+	Skipped: no longer there	Өткізілді: енді жоқ
+	Left as it was: its index can't be read now	Сол күйінде қалды: оның индексі қазір оқылмайды
+	Pages read: {pages} · diagrams: {diagrams} · to review: {review} · games: {games}	Оқылған беттер: {pages} · диаграммалар: {diagrams} · тексерілетін: {review} · партиялар: {games}
+	no piece model: picture diagrams not read	фигуралар моделі жоқ: сурет диаграммалары оқылмады
+	Stopped partway: Continue goes on from there	Ортасында тоқтатылды: «Жалғастыру» сол жерден жалғастырады
+	Not read yet	Әлі оқылмады
+	In the cloud: never opened	Бұлтта: ешқашан ашылмайды
+	Not kept: the Library is full (128 MB)	Сақталмады: Кітапхана толы (128 МБ)
+	Encrypted: you said yes	Шифрланған: сіз иә дедіңіз
+	The Library needs the app's data folder, and there is none.	Кітапханаға қолданбаның деректер қалтасы керек, бірақ ол жоқ.
+	Choose a folder of chess books	Шахмат кітаптары бар қалтаны таңдаңыз
+	Books left out of the Library: {n}	Кітапханадан шығарылған кітаптар: {n}
+	This folder is in the Library already, through {dir}.	Бұл қалта Кітапханада бар, {dir} арқылы.
+	The Library has {n} folders already.	Кітапханада қалталар саны әлдеқашан: {n}.
+	The Library's folders couldn't be changed: {e}	Кітапхана қалталарын өзгерту мүмкін болмады: {e}
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Кітапхананы құру тоқтатылды: қалған кітаптар: {n}. «Жалғастыру» сол жерден жалғастырады.
+	The Library is built: books read now: {read}; books in the Library: {indexed}.	Кітапхана құрылды: қазір оқылған кітаптар: {read}; Кітапханадағы кітаптар: {indexed}.
+	The Library couldn't be built: {e}	Кітапхананы құру мүмкін болмады: {e}
+	{path} is in the cloud, not on this computer: it isn't opened.	{path} бұлтта, бұл компьютерде емес: ашылмайды.
+	{path} is no longer there: build the Library again to forget it.	{path} енді жоқ: оны ұмыту үшін Кітапхананы қайта құрыңыз.
+	This move is in the book's PGN, which gives no page for it.	Бұл жүріс кітаптың PGN файлында бар, бірақ оның беті көрсетілмеген.
+	The move couldn't be outlined: page {page} reads differently now.	Жүрісті белгілеу мүмкін болмады: {page} бет енді басқаша оқылады.
+	Library	Кітапхана
+	Books	Кітаптар
+	Stopping after this page…	Осы беттен кейін тоқтайды…
+	Building the Library: looking at the folders…	Кітапхана құрылуда: қалталар қаралуда…
+	Building the Library: book {n} of {m} ({name}), page {p} of {q}	Кітапхана құрылуда: кітап {n}/{m} ({name}), бет {p}/{q}
+	Building the Library: book {n} of {m} ({name})	Кітапхана құрылуда: кітап {n}/{m} ({name})
+	The books of the folders you choose, read once, so a position, a move or a player is found in all of them. Nothing is read until you build.	Сіз таңдаған қалталардағы кітаптар бір рет оқылады, сонда позиция, жүріс не ойыншы олардың бәрінен табылады. Сіз құрмайынша ештеңе оқылмайды.
+	No folder yet: add the folders where your chess books are.	Әзірге қалта жоқ: шахмат кітаптарыңыз бар қалталарды қосыңыз.
+	Its books leave the Library; the files stay where they are.	Оның кітаптары Кітапханадан шығады; файлдар орнында қалады.
+	Add a folder…	Қалта қосу…
+	The folders can't change while the Library is being built.	Кітапхана құрылып жатқанда қалталарды өзгерту мүмкін емес.
+	Books in the Library: {n}	Кітапханадағы кітаптар: {n}
+	Not looked in: links {links}, folders in the cloud {cloud}, folders that can't be listed {unlisted}.	Қаралмады: сілтемелер {links}, бұлттағы қалталар {cloud}, тізімделмейтін қалталар {unlisted}.
+	The folders hold more than a build looks at.	Қалталарда бір құру қарайтыннан көп бар.
+	Build	Құру
+	Reads on {n} of the {all} cores of this computer.	Осы компьютердің {all} ядросының {n} ядросында оқиды.
+	Counting the pages: book {n} of {m}…	Беттер саналуда: кітап {n}/{m}…
+	Every book is read: a build only looks for new or changed ones.	Барлық кітап оқылды: құру тек жаңа не өзгерген кітаптарды іздейді.
+	To read: {books} books, {pages} pages, {time} (an estimate)	Оқылатыны: кітаптар {books}, беттер {pages}, {time} (бағалау)
+	Books whose pages could not be counted: {n}	Беттерін санау мүмкін болмаған кітаптар: {n}
+	Leave out	Шығарып тастау
+	Position (FEN)	Позиция (FEN)
+	Move (SAN)	Жүріс (SAN)
+	Player	Ойыншы
+	Opening (ECO)	Дебют (ECO)
+	From the board	Тақтадан
+	The position the Board tab shows	Тақта қойындысы көрсететін позиция
+	Either side to move	Кез келген жақтың жүрісі
+	Not a FEN: {e}	FEN емес: {e}
+	Write a position (FEN), a move such as Bxh7+, a player, an event or an opening code such as B90.	Позицияны (FEN), Bxh7+ сияқты жүрісті, ойыншыны, турнирді немесе B90 сияқты дебют кодын жазыңыз.
+	Looking in the Library…	Кітапханадан ізделуде…
+	The Library couldn't be searched: {e}	Кітапханадан іздеу мүмкін болмады: {e}
+	No book of the Library is read yet: build it first, in Books.	Кітапхананың бірде-бір кітабы әлі оқылмаған: алдымен оны Кітаптар бөлімінде құрыңыз.
+	Books not read yet, not looked in: {n}	Әлі оқылмаған, қаралмаған кітаптар: {n}
+	Books whose index could not be read: {n}	Индексі оқылмаған кітаптар: {n}
+	Nothing in the Library matches.	Кітапханада сәйкес келетін ештеңе жоқ.
+	Open the Library	Кітапхананы ашу
+	Look in the Library	Кітапханадан іздеу
+	Find this position in every book of the Library	Бұл позицияны Кітапхананың барлық кітабынан іздеу
+	Library…	Кітапхана…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Қалта құру аяқталғанда қосылады.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Осы Кітапхананың басқа құрылуы жүріп жатыр (басқа терезеде, басқа PdfCraft-та немесе пәрмен жолында): оның аяқталуын күтіңіз.
+	The Library's catalog can't be read, so it isn't changed: {e}	Кітапхана каталогын оқу мүмкін емес, сондықтан ол өзгертілмейді: {e}
+	This book changed since the Library read it: build the Library again.	Кітапхана оқығаннан бері бұл кітап өзгерді: Кітапхананы қайта құрыңыз.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Жүріс белгіленбеді: оның беті уақытында оқылмады немесе сіз басқа жерге кеттіңіз.
+	{path} is a link, which the Library never opens.	{path} — сілтеме, Кітапхана оны ешқашан ашпайды.
+	{path} can't be opened.	{path} ашылмайды.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Соңғы құру үзіліп қалды (PdfCraft жабылды немесе қатеге байланысты тоқтады): «Жалғастыру» тоқтаған жерінен жалғастырады.

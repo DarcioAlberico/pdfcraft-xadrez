@@ -888,6 +888,17 @@ pub(crate) fn list(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
         Mode::Position => position_list(ui, t, chess),
         Mode::Pattern => pattern_list(ui, t, chess),
     }
+    // Past this book: the position in every book of the Library (plan A9-N15c; desktop only),
+    // after the list, so the keyboard meets the book's own places first.
+    #[cfg(not(target_arch = "wasm32"))]
+    if mode == Mode::Position {
+        ui.add_space(8.0);
+        let r = ui.add(egui::Button::new(tl!("Look in the Library")).min_size(vec2(24.0, 24.0)));
+        if r.on_hover_text(tl!("Find this position in every book of the Library")).clicked() {
+            let fen = crate::chess_library::board_fen(chess);
+            chess.library.ask_position(fen);
+        }
+    }
 }
 
 /// What was looked at: the book's PGN, and the pages read of the book's.
