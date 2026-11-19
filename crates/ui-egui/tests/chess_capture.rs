@@ -154,7 +154,7 @@ fn select(h: &mut Harness<'static, PdfCraftApp>, from: &str, to: &str) {
 }
 
 fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.movetext()
+    h.state().chess.board().game().movetext()
 }
 
 /// What the document's Undo would undo.
@@ -202,9 +202,9 @@ fn the_paragraph_selected_with_capture_armed_goes_in_at_once() {
     );
     let board = h.state().chess.board();
     assert_eq!(board.undo_label().as_deref(), Some("Capture line"));
-    assert_eq!(board.game.san(board.game.current()), "Raxe1", "the move shown is the last one grafted");
+    assert_eq!(board.game().san(board.game().current()), "Raxe1", "the move shown is the last one grafted");
     // Where 20.Raxe1 was printed: page 1, on the fourth line (its baseline at 658 pt).
-    let source = board.game.source(board.game.current()).expect("the move keeps its place on the page");
+    let source = board.game().source(board.game().current()).expect("the move keeps its place on the page");
     assert_eq!(source.page, 0);
     assert!(source.rect_user[1] > 650.0 && source.rect_user[3] < 672.0 && source.rect_user[0] > 150.0, "{source:?}");
     assert_eq!(capture_toast(&h), "Line from the start · moves: 17");
@@ -248,14 +248,14 @@ fn forced_variation_and_comment_captures() {
     assert!(h.state_mut().execute("chess.tool.comment"));
     h.run_steps(2);
     select(&mut h, "White", "initiative.");
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.comment(game.current()), "White obtains a dangerous initiative.");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Capture comment"));
     // The chip's switch: in place of the comment.
     h.get_by_label("replace the comment").click();
     h.run_steps(2);
     select(&mut h, "example:", "example:");
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.comment(game.current()), "example:");
     // Esc stops capturing.
     h.key_press(egui::Key::Escape);
@@ -337,7 +337,7 @@ fn a_stale_plan_is_planned_again() {
     assert!(h.state().chess.capture.pending.is_some(), "the end of the line is extended: shown first");
     h.get_by_label_contains("It extends the end of a line instead of branching from it.");
     // Meanwhile the game changes.
-    h.state_mut().chess.board_mut().game.set_comment(0, "edited meanwhile").unwrap();
+    h.state_mut().chess.board_mut().game_mut().unwrap().set_comment(0, "edited meanwhile").unwrap();
     h.get_by_label_contains("Apply").click();
     h.run_steps(3);
     // Planned again on the game as it is now: it still asks.
@@ -384,7 +384,7 @@ use pdfcraft_engine::chess::capture::CaptureMode;
 fn play(h: &mut Harness<'static, PdfCraftApp>, moves: &[&str]) {
     let board = h.state_mut().chess.board_mut();
     for m in moves {
-        board.game.play_san(m).unwrap();
+        board.game_mut().unwrap().play_san(m).unwrap();
     }
     h.run_steps(2);
 }
@@ -397,7 +397,7 @@ fn the_preview_offers_each_place_and_applies_the_one_chosen() {
     play(&mut h, &["Nd5", "Qxe1", "Nxe7+", "Kh7", "Raxe1"]);
     {
         // 19...Kh8 beside 19...Kh7: 20.Rfxe1 fits after either.
-        let game = &mut h.state_mut().chess.board_mut().game;
+        let game = h.state_mut().chess.board_mut().game_mut().unwrap();
         let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
         game.go_to_node(nxe7);
         game.play_san("Kh8").unwrap();
@@ -425,6 +425,31 @@ fn the_preview_offers_each_place_and_applies_the_one_chosen() {
     );
     assert!(h.state().chess.capture.pending.is_none());
     assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 (19... Kh8) 20. Raxe1 (20. Rfxe1)");
+}
+
+/// Plan A9-I6b (the review of #432): a capture waiting for the user is applied after the board
+/// turned to an illegal position. It is refused with the reason a capture started there is
+/// given, not said to have found nothing new; nothing is captured.
+#[test]
+fn a_capture_applied_after_the_board_turned_illegal_says_why() {
+    let mut h = harness();
+    play(&mut h, &["Nd5", "Qxe1", "Nxe7+", "Kh7", "Raxe1"]);
+    {
+        let game = h.state_mut().chess.board_mut().game_mut().unwrap();
+        let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
+        game.go_to_node(nxe7);
+        game.play_san("Kh8").unwrap();
+    }
+    h.state_mut().capture_pasted("20.Rfxe1", Some((CaptureMode::SubVariation, false)));
+    h.run_steps(2);
+    assert!(h.state().chess.capture.pending.is_some(), "an ambiguous capture is shown first");
+    // The board turns to an illegal position (no kings) while the capture waits.
+    h.state_mut().chess.board_mut().load_fen("8/8/8/8/8/8/8/8 w - - 0 1", false, None);
+    assert!(h.state().chess.board().is_illegal());
+    h.state_mut().take_said();
+    h.state_mut().apply_pending_capture(None, false);
+    assert_eq!(h.state().said(), Some("The board shows an illegal position: correct it before capturing moves into it."));
+    assert!(h.state().chess.capture.pending.is_none());
 }
 
 /// The preview of a page selection sits beside it; Esc closes it (the tool stays armed), and so
@@ -470,7 +495,7 @@ fn the_rest_not_read_can_be_kept_as_a_comment() {
     assert!(h.state().chess.capture.pending.is_some(), "text after the result: shown first");
     h.get_by_label("Apply and keep the rest as a comment").click();
     h.run_steps(3);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.san(game.current()), "Bxf6");
     assert!(game.comment(game.current()).contains("White won much later."), "{}", game.movetext());
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Capture variation"), "one step");
@@ -487,7 +512,7 @@ fn the_notice_undoes_the_capture_and_the_new_moves_are_marked() {
     h.run_steps(2);
     assert_eq!(capture_toast(&h), "Line from the start · moves: 3");
     let board = h.state().chess.board();
-    assert_eq!(board.fresh.nodes(&board.game).len(), 3);
+    assert_eq!(board.fresh.nodes(board.game()).len(), 3);
     h.get_by_label("Undo: Line from the start · moves: 3").click();
     h.run_steps(3);
     assert_eq!(movetext(&h), "");
@@ -499,7 +524,7 @@ fn the_notice_undoes_the_capture_and_the_new_moves_are_marked() {
     play(&mut h, &["Nxe7+"]);
     assert!(capture_notice(&h).is_none(), "until the next change");
     let board = h.state().chess.board();
-    assert!(board.fresh.nodes(&board.game).is_empty());
+    assert!(board.fresh.nodes(board.game()).is_empty());
 }
 
 /// The layer of captured text underlines, on the page, each move captured from it, and only
@@ -658,7 +683,7 @@ fn a_page_selection_is_corrected_in_its_glyphs() {
     h.get_by_label_contains("Apply").click();
     h.run_steps(3);
     assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7");
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
     let source = game.source(nxe7).expect("the corrected move keeps its place on the page");
     assert_eq!(source.page, 0);

@@ -79,13 +79,13 @@ fn put_game(h: &mut Harness<'static, PdfCraftApp>, pgn: &str) {
     let (mut game, stopped) = pdfcraft_engine::chess::pdfcraft_chess::game::Game::from_pgn(pgn).unwrap();
     assert_eq!(stopped, None);
     game.go_to(usize::MAX);
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(3);
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 
@@ -170,7 +170,7 @@ fn a_position_two_move_orders_reach_is_found_twice_and_the_books_reply_is_played
     assert_eq!(shown(&h), "Nc6", "the game did not move");
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     assert_eq!(shown(&h), "Bb5", "played on the board");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3 Nc6 3. Bb5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5 2. Nf3 Nc6 3. Bb5");
     // The list follows: both games reach it (the second in its variation), and the book goes on
     // with a6.
     h.get_by_label("In the book (2)");
@@ -181,7 +181,7 @@ fn a_position_two_move_orders_reach_is_found_twice_and_the_books_reply_is_played
     h.run_steps(2);
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.tag("Event"), Some("Reti"));
+    assert_eq!(h.state().chess.board().game().tag("Event"), Some("Reti"));
     assert_eq!(shown(&h), "Bb5");
     // Esc goes back to the moves.
     h.get_by_label("In the book (2)").focus();
@@ -294,7 +294,7 @@ fn by_material_the_rook_endings_are_listed_and_opened_from_the_keyboard() {
     assert!(focused(&h).starts_with("Game 1 · Rook ending"), "{}", focused(&h));
     host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.tag("Event"), Some("Rook ending"));
+    assert_eq!(h.state().chess.board().game().tag("Event"), Some("Rook ending"));
     assert_eq!(shown(&h), "d6", "at the stretch's first move");
     // A material that is not a signature.
     h.get_by_label("Material").focus();

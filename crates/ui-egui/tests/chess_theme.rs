@@ -116,7 +116,7 @@ fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
     assert!((framed.width() - framed.height()).abs() < 0.5, "still square: {framed:?}");
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     shot(&mut h, "look-outside-double.png");
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
     assert_eq!(
@@ -313,7 +313,7 @@ fn marks_on_moves_and_the_comment_large() {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
     let mut h = harness("", false);
     let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3?! { [%cal Gb5c7,Rd1h5] [%csl Re4] A plan. } Nc6 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(3);
     assert!(h.query_by_label("knight f3?!").is_some(), "the move keeps its sign in its name");
     assert!(h.query_by_label("Dubious move").is_none(), "the chip is not a second name beside the palette's");
@@ -325,7 +325,7 @@ fn marks_on_moves_and_the_comment_large() {
     assert_eq!(h.query_all_by_label("A plan.").count(), 1);
     h.state_mut().set_option("comment-focus", "on").unwrap();
     let nf3 = h.state().chess.board().hovered_move().unwrap();
-    h.state_mut().chess.board_mut().game.go_to_node(nf3);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to_node(nf3);
     h.run_steps(3);
     assert_eq!(h.query_all_by_label("A plan.").count(), 2, "and large under the board");
     shot(&mut h, "comment-focus.png");
@@ -339,7 +339,7 @@ fn columns_pair_the_moves_and_the_text_size_scales() {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
     let mut h = harness("", false);
     let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3 (2. c3 d5) Nc6 3. Bb5 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.state_mut().set_option("move-list-layout", "columns").unwrap();
     h.run_steps(3);
     let y = |h: &Harness<'static, PdfCraftApp>, name: &str| h.get_by_label(name).rect().center().y;
@@ -365,7 +365,7 @@ fn columns_pair_the_moves_and_the_text_size_scales() {
     for i in 0..1000 {
         long.play_uci(cycle[i % 4]).unwrap();
     }
-    h.state_mut().chess.board_mut().game = long;
+    h.state_mut().chess.board_mut().set_game(long);
     for layout in ["flow", "columns"] {
         h.state_mut().set_option("move-list-layout", layout).unwrap();
         h.run_steps(2);
@@ -382,7 +382,7 @@ fn esc_closes_the_keyboards_move_preview_and_keeps_the_focus() {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
     let mut h = harness("", false);
     let (game, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(3);
     h.get_by_label("c5").focus();
     h.run_steps(2);
@@ -400,9 +400,9 @@ fn a_move_rested_on_shows_its_position_and_leaves_the_board() {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
     let mut h = harness("", false);
     let (game, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(3);
-    let shown = h.state().chess.board().game.current();
+    let shown = h.state().chess.board().game().current();
     h.get_by_label("c5").hover();
     h.run_steps(2);
     assert_eq!(h.query_all_by_label_contains("Position after").count(), 0, "not before the delay");
@@ -412,7 +412,7 @@ fn a_move_rested_on_shows_its_position_and_leaves_the_board() {
     h.get_by_label("c5").hover();
     h.run_steps(2);
     assert!(h.query_by_label("Position after 1…c5").is_some(), "the variation move's position");
-    assert_eq!(h.state().chess.board().game.current(), shown, "the board keeps its move");
+    assert_eq!(h.state().chess.board().game().current(), shown, "the board keeps its move");
     shot(&mut h, "move-preview.png");
     h.state_mut().set_option("move-preview", "off").unwrap();
     h.run_steps(3);
@@ -493,7 +493,7 @@ fn the_move_lists_buttons_step_its_text_size() {
     use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
     let mut h = harness("", false);
     let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3 Nc6 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.get_by_label("Move list beside the page").click();
     h.run_steps(3);
     assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Moves));

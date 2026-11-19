@@ -31,6 +31,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role, resolve};
 
 use crate::chess_board_frame::BoardFrame;
+use crate::chess_history::{ChessEdit, History};
 use crate::theme::Tokens;
 
 /// The board's side on screen, in points, and the image drawn for it, in pixels.
@@ -39,9 +40,6 @@ const BOARD_PX: u32 = 496;
 
 /// Highest move number the editor takes.
 pub(crate) const MAX_MOVE_NUMBER: u32 = 999;
-
-/// Most changes the editor can undo.
-const MAX_HISTORY: usize = 200;
 
 /// What a click on the board puts there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,10 +73,11 @@ pub struct DiagramEditor {
     /// position was confirmed.
     pub focus: bool,
     /// The positions before each change, and those undone (Ctrl+Z and Ctrl+Shift+Z in the tab),
-    /// each with when it was put on its side ([`crate::chess_history::next_seq`]): the tab's Undo
-    /// takes the newer of the editor's change and the document's correction (plan A9-G10).
-    history: Vec<(Position, u64)>,
-    future: Vec<(Position, u64)>,
+    /// in the board's own kind of history (plan A9-I6b): at most
+    /// [`crate::chess_history::MAX_STEPS`] in all, each with when it was put on its side
+    /// ([`crate::chess_history::next_seq`]): the tab's Undo takes the newer of the editor's change
+    /// and the document's correction (plan A9-G10). Its steps are never named on screen.
+    history: History<Position>,
     /// The position as the last [`DiagramEditor::track`] saw it.
     seen: Option<Position>,
     texture: Option<(String, TextureHandle)>,
@@ -116,8 +115,7 @@ impl DiagramEditor {
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
             cursor,
             focus: true,
-            history: Vec::new(),
-            future: Vec::new(),
+            history: History::default(),
             seen: None,
             texture: None,
             sprites: None,
@@ -189,18 +187,13 @@ impl DiagramEditor {
         };
         if seen != self.position {
             let number_only = |a: &Position, b: &Position| Position { fullmove_number: b.fullmove_number, ..a.clone() } == *b;
-            let seq = crate::chess_history::next_seq();
-            match self.history.last_mut() {
+            let goes_on = number_only(&seen, &self.position) && self.history.peek(true).is_some_and(|last| number_only(last, &seen));
+            if goes_on {
                 // The step goes on, and is as new as its last change.
-                Some((last, at)) if number_only(&seen, &self.position) && number_only(last, &seen) => *at = seq,
-                _ => {
-                    if self.history.len() >= MAX_HISTORY {
-                        self.history.remove(0);
-                    }
-                    self.history.push((seen, seq));
-                }
+                self.history.extend_last();
+            } else {
+                self.history.record(ChessEdit::SetUp, seen);
             }
-            self.future.clear();
         }
         self.seen = Some(self.position.clone());
     }
@@ -213,29 +206,34 @@ impl DiagramEditor {
 
     /// When the change Undo (`undo`) or Redo would take was made or undone, if there is one.
     pub fn seq(&self, undo: bool) -> Option<u64> {
-        if undo { self.history.last() } else { self.future.last() }.map(|(_, seq)| *seq)
+        self.history.seq(undo)
     }
 
     /// Whether there is a change to undo, or one undone to redo.
     pub fn can_undo(&self) -> bool {
-        !self.history.is_empty()
+        self.history.undo_edit().is_some()
     }
     pub fn can_redo(&self) -> bool {
-        !self.future.is_empty()
+        self.history.redo_edit().is_some()
     }
 
     /// Undo the last change (Ctrl+Z in the tab).
     pub fn undo(&mut self) {
-        if let Some((before, _)) = self.history.pop() {
-            self.future.push((std::mem::replace(&mut self.position, before), crate::chess_history::next_seq()));
-            self.seen = Some(self.position.clone());
-        }
+        self.step(true);
     }
 
     /// Redo the last change undone (Ctrl+Shift+Z in the tab).
     pub fn redo(&mut self) {
-        if let Some((after, _)) = self.future.pop() {
-            self.history.push((std::mem::replace(&mut self.position, after), crate::chess_history::next_seq()));
+        self.step(false);
+    }
+
+    /// Undo (`undo`) or redo: the position shown goes to the other side, and the one kept comes
+    /// back.
+    fn step(&mut self, undo: bool) {
+        let now = self.position.clone();
+        let back = if undo { self.history.undo(now) } else { self.history.redo(now) };
+        if let Some((_, position)) = back {
+            self.position = position;
             self.seen = Some(self.position.clone());
         }
     }
@@ -243,8 +241,7 @@ impl DiagramEditor {
     /// Forget the changes to undo: the position is now the PDF's (redrawn), so Ctrl+Z is the
     /// document's again.
     pub fn forget_history(&mut self) {
-        self.history.clear();
-        self.future.clear();
+        self.history = History::default();
         self.seen = None;
     }
 
@@ -827,4 +824,57 @@ pub(crate) fn pieces_changed() {
 /// The count pictures of pieces are drawn at.
 pub(crate) fn pieces_generation() -> u64 {
     PIECES_GENERATION.load(Ordering::Relaxed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Plan A9-I6b: the editor's Undo is the board's kind of history ([`History`]) with the
+    /// editor's rules kept: at most 200 changes (the oldest go), a change after an undo drops
+    /// what was undone, and so does one more change of the move number that goes on the step
+    /// before it, which becomes as new as that change.
+    #[test]
+    fn the_editor_keeps_two_hundred_changes_and_a_change_drops_the_redo() {
+        let mut ed = DiagramEditor::new(DocId(1), 0, 0, None);
+        ed.track();
+        for n in 1..=250 {
+            ed.position.halfmove_clock = n;
+            ed.track();
+        }
+        let mut undone = 0;
+        while ed.can_undo() {
+            ed.undo();
+            undone += 1;
+        }
+        assert_eq!((undone, ed.position.halfmove_clock), (200, 50), "the 200 newest changes are kept");
+        let mut redone = 0;
+        while ed.can_redo() {
+            ed.redo();
+            redone += 1;
+        }
+        assert_eq!((redone, ed.position.halfmove_clock), (200, 250));
+        ed.undo();
+        assert!(ed.can_redo());
+        ed.position.halfmove_clock = 0;
+        ed.track();
+        assert!(!ed.can_redo(), "a change after an undo drops what was undone");
+
+        let mut ed = DiagramEditor::new(DocId(1), 0, 0, None);
+        ed.track();
+        ed.position.fullmove_number = 2;
+        ed.track();
+        ed.put(Square::H1, Some(Piece { color: Color::White, kind: PieceKind::King }));
+        ed.track();
+        ed.undo();
+        assert!(ed.can_redo());
+        let before = ed.seq(true);
+        ed.position.fullmove_number = 3;
+        ed.track();
+        assert!(!ed.can_redo(), "the move number's step goes on, and drops what was undone");
+        assert!(ed.seq(true) > before, "as new as its last change");
+        ed.undo();
+        assert_eq!(ed.position.fullmove_number, 1);
+        assert!(!ed.can_undo(), "the move number's changes were one step");
+    }
 }

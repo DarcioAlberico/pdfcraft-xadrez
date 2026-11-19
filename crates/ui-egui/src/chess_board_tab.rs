@@ -348,13 +348,13 @@ fn header(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, source_label: O
     let (text, colour, dot) = {
         let state = chess.board();
         let (status, colour) = chess_board_ui::status(state, t);
-        let current = state.game.current();
-        let text = if state.illegal.is_none() && current != 0 {
-            format!("{} · {status}", crate::chess_tools::move_name(&state.game, current))
+        let current = state.game().current();
+        let text = if !state.is_illegal() && current != 0 {
+            format!("{} · {status}", crate::chess_tools::move_name(state.game(), current))
         } else {
             status
         };
-        let dot = state.illegal.is_none().then(|| state.game.side_to_move() == Color::White);
+        let dot = (!state.is_illegal()).then(|| state.game().side_to_move() == Color::White);
         (text, colour, dot)
     };
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -543,7 +543,7 @@ fn trail_row(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, source_label
         r.clicked()
     };
     // A position that is not legal has no moves: the diagram it came from, to correct it.
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         if let (Some(label), Some(source)) = (source_label, state.source)
             && link(ui, ui.available_width(), label)
         {
@@ -559,7 +559,7 @@ fn trail_row(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, source_label
     let room = ui.available_width();
     if tree::continuations(ui, t, state, room) {
         // The fork's replies say where a step forward goes.
-    } else if !tree::variations_holding(&state.game, state.game.current()).is_empty() {
+    } else if !tree::variations_holding(state.game(), state.game().current()).is_empty() {
         if let Some(a) = tree::trail(ui, t, state, room) {
             asked = Some(a);
         }
@@ -686,10 +686,10 @@ fn moves(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, rect: Rect) -> O
 /// The move shown's comment, large (plan HC12), in at most three lines: a longer one ends in "…"
 /// and is whole in its tooltip and accessible name.
 fn comment_large(ui: &mut egui::Ui, t: &Tokens, state: &chess_board_ui::BoardState) {
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         return;
     }
-    let comment = state.game.comment(state.game.current());
+    let comment = state.game().comment(state.game().current());
     if comment.trim().is_empty() {
         return;
     }
@@ -756,8 +756,8 @@ fn bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<BoardAct
     let icon = crate::icons::image("message-square", 14.0, t.icon);
     let button = if compact { egui::Button::image(icon) } else { egui::Button::image_and_text(icon, tl!("Comment")) };
     let r = ui.add(button.selected(open).min_size(vec2(24.0, BAR - 2.0))).on_hover_text(tl!("The comments of the move shown, under the moves"));
-    r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, chess.board().illegal.is_none(), open, tl!("Comment")));
-    if r.clicked() && chess.board().illegal.is_none() {
+    r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, !chess.board().is_illegal(), open, tl!("Comment")));
+    if r.clicked() && !chess.board().is_illegal() {
         chess.board_view = MovesView::Moves;
         chess.board_mut().toggle_comment_editor();
     }

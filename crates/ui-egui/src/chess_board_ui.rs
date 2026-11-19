@@ -178,11 +178,72 @@ pub struct Source {
 /// whether the board is turned over.
 type ArrowBoard = (NodeId, u64, bool);
 
+/// What the board shows (plan A9-I6b): a game, or a position that cannot be played. One or the
+/// other, never both, so a game with moves can't stand behind an illegal position (finding
+/// A7-19): a position put in a game's place takes the game away, as loading it always did.
+#[derive(Clone, Debug)]
+pub enum BoardContent {
+    Game(Game),
+    /// A position that is not legal: shown as it is, with its FEN as given, and never played on
+    /// until it is corrected in the diagram editor.
+    Illegal {
+        placement: Placement,
+        fen: String,
+        blank: Blank,
+    },
+}
+
+/// What an illegal position reads as where the board's game is asked for ([`BoardState::game`]):
+/// an empty game from the standard start, as the board kept beside it before plan A9-I6b. Nothing
+/// can be played or written in it: it is made only here and only its revision changes, moving on
+/// as a game put on the board does, so what is keyed on the revision (the fields, the autosave,
+/// the list's caches) still tells one illegal position from the next.
+#[derive(Clone, Debug)]
+pub struct Blank(Game);
+
+impl BoardContent {
+    /// The position `placement`, not legal, with its FEN as given.
+    pub fn illegal(placement: Placement, fen: String) -> BoardContent {
+        BoardContent::Illegal { placement, fen, blank: Blank(Game::standard()) }
+    }
+
+    /// The game shown; for an illegal position, its [`Blank`].
+    pub fn game(&self) -> &Game {
+        match self {
+            BoardContent::Game(game) => game,
+            BoardContent::Illegal { blank, .. } => &blank.0,
+        }
+    }
+
+    /// The game shown, to change; none for an illegal position, which has no game.
+    pub fn game_mut(&mut self) -> Option<&mut Game> {
+        match self {
+            BoardContent::Game(game) => Some(game),
+            BoardContent::Illegal { .. } => None,
+        }
+    }
+
+    /// The FEN of an illegal position, as it was given.
+    pub fn illegal_fen(&self) -> Option<&str> {
+        match self {
+            BoardContent::Game(_) => None,
+            BoardContent::Illegal { fen, .. } => Some(fen),
+        }
+    }
+
+    /// Give the game shown (an illegal position's [`Blank`] too) a revision newer than `seen`.
+    fn bump_revision(&mut self, seen: u64) {
+        match self {
+            BoardContent::Game(game) => game.bump_revision(seen),
+            BoardContent::Illegal { blank, .. } => blank.0.bump_revision(seen),
+        }
+    }
+}
+
 /// The board panel's state.
 pub struct BoardState {
-    pub game: Game,
-    /// A position that cannot be played (not legal): shown as it is, with its FEN.
-    pub illegal: Option<(Placement, String)>,
+    /// The game shown, or the illegal position in its place.
+    pub(crate) content: BoardContent,
     pub source: Option<Source>,
     pub flipped: bool,
     /// The piece picked up (by a click or a drag).
@@ -347,8 +408,7 @@ struct Draft {
 impl Default for BoardState {
     fn default() -> BoardState {
         BoardState {
-            game: Game::standard(),
-            illegal: None,
+            content: BoardContent::Game(Game::standard()),
             source: None,
             flipped: false,
             selected: None,
@@ -447,22 +507,21 @@ impl BoardState {
 
     /// The change [`Self::load_fen`] makes; whether the FEN could be read.
     fn put_fen(&mut self, fen: &str, flipped: bool, source: Option<Source>) -> bool {
-        let (game, illegal, message) = match Game::from_fen(fen) {
-            Ok(game) => (game, None, None),
+        let (content, message) = match Game::from_fen(fen) {
+            Ok(game) => (BoardContent::Game(game), None),
             Err(GameError::BadFen(e)) => {
                 self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e)]));
                 return false;
             }
             Err(e) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
-                Ok(placement) => (Game::standard(), Some((placement, fen.trim().to_owned())), Some(board_illegal_text(&e))),
+                Ok(placement) => (BoardContent::illegal(placement, fen.trim().to_owned()), Some(board_illegal_text(&e))),
                 Err(e) => {
                     self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]));
                     return false;
                 }
             },
         };
-        self.game = game;
-        self.illegal = illegal;
+        self.content = content;
         self.message = message;
         self.fen_choice = None;
         self.selected = None;
@@ -489,9 +548,8 @@ impl BoardState {
         };
         let loaded = self.edit(|s| match Game::from_pgn_report(&first) {
             Ok((mut game, report)) => {
-                carry_place(&s.game, &mut game);
-                s.game = game;
-                s.illegal = None;
+                carry_place(s.game(), &mut game);
+                s.content = BoardContent::Game(game);
                 s.selected = None;
                 s.promotion = None;
                 s.message = read_message(&report);
@@ -511,8 +569,7 @@ impl BoardState {
     /// the board the panel opens a new game instead ([`BoardAction::NewGameAt`]).
     fn standard_start(&mut self) {
         self.edit(|s| {
-            s.game = Game::standard();
-            s.illegal = None;
+            s.content = BoardContent::Game(Game::standard());
             s.source = None;
             s.selected = None;
             s.promotion = None;
@@ -524,7 +581,41 @@ impl BoardState {
 
     /// The board as an undo step keeps it.
     fn snapshot(&self) -> Snapshot {
-        Snapshot { game: self.game.clone(), illegal: self.illegal.clone(), source: self.source, flipped: self.flipped }
+        Snapshot { content: self.content.clone(), source: self.source, flipped: self.flipped }
+    }
+
+    /// The game shown; for an illegal position, an empty game from the standard start
+    /// ([`Blank`]), which nothing can be played or written in.
+    pub fn game(&self) -> &Game {
+        self.content.game()
+    }
+
+    /// The game shown, to change; none for an illegal position, which has no game.
+    pub fn game_mut(&mut self) -> Option<&mut Game> {
+        self.content.game_mut()
+    }
+
+    /// Walk the game's moves with `to`, which shows another move (a change to the game goes
+    /// through [`Self::edit`]): nothing for an illegal position, which has none.
+    pub fn walk(&mut self, to: impl FnOnce(&mut Game)) {
+        if let Some(game) = self.game_mut() {
+            to(game);
+        }
+    }
+
+    /// Put `game` on the board in place of what it shows (not an undo step).
+    pub fn set_game(&mut self, game: Game) {
+        self.content = BoardContent::Game(game);
+    }
+
+    /// Whether the board shows a position that is not legal, in place of a game.
+    pub fn is_illegal(&self) -> bool {
+        matches!(self.content, BoardContent::Illegal { .. })
+    }
+
+    /// The FEN of the illegal position shown, as it was given.
+    pub fn illegal_fen(&self) -> Option<&str> {
+        self.content.illegal_fen()
     }
 
     /// Make a change to the game as one undo step. `change` says what it did, or `None` when it
@@ -533,25 +624,25 @@ impl BoardState {
     /// whether a step was recorded.
     pub(crate) fn edit(&mut self, change: impl FnOnce(&mut BoardState) -> Option<ChessEdit>) -> bool {
         let before = self.snapshot();
-        let revision = self.game.revision();
+        let revision = self.game().revision();
         self.history.see(revision);
         let Some(edit) = change(self) else { return false };
         let replaced = edit.replaces_game();
-        if !replaced && self.game.revision() == revision {
+        if !replaced && self.game().revision() == revision {
             return false;
         }
         if replaced {
             // A new game starts at revision 0: keep revisions from repeating across games.
-            self.game.bump_revision(self.history.max_revision());
+            self.content.bump_revision(self.history.max_revision());
         }
-        self.history.see(self.game.revision());
+        self.history.see(self.game().revision());
         // Moves that left the game: the game as it was goes to the trash (plan A9-G8, A5-07).
-        let removed = removed_moves(&before.game, &self.game);
+        let removed = removed_moves(before.content.game(), self.game());
         if removed > 0 {
             if self.removed.len() >= MAX_PENDING_REMOVED {
                 self.removed.remove(0);
             }
-            self.removed.push((before.game.clone(), removed));
+            self.removed.push((before.content.game().clone(), removed));
         }
         self.history.record(edit, before);
         true
@@ -566,11 +657,11 @@ impl BoardState {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.source.map(|s| (s.doc, s.page, s.index)).hash(&mut h);
         self.flipped.hash(&mut h);
-        if let Some((_, fen)) = &self.illegal {
+        if let Some(fen) = self.illegal_fen() {
             fen.hash(&mut h);
             return OpenKey(h.finish());
         }
-        let game = &self.game;
+        let game = self.game();
         game.start_fen().hash(&mut h);
         game.tags().hash(&mut h);
         // Each move with its depth, in order: the tree's shape and its moves.
@@ -631,13 +722,12 @@ impl BoardState {
     /// take it for the game they last saw.
     fn restore(&mut self, undo: bool) -> bool {
         let current = self.snapshot();
-        let seen = self.history.max_revision().max(self.game.revision());
+        let seen = self.history.max_revision().max(self.game().revision());
         let back = if undo { self.history.undo(current) } else { self.history.redo(current) };
         let Some((edit, snapshot)) = back else { return false };
-        self.game = snapshot.game;
-        self.game.bump_revision(seen);
-        self.history.see(self.game.revision());
-        self.illegal = snapshot.illegal;
+        self.content = snapshot.content;
+        self.content.bump_revision(seen);
+        self.history.see(self.game().revision());
         self.source = snapshot.source;
         if edit.sets_side() {
             self.flipped = snapshot.flipped;
@@ -655,29 +745,33 @@ impl BoardState {
     /// drawn (plan A9-I17, finding R5-02): stepped by a key, clicked in the list, played on the
     /// board or undone. A board drawn for the first time says nothing: it is not a move.
     pub(crate) fn announce_move(&mut self, ctx: &egui::Context) {
-        let current = self.game.current();
-        if self.illegal.is_none() && self.announced.replace(current).is_some_and(|before| before != current) {
-            crate::notice::announce(ctx, crate::notice::Level::Info, crate::chess_tools::move_spoken(&self.game, current));
+        let current = self.game().current();
+        if !self.is_illegal() && self.announced.replace(current).is_some_and(|before| before != current) {
+            crate::notice::announce(ctx, crate::notice::Level::Info, crate::chess_tools::move_spoken(self.game(), current));
         }
     }
 
     /// Fill the FEN and PGN fields from the board, when it changed (`force`: always): the FEN
     /// when the position shown did, the PGN only when the game did (its revision).
     pub(crate) fn refresh_fields(&mut self, force: bool) {
-        let key = match &self.illegal {
-            Some((_, fen)) => format!("illegal|{fen}"),
-            None => format!("{}|{}|{}", self.game.start_fen(), self.game.revision(), self.game.current()),
+        let key = match &self.content {
+            BoardContent::Illegal { fen, .. } => format!("illegal|{fen}"),
+            BoardContent::Game(game) => format!("{}|{}|{}", game.start_fen(), game.revision(), game.current()),
         };
         if force || key != self.shown {
             self.fen_text = self.current_fen();
             self.shown = key;
         }
-        let pgn = Some(self.illegal.is_none().then(|| self.game.revision()));
+        let game = match &self.content {
+            BoardContent::Game(game) => Some(game),
+            BoardContent::Illegal { .. } => None,
+        };
+        let pgn = Some(game.map(Game::revision));
         if force || pgn != self.pgn_shown {
             // Text typed in the PGN field stays until it is loaded or discarded; a new game put on
             // the board (`force`) replaces it.
             if force || !self.pgn_edited {
-                self.pgn_text = if self.illegal.is_some() { String::new() } else { self.game.pgn() };
+                self.pgn_text = game.map(Game::pgn).unwrap_or_default();
                 self.pgn_writes = self.pgn_writes.saturating_add(1);
                 self.pgn_edited = false;
             }
@@ -687,12 +781,18 @@ impl BoardState {
 
     /// The FEN of the board shown (an illegal position's as it was given).
     pub(crate) fn current_fen(&self) -> String {
-        self.illegal.as_ref().map_or_else(|| self.game.fen(), |(_, fen)| fen.clone())
+        match &self.content {
+            BoardContent::Game(game) => game.fen(),
+            BoardContent::Illegal { fen, .. } => fen.clone(),
+        }
     }
 
     /// The pieces shown.
     pub(crate) fn placement(&self) -> Placement {
-        self.illegal.as_ref().map_or_else(|| self.game.placement(), |(p, _)| *p)
+        match &self.content {
+            BoardContent::Game(game) => game.placement(),
+            BoardContent::Illegal { placement, .. } => *placement,
+        }
     }
 
     /// The board drawn in `board`, from the side it is shown from: where each square is (plan
@@ -704,26 +804,26 @@ impl BoardState {
     /// A click (or a drop) on `square`: pick a piece of the side to move up, or move the piece
     /// picked up there.
     fn click(&mut self, square: Square) {
-        if self.illegal.is_some() {
+        if self.is_illegal() {
             return;
         }
-        let own = self.game.piece_on(square).is_some_and(|p| p.color == self.game.side_to_move());
+        let own = self.game().piece_on(square).is_some_and(|p| p.color == self.game().side_to_move());
         match self.selected {
             Some(from) if from == square => self.selected = None,
-            Some(from) if self.game.targets(from).contains(&square) => self.play(from, square, None),
+            Some(from) if self.game().targets(from).contains(&square) => self.play(from, square, None),
             _ => self.selected = own.then_some(square),
         }
     }
 
     /// The notation's tokens of the game shown, from the cache while the game is unchanged.
     pub(crate) fn tokens(&mut self) -> std::sync::Arc<Vec<Token>> {
-        let revision = self.game.revision();
+        let revision = self.game().revision();
         if let Some((r, tokens)) = &self.tokens_cache
             && *r == revision
         {
             return tokens.clone();
         }
-        let tokens = std::sync::Arc::new(self.game.tokens());
+        let tokens = std::sync::Arc::new(self.game().tokens());
         self.tokens_cache = Some((revision, tokens.clone()));
         tokens
     }
@@ -731,13 +831,13 @@ impl BoardState {
     /// The first moves of the previous and the next variation in reading order from the move
     /// shown (plan HC11), from the cache while the game and the move shown are unchanged.
     pub(crate) fn variation_steps(&mut self) -> (Option<NodeId>, Option<NodeId>) {
-        let (revision, current) = (self.game.revision(), self.game.current());
+        let (revision, current) = (self.game().revision(), self.game().current());
         if let Some((r, c, back, next)) = self.variation_steps
             && (r, c) == (revision, current)
         {
             return (back, next);
         }
-        let (back, next) = (self.game.previous_variation(current), self.game.next_variation(current));
+        let (back, next) = (self.game().previous_variation(current), self.game().next_variation(current));
         self.variation_steps = Some((revision, current, back, next));
         (back, next)
     }
@@ -745,15 +845,15 @@ impl BoardState {
     /// Play a move (one undo step, unless it was in the game already and is only followed).
     fn play(&mut self, from: Square, to: Square, promotion: Option<PieceKind>) {
         self.selected = None;
-        let before = self.game.replies(self.game.current()).to_vec();
-        self.edit(|s| match s.game.play(from, to, promotion) {
+        let before = self.game().replies(self.game().current()).to_vec();
+        self.edit(|s| match s.game_mut()?.play(from, to, promotion) {
             Ok(()) => {
                 s.promotion = None;
                 s.message = None;
                 // A new move beside a continuation already there starts a variation (plan A8 V3).
-                let now = s.game.current();
+                let now = s.game().current();
                 s.created_variation = (!before.is_empty() && !before.contains(&now)).then_some(now);
-                Some(ChessEdit::Play(s.game.san(s.game.current()).to_owned()))
+                Some(ChessEdit::Play(s.game().san(s.game().current()).to_owned()))
             }
             Err(GameError::NeedsPromotion) => {
                 s.promotion = Some((from, to));
@@ -769,7 +869,7 @@ impl BoardState {
         if self.created_variation.is_some() && self.rules.new_move == crate::chess_moves_tree::NewMove::Replace {
             self.created_variation = None;
             self.edit(|s| {
-                crate::chess_moves_tree::replace_continuation(&mut s.game);
+                crate::chess_moves_tree::replace_continuation(s.game_mut()?);
                 Some(ChessEdit::DeleteMoves)
             });
         }
@@ -795,7 +895,7 @@ impl BoardState {
 
     /// The board an Alt+click arrow starts on: the move shown, the game's revision and which way up.
     fn arrow_board(&self) -> ArrowBoard {
-        (self.game.current(), self.game.revision(), self.flipped)
+        (self.game().current(), self.game().revision(), self.flipped)
     }
 
     /// Where an Alt+click arrow starts, while it still does: a start clicked before the game changed,
@@ -826,7 +926,7 @@ impl BoardState {
     /// suggested. Moves already in the game are followed; the others continue the line or start
     /// a variation. One undo step, when a move was added.
     pub fn play_uci_line(&mut self, moves: &[String]) {
-        if self.illegal.is_some() {
+        if self.is_illegal() {
             return;
         }
         self.selected = None;
@@ -834,7 +934,7 @@ impl BoardState {
         self.message = None;
         self.edit(|s| {
             for mv in moves {
-                if let Err(e) = s.game.play_uci(mv) {
+                if let Err(e) = s.game_mut()?.play_uci(mv) {
                     s.message = Some(e.to_string());
                     break;
                 }
@@ -853,26 +953,30 @@ impl BoardState {
             if crate::chess_moves_tree::choose_key(self, crate::chess_moves_tree::ChooseKey::Enter) {
                 return;
             }
-            let current = self.game.current();
-            let replies = self.game.replies(current);
+            let current = self.game().current();
+            let replies = self.game().replies(current);
             if self.rules.at_fork == crate::chess_moves_tree::AtFork::Ask && replies.len() > 1 {
-                let next = self.game.next_reply(current);
+                let next = self.game().next_reply(current);
                 self.choosing = Some(replies.iter().position(|&n| Some(n) == next).unwrap_or(0));
                 return;
             }
-            self.game.forward();
+            self.walk(|game| {
+                game.forward();
+            });
         } else {
             self.choosing = None;
-            self.game.back();
+            self.walk(|game| {
+                game.back();
+            });
         }
     }
 
     /// The drawings on the position shown: the move shown's, or an illegal position's.
     pub fn marks(&self) -> Vec<Mark> {
-        if self.illegal.is_some() {
+        if self.is_illegal() {
             return self.marks.get(&self.current_fen()).cloned().unwrap_or_default();
         }
-        self.marks_of(self.game.current())
+        self.marks_of(self.game().current())
     }
 
     /// The move whose drawings the board shows in place of the move shown's, while the pointer
@@ -883,7 +987,7 @@ impl BoardState {
 
     /// The drawings on move `node`'s position.
     pub(crate) fn marks_of(&self, node: NodeId) -> Vec<Mark> {
-        let drawings = self.game.drawings(node);
+        let drawings = self.game().drawings(node);
         drawings.iter().map(|d| Mark { from: d.from, to: d.to, color: MarkColor::from_draw(d.color) }).collect()
     }
 
@@ -892,10 +996,10 @@ impl BoardState {
     /// change to the move shown, one undo step; the engine's colour is never drawn.
     pub fn toggle_mark(&mut self, mark: Mark) {
         let Some(color) = mark.color.to_draw() else { return };
-        if self.illegal.is_none() {
-            let node = self.game.current();
+        if !self.is_illegal() {
+            let node = self.game().current();
             let drawing = Drawing { from: mark.from, to: mark.to, color };
-            self.edit(|s| s.game.toggle_drawing(node, drawing).then_some(ChessEdit::Draw));
+            self.edit(|s| s.game_mut()?.toggle_drawing(node, drawing).then_some(ChessEdit::Draw));
             return;
         }
         let key = self.current_fen();
@@ -923,9 +1027,9 @@ impl BoardState {
 
     /// Take the drawings off the position shown (on a legal position, one undo step).
     pub fn clear_marks(&mut self) {
-        if self.illegal.is_none() {
-            let node = self.game.current();
-            self.edit(|s| s.game.clear_drawings(node).then_some(ChessEdit::ClearDrawings));
+        if !self.is_illegal() {
+            let node = self.game().current();
+            self.edit(|s| s.game_mut()?.clear_drawings(node).then_some(ChessEdit::ClearDrawings));
             return;
         }
         let key = self.current_fen();
@@ -1177,7 +1281,7 @@ fn paint_mark(
 
 /// A dot at the edge of the side to move (plan HC6): white or black, ringed in the other.
 fn turn_dot(painter: &egui::Painter, state: &BoardState, board: Rect) {
-    let white = state.game.side_to_move() == Color::White;
+    let white = state.game().side_to_move() == Color::White;
     let bottom = white != state.flipped;
     let radius = (board.width() / 64.0).clamp(3.0, 7.0);
     let y = if bottom { board.bottom() - radius - 3.0 } else { board.top() + radius + 3.0 };
@@ -1233,7 +1337,7 @@ fn grid_key(state: &mut BoardState, key: Key) -> Option<String> {
             let before = state.selected;
             state.click(state.cursor);
             return state.selected.filter(|sq| before != Some(*sq)).map(|sq| {
-                let piece = state.game.piece_on(sq).map(crate::chess_editor::piece_name).unwrap_or_default();
+                let piece = state.game().piece_on(sq).map(crate::chess_editor::piece_name).unwrap_or_default();
                 crate::i18n::fmt(tl!("{piece} on {square} picked up"), &[("piece", piece), ("square", &sq.to_string())])
             });
         }
@@ -1368,22 +1472,22 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     let palette = crate::chess_theme::current(ui.ctx());
     let (picked, target) = (crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
     let grid = state.frame(rect);
-    if state.illegal.is_none() {
+    if !state.is_illegal() {
         // The marks on squares go under the pieces: the board's picture has them drawn already,
         // so the pieces on the marked squares are drawn again over the marks.
-        let last_move = state.game.last_move().map(|(from, to)| (grid.square_rect(from), grid.square_rect(to)));
+        let last_move = state.game().last_move().map(|(from, to)| (grid.square_rect(from), grid.square_rect(to)));
         if let Some((from, to)) = last_move {
             crate::chess_theme::paint_last_move(&painter, palette, look, from, to);
         }
         if let Some(from) = state.selected.or(state.arrow_start()) {
             painter.rect_filled(grid.square_rect(from), 0.0, picked);
         }
-        let marked: Vec<Square> = state.game.last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();
+        let marked: Vec<Square> = state.game().last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();
         if !marked.is_empty()
             && let Some(sprites) = state.sprites(ui.ctx(), pieces)
         {
             for sq in marked {
-                if let Some(piece) = state.game.piece_on(sq) {
+                if let Some(piece) = state.game().piece_on(sq) {
                     painter.image(sprites.id(), grid.square_rect(sq), sprite_uv(piece), Color32::WHITE);
                 }
             }
@@ -1391,16 +1495,16 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         if let Some((from, to)) = last_move {
             crate::chess_theme::paint_last_move_arrow(&painter, palette, look, from, to);
         }
-        if state.game.in_check()
-            && let Some(king) = state.game.placement().king(state.game.side_to_move())
+        if state.game().in_check()
+            && let Some(king) = state.game().placement().king(state.game().side_to_move())
         {
             let r = grid.square_rect(king);
             painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, crate::chess_theme::rgb(palette.check)));
         }
         if let Some(from) = state.selected {
-            for to in state.game.targets(from) {
+            for to in state.game().targets(from) {
                 let r = grid.square_rect(to);
-                if state.game.piece_on(to).is_some() {
+                if state.game().piece_on(to).is_some() {
                     painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, target));
                 } else {
                     painter.circle_filled(r.center(), r.width() * 0.15, target);
@@ -1416,7 +1520,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
             if let Some(sq) = at(state, pointer) {
                 painter.rect_stroke(grid.square_rect(sq), 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Inside);
             }
-            if let (Some(piece), Some(sprites)) = (state.game.piece_on(from), state.sprites(ui.ctx(), pieces)) {
+            if let (Some(piece), Some(sprites)) = (state.game().piece_on(from), state.sprites(ui.ctx(), pieces)) {
                 let cell = grid.square_rect(from);
                 painter.rect_filled(cell, 0.0, crate::chess_theme::rgb(palette.square(from.is_light())));
                 let ghost = Rect::from_center_size(pointer, cell.size() * 1.1);
@@ -1437,7 +1541,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         painter.rect_stroke(ring.shrink(4.0), 1.0, Stroke::new(1.0, Color32::WHITE), egui::StrokeKind::Inside);
     }
     crate::chess_theme::paint_frame(ui, t, look, rect);
-    if look.turn_dot && state.illegal.is_none() {
+    if look.turn_dot && !state.is_illegal() {
         turn_dot(&painter, state, rect);
     }
     // Coordinates in the corner squares, as on an analysis board; or beside the board; or none.
@@ -1481,7 +1585,7 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     // over in the list), and the arrow being drawn.
     let frame = ui.ctx().cumulative_pass_nr();
     let shown = match state.hovered_drawings {
-        Some((node, seen)) if frame.saturating_sub(seen) <= 1 && state.illegal.is_none() => state.marks_of(node),
+        Some((node, seen)) if frame.saturating_sub(seen) <= 1 && !state.is_illegal() => state.marks_of(node),
         _ => state.marks(),
     };
     for mark in overlay.iter().copied().chain(shown) {
@@ -1492,9 +1596,23 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
     {
         paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) }, palette, look);
     }
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         painter.rect_stroke(rect, 0.0, Stroke::new(2.0, Tokens::get(ui.ctx()).danger), egui::StrokeKind::Inside);
     }
+}
+
+/// Why a control that writes in the game is off on a position that is not legal (plan A9-I6b):
+/// the board has no game to write in.
+pub(crate) fn illegal_reason() -> &'static str {
+    tl!("The board shows a position that is not legal: correct it in the diagram editor first.")
+}
+
+/// `r`, a control off because the board shows a position that is not legal: the reason is its
+/// tooltip and its accessible description ([`illegal_reason`]).
+pub(crate) fn off_on_illegal(r: egui::Response) -> egui::Response {
+    let why = illegal_reason();
+    r.ctx.accesskit_node_builder(r.id, |node| node.set_description(why));
+    r.on_disabled_hover_text(why)
 }
 
 /// The game's status line: whose move it is, check, mate. In the text colour: a diagram state's
@@ -1502,16 +1620,16 @@ pub(crate) fn board_view_side(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
 /// mate (plan A9-I15, finding R4-05).
 pub(crate) fn status(state: &BoardState, t: &Tokens) -> (String, Color32) {
     let alarm = t.danger_text;
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         return (tl!("Not a legal position").to_string(), alarm);
     }
-    let side = state.game.side_to_move();
+    let side = state.game().side_to_move();
     let plain = t.text;
-    match state.game.outcome() {
+    match state.game().outcome() {
         Outcome::Checkmate => (if side == Color::White { tl!("Checkmate: Black wins") } else { tl!("Checkmate: White wins") }.to_string(), alarm),
         Outcome::Stalemate => (tl!("Stalemate").to_string(), plain),
         Outcome::FiftyMoves => (tl!("Draw by the fifty-move rule").to_string(), plain),
-        Outcome::Ongoing if state.game.in_check() => {
+        Outcome::Ongoing if state.game().in_check() => {
             (if side == Color::White { tl!("White to move, in check") } else { tl!("Black to move, in check") }.to_string(), plain)
         }
         Outcome::Ongoing => (if side == Color::White { tl!("White to move") } else { tl!("Black to move") }.to_string(), plain),
@@ -1523,11 +1641,11 @@ pub(crate) fn status(state: &BoardState, t: &Tokens) -> (String, Color32) {
 /// has no move (plan A9-I15).
 fn board_name(state: &BoardState, t: &Tokens) -> String {
     let (said, _) = status(state, t);
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         return crate::i18n::fmt(tl!("Board, {state}"), &[("state", &said)]);
     }
     // The FEN's sixth field; a game always writes one.
-    let fen = state.game.fen();
+    let fen = state.game().fen();
     let number = fen.split(' ').nth(5).unwrap_or("1");
     crate::i18n::fmt(tl!("Board, {state}, move {n}"), &[("state", &said), ("n", number)])
 }
@@ -1616,13 +1734,13 @@ pub(crate) fn notation(
     brush: Option<u16>,
     trail_elsewhere: bool,
 ) -> Option<BoardAction> {
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         return None;
     }
     let tokens = state.tokens();
     let width = ui.available_width();
     let above = ui.cursor().top();
-    if game_header(ui, t, &state.game) {
+    if game_header(ui, t, state.game()) {
         state.open_details = true;
     }
     if !trail_elsewhere {
@@ -1646,8 +1764,8 @@ pub(crate) fn notation(
     };
     let mut edit = None;
     let mut action = None;
-    let current = state.game.current();
-    let reveal = state.revealed != Some((current, state.game.revision()));
+    let current = state.game().current();
+    let reveal = state.revealed != Some((current, state.game().revision()));
     let look = crate::chess_figurines::list_look(ui.ctx());
     area.show(ui, |ui| {
         if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
@@ -1657,7 +1775,7 @@ pub(crate) fn notation(
         look.size.apply(ui.style_mut());
         ui.spacing_mut().item_spacing.y = 2.0;
         // Folded variations (plan A8 V3): never the one the move shown is in.
-        let open: HashSet<NodeId> = crate::chess_moves_tree::variations_holding(&state.game, current).into_iter().collect();
+        let open: HashSet<NodeId> = crate::chess_moves_tree::variations_holding(state.game(), current).into_iter().collect();
         let (shown, hidden) = crate::chess_moves_tree::fold(tokens.as_slice(), &state.folded, state.main_only, &open);
         let mut cx = MoveCx { current, reveal, brush, edit: None, action: None, hidden, toggle: None };
         match look.layout {
@@ -1672,18 +1790,18 @@ pub(crate) fn notation(
             state.folded.insert(node);
         }
     });
-    state.revealed = Some((current, state.game.revision()));
+    state.revealed = Some((current, state.game().revision()));
     if let Some(e) = edit {
         state.selected = None;
         state.promotion = None;
         match e {
-            MoveEdit::Go(node) => state.game.go_to_node(node),
+            MoveEdit::Go(node) => state.walk(|game| game.go_to_node(node)),
             MoveEdit::Brush(node, code) => crate::chess_annotate::brush_glyph(state, node, code),
             MoveEdit::ClearGlyphs(node) => crate::chess_annotate::clear_glyphs_at(state, node),
             MoveEdit::Diagram(node) => {
                 let mut full = false;
                 state.edit(|s| {
-                    full = !s.game.toggle_diagram(node);
+                    full = !s.game_mut()?.toggle_diagram(node);
                     (!full).then_some(ChessEdit::Diagram)
                 });
                 state.message = full.then(|| tl!("Not marked: this move has as many glyphs as it can take.").to_owned());
@@ -1691,7 +1809,7 @@ pub(crate) fn notation(
             MoveEdit::Tool(run, target) => run(state, target),
             MoveEdit::Delete(node) => {
                 state.edit(|s| {
-                    s.game.delete(node);
+                    s.game_mut()?.delete(node);
                     Some(ChessEdit::DeleteMoves)
                 });
             }
@@ -1899,7 +2017,7 @@ fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Token]
     let key = {
         use std::hash::{Hash, Hasher};
         let mut h = std::collections::hash_map::DefaultHasher::new();
-        state.game.revision().hash(&mut h);
+        state.game().revision().hash(&mut h);
         let mut folded: Vec<NodeId> = state.folded.iter().copied().collect();
         folded.sort_unstable();
         folded.hash(&mut h);
@@ -1933,7 +2051,7 @@ fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Token]
     // The result, after the main line (plan HC10), on a row of its own when a variation ends
     // the notation.
     if !ends_main {
-        result_label(ui, t, &state.game);
+        result_label(ui, t, state.game());
     }
 }
 
@@ -1974,7 +2092,7 @@ fn flow_row(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, row: &Row<'_>
                 token_item(ui, t, state, token, small, cx);
             }
             if result {
-                result_label(ui, t, &state.game);
+                result_label(ui, t, state.game());
             }
         });
     });
@@ -2026,22 +2144,22 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
     // The move's quality signs go in chips after it (plan HC12); its name keeps them.
     let others: Vec<u16> = nags.iter().copied().filter(|c| !(1..=6).contains(c)).collect();
     let shown_glyphs = glyphs(&others, |s| crate::chess_annotate::drawable(&ctx, s));
-    let tint = state.fresh.tint(&state.game, node, ui.ctx());
+    let tint = state.fresh.tint(state.game(), node, ui.ctx());
     // The piece as a figurine, in letters or as SAN (plan HC8).
     let r = crate::chess_figurines::move_button(ui, san, &shown_glyphs, &glyph_text, node == cx.current, small, t.text_muted, tint);
     move_preview(ui, state, node, &r);
     for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
         quality_chip(ui, code, small);
     }
-    if !state.game.drawings(node).is_empty() && drawings_dot(ui, &state.marks_of(node), small) {
+    if !state.game().drawings(node).is_empty() && drawings_dot(ui, &state.marks_of(node), small) {
         state.hovered_drawings = Some((node, ui.ctx().cumulative_pass_nr()));
     }
     if node == cx.current && cx.reveal {
         r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
     }
     glyphs_after(ui, t, nags, small);
-    if state.game.has_diagram(node) {
-        let name = crate::i18n::fmt(tl!("Diagram after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+    if state.game().has_diagram(node) {
+        let name = crate::i18n::fmt(tl!("Diagram after {move}"), &[("move", &crate::chess_tools::move_name(state.game(), node))]);
         let d = ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
         d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
     }
@@ -2063,17 +2181,17 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
             ui.close();
         }
         ui.separator();
-        let marked = state.game.has_diagram(node);
+        let marked = state.game().has_diagram(node);
         if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
             cx.edit = Some(MoveEdit::Diagram(node));
             ui.close();
         }
         let item = |ui: &mut egui::Ui, label: &str| crate::widgets::menu_entry(ui, true, egui::Button::new(label)).clicked();
         if item(ui, tl!("Copy line with figurines")) {
-            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, true)));
+            cx.action = Some(BoardAction::CopyLine(state.game().line_text(node, true)));
         }
         if item(ui, tl!("Copy line (letters)")) {
-            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, false)));
+            cx.action = Some(BoardAction::CopyLine(state.game().line_text(node, false)));
         }
         ui.separator();
         if item(ui, tl!("Delete from this move")) {
@@ -2145,16 +2263,16 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
         return;
     }
     let Some(tex) = preview_texture(ctx, state, node) else { return };
-    let name = crate::i18n::fmt(tl!("Position after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+    let name = crate::i18n::fmt(tl!("Position after {move}"), &[("move", &crate::chess_tools::move_name(state.game(), node))]);
     egui::Tooltip::for_widget(r).show(|ui| {
         let resp = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(PREVIEW_SIDE, PREVIEW_SIDE)));
-        if let Some((from, to)) = state.game.move_at(node) {
+        if let Some((from, to)) = state.game().move_at(node) {
             // Marked as the board marks it, the piece drawn again over the mark.
             let (palette, look, painter) = (crate::chess_theme::current(ui.ctx()), crate::chess_theme::look(ui.ctx()), ui.painter());
             let frame = state.frame(resp.rect);
             let (a, b) = (frame.square_rect(from), frame.square_rect(to));
             crate::chess_theme::paint_last_move(painter, palette, look, a, b);
-            let placement = state.game.fen_at(node).map(|fen| *fen.placement());
+            let placement = state.game().fen_at(node).map(|fen| *fen.placement());
             if let (Some(placement), Some(sprites)) = (placement, state.sprites_cut()) {
                 for sq in [from, to] {
                     if let Some(piece) = placement.get(sq) {
@@ -2171,7 +2289,7 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
 /// The preview's picture of the position after `node`, drawn once per position, theme, pieces and
 /// side.
 fn preview_texture(ctx: &egui::Context, state: &BoardState, node: NodeId) -> Option<TextureHandle> {
-    let fen = state.game.fen_at(node)?;
+    let fen = state.game().fen_at(node)?;
     let (theme, pieces) = picture_look(ctx);
     let stamp = format!("{fen}|{theme}|{pieces}|{}", state.flipped);
     let cache = egui::Id::new("chess-move-preview-picture");
@@ -2273,7 +2391,7 @@ fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Tok
     let key = {
         use std::hash::{Hash, Hasher};
         let mut h = std::collections::hash_map::DefaultHasher::new();
-        state.game.revision().hash(&mut h);
+        state.game().revision().hash(&mut h);
         let mut folded: Vec<NodeId> = state.folded.iter().copied().collect();
         folded.sort_unstable();
         folded.hash(&mut h);
@@ -2342,7 +2460,7 @@ fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Tok
     }
     ui.ctx().data_mut(|d| d.insert_temp(id, (key, std::sync::Arc::new(heights))));
     // The result on a row of its own, under the table or the break that ends it.
-    result_label(ui, t, &state.game);
+    result_label(ui, t, state.game());
 }
 
 /// How glyph `code` is named in an undo step or a capture's chips (whatever the fonts). The
@@ -2423,12 +2541,14 @@ impl BoardState {
     /// (`recorded` false) is an undo step, the next ones join it. Whether the session is a step.
     pub(crate) fn type_in(&mut self, recorded: bool, edit: ChessEdit, change: impl FnOnce(&mut Game)) -> bool {
         if recorded {
-            change(&mut self.game);
-            self.history.see(self.game.revision());
+            if let Some(game) = self.game_mut() {
+                change(game);
+            }
+            self.history.see(self.game().revision());
             true
         } else {
             self.edit(|s| {
-                change(&mut s.game);
+                change(s.game_mut()?);
                 Some(edit)
             })
         }
@@ -2454,8 +2574,10 @@ fn keep_draft(draft: &mut Option<Draft>, key: &str, response: &egui::Response, t
     }
 }
 
-/// The game's details: the PGN tags people fill in.
+/// The game's details: the PGN tags people fill in. Off for a position that is not legal, which
+/// has no game to keep them (plan A9-I6b), and they say why.
 pub(crate) fn details(ui: &mut egui::Ui, state: &mut BoardState) {
+    let legal = !state.is_illegal();
     egui::Grid::new("chess-board-tags").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
         for (tag, label) in [
             ("White", tl!("White")),
@@ -2468,8 +2590,9 @@ pub(crate) fn details(ui: &mut egui::Ui, state: &mut BoardState) {
         ] {
             ui.label(label);
             let key = format!("tag {tag}");
-            let (mut value, mut recorded) = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
-            let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+            let (mut value, mut recorded) = drafted(&state.draft, &key, state.game().tag(tag).unwrap_or_default());
+            let r = ui.add_enabled(legal, egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+            let r = if legal { r } else { off_on_illegal(r) };
             if r.changed() {
                 recorded = state.type_in(recorded, ChessEdit::GameDetails, |game| {
                     // The names above are valid tag names: this cannot fail.
@@ -2483,7 +2606,7 @@ pub(crate) fn details(ui: &mut egui::Ui, state: &mut BoardState) {
     // A date PGN can't read is kept as typed, and said once the field lets go (the games list's
     // editor refuses one).
     let typing = state.draft.as_ref().is_some_and(|d| d.key == "tag Date");
-    if !typing && !pdfcraft_engine::chess::collection::pgn_date_ok(state.game.tag("Date").unwrap_or_default()) {
+    if !typing && !pdfcraft_engine::chess::collection::pgn_date_ok(state.game().tag("Date").unwrap_or_default()) {
         ui.label(
             egui::RichText::new(tl!("A date is written YYYY.MM.DD, with ? for each digit not known.")).small().color(ui.visuals().error_fg_color),
         );
@@ -2497,16 +2620,16 @@ pub(crate) fn details(ui: &mut egui::Ui, state: &mut BoardState) {
 /// is in its header).
 pub(crate) fn move_number(ui: &mut egui::Ui, state: &mut BoardState, label: &str) {
     const KEY: &str = "move number";
-    ui.add_enabled_ui(state.illegal.is_none(), |ui| {
+    ui.add_enabled_ui(!state.is_illegal(), |ui| {
         ui.horizontal(|ui| {
             let mut recorded = state.draft.as_ref().is_some_and(|d| d.key == KEY && d.recorded);
-            let mut number = state.game.first_move_number();
+            let mut number = state.game().first_move_number();
             let named = ui.label(label);
             let r = ui
                 .add(egui::DragValue::new(&mut number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
                 .labelled_by(named.id)
                 .on_hover_text(tl!("The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…"));
-            if number != state.game.first_move_number() {
+            if number != state.game().first_move_number() {
                 recorded = state.type_in(recorded, ChessEdit::MoveNumber, |game| {
                     game.set_first_move_number(number);
                 });
@@ -2525,7 +2648,7 @@ pub(crate) fn promotion_choice(ui: &mut egui::Ui, state: &mut BoardState) {
     let Some((from, to)) = state.promotion else { return };
     ui.horizontal(|ui| {
         ui.label(tl!("Promote to:"));
-        let color = state.game.side_to_move();
+        let color = state.game().side_to_move();
         for kind in [PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight] {
             let name = crate::chess_editor::piece_name(Piece { color, kind });
             if ui.small_button(name).clicked() {
@@ -2541,20 +2664,20 @@ pub(crate) fn promotion_choice(ui: &mut egui::Ui, state: &mut BoardState) {
 /// Start, back, forward and end, the variation before and after (plan HC11), and the board
 /// turned round: the Board tab's navigation row (plan A9-I0b, §2.8.0 sketch (d)).
 pub(crate) fn nav_buttons(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
-    let (ply, len) = (state.game.ply(), state.game.len());
+    let (ply, len) = (state.game().ply(), state.game().len());
     // Lucide icons, named by their tooltips (plan A8 P1b: no loose ⏮ ◀ ▶ ⏭ characters).
     let nav = |ui: &mut egui::Ui, on: bool, icon: &str, tip: &str| {
         ui.add_enabled_ui(on, |ui| crate::icons::button(ui, icon, 28.0, false, tip).clicked()).inner
     };
     if nav(ui, ply > 0, "chevrons-left", tl!("Start (Home)")) {
-        state.game.go_to(0);
+        state.walk(|game| game.go_to(0));
         state.selected = None;
     }
     if nav(ui, ply > 0, "chevron-left", tl!("Previous move (Left arrow)")) {
         state.step(false);
     }
     // At the end of a variation, ▶ says why it is off (plan A8 V3).
-    let in_variation = !crate::chess_moves_tree::variations_holding(&state.game, state.game.current()).is_empty();
+    let in_variation = !crate::chess_moves_tree::variations_holding(state.game(), state.game().current()).is_empty();
     let forward = ui.add_enabled_ui(ply < len, |ui| crate::icons::button(ui, "chevron-right", 28.0, false, tl!("Next move (Right arrow)"))).inner;
     let forward = if ply >= len && in_variation {
         forward.on_disabled_hover_text(tl!("End of this variation. Shift+End goes to the end of the main line."))
@@ -2567,9 +2690,9 @@ pub(crate) fn nav_buttons(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState)
     // ⏭ to the end of the line shown; with Shift, of the main line (plan A8 V3).
     if nav(ui, ply < len || in_variation, "chevrons-right", tl!("End (End); with Shift, the end of the main line")) {
         if ui.input(|i| i.modifiers.shift) {
-            state.game.go_to_main_end();
+            state.walk(Game::go_to_main_end);
         } else {
-            state.game.go_to(usize::MAX);
+            state.walk(|game| game.go_to(usize::MAX));
         }
         state.selected = None;
     }
@@ -2584,7 +2707,7 @@ pub(crate) fn nav_buttons(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState)
         if r.clicked()
             && let Some(node) = to
         {
-            state.game.go_to_node(node);
+            state.walk(|game| game.go_to_node(node));
             state.selected = None;
         }
     }
@@ -2600,7 +2723,7 @@ pub(crate) fn nav_buttons(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState)
 /// editor is open). Deleting moves is a command of the move's menu, not a button beside the list
 /// (plan A8, W1). The glyph palette floats (`chess_annotate`, U1).
 pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
-    if state.illegal.is_some() {
+    if state.is_illegal() {
         return;
     }
     // Before any field is drawn: which one had the keyboard, for the palette.
@@ -2619,7 +2742,7 @@ pub(crate) fn fen_field(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boa
     r.ctx.accesskit_node_builder(r.id, |node| node.set_label("FEN"));
     if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) && state.fen_text.trim() != state.current_fen() {
         let fen = state.fen_text.trim().to_owned();
-        if state.game.is_empty() {
+        if state.game().is_empty() {
             let flipped = state.flipped;
             state.load_fen(&fen, flipped, None);
         } else {
@@ -2703,9 +2826,9 @@ pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState, printed: 
     if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
         action = Some(BoardAction::CopyFen(state.current_fen()));
     }
-    let legal = state.illegal.is_none();
+    let legal = !state.is_illegal();
     if item(ui, legal, tl!("Copy PGN")).clicked() {
-        action = Some(BoardAction::CopyPgn(state.game.pgn()));
+        action = Some(BoardAction::CopyPgn(state.game().pgn()));
     }
     let styles = [
         (tl!("Copy the main line only"), PgnStyle { variations: Variations::Depth(0), ..PgnStyle::FULL }),
@@ -2714,7 +2837,7 @@ pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState, printed: 
     ];
     for (label, style) in styles {
         if item(ui, legal, label).clicked() {
-            action = Some(BoardAction::CopyPgn(state.game.pgn_with(style)));
+            action = Some(BoardAction::CopyPgn(state.game().pgn_with(style)));
         }
     }
     ui.separator();
@@ -2723,19 +2846,19 @@ pub(crate) fn fen_pgn_items(ui: &mut egui::Ui, state: &mut BoardState, printed: 
     // from (plan A9-G9).
     let side = printed.unwrap_or(if state.flipped { Color::Black } else { Color::White });
     if legal
-        && let Some(p) = state.game.fen_at(state.game.current())
+        && let Some(p) = state.game().fen_at(state.game().current())
         && let Ok(url) = pdfcraft_engine::chess::pdfcraft_chess::lichess::link(&p.to_string(), side, false)
         && item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked()
     {
         action = Some(BoardAction::OpenLichess(url));
     }
-    let tip = if state.game.is_empty() {
+    let tip = if state.game().is_empty() {
         tl!("Start again from the standard position.")
     } else {
         tl!("A new game from the standard position; the game on the board keeps its moves.")
     };
     if item(ui, true, tl!("Standard start position")).on_hover_text(tip).clicked() {
-        if state.game.is_empty() {
+        if state.game().is_empty() {
             state.standard_start();
         } else {
             action = Some(BoardAction::NewGameAt(Game::standard().fen()));
@@ -2862,7 +2985,7 @@ mod tests {
             assert_eq!(board_name(&b, &t), "Board, Black to move, in check, move 7");
             b.load_fen("R3k3/8/4K3/8/8/8/8/8 b - - 0 40", false, None);
             assert_eq!(status(&b, &t), ("Checkmate: White wins".to_owned(), t.danger_text));
-            b.illegal = Some((b.game.placement(), "8/8/8/8/8/8/8/8 w - - 0 1".to_owned()));
+            b.content = BoardContent::illegal(b.placement(), "8/8/8/8/8/8/8/8 w - - 0 1".to_owned());
             assert_eq!(status(&b, &t), ("Not a legal position".to_owned(), t.danger_text));
             assert_eq!(board_name(&b, &t), "Board, Not a legal position");
             assert!(!board_name(&b, &t).contains('/'), "no FEN");
@@ -2876,7 +2999,7 @@ mod tests {
         let mut b = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 Nf6 *".into(), ..BoardState::default() };
         let _ = b.load_pgn();
         // The rest of the line is a comment where it stopped (plan A9-F3): text, no longer moves.
-        assert_eq!((b.game.movetext().as_str(), b.cut.as_deref()), ("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {Bxh7 Nf6}", Some("Bxh7")));
+        assert_eq!((b.game().movetext().as_str(), b.cut.as_deref()), ("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {Bxh7 Nf6}", Some("Bxh7")));
         b.pgn_text = "1. d4 d5 *".into();
         let _ = b.load_pgn();
         assert_eq!(b.cut, None);
@@ -2939,7 +3062,7 @@ mod tests {
         assert!(state.texture(&ctx, &pieces, 256).is_some());
         let first = made(&state);
         assert!(first.is_some());
-        state.game.play_uci("e2e4").unwrap();
+        state.game_mut().unwrap().play_uci("e2e4").unwrap();
         assert!(state.texture(&ctx, &pieces, 256).is_some(), "another position");
         // (Not a smaller board here: the picture's key holds the process-wide piece generation,
         // which other tests move, and a picture drawn again smaller rightly makes its squares.)
@@ -3047,7 +3170,7 @@ mod tests {
         assert_eq!(grid_key(&mut s, Key::Enter).as_deref(), Some("White knight on g1 picked up"));
         s.cursor = sq("f3");
         assert_eq!(grid_key(&mut s, Key::Space), None, "played: the move shown says it");
-        assert_eq!(s.game.san(s.game.current()), "Nf3");
+        assert_eq!(s.game().san(s.game().current()), "Nf3");
     }
 
     /// The PGN field loaded with the same game (a comment and a variation added) keeps the move
@@ -3057,23 +3180,23 @@ mod tests {
         use pdfcraft_engine::chess::pdfcraft_chess::game::{NodePath, NodeSource};
         let mut s = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 *".into(), ..BoardState::default() };
         s.load_pgn();
-        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        let e5 = s.game().node_at(&NodePath::new(vec![0, 0])).unwrap();
         let printed = NodeSource { page: 4, rect_user: [10.0, 20.0, 30.0, 40.0] };
-        assert!(s.game.set_source(e5, Some(printed)));
-        s.game.go_to_node(e5);
+        assert!(s.game_mut().unwrap().set_source(e5, Some(printed)));
+        s.game_mut().unwrap().go_to_node(e5);
         s.pgn_text = "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6 *".into();
         s.pgn_edited = true;
         s.load_pgn();
-        assert_eq!(s.game.movetext(), "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6");
-        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
-        assert_eq!(s.game.current(), e5, "the move shown is kept");
-        assert_eq!(s.game.source(e5), Some(printed), "and where it is printed");
+        assert_eq!(s.game().movetext(), "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6");
+        let e5 = s.game().node_at(&NodePath::new(vec![0, 0])).unwrap();
+        assert_eq!(s.game().current(), e5, "the move shown is kept");
+        assert_eq!(s.game().source(e5), Some(printed), "and where it is printed");
         assert!(!s.pgn_edited, "loaded");
         // Another main line is another game: read from its end, without the old sources.
         s.pgn_text = "1. d4 d5 *".into();
         s.load_pgn();
-        assert_eq!(s.game.ply(), 2);
-        assert_eq!(s.game.source(s.game.node_at(&NodePath::new(vec![0, 0])).unwrap()), None);
+        assert_eq!(s.game().ply(), 2);
+        assert_eq!(s.game().source(s.game().node_at(&NodePath::new(vec![0, 0])).unwrap()), None);
     }
 
     /// Typing in the PGN field survives a step on the board until the field is loaded or the
@@ -3085,7 +3208,7 @@ mod tests {
         s.refresh_fields(false);
         s.pgn_text = "1. e4 e5 2. Nf3 *".into();
         s.pgn_edited = true;
-        s.game.go_to(1);
+        s.game_mut().unwrap().go_to(1);
         s.refresh_fields(false);
         assert_eq!(s.pgn_text, "1. e4 e5 2. Nf3 *", "a step leaves the typed text");
         assert_ne!(s.fen_text, "", "the FEN follows the board");
@@ -3111,7 +3234,7 @@ mod tests {
         assert_eq!(s.pgn_writes, writes, "the PGN is the same game's");
         s.click(sq("c7"));
         s.click(sq("c5"));
-        assert_eq!(s.game.movetext(), "1. e4 e5 (1... c5) 2. Nf3 Nc6", "{}", s.game.movetext());
+        assert_eq!(s.game().movetext(), "1. e4 e5 (1... c5) 2. Nf3 Nc6", "{}", s.game().movetext());
         s.refresh_fields(false);
         s.refresh_fields(false);
         assert_eq!(s.pgn_writes, writes + 1, "a move played writes it once");
@@ -3126,11 +3249,11 @@ mod tests {
         s.click(sq("e2"));
         assert_eq!(s.selected, Some(sq("e2")));
         s.click(sq("e5"));
-        assert_eq!(s.game.len(), 0, "e2-e5 is not a move: the click on an empty square drops the piece");
+        assert_eq!(s.game().len(), 0, "e2-e5 is not a move: the click on an empty square drops the piece");
         assert_eq!(s.selected, None);
         s.click(sq("e2"));
         s.click(sq("e4"));
-        assert_eq!(s.game.movetext(), "1. e4");
+        assert_eq!(s.game().movetext(), "1. e4");
         // Picking up another piece of the side to move switches to it.
         s.click(sq("g8"));
         s.click(sq("b8"));
@@ -3145,7 +3268,7 @@ mod tests {
         s.click(sq("a8"));
         assert_eq!(s.promotion, Some((sq("a7"), sq("a8"))));
         s.play(sq("a7"), sq("a8"), Some(PieceKind::Rook));
-        assert_eq!(s.game.movetext(), "1. a8=R");
+        assert_eq!(s.game().movetext(), "1. a8=R");
         assert_eq!(s.promotion, None);
     }
 
@@ -3153,15 +3276,55 @@ mod tests {
     fn an_illegal_diagram_is_shown_but_not_played() {
         let mut s = BoardState::default();
         s.load_fen("K7/8/8/8/8/8/8/K6k w - - 0 1", false, None);
-        assert!(s.illegal.is_some());
+        assert!(s.is_illegal());
         assert_eq!(s.placement().count_color(Color::White), 2);
         s.click(sq("a8"));
         assert_eq!(s.selected, None);
         assert_eq!(s.fen_text, "K7/8/8/8/8/8/8/K6k w - - 0 1");
         // A good FEN afterwards takes over.
         s.load_fen("4k3/8/8/8/8/8/8/4K3 b - - 0 1", true, None);
-        assert!(s.illegal.is_none());
-        assert_eq!(s.game.side_to_move(), Color::Black);
+        assert!(!s.is_illegal());
+        assert_eq!(s.game().side_to_move(), Color::Black);
+    }
+
+    /// Plan A9-I6b (finding A7-19): the board holds a game or an illegal position, never both. An
+    /// illegal FEN put on a board with moves takes the game's place (its moves leave, for the
+    /// trash, as they always did); nothing can be written or walked behind it; Undo gives the
+    /// game back with its moves, and Redo the position.
+    #[test]
+    fn an_illegal_position_takes_the_games_place_and_nothing_is_written_behind_it() {
+        let mut s = BoardState::default();
+        s.play_uci_line(&["e2e4".into(), "e7e5".into()]);
+        assert_eq!(s.game().len(), 2);
+        let illegal = "K7/8/8/8/8/8/8/K6k w - - 0 1";
+        s.load_fen(illegal, false, None);
+        assert!(s.is_illegal());
+        assert_eq!(s.illegal_fen(), Some(illegal));
+        assert!(s.game().is_empty(), "no moves behind it");
+        assert_eq!(s.removed.last().map(|(game, n)| (game.len(), *n)), Some((2, 2)), "its moves went, for the trash");
+        assert!(s.game_mut().is_none(), "no game to change");
+        assert!(
+            !s.type_in(false, ChessEdit::GameDetails, |game| {
+                let _ = game.set_tag("White", "Werle");
+            }),
+            "a detail is no step"
+        );
+        assert!(s.type_in(true, ChessEdit::GameDetails, |game| {
+            let _ = game.set_tag("White", "Werle");
+        }));
+        s.toggle_mark(Mark { from: sq("a8"), to: sq("a1"), color: MarkColor::Green });
+        s.walk(|game| game.go_to(usize::MAX));
+        assert_eq!(s.game().tag("White"), None, "nothing typed behind it");
+        assert!(s.game().is_empty() && s.game().drawings(0).is_empty());
+        assert_eq!(s.marks().len(), 1, "the drawing is the position's own");
+        assert_eq!(s.pgn_text, "", "no PGN");
+        // Undo gives the game back, with its moves; Redo the position.
+        assert!(s.undo());
+        assert!(!s.is_illegal());
+        assert_eq!(s.game().movetext(), "1. e4 e5");
+        assert!(s.redo());
+        assert_eq!((s.illegal_fen(), s.game().len()), (Some(illegal), 0));
+        assert_eq!(s.current_fen(), illegal);
     }
 
     #[test]
@@ -3171,7 +3334,7 @@ mod tests {
         s.click(sq("d4"));
         s.load_fen("this is not a fen", false, None);
         assert!(s.message.is_some());
-        assert_eq!(s.game.movetext(), "1. d4");
+        assert_eq!(s.game().movetext(), "1. d4");
     }
 
     #[test]
@@ -3241,8 +3404,8 @@ mod tests {
         let three = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n";
         let mut s = BoardState { pgn_text: three.into(), ..BoardState::default() };
         let (rest, more) = s.load_pgn();
-        assert_eq!(s.game.movetext(), "1. e4");
-        assert_eq!(s.game.tag("Event"), Some("A"));
+        assert_eq!(s.game().movetext(), "1. e4");
+        assert_eq!(s.game().tag("Event"), Some("A"));
         assert_eq!(rest.len(), 2);
         assert!(rest[0].contains("1. d4") && rest[1].contains("1. c4") && !more);
         assert_eq!(s.undo_label().as_deref(), Some("Load the PGN"), "one step of the game");
@@ -3264,7 +3427,7 @@ mod tests {
         s.load_pgn();
         // The variation holding only that text leaves it on the move it was an alternative to,
         // e5 (plan A9-F2b, A1-06).
-        assert_eq!(s.game.movetext(), "1. e4 e5 {(d5)} 2. Nf3");
+        assert_eq!(s.game().movetext(), "1. e4 e5 {(d5)} 2. Nf3");
         assert_eq!(s.message.as_deref(), Some("Variations kept as comments: 1 (no move before them, or nested deeper than 32)."));
         s.pgn_text = "(1. d4) 1. e4 e5 2. Ke3".into();
         s.load_pgn();
@@ -3276,12 +3439,12 @@ mod tests {
     fn pgn_field_loads_and_reports_where_it_stopped() {
         let mut s = BoardState { pgn_text: "1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0".into(), ..BoardState::default() };
         s.load_pgn();
-        assert_eq!(s.game.outcome(), Outcome::Checkmate);
+        assert_eq!(s.game().outcome(), Outcome::Checkmate);
         assert!(s.message.is_none());
         s.pgn_text = "1. e4 e5 2. Ke3".into();
         s.load_pgn();
         // What could not be played is a comment where it stopped (plan A9-F3).
-        assert_eq!(s.game.movetext(), "1. e4 e5 {Ke3}");
+        assert_eq!(s.game().movetext(), "1. e4 e5 {Ke3}");
         assert!(s.message.as_deref().is_some_and(|m| m.contains("Ke3")));
     }
 }

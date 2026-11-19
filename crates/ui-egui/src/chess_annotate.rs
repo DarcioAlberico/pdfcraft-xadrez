@@ -447,25 +447,25 @@ pub(crate) fn drawable(ctx: &egui::Context, text: &str) -> bool {
 /// The code glyph `code` (White's) takes on the move shown: the one for the side that made the
 /// move, or for zugzwang the side to move after it. `None` for a code not in the table.
 fn code_here(board: &BoardState, code: u16) -> Option<u16> {
-    code_at(board, board.game.current(), code)
+    code_at(board, board.game().current(), code)
 }
 
 /// [`code_here`] for move `node`, whatever move is shown.
 fn code_at(board: &BoardState, node: NodeId, code: u16) -> Option<u16> {
     let n = nag::by_code(code)?;
     // An even absolute half-move after the move: White is to move, so Black made it.
-    let white_to_move = board.game.abs_ply(node)? % 2 == 0;
+    let white_to_move = board.game().abs_ply(node)? % 2 == 0;
     Some(n.code_after(!white_to_move))
 }
 
 /// Whether the move shown carries glyph `code` (White's code; the side's is looked for).
 pub(crate) fn has_glyph(board: &BoardState, code: u16) -> bool {
-    board.illegal.is_none() && code_here(board, code).is_some_and(|c| board.game.nags(board.game.current()).contains(&c))
+    !board.is_illegal() && code_here(board, code).is_some_and(|c| board.game().nags(board.game().current()).contains(&c))
 }
 
 /// Whether there is a move shown to annotate.
 pub(crate) fn has_move(board: &BoardState) -> bool {
-    board.illegal.is_none() && board.game.current() != 0
+    !board.is_illegal() && board.game().current() != 0
 }
 
 /// A rail glyph clicked: put glyph `code` on the move shown, or take it off when it is there.
@@ -486,7 +486,7 @@ pub(crate) fn typed_glyph(board: &mut BoardState, code: u16) {
 /// context menu (U1): glyph `code` (White's) goes on the move with its side's code, or comes off
 /// when the move has it; one undo step. The move shown stays.
 pub(crate) fn brush_glyph(board: &mut BoardState, node: NodeId, code: u16) {
-    if board.illegal.is_some() || node == 0 {
+    if board.is_illegal() || node == 0 {
         return;
     }
     glyph_edit_at(board, node, code, true);
@@ -497,7 +497,7 @@ fn glyph_edit(board: &mut BoardState, code: u16, toggle: bool) {
         board.message = Some(tl!("Choose a move first: glyphs go on a move.").to_owned());
         return;
     }
-    glyph_edit_at(board, board.game.current(), code, toggle);
+    glyph_edit_at(board, board.game().current(), code, toggle);
 }
 
 fn glyph_edit_at(board: &mut BoardState, node: NodeId, code: u16, toggle: bool) {
@@ -506,12 +506,12 @@ fn glyph_edit_at(board: &mut BoardState, node: NodeId, code: u16, toggle: bool) 
     board.promotion = None;
     let mut full = false;
     board.edit(|s| {
-        if s.game.nags(node).contains(&code) {
+        if s.game().nags(node).contains(&code) {
             if !toggle {
                 return None;
             }
-            s.game.toggle_nag(node, code);
-        } else if !s.game.set_nag(node, code) {
+            s.game_mut()?.toggle_nag(node, code);
+        } else if !s.game_mut()?.set_nag(node, code) {
             full = true;
             return None;
         }
@@ -525,19 +525,19 @@ fn clear_glyphs(board: &mut BoardState) {
     if !has_move(board) {
         return;
     }
-    clear_glyphs_at(board, board.game.current());
+    clear_glyphs_at(board, board.game().current());
 }
 
 /// Take every glyph off move `node` (one undo step; none when it has none). The move shown stays.
 pub(crate) fn clear_glyphs_at(board: &mut BoardState, node: NodeId) {
-    if board.illegal.is_some() || node == 0 || board.game.nags(node).is_empty() {
+    if board.is_illegal() || node == 0 || board.game().nags(node).is_empty() {
         return;
     }
     board.selected = None;
     board.promotion = None;
     board.edit(|s| {
-        for code in s.game.nags(node).to_vec() {
-            s.game.toggle_nag(node, code);
+        for code in s.game().nags(node).to_vec() {
+            s.game_mut()?.toggle_nag(node, code);
         }
         Some(ChessEdit::ClearGlyphs)
     });
@@ -724,17 +724,17 @@ pub(crate) fn palette_insert(board: &mut BoardState, text: &str) {
         board.typing.pending = Some((id, text.to_owned()));
         return;
     }
-    if board.illegal.is_some() {
+    if board.is_illegal() {
         return;
     }
-    let node = board.game.current();
-    let joined = match board.game.comment(node) {
+    let node = board.game().current();
+    let joined = match board.game().comment(node) {
         "" => text.to_owned(),
         c => format!("{c} {text}"),
     };
     board.edit(|s| {
         // Past the cap the comment is cut: said on the board (plan A9-F3).
-        if s.game.set_comment(node, &joined).is_err() {
+        if s.game_mut()?.set_comment(node, &joined).is_err() {
             s.message = Some(tl!("Only the first 65,536 bytes of a comment are kept.").to_owned());
         }
         Some(ChessEdit::Comment)
@@ -1069,12 +1069,12 @@ pub(crate) fn more_assessments(ui: &mut egui::Ui, on: impl Fn(u16) -> bool) -> O
 /// chosen: a code (White's) to put on the move or take off ([`brush_glyph`]), or [`CLEAR`] to
 /// take them all off ([`clear_glyphs_at`]).
 pub(crate) fn glyph_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> Option<u16> {
-    if board.illegal.is_some() || node == 0 {
+    if board.is_illegal() || node == 0 {
         return None;
     }
     let ctx = ui.ctx().clone();
     let muted = crate::theme::Tokens::get(&ctx).text_muted;
-    let has = |code: u16| code_at(board, node, code).is_some_and(|c| board.game.nags(node).contains(&c));
+    let has = |code: u16| code_at(board, node, code).is_some_and(|c| board.game().nags(node).contains(&c));
     let mut chosen = None;
     // The move-quality glyphs are the group's first six (Only move and Novelty are left to the rail).
     let quality: &[u16] = MOVE_GLYPHS.get(..6).unwrap_or(&MOVE_GLYPHS);
@@ -1094,7 +1094,7 @@ pub(crate) fn glyph_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) ->
             }
         });
     }
-    if ui.add_enabled(!board.game.nags(node).is_empty(), egui::Button::new(tl!("Remove all glyphs"))).clicked() {
+    if ui.add_enabled(!board.game().nags(node).is_empty(), egui::Button::new(tl!("Remove all glyphs"))).clicked() {
         chosen = Some(CLEAR);
     }
     chosen
@@ -1103,13 +1103,13 @@ pub(crate) fn glyph_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) ->
 /// The comment fields of the move shown: the one before it while the comment editor is open
 /// (with the warning PGN needs), then the one after it. `focus` gives the latter the keyboard.
 pub(crate) fn comments(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut BoardState, editor: bool, focus: bool) {
-    let node = board.game.current();
+    let node = board.game().current();
     if editor && node != 0 {
         let id = ui.make_persistent_id("chess-comment-before");
         let key = format!("before {node}");
-        let (mut text, mut recorded) = board.drafted(&key, board.game.comment_before(node));
+        let (mut text, mut recorded) = board.drafted(&key, board.game().comment_before(node));
         let inserted = insert_pending(ui, &mut board.typing, Field::CommentBefore, id, &mut text);
-        let hint = crate::i18n::fmt(tl!("Comment before {move}"), &[("move", &crate::chess_tools::move_name(&board.game, node))]);
+        let hint = crate::i18n::fmt(tl!("Comment before {move}"), &[("move", &crate::chess_tools::move_name(board.game(), node))]);
         let r = ui.add(egui::TextEdit::multiline(&mut text).id(id).hint_text(hint.as_str()).desired_rows(1).desired_width(f32::INFINITY));
         labeled(&r, &hint);
         if r.changed() || inserted {
@@ -1128,7 +1128,7 @@ pub(crate) fn comments(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut 
     }
     let id = ui.make_persistent_id("chess-comment-after");
     let key = format!("comment {node}");
-    let (mut text, mut recorded) = board.drafted(&key, board.game.comment(node));
+    let (mut text, mut recorded) = board.drafted(&key, board.game().comment(node));
     let inserted = insert_pending(ui, &mut board.typing, Field::CommentAfter, id, &mut text);
     let hint = tl!("Comment on this move");
     let r = ui.add(egui::TextEdit::multiline(&mut text).id(id).hint_text(hint).desired_rows(1).desired_width(f32::INFINITY));
@@ -1164,7 +1164,7 @@ fn labeled(r: &egui::Response, name: &str) {
 /// when PGN has its place: a variation's first move (`( {…} 12... Nf6`), or a move after the
 /// variations of the move before it (`12. Nf3 (12. Nc3) {…} 12... Nf6`, plan A9-F4).
 fn before_note(board: &BoardState, node: NodeId) -> Option<&'static str> {
-    let path = board.game.path_of(node)?;
+    let path = board.game().path_of(node)?;
     let indices = path.indices();
     if indices.last().copied() != Some(0) {
         return None;
@@ -1173,8 +1173,8 @@ fn before_note(board: &BoardState, node: NodeId) -> Option<&'static str> {
     // the comment comes after them. (A variation's first move has its alternatives written
     // before its bracket, so nothing comes between it and the move after it.)
     let before_first = indices.len().checked_sub(2).and_then(|n| indices.get(n)) == Some(&0);
-    let grandparent = indices.len().checked_sub(2).and_then(|n| indices.get(..n)).and_then(|p| board.game.node_at(&NodePath::new(p.to_vec())));
-    if before_first && grandparent.is_some_and(|g| board.game.replies(g).len() > 1) {
+    let grandparent = indices.len().checked_sub(2).and_then(|n| indices.get(..n)).and_then(|p| board.game().node_at(&NodePath::new(p.to_vec())));
+    if before_first && grandparent.is_some_and(|g| board.game().replies(g).len() > 1) {
         return None;
     }
     Some(if indices.len() == 1 {
@@ -1209,12 +1209,13 @@ mod tests {
     fn the_note_on_a_comment_before_is_said_only_where_pgn_moves_it() {
         let mut b = BoardState::default();
         for m in ["e2e4", "e7e5", "g1f3"] {
-            b.game.play_uci(m).unwrap();
+            b.game_mut().unwrap().play_uci(m).unwrap();
         }
-        let at = |b: &BoardState, path: &[u16]| b.game.node_at(&NodePath::new(path.to_vec())).unwrap();
-        b.game.go_to_node(at(&b, &[0]));
+        let at = |b: &BoardState, path: &[u16]| b.game().node_at(&NodePath::new(path.to_vec())).unwrap();
+        let e4 = at(&b, &[0]);
+        b.game_mut().unwrap().go_to_node(e4);
         for m in ["c7c5", "g1f3"] {
-            b.game.play_uci(m).unwrap();
+            b.game_mut().unwrap().play_uci(m).unwrap();
         }
         let first = tl!("In PGN this comment joins the comment before the game's first move.");
         let previous = tl!("In PGN this comment is written after the previous move.");

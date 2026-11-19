@@ -146,7 +146,7 @@ fn draw_area(h: &mut Harness<'static, PdfCraftApp>) {
 }
 
 fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.movetext()
+    h.state().chess.board().game().movetext()
 }
 
 fn toast(h: &Harness<'static, PdfCraftApp>) -> String {
@@ -181,7 +181,7 @@ fn on_a_scan_the_area_switches_on_and_is_captured() {
     assert!(h.state().chess.capture.pending.is_none(), "applied without the preview");
     let board = h.state().chess.board();
     assert_eq!(board.undo_label().as_deref(), Some("Capture line"));
-    let source = board.game.source(board.game.current()).expect("the move keeps its place on the page");
+    let source = board.game().source(board.game().current()).expect("the move keeps its place on the page");
     assert_eq!(source.page, 0);
     assert!(source.rect_user[1] >= 480.0 && source.rect_user[3] <= 520.0 && source.rect_user[0] > 50.0, "{source:?}");
     assert!(h.state().views[0].selected_text().is_none_or(|t| t.is_empty()), "the drag selected no text");
@@ -351,8 +351,8 @@ fn an_ocr_reading_picked_rewrites_the_glyph_and_reads_again() {
     assert_eq!(movetext(&h), "1. e4 e5 2. Nf3 Nc6");
     // The move keeps where it was printed.
     let board = h.state().chess.board();
-    let nf3 = board.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
-    assert!(board.game.source(nf3).is_some());
+    let nf3 = board.game().node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
+    assert!(board.game().source(nf3).is_some());
 }
 
 // ─── T11: corrected characters collected for retraining ───────────────────────────────────────

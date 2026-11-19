@@ -52,14 +52,14 @@ fn harness() -> Harness<'static, PdfCraftApp> {
     let (mut game, stopped) = Game::from_pgn("1. e4 e5 2. Nf3 *").unwrap();
     assert_eq!(stopped, None);
     game.go_to_node(game.node_at(&NodePath::new(vec![0, 0])).unwrap());
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
     h
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 
@@ -128,7 +128,7 @@ fn comment_open(h: &Harness<'static, PdfCraftApp>) -> bool {
 
 /// The glyphs of the move shown.
 fn glyphs(h: &Harness<'static, PdfCraftApp>) -> Vec<u16> {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.nags(game.current()).to_vec()
 }
 
@@ -311,7 +311,7 @@ fn the_move_shown_is_said_at_each_step() {
     // A move of a variation, with a comment and a sign, shown from the list.
     let (mut game, _) = Game::from_pgn("1. e4 e5 2. Nf3 (2. Bc4 $1 {The bishop first.}) *").unwrap();
     game.go_to_node(game.node_at(&NodePath::new(vec![0, 0])).unwrap());
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
     h.get_by_label("bishop c4!").click();
     h.run_steps(2);
@@ -408,7 +408,7 @@ fn a_move_typed_is_played_and_questions_are_answered() {
     said(&h, "Arrow e2 to e4, red");
     type_move(&mut h, "circle d5");
     said(&h, "Circle on d5, green");
-    let pgn = h.state().chess.board().game.pgn();
+    let pgn = h.state().chess.board().game().pgn();
     assert!(pgn.contains("%cal Re2e4") && pgn.contains("%csl Gd5"), "{pgn}");
 }
 
@@ -417,7 +417,7 @@ fn a_move_typed_is_played_and_questions_are_answered() {
 #[test]
 fn alt_click_draws_an_arrow_without_a_drag() {
     let mut h = harness();
-    let board = h.state().chess.board().game.clone();
+    let board = h.state().chess.board().game().clone();
     alt_click(&mut h, "d2");
     said(&h, "Arrow from d2");
     alt_click(&mut h, "d4");
@@ -425,7 +425,7 @@ fn alt_click_draws_an_arrow_without_a_drag() {
     alt_click(&mut h, "g8");
     alt_click(&mut h, "g8");
     said(&h, "Circle on g8, green");
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.current(), board.current(), "no move was played");
     let pgn = game.pgn();
     assert!(pgn.contains("%cal Gd2d4") && pgn.contains("%csl Gg8"), "{pgn}");
@@ -474,7 +474,7 @@ fn an_alt_click_start_is_forgotten_when_the_board_changes() {
     // Turned over, the square drawn where c4 was is f5.
     alt_click(&mut h, "c4");
     said(&h, "Arrow from f5");
-    let pgn = h.state().chess.board().game.pgn();
+    let pgn = h.state().chess.board().game().pgn();
     assert!(!pgn.contains("%cal"), "no arrow was drawn: {pgn}");
 }
 

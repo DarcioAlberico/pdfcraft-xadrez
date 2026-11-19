@@ -148,8 +148,10 @@ impl PdfCraftApp {
                 "chess.window.detach" => self.chess_window_detached() || self.chess_window_available(),
                 // A move to copy the line up to (T15).
                 "chess.moves.copy_figurines" | "chess.moves.copy_letters" => {
-                    self.chess.board().illegal.is_none() && self.chess.board().game.current() != 0
+                    !self.chess.board().is_illegal() && self.chess.board().game().current() != 0
                 }
+                // An illegal position has no game to name (plan A9-I6b).
+                "chess.game.rename" => !self.chess.board().is_illegal(),
                 _ => true,
             }
     }
@@ -191,6 +193,7 @@ impl PdfCraftApp {
         if !self.command_enabled(spec) {
             let why = match spec.needs {
                 _ if id == "chess.source.show" => tl!("This move has no place on the page.").to_string(),
+                _ if id == "chess.game.rename" => crate::chess_board_ui::illegal_reason().to_string(),
                 _ if crate::chess_tools::is_tool_command(id) => tl!("Put a game on the chess board first: there are no moves to change.").to_string(),
                 commands::Needs::Undo => tl!("Nothing to undo").to_string(),
                 commands::Needs::Redo => tl!("Nothing to redo").to_string(),

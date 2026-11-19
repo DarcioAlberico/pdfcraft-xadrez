@@ -75,10 +75,10 @@ impl SourceState {
 
 /// The move shown's place on the page, when it has one.
 fn current_source(board: &BoardState) -> Option<NodeSource> {
-    if board.illegal.is_some() {
+    if board.is_illegal() {
         return None;
     }
-    board.game.source(board.game.current())
+    board.game().source(board.game().current())
 }
 
 /// The rail's Follow switch: its name says when the move shown has no place to show.
@@ -86,7 +86,7 @@ pub(crate) const FOLLOW: Tool = Tool {
     id: "follow-source",
     icon: "navigation",
     label: |b| {
-        if b.game.current() != 0 && current_source(b).is_none() {
+        if b.game().current() != 0 && current_source(b).is_none() {
             tl!("Follow the move on the page: this move has no place on the page").to_owned()
         } else {
             tl!("Follow the move on the page").to_owned()
@@ -114,10 +114,10 @@ pub(crate) const SHOW: Tool = Tool {
     command: Some("chess.source.show"),
     kind: Kind::Action(|board, target| {
         let node = match target {
-            Target::Current => board.game.current(),
+            Target::Current => board.game().current(),
             Target::Move(node) | Target::Head(node) => node,
         };
-        if board.illegal.is_none() && board.game.source(node).is_some() {
+        if !board.is_illegal() && board.game().source(node).is_some() {
             board.show_source = Some(node);
         }
     }),
@@ -138,7 +138,7 @@ impl PdfCraftApp {
     pub(crate) fn chess_source_tick(&mut self) {
         if self.chess.board().show_source.is_some() {
             let asked = self.chess.board_mut().show_source.take();
-            if let Some(source) = asked.and_then(|node| self.chess.board().game.source(node)) {
+            if let Some(source) = asked.and_then(|node| self.chess.board().game().source(node)) {
                 self.reveal_chess_source(source);
             }
         }
@@ -146,7 +146,7 @@ impl PdfCraftApp {
             return;
         }
         let board = self.chess.board();
-        let game = &board.game;
+        let game = board.game();
         let seen = (self.chess.games.scope_stamp().0, game.path_of(game.current()).unwrap_or_default());
         if self.chess.source.seen.as_ref() == Some(&seen) {
             return;
@@ -207,19 +207,19 @@ impl PdfCraftApp {
         let dropped = book.dropped;
         self.sync_chess_docs();
         let mut board = BoardState::default();
-        board.game = book.game;
+        board.set_game(book.game);
         board.source = source;
-        if let Some(node) = path.as_ref().and_then(|p| board.game.node_at(p)) {
-            board.game.go_to_node(node);
+        if let Some(node) = path.as_ref().and_then(|p| board.game().node_at(p)) {
+            board.walk(|game| game.go_to_node(node));
         }
         board.refresh_fields(true);
         let c = self.chess.games.collection_mut();
         // The same game, untouched, is shown again at the move asked for (plan A9-G8: one rule).
         match c.show_or_add(board, ChessEdit::OpenBookGame) {
             Opened::Shown => {
-                let game = &mut c.active_mut().board.game;
-                if let Some(node) = path.as_ref().and_then(|p| game.node_at(p)) {
-                    game.go_to_node(node);
+                let board = &mut c.active_mut().board;
+                if let Some(node) = path.as_ref().and_then(|p| board.game().node_at(p)) {
+                    board.walk(|game| game.go_to_node(node));
                 }
             }
             Opened::Full => {
@@ -250,12 +250,12 @@ impl PdfCraftApp {
         };
         self.sync_chess_docs();
         let mut board = BoardState::default();
-        board.game = pgn_game;
-        board.game.go_to_node(node);
+        board.set_game(pgn_game);
+        board.walk(|game| game.go_to_node(node));
         board.refresh_fields(true);
         let c = self.chess.games.collection_mut();
         match c.show_or_add(board, ChessEdit::OpenBookGame) {
-            Opened::Shown => c.active_mut().board.game.go_to_node(node),
+            Opened::Shown => c.active_mut().board.walk(|game| game.go_to_node(node)),
             Opened::Full => {
                 self.inform(full_note(1));
                 return;

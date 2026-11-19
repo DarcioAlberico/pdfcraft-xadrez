@@ -1398,7 +1398,7 @@ fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
     right_click(&mut h, "e5");
     h.get_by_label("Open the book's PGN game here").click();
     h.run_steps(4);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.tag("White"), Some("Ruy"), "{}", game.pgn());
     assert!(game.pgn().contains("Bc4"), "the PGN's other line comes too: {}", game.pgn());
     assert_eq!(game.fen(), "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2", "at the move clicked");
@@ -1426,7 +1426,7 @@ fn linking_the_whole_book_says_what_it_found_and_lists_the_pgns_games() {
     h.get_by_label("Chapter 2 (no page discusses it)");
     h.get_by_label("p. 1 · Chapter 1 · Ruy").click();
     h.run_steps(4);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.tag("White"), Some("Ruy"), "{}", game.pgn());
     assert_eq!(game.current(), 0, "at its start");
     let _ = std::fs::remove_dir_all(dir);
@@ -1977,7 +1977,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     }
     h.run_steps(3);
     assert!(h.state().chess_board_shown(), "the double-click opened the board");
-    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game().fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     h.get_by_label("Back to diagram 1 (page 1)");
     h.get_by_label("White to move");
@@ -1986,29 +1986,29 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     click_square(&mut h, "e4");
     click_square(&mut h, "e7");
     click_square(&mut h, "e5");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
     h.get_by_label("e5");
     // Back one move with the button, then a different move starts a variation.
     h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.ply(), 1);
+    assert_eq!(h.state().chess.board().game().ply(), 1);
     click_square(&mut h, "c7");
     click_square(&mut h, "c5");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 (1... c5)");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5 (1... c5)");
     assert!(h.state().chess.board().pgn_text.ends_with("1. e4 e5 (1... c5) *\n"), "{}", h.state().chess.board().pgn_text);
     // A glyph on the move shown, from the rail's Move glyphs group (named for the glyphs).
     h.get_by_label("Good move").click_secondary();
     h.run_steps(2);
     h.get_by_label("Interesting move").click();
     h.run_steps(2);
-    let c5 = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.nags(c5), &[5]);
+    let c5 = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().nags(c5), &[5]);
     // The move's menu makes the variation the main line.
     h.get_by_label("c5!?").click_secondary();
     h.run_steps(2);
     h.get_by_label("Make this the main line").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 c5 $5 (1... e5)");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 c5 $5 (1... e5)");
     // Copy FEN, in the bar's FEN/PGN ▾ (plan A9-I0b), copies the position on the board.
     h.get_by_label("FEN/PGN").click_accesskit();
     h.run_steps(2);
@@ -2033,8 +2033,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.run_steps(2);
     h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("good ")).unwrap().type_text("move");
     h.run_steps(2);
-    let node = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment(node), "good move");
+    let node = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment(node), "good move");
 }
 
 /// Two clicks at `at`, a frame apart: a double-click (with frames under egui's 0.3 s delay).
@@ -2064,7 +2064,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
     assert!(h.state().chess_board_shown(), "the double-click opened the board");
-    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game().fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     assert!(h.state().chess.board_at.is_none(), "the double-click was dealt with");
     assert!(h.state().all_said().all(|t| !t.contains("2 diagrams")), "a quiet scan");
@@ -2097,7 +2097,7 @@ fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_b
     assert_eq!(h.state().views[0].selected_text().as_deref(), Some("12...e5"), "the double-click selected a word");
     assert_eq!(diagrams(&h), 2, "the page was scanned");
     assert!(h.state().chess_board_shown(), "the move's game opened");
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.san(game.current()), "e5");
     assert!(h.state().all_said().all(|t| t != "No chess diagram was found here."));
 }
@@ -2119,8 +2119,8 @@ fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
     row_menu(&mut h, "Diagram 1 · ");
     h.get_by_label("Open on the board").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12");
-    assert_eq!(h.state().chess.board().game.first_move_number(), 12, "the Move number field shows it");
+    assert_eq!(h.state().chess.board().game().fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12");
+    assert_eq!(h.state().chess.board().game().first_move_number(), 12, "the Move number field shows it");
 }
 
 /// A double-click on a diagram whose page the Text tab has not read reads it (off the interface
@@ -2142,8 +2142,8 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
         double_click_at(&mut h, at);
         h.run_steps(3);
         assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
-        assert_eq!(h.state().chess.board().game.fen(), AT_12, "scanned first: {scanned}");
-        assert_eq!(h.state().chess.board().game.first_move_number(), 12);
+        assert_eq!(h.state().chess.board().game().fen(), AT_12, "scanned first: {scanned}");
+        assert_eq!(h.state().chess.board().game().first_move_number(), 12);
         assert_eq!(h.state().chess.board().undo_label(), None, "the move number is not a step of the game");
         assert!(h.state().chess.board_text.is_none(), "dealt with");
         // Opening it is a step of the list: Undo takes the game out, Redo puts it back with the
@@ -2154,11 +2154,11 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
         assert_eq!((h.state().chess.games.collection().len(), h.state().chess.board().source), (1, None), "a blank game is left");
         assert!(h.state_mut().execute("edit.redo"));
         h.run_steps(2);
-        assert_eq!(h.state().chess.board().game.fen(), AT_12);
+        assert_eq!(h.state().chess.board().game().fen(), AT_12);
         // Played on from there: Black's move.
         click_square(&mut h, "e7");
         click_square(&mut h, "e5");
-        assert_eq!(h.state().chess.board().game.movetext(), "12... e5");
+        assert_eq!(h.state().chess.board().game().movetext(), "12... e5");
     }
 }
 
@@ -2176,14 +2176,14 @@ fn open_on_the_board_from_the_panel() {
     h.run_steps(3);
     assert!(h.state().chess_board_shown(), "the column's Board tab");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Board");
-    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game().fen(), START_FEN);
     // In front: its board is drawn, the rail's set-up tool and Analyze with it.
     h.get_by_label("Board, White to move, move 1");
     h.get_by_label("Set up a position");
     h.get_by_label("Analyze");
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
 }
 
 /// The move number, in the Board tab's Game ▾ (plan A9-I0b; it was beside "To move:"), corrects a
@@ -2201,7 +2201,7 @@ fn the_board_panel_corrects_the_move_number() {
     click_square(&mut h, "e4");
     click_square(&mut h, "e7");
     click_square(&mut h, "e5");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
     h.get_by_label("Game").click();
     h.run_steps(2);
     h.get_by_label("The game starts at move:");
@@ -2214,15 +2214,15 @@ fn the_board_panel_corrects_the_move_number() {
     h.run_steps(3);
     h.key_press(egui::Key::Escape);
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "35. e4 e5");
-    assert_eq!(h.state().chess.board().game.start_fen(), START_FEN.replace(" 0 1", " 0 35"));
+    assert_eq!(h.state().chess.board().game().movetext(), "35. e4 e5");
+    assert_eq!(h.state().chess.board().game().start_fen(), START_FEN.replace(" 0 1", " 0 35"));
     click_square(&mut h, "g1");
     click_square(&mut h, "f3");
-    assert_eq!(h.state().chess.board().game.movetext(), "35. e4 e5 36. Nf3");
+    assert_eq!(h.state().chess.board().game().movetext(), "35. e4 e5 36. Nf3");
     // Undo the move, then the number: typing it was one step.
     assert!(h.state_mut().chess.board_mut().undo());
     assert!(h.state_mut().chess.board_mut().undo());
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
 }
 
 /// The same with the chess panel in its own window (narrow, on its Diagrams tab): Open on the
@@ -2286,7 +2286,7 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     h.run_steps(3);
     click_square(&mut h, "d2");
     click_square(&mut h, "d4");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. d4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. d4");
     h.get_by_label("Set up a position").click();
     h.run_steps(2);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Setup");
@@ -2310,16 +2310,16 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     // The move it took away is told, with Undo.
     assert_eq!(h.state().chess.tools.deleted.text(), Some("1 move deleted"));
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate", "back to Navigate");
-    assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+    assert_eq!(h.state().chess.board().game().fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
     // One undo step, named for the set-up, takes the game back as it was.
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Position set-up"));
     assert!(h.state_mut().chess.board_mut().undo());
-    assert_eq!(h.state().chess.board().game.movetext(), "1. d4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. d4");
     assert!(h.state_mut().chess.board_mut().redo());
     h.run_steps(2);
     click_square(&mut h, "a1");
     click_square(&mut h, "a8");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. Ra8+");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. Ra8+");
 
     // A right click circles a square; a right drag with Shift held draws a red arrow.
     drag_square(&mut h, egui::PointerButton::Secondary, "d4", "d4", egui::Modifiers::NONE);
@@ -2394,15 +2394,15 @@ fn drawings_belong_to_the_move_and_go_into_the_pgn() {
     drag_square(&mut h, egui::PointerButton::Secondary, "g1", "f3", egui::Modifiers::SHIFT);
     assert_eq!(marks(&h), ["d5d5Green", "g1f3Red"]);
     let board = h.state().chess.board();
-    let e4 = board.game.current();
-    assert_eq!(board.game.drawings(e4).len(), 2, "on the move shown");
-    assert!(board.game.drawings(0).is_empty());
+    let e4 = board.game().current();
+    assert_eq!(board.game().drawings(e4).len(), 2, "on the move shown");
+    assert!(board.game().drawings(0).is_empty());
     assert!(board.pgn_text.contains("1. e4 {[%csl Gd5][%cal Rg1f3]} *"), "{}", board.pgn_text);
     assert_eq!(board.undo_label().as_deref(), Some("Draw on the board"));
     // Moving a piece (left clicks on the board) leaves them on their move.
     click_square(&mut h, "e7");
     click_square(&mut h, "e5");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 {[%csl Gd5][%cal Rg1f3]} 1... e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 {[%csl Gd5][%cal Rg1f3]} 1... e5");
     assert!(marks(&h).is_empty(), "the next move has its own");
     h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
@@ -2428,7 +2428,7 @@ fn drawings_belong_to_the_move_and_go_into_the_pgn() {
 
     // A PGN with drawings, and other commands in the comment, puts them on their move.
     put_game(&mut h, "1. d4 {Center [%clk 0:10:00] [%csl Yd4][%cal Bc1g5]} 1... d5 *", &[0, 0]);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     let d4 = game.main_line()[1];
     assert_eq!(game.comment(d4), "Center [%clk 0:10:00]");
     assert_eq!(game.movetext(), "1. d4 {[%csl Yd4][%cal Bc1g5] Center [%clk 0:10:00]} 1... d5");
@@ -2633,7 +2633,7 @@ fn analyze_switches_the_engine() {
     // A click on the line's move plays it.
     h.get_by_label("e4").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     // Switched off: the engine is closed and the bar goes.
     h.get_by_label("Stop the analysis").click();
     h.run_steps(3);
@@ -2795,7 +2795,7 @@ fn analyze_on_the_diagram_tab_analyses_the_edited_position() {
     h.run_steps(2);
     h.get_by_label("Analyze on the board").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.fen(), edited, "the edited position is on the board");
+    assert_eq!(h.state().chess.board().game().fen(), edited, "the edited position is on the board");
     assert!(h.state().chess.study.analysis, "analysis is on");
     assert!(!h.state().chess.study.assistant, "an engine is there: no assistant");
     // Its rows show without a click: the board's Analyze is on.
@@ -2818,7 +2818,7 @@ fn analyze_in_the_list_opens_the_diagram_analysed() {
     h.get_by_label("Analyze").click();
     h.run_steps(3);
     assert!(h.state().chess_board_shown(), "the column's Board tab");
-    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game().fen(), START_FEN);
     assert!(h.state().chess.study.analysis);
     let sent = format!("position fen {START_FEN}");
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
@@ -2963,7 +2963,7 @@ fn the_board_panel_analyses_with_a_real_engine() {
         .expect("the move after the number");
     mv.click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.len(), 1, "{}", h.state().chess.board().game.movetext());
+    assert_eq!(h.state().chess.board().game().len(), 1, "{}", h.state().chess.board().game().movetext());
 }
 
 /// Open the Chess board panel on the standard start position, after a PDF edit (a rectangle in a
@@ -3028,25 +3028,25 @@ fn undo_follows_the_scope_of_the_last_action() {
     for sq in ["e2", "e4", "e7", "e5", "g1", "f3"] {
         click_square(&mut h, sq);
     }
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5 2. Nf3");
     click_square(&mut h, "a4");
     // The palette and the rail's button name the move (the button with its key too).
     assert_eq!(palette_labels(&mut h, "Undo Play Nf3"), 1, "the palette's Undo");
     assert_eq!(h.query_all_by_label_contains("Undo Play Nf3 (").count(), 1, "the rail's Undo");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
     shortcut(&mut h, egui::Key::Z, false);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     assert_eq!(pdf_undo(&h).as_deref(), Some(pdf.as_str()), "the document is untouched");
     shortcut(&mut h, egui::Key::Z, true);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
     h.get_by_label_contains("Undo Play e5 (").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     h.get_by_label_contains("Redo Play e5 (").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
 
     // A click on the page: Undo goes back to the document.
     let page = on_page(&h, 400.0, 300.0);
@@ -3055,13 +3055,13 @@ fn undo_follows_the_scope_of_the_last_action() {
     assert_eq!(palette_labels(&mut h, &format!("Undo {pdf}")), 1);
     shortcut(&mut h, egui::Key::Z, false);
     assert_eq!(pdf_undo(&h), None, "the rectangle was undone");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5", "the game is untouched");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5", "the game is untouched");
     // And a move played on the board brings it back to the game.
     click_square(&mut h, "g1");
     click_square(&mut h, "f3");
     assert!(h.state().chess.in_scope());
     shortcut(&mut h, egui::Key::Z, false);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4 e5");
 }
 
 /// A comment typed in several goes is one undo step, named after what it was.
@@ -3081,17 +3081,17 @@ fn a_comment_typed_in_several_goes_is_one_undo_step() {
     h.run_steps(2);
     // Leave the field.
     click_square(&mut h, "a4");
-    let node = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment(node), "good move");
+    let node = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment(node), "good move");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Edit move comment"));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.comment(node), "");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "one step took the whole comment back, and only it");
+    assert_eq!(h.state().chess.board().game().comment(node), "");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4", "one step took the whole comment back, and only it");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Play e4"));
     assert!(h.state_mut().execute("edit.redo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.comment(node), "good move");
+    assert_eq!(h.state().chess.board().game().comment(node), "good move");
 }
 
 /// The FEN and PGN fields show the game put back by Undo, even when another change follows it
@@ -3112,7 +3112,7 @@ fn the_fields_follow_the_game_put_back() {
     }
     h.run_steps(2);
     let board = h.state().chess.board();
-    assert_eq!(board.game.movetext(), "1. d4");
+    assert_eq!(board.game().movetext(), "1. d4");
     assert!(board.pgn_text.contains("1. d4 *"), "the PGN field is stale: {}", board.pgn_text);
     assert_eq!(board.fen_text, "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1");
 }
@@ -3136,7 +3136,7 @@ fn double_click_diagram(h: &mut Harness<'static, PdfCraftApp>) {
 /// The movetext of every game of the document shown, in list order, and which one is shown.
 fn games(app: &PdfCraftApp) -> (Vec<String>, usize) {
     let c = app.chess.games.collection();
-    (c.iter().map(|e| e.board.game.movetext()).collect(), c.active_index())
+    (c.iter().map(|e| e.board.game().movetext()).collect(), c.active_index())
 }
 
 /// Opening a diagram on the board again, after moves were played on it, is a new game: the game
@@ -3153,14 +3153,14 @@ fn each_diagram_opened_is_a_new_game_and_the_first_is_kept() {
     click_square(&mut h, "e4");
     double_click_diagram(&mut h);
     assert_eq!(games(h.state()), (vec!["1. e4".to_owned(), String::new()], 1), "a new game; the first is intact");
-    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game().fen(), START_FEN);
     games_view(&mut h);
     h.get_by_label("Games in this document (2)");
     // Back to the first game from the list: its moves are there, and a click there is not an undo step.
     h.get_all_by_label("Diagram 1, p. 1").next().expect("listed").click();
     h.run_steps(2);
     assert_eq!(games(h.state()).1, 0);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Play e4"), "switching games is not a step");
     // The untouched second game is shown again, not copied.
     double_click_diagram(&mut h);
@@ -3214,7 +3214,7 @@ fn game_state(app: &PdfCraftApp) -> Vec<(String, Vec<u16>, Vec<Move>, bool)> {
     let c = app.chess.games.collection();
     c.iter()
         .map(|e| {
-            let g = &e.board.game;
+            let g = e.board.game();
             let nodes = std::iter::once(0).chain(g.tokens().into_iter().filter_map(|t| match t {
                 Token::Move { node, .. } => Some(node),
                 _ => None,
@@ -3247,7 +3247,7 @@ fn the_games_come_back_exactly_in_the_next_session() {
         {
             let b = h.state_mut().chess.board_mut();
             b.play_uci_line(&["e2e4".into(), "e7e5".into(), "g1f3".into()]);
-            let g = &mut b.game;
+            let g = b.game_mut().unwrap();
             let nf3 = g.current();
             g.go_to(2);
             let e5 = g.current();
@@ -3259,7 +3259,7 @@ fn the_games_come_back_exactly_in_the_next_session() {
             g.set_tag("Black", "Jianu").unwrap();
             b.flipped = true;
             // The move shown: a variation, 1... c5.
-            b.game.go_to(1);
+            b.game_mut().unwrap().go_to(1);
         }
         h.state_mut().chess.board_mut().play_uci_line(&["c7c5".into()]);
         // A second game, shown, with a move.
@@ -3507,7 +3507,7 @@ fn a_pgn_file_with_several_games_is_imported() {
     // Named by its event (T14), without players.
     h.get_by_label("C").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. d4 d5 (1... Nf6 2. c4) 2. c4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. d4 d5 (1... Nf6 2. c4) 2. c4");
 }
 
 // ---- T5a: the PGN tool rail and the chess key scope ----
@@ -3524,17 +3524,17 @@ fn put_game(h: &mut Harness<'static, PdfCraftApp>, pgn: &str, path: &[u16]) {
     let (mut game, stopped) = Game::from_pgn(pgn).unwrap();
     assert_eq!(stopped, None);
     game.go_to_node(game.node_at(&NodePath::new(path.to_vec())).unwrap());
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
 }
 
 fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.state().chess.board().game.movetext()
+    h.state().chess.board().game().movetext()
 }
 
 /// The move shown, as its SAN.
 fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.san(game.current()).to_owned()
 }
 
@@ -3659,7 +3659,7 @@ fn the_chess_keys_edit_and_walk_the_game() {
     // a fork.
     put_game(&mut h, FORKS, &[0, 1, 0, 0]);
     host_key(&mut h, Modifiers::NONE, Key::Home);
-    assert_eq!(h.state().chess.board().game.current(), 0);
+    assert_eq!(h.state().chess.board().game().current(), 0);
     host_key(&mut h, Modifiers::NONE, Key::End);
     assert_eq!(shown(&h), "Nf3", "Home went to the start: the line shown is the main line now");
     put_game(&mut h, FORKS, &[0, 1]);
@@ -3766,7 +3766,7 @@ fn deleted_moves_are_kept_and_open_again_as_a_new_game() {
     let games = h.state().chess.games.collection();
     assert_eq!((games.len(), games.active_index()), (2, 1));
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3) 2. Nf3", "the game as it was");
-    assert_eq!(games.get(0).unwrap().board.game.movetext(), "1. e4 e5 2. Nf3");
+    assert_eq!(games.get(0).unwrap().board.game().movetext(), "1. e4 e5 2. Nf3");
     assert!(games.trash().is_empty(), "taken out of the trash");
 }
 
@@ -3791,8 +3791,8 @@ fn a_position_set_up_over_a_game_with_moves_is_a_new_game() {
     h.run_steps(2);
     let games = h.state().chess.games.collection();
     assert_eq!((games.len(), games.active_index()), (2, 1));
-    assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/4K3 b - - 0 1");
-    assert_eq!(games.get(0).unwrap().board.game.movetext(), "1. d4", "the game keeps its moves");
+    assert_eq!(h.state().chess.board().game().fen(), "4k3/8/8/8/8/8/8/4K3 b - - 0 1");
+    assert_eq!(games.get(0).unwrap().board.game().movetext(), "1. d4", "the game keeps its moves");
     assert_eq!(h.state().chess.tools.deleted.text(), None, "nothing was deleted");
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
 }
@@ -3833,8 +3833,8 @@ fn the_fen_field_never_takes_the_games_moves() {
     h.run_steps(3);
     let games = h.state().chess.games.collection();
     assert_eq!((games.len(), games.active_index()), (2, 1));
-    assert_eq!(h.state().chess.board().game.fen(), KINGS);
-    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert_eq!(h.state().chess.board().game().fen(), KINGS);
+    assert_eq!(games.get(0).unwrap().board.game().movetext(), FORKS_TEXT, "the game keeps its moves");
     assert!(h.query_by_label("New game with this position").is_none(), "answered");
 }
 
@@ -3852,7 +3852,7 @@ fn the_standard_start_over_moves_is_a_new_game() {
     h.run_steps(3);
     let games = h.state().chess.games.collection();
     assert_eq!((games.len(), games.active_index()), (2, 1));
-    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert_eq!(games.get(0).unwrap().board.game().movetext(), FORKS_TEXT, "the game keeps its moves");
     assert_eq!(movetext(&h), "", "a new game from the start");
     h.get_by_label("FEN/PGN").click();
     h.run_steps(2);
@@ -3881,7 +3881,7 @@ fn typed_pgn_outlives_a_step_and_loads_in_place() {
     h.run_steps(2);
     h.get_by_label("PGN edited");
     // A step back on the board (1. e4 shown) leaves the field as typed.
-    h.state_mut().chess.board_mut().game.go_to(1);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(1);
     h.run_steps(2);
     assert_eq!(h.state().chess.board().pgn_text, COMMENTED);
     h.get_by_label("Load").click();
@@ -3930,7 +3930,7 @@ fn delete_and_backspace_in_the_chess_scope_touch_only_the_game() {
     host_key(&mut h, Modifiers::NONE, Key::Backspace);
     assert_eq!(pages(&h), 3, "Backspace removed no page");
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5) (1... e6) 2. Nf3");
-    assert_eq!(h.state().chess.board().game.ply(), 1, "back to 1. e4");
+    assert_eq!(h.state().chess.board().game().ply(), 1, "back to 1. e4");
     assert_eq!(h.state().views[0].target_pages(), [1], "the page selection is untouched");
 
     // The page, with the rectangle selected.
@@ -3972,8 +3972,8 @@ fn keys_typed_in_a_comment_stay_in_the_comment() {
     h.run_steps(2);
     host_key(&mut h, Modifiers::SHIFT, Key::S);
     host_key(&mut h, Modifiers::NONE, Key::Backspace);
-    let node = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment(node), "goo", "Backspace took back a letter");
+    let node = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment(node), "goo", "Backspace took back a letter");
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3 (2. c3) 2... d6 {goo}) 2. Nf3", "and no variation");
     h.get_by_label(&promote);
 }
@@ -4493,7 +4493,7 @@ fn host_text(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
 
 /// The glyphs of the move shown.
 fn glyph_codes(h: &Harness<'static, PdfCraftApp>) -> Vec<u16> {
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     game.nags(game.current()).to_vec()
 }
 
@@ -4582,8 +4582,8 @@ fn glyphs_typed_in_the_chess_scope_go_on_the_move_and_not_into_a_text_field() {
     h.run_steps(2);
     host_text(&mut h, "!");
     h.run_steps(3);
-    let node = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment(node), "!", "the field took it");
+    let node = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment(node), "!", "the field took it");
     assert_eq!(glyph_codes(&h), [1, 14], "and no glyph changed");
 }
 
@@ -4609,13 +4609,13 @@ fn the_comment_before_a_move_goes_where_pgn_has_room_and_says_where_it_has_none(
     h.run_steps(2);
     assert!(h.query_by_label_contains("In PGN this comment").is_none(), "a variation's first move has its place");
     click_board_title(&mut h);
-    let c5 = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment_before(c5), "Sicilian");
+    let c5 = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment_before(c5), "Sicilian");
     assert!(h.state().chess.board().pgn_text.contains("({Sicilian} 1... c5"), "{}", h.state().chess.board().pgn_text);
     assert_eq!(undo_label(&h).as_deref(), Some("Edit the comment before a move"));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.comment_before(c5), "", "one step");
+    assert_eq!(h.state().chess.board().game().comment_before(c5), "", "one step");
     // 2.Nf3 continues 1...c5's line: PGN writes its comment after 1...c5.
     put_game(&mut h, FORKS, &[0, 1, 0]);
     let before = h.get_by_label("Comment before 2.Nf3");
@@ -4651,15 +4651,15 @@ fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
         h.run_steps(1);
     }
     click_board_title(&mut h);
-    let e4 = h.state().chess.board().game.current();
-    assert_eq!(h.state().chess.board().game.comment(e4), "a b");
+    let e4 = h.state().chess.board().game().current();
+    assert_eq!(h.state().chess.board().game().comment(e4), "a b");
     // The field lost the keyboard to the title: the knight goes to the comment's end.
     h.get_by_label("White knight").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.comment(e4), "a b ♘");
+    assert_eq!(h.state().chess.board().game().comment(e4), "a b ♘");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board().game.comment(e4), "a b", "one step");
+    assert_eq!(h.state().chess.board().game().comment(e4), "a b", "one step");
     // In the field, at its cursor: after "a".
     let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("a b")).unwrap();
     comment.focus();
@@ -4670,11 +4670,11 @@ fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
     h.run_steps(1);
     h.get_by_label("Black knight").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.comment(e4), "a♞ b");
+    assert_eq!(h.state().chess.board().game().comment(e4), "a♞ b");
     assert!(h.ctx.egui_wants_keyboard_input(), "the field has the keyboard back");
     h.get_by_label("Capture sign").click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board().game.comment(e4), "a♞× b", "after the knight: the cursor moved past it");
+    assert_eq!(h.state().chess.board().game().comment(e4), "a♞× b", "after the knight: the cursor moved past it");
 }
 
 /// The Move list beside the page: the board's toggle opens it against the page's right edge and
@@ -4713,7 +4713,7 @@ fn the_move_list_stands_beside_the_page_on_either_side() {
     // 1. e4 from 2. Nf3 in the variation: the board follows the list.
     h.get_by_label("e4").click();
     h.run_steps(2);
-    let game = &h.state().chess.board().game;
+    let game = h.state().chess.board().game();
     assert_eq!(game.san(game.current()), "e4");
     h.get_by_label("Move list beside the page").click();
     h.run_steps(3);
@@ -4824,7 +4824,7 @@ fn a_corrected_diagram_opens_and_links_with_its_correction() {
     assert!(!open.accesskit_node().is_disabled(), "a diagram not read but corrected opens on the board");
     open.click();
     h.run_steps(3);
-    assert!(h.state().chess.board().game.start_fen().starts_with("4k3/8/8/8/8/8/8/R3K3"), "{}", h.state().chess.board().game.start_fen());
+    assert!(h.state().chess.board().game().start_fen().starts_with("4k3/8/8/8/8/8/8/R3K3"), "{}", h.state().chess.board().game().start_fen());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -5708,7 +5708,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     h.state_mut().chess.study.use_engine(engine);
     h.state_mut().chess.study.analysis = false;
     g.click(&mut h, "Analyze on the board");
-    let sent = format!("position fen {}", h.state().chess.board().game.fen());
+    let sent = format!("position fen {}", h.state().chess.board().game().fen());
     assert!(wait_for(&mut h, &log, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
     journey("d) Analyse with an engine", g.take(), 1);
 
@@ -6855,7 +6855,7 @@ fn ctrl_z_over_the_diagram_tab_never_takes_back_the_chess_game() {
     h.run_steps(3);
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4");
     // The read diagram opened, its board not taking the keyboard: the game's scope stays on.
     h.state_mut().edit_chess_diagram(0, 0, true);
     h.state_mut().chess.editor.as_mut().unwrap().focus = false;
@@ -6865,7 +6865,7 @@ fn ctrl_z_over_the_diagram_tab_never_takes_back_the_chess_game() {
     h.hover_at(tab.center());
     h.run_steps(1);
     host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "the game keeps its move");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4", "the game keeps its move");
     // A change, then a confirmation: Ctrl+Z takes back the confirmation, then the change.
     h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
     h.run_steps(2);
@@ -6879,7 +6879,7 @@ fn ctrl_z_over_the_diagram_tab_never_takes_back_the_chess_game() {
     host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
     assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(START_FEN), "then the change");
     host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Z);
-    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "and never the game");
+    assert_eq!(h.state().chess.board().game().movetext(), "1. e4", "and never the game");
 }
 
 /// Plan A9-G10 (finding A5-09): Confirm correction, asked about a draft before quitting, with a
@@ -6952,7 +6952,7 @@ fn a_game_opened_from_a_diagram_has_the_books_origin_tags() {
     h.run_steps(3);
     h.state_mut().open_chess_board(0, 0);
     h.run_steps(2);
-    let pgn = h.state().chess.board().game.pgn();
+    let pgn = h.state().chess.board().game().pgn();
     let tags: Vec<&str> = pgn.lines().take_while(|l| l.starts_with('[')).skip(7).collect();
     // The document's first diagram is the standard start: no SetUp/FEN, which would come first.
     assert_eq!(tags, ["[PdfPage \"1\"]", "[PdfDiagram \"1\"]", "[SourceTitle \"book\"]"], "{pgn}");
@@ -7116,7 +7116,7 @@ fn a_long_game_builds_only_the_moves_in_view() {
     let built = h.query_all_by_label("knight f3").count();
     assert!(built > 0 && built < 60, "{built} of 150 knight-f3 moves built");
     // At the end, the move shown is built and in view.
-    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(usize::MAX);
     h.run_steps(6);
     assert!(h.query_all_by_label("knight g8").count() > 0);
 }
@@ -7177,7 +7177,7 @@ fn ten_thousand_moves_in_32_levels_cost_only_the_rows_in_view() {
     };
     let empty = time(&mut h);
     game.go_to(2000);
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(10);
     let full = time(&mut h);
     let built = h.query_all_by_label_contains("knight").count();
@@ -8045,8 +8045,8 @@ fn a_page_inserted_before_takes_the_games_pages_along() {
     {
         let b = h.state_mut().chess.board_mut();
         b.play_uci_line(&["e2e4".into()]);
-        let e4 = b.game.current();
-        assert!(b.game.set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
+        let e4 = b.game().current();
+        assert!(b.game_mut().unwrap().set_source(e4, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
     }
     h.state_mut().flush_chess_games();
     h.state_mut().settle_chess_games();
@@ -8054,8 +8054,8 @@ fn a_page_inserted_before_takes_the_games_pages_along() {
     h.run_steps(3);
     let pages = |h: &Harness<'static, PdfCraftApp>| {
         let b = h.state().chess.board();
-        let e4 = b.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
-        (b.source.map(|s| s.page), b.game.source(e4).map(|s| s.page))
+        let e4 = b.game().node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0])).unwrap();
+        (b.source.map(|s| s.page), b.game().source(e4).map(|s| s.page))
     };
     assert_eq!(pages(&h), (Some(1), Some(1)), "the diagram and the move follow their page");
     h.state_mut().flush_chess_games();
@@ -8227,7 +8227,7 @@ fn the_moves_in_columns_build_only_the_rows_in_view() {
     let built = h.query_all_by_label("knight f3").count();
     assert!(built > 0 && built < 60, "{built} of 150 knight-f3 moves built");
     // At the end, the move shown is built and in view.
-    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.state_mut().chess.board_mut().game_mut().unwrap().go_to(usize::MAX);
     h.run_steps(6);
     let last = h.get_all_by_label("knight g8").last().expect("the last move built").rect();
     assert!(h.get_by_label("Moves").rect().intersects(last), "{last:?} in view");
@@ -8501,7 +8501,7 @@ fn every_export_format_is_linked_to_the_books_pgn_and_the_documents_games() {
     h.state_mut().clear_book_pgn();
     h.run_steps(2);
     let (game, _) = pdfcraft_engine::chess::pdfcraft_chess::game::Game::from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 *").unwrap();
-    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().chess.board_mut().set_game(game);
     h.run_steps(2);
     let with_games = export(&mut h, "with-games.html");
     assert!(with_games.contains("data-reference=\"recovered\""), "the document's game plays it: {with_games}");

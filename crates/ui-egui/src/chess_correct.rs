@@ -220,7 +220,7 @@ pub(crate) fn correct(chess: &mut ChessState, change: Change) {
         chess.capture.note(crate::notice::Level::Error, tl!("The correction couldn't be made: the move wasn't found in the text.").to_owned());
         return;
     };
-    let plan = crate::chess_capture::plan_for(&chess.board().game, &request);
+    let plan = crate::chess_capture::plan_for(chess.board().game(), &request);
     if plan.chosen.is_none() {
         chess.capture.note(crate::notice::Level::Error, tl!("The corrected text fits nowhere: nothing was changed.").to_owned());
         return;
