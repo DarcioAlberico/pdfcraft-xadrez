@@ -4155,3 +4155,8 @@ pawn structure	Passed	حرة
 	Standard PGN	PGN قياسي
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	لا يحتفظ Lichess وChessBase إلا برمز الأبيض للعلامة التي لها رمز لكل جانب: تُكتب علامات الأسود كعلامات الأبيض. في Lichess تذهب العلامة التي لا يعرفها إلى تعليق النقلة، وتقييم المحرك كـ [%eval]؛ وفي ChessBase يُكتب المخطط بعلامته الخاصة.
 	Without ChessBase's training question: {n}	بدون سؤال التدريب في ChessBase: {n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	رقعة أكبر
+	Smaller board	رقعة أصغر
+	Board size: automatic	حجم الرقعة: تلقائي
+	Drag to change the board's size	اسحب لتغيير حجم الرقعة

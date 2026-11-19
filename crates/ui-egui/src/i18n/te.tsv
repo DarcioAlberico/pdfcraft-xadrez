@@ -3782,3 +3782,8 @@ pawn structure	Passed	అడ్డులేని
 	Standard PGN	ప్రామాణిక PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	ప్రతి పక్షానికి వేర్వేరు కోడ్ ఉన్న గుర్తులో Lichess, ChessBase తెల్లవారి కోడ్‌ను మాత్రమే ఉంచుతాయి: నల్లవారి కోడ్‌లు తెల్లవారి కోడ్‌లుగా రాయబడతాయి. Lichess కోసం, దానికి తెలియని గుర్తు ఎత్తు వ్యాఖ్యలోకి వెళ్తుంది, ఇంజిన్ మూల్యాంకనం [%eval]గా; ChessBase కోసం, చిత్రం దాని స్వంత గుర్తుతో.
 	Without ChessBase's training question: {n}	ChessBase శిక్షణ ప్రశ్న లేకుండా: {n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	పెద్ద బోర్డు
+	Smaller board	చిన్న బోర్డు
+	Board size: automatic	బోర్డు పరిమాణం: స్వయంచాలకం
+	Drag to change the board's size	బోర్డు పరిమాణం మార్చడానికి లాగండి

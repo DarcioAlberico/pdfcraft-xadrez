@@ -282,6 +282,9 @@ pub struct ChessState {
     /// Where the board's position is in the book open: the Board tab's In the book (n) (plan
     /// A9-N3).
     pub(crate) in_book: crate::chess_in_book::InBook,
+    /// The Board tab's board: automatic, or the side the user chose (dragging the grip under it,
+    /// or its menu), kept between sessions as `chess_board_side`.
+    pub(crate) board_side: crate::chess_board_tab::BoardSide,
 }
 
 impl ChessState {
@@ -2244,7 +2247,16 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
             egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 4, bottom: 6 }).show(ui, |ui| {
                 let rect = ui.available_rect_before_wrap();
-                asked = crate::chess_board_tab::column(ui, &t, chess, &pieces, source_label.as_deref(), crate::chess_board_ui::Sizing::DOCKED, rect);
+                asked = crate::chess_board_tab::column(
+                    ui,
+                    &t,
+                    chess,
+                    &pieces,
+                    source_label.as_deref(),
+                    crate::chess_board_ui::Sizing::DOCKED,
+                    rect,
+                    true,
+                );
             });
         });
     });

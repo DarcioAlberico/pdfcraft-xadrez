@@ -915,7 +915,9 @@ fn board_column(
     let sizing = Sizing { max_side: MAX_SIDE, max_px: MAX_PX, wide: beside.is_some() };
     let tab = match beside {
         Some(moves) => chess_board_tab::beside(ui, t, chess, pieces, source_label.as_deref(), sizing, room, moves),
-        None => chess_board_tab::column(ui, t, chess, pieces, source_label.as_deref(), sizing, room),
+        // The window keeps its own sizing: the user sizes the window (no grip, no sizes in the
+        // board's menu, and the Board tab's chosen side is not applied here).
+        None => chess_board_tab::column(ui, t, chess, pieces, source_label.as_deref(), sizing, room, false),
     };
     asked.board = tab.board;
     asked.games = tab.games;

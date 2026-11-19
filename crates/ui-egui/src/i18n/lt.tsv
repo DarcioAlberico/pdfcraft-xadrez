@@ -4130,3 +4130,8 @@ pawn structure	Passed	Laisvi
 	Standard PGN	Standartinis PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess ir ChessBase iš ženklo, turinčio kodą kiekvienai pusei, išlaiko tik baltųjų kodą: juodųjų kodai rašomi kaip baltųjų. Lichess atveju ženklas, kurio jis nežino, patenka į ėjimo komentarą, o variklio įvertinimas – kaip [%eval]; ChessBase atveju diagrama rašoma jo paties žyme.
 	Without ChessBase's training question: {n}	Be ChessBase treniruotės klausimo: {n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	Didesnė lenta
+	Smaller board	Mažesnė lenta
+	Board size: automatic	Lentos dydis: automatinis
+	Drag to change the board's size	Vilkite, kad pakeistumėte lentos dydį
