@@ -1,12 +1,13 @@
 # A ajuda do xadrez em PDF
 
-**Status:** a fonte da ajuda é [`ajuda.html`](ajuda.html), em português do Brasil, refeita no passo A9-E1 do plano (`../plano-analise-9.md`), no A9-E1c e no A9-E1d para a versão e o build que a capa nomeia. O PDF, as figuras e os geradores ficam fora do repositório.
+**Status:** a fonte da ajuda é [`ajuda.html`](ajuda.html), em português do Brasil, refeita no passo A9-E1 do plano (`../plano-analise-9.md`), no A9-E1c, no A9-E1d e na revisão da versão 1.1.0, para a versão e o build que a capa nomeia. O PDF, as figuras e os geradores ficam fora do repositório.
 
 | Data | Mudança |
 |---|---|
 | 2026-11-18 | A9-E1: a ajuda refeita para o build `f720627`, com a fonte no repositório. |
 | 2026-11-19 | A9-E1c: a Biblioteca (N15c) e o I6b; as capturas refeitas do build `7496134`, o do `dist/app`. |
 | 2026-11-19 | A9-E1d: a ajuda da versão 1.0.0 (build `bc3f895`): os comandos do comentário escondidos e os selos do relógio e da avaliação (F7), **PGN para** o lichess ou o ChessBase (F7), o Word menor (X1b), a pergunta de treino do ChessBase nos exercícios (N10c), as coleções de partidas (#434) e onde ver a versão; todas as capturas refeitas desse build. |
+| 2026-11-19 | A ajuda da versão 1.1.0 (build `7233142`): o tamanho do tabuleiro (#448), que já tinha o texto do capítulo 7, entra nas figuras (o menu ⋯ do tabuleiro com **Tabuleiro maior**, **Tabuleiro menor** e **Tamanho do tabuleiro: automático**, e uma figura nova do tabuleiro aumentado, com a alça); todas as capturas refeitas desse build. |
 
 ## O que fica onde
 
