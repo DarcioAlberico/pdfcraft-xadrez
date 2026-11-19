@@ -471,13 +471,19 @@ fn inside(h: &Harness<'static, PdfCraftApp>, screen: egui::Rect, what: &str) {
         }
     }
     assert!(seen > 20, "{what}: the dialog's nodes: {seen}");
-    // And what is painted under a clip inside the dialog (the Chess column's guard of #429,
-    // extended to the Library): a text or a shape that starts in it and runs past its right edge.
-    for clipped in &h.output().shapes {
-        let (clip, r) = (clipped.clip_rect, clipped.shape.visual_bounding_rect());
-        let under_the_dialog = clip.min.x >= rect.min.x - 1.0 && clip.max.x <= rect.max.x + 1.0;
+    // And what is painted on the dialog's layer (the Chess column's guard of #429, extended to the
+    // Library): a text or a shape that starts in it and runs past its right edge. A vertical scroll
+    // area clips nothing sideways, so the clip says nothing here; the dialog's shapes are those
+    // painted after its backdrop, the translucent rect over the whole window.
+    let shapes = &h.output().shapes;
+    let backdrop = shapes
+        .iter()
+        .position(|s| matches!(&s.shape, egui::Shape::Rect(b) if b.rect.contains_rect(screen.shrink(1.0)) && b.fill.a() > 0 && b.fill.a() < 255));
+    assert!(backdrop.is_some(), "{what}: the dialog's backdrop is painted");
+    for clipped in shapes.iter().skip(backdrop.map_or(0, |b| b + 1)) {
+        let r = clipped.shape.visual_bounding_rect();
         let level = r.center().y > rect.min.y && r.center().y < rect.max.y;
-        if under_the_dialog && level && r.is_finite() && r.min.x < rect.max.x && r.max.x > rect.max.x + 1.0 {
+        if level && r.is_finite() && r.min.x >= rect.min.x && r.min.x < rect.max.x && r.max.x > rect.max.x + 1.0 {
             let shape = match &clipped.shape {
                 egui::Shape::Text(text) => format!("the text {:?}", text.galley.text()),
                 _ => "a shape".to_owned(),
