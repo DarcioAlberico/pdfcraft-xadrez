@@ -3820,7 +3820,7 @@ pawn structure	Passed	Frei
 	This folder is in the Library already, through {dir}.	Dieser Ordner ist schon in der Bibliothek, über {dir}.
 	The Library has {n} folders already.	Die Bibliothek hat schon {n} Ordner.
 	The Library's folders couldn't be changed: {e}	Die Ordner der Bibliothek konnten nicht geändert werden: {e}
-	The Library's build was stopped: books left: {n}. Continue goes on from there.	Der Aufbau der Bibliothek wurde angehalten: verbleibende Bücher: {n}. Fortsetzen macht dort weiter.
+	The Library's build was stopped: books left: {n}. Continue goes on from there.	Der Aufbau der Bibliothek wurde angehalten: verbleibende Bücher: {n}. Weiter setzt dort fort.
 	The Library is built: books read now: {read}; books in the Library: {indexed}.	Die Bibliothek ist aufgebaut: jetzt gelesene Bücher: {read}; Bücher in der Bibliothek: {indexed}.
 	The Library couldn't be built: {e}	Die Bibliothek konnte nicht aufgebaut werden: {e}
 	{path} is in the cloud, not on this computer: it isn't opened.	{path} ist in der Cloud, nicht auf diesem Computer: es wird nicht geöffnet.
@@ -3867,3 +3867,12 @@ pawn structure	Passed	Frei
 	Look in the Library	In der Bibliothek suchen
 	Find this position in every book of the Library	Diese Stellung in allen Büchern der Bibliothek suchen
 	Library…	Bibliothek…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Der Ordner wird hinzugefügt, wenn der Aufbau endet.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Ein anderer Aufbau dieser Bibliothek läuft (in einem anderen Fenster, einem anderen PdfCraft oder auf der Kommandozeile): warten Sie, bis er endet.
+	The Library's catalog can't be read, so it isn't changed: {e}	Der Katalog der Bibliothek kann nicht gelesen werden, daher wird er nicht geändert: {e}
+	This book changed since the Library read it: build the Library again.	Dieses Buch hat sich geändert, seit die Bibliothek es gelesen hat: die Bibliothek neu aufbauen.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Der Zug wurde nicht umrandet: seine Seite wurde nicht rechtzeitig gelesen, oder Sie sind weitergegangen.
+	{path} is a link, which the Library never opens.	{path} ist ein Link, den die Bibliothek nie öffnet.
+	{path} can't be opened.	{path} kann nicht geöffnet werden.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Der letzte Aufbau wurde abgebrochen (PdfCraft wurde geschlossen oder hielt bei einem Fehler an): Weiter setzt dort fort, wo er war.

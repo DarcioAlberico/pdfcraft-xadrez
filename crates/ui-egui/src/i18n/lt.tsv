@@ -4114,3 +4114,12 @@ pawn structure	Passed	Laisvi
 	Look in the Library	Ieškoti Bibliotekoje
 	Find this position in every book of the Library	Ieškoti šios pozicijos visose Bibliotekos knygose
 	Library…	Biblioteka…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Aplankas bus pridėtas, kai kūrimas baigsis.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Vyksta kitas šios Bibliotekos kūrimas (kitame lange, kitame PdfCraft arba komandinėje eilutėje): palaukite, kol jis baigsis.
+	The Library's catalog can't be read, so it isn't changed: {e}	Bibliotekos katalogo nepavyksta perskaityti, todėl jis nekeičiamas: {e}
+	This book changed since the Library read it: build the Library again.	Ši knyga pasikeitė nuo tada, kai Biblioteka ją perskaitė: sukurkite Biblioteką iš naujo.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Ėjimas neapibrėžtas: jo puslapis nebuvo perskaitytas laiku arba jūs nuėjote kitur.
+	{path} is a link, which the Library never opens.	{path} yra nuoroda, kurios Biblioteka niekada neatidaro.
+	{path} can't be opened.	{path} neįmanoma atidaryti.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Paskutinis kūrimas buvo nutrauktas (PdfCraft užsidarė arba sustojo dėl klaidos): Tęsti tęsia nuo ten, kur sustojo.

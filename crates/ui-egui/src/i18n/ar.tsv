@@ -4139,3 +4139,12 @@ pawn structure	Passed	حرة
 	Look in the Library	البحث في المكتبة
 	Find this position in every book of the Library	البحث عن هذا الموضع في كل كتب المكتبة
 	Library…	المكتبة…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	سيُضاف المجلد عند انتهاء البناء.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	يجري بناء آخر لهذه المكتبة (في نافذة أخرى أو في PdfCraft آخر أو في سطر الأوامر): انتظر حتى ينتهي.
+	The Library's catalog can't be read, so it isn't changed: {e}	تعذّرت قراءة فهرس المكتبة، لذا لم يُغيَّر: {e}
+	This book changed since the Library read it: build the Library again.	تغيّر هذا الكتاب منذ أن قرأته المكتبة: أعد بناء المكتبة.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	لم تُحدَّد النقلة: لم تُقرأ صفحتها في الوقت المناسب، أو انتقلت إلى مكان آخر.
+	{path} is a link, which the Library never opens.	{path} رابط، والمكتبة لا تفتح الروابط أبدًا.
+	{path} can't be opened.	تعذّر فتح {path}.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	توقّف البناء الأخير قبل اكتماله (أُغلق PdfCraft، أو توقّف بسبب خطأ): متابعة تكمل من حيث توقّف.

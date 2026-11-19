@@ -4078,3 +4078,12 @@ pawn structure	Passed	Passati
 	Look in the Library	Cerca nella Biblioteca
 	Find this position in every book of the Library	Cerca questa posizione in tutti i libri della Biblioteca
 	Library…	Biblioteca…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	La cartella verrà aggiunta al termine della costruzione.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	È in corso un'altra costruzione di questa Biblioteca (in un'altra finestra, in un altro PdfCraft o dalla riga di comando): attendi che finisca.
+	The Library's catalog can't be read, so it isn't changed: {e}	Il catalogo della Biblioteca non si può leggere, quindi non viene modificato: {e}
+	This book changed since the Library read it: build the Library again.	Questo libro è cambiato da quando la Biblioteca l'ha letto: costruisci di nuovo la Biblioteca.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	La mossa non è stata evidenziata: la sua pagina non è stata letta in tempo, oppure sei andato altrove.
+	{path} is a link, which the Library never opens.	{path} è un collegamento, che la Biblioteca non apre mai.
+	{path} can't be opened.	Impossibile aprire {path}.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	L'ultima costruzione è stata interrotta (PdfCraft si è chiuso o si è fermato per un errore): Continua riprende da dove era rimasta.

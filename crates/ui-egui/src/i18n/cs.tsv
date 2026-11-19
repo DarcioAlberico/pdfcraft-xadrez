@@ -3940,3 +3940,12 @@ pawn structure	Passed	Volní
 	Look in the Library	Hledat v knihovně
 	Find this position in every book of the Library	Hledat tuto pozici ve všech knihách knihovny
 	Library…	Knihovna…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Složka bude přidána, až sestavení skončí.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Probíhá jiné sestavení této knihovny (v jiném okně, v jiném PdfCraftu nebo z příkazového řádku): počkejte, až skončí.
+	The Library's catalog can't be read, so it isn't changed: {e}	Katalog knihovny nelze přečíst, proto se nemění: {e}
+	This book changed since the Library read it: build the Library again.	Tato kniha se změnila od doby, kdy ji knihovna přečetla: sestavte knihovnu znovu.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Tah nebyl orámován: jeho stránka nebyla přečtena včas, nebo jste přešli jinam.
+	{path} is a link, which the Library never opens.	{path} je odkaz, který knihovna nikdy neotevírá.
+	{path} can't be opened.	{path} nelze otevřít.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Poslední sestavení bylo přerušeno (PdfCraft se zavřel nebo se zastavil na chybě): Pokračovat naváže tam, kde skončilo.

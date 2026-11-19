@@ -39,6 +39,7 @@
 //! - **Desktop only**: the web build has none of this, and its menus leave the item out.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -48,7 +49,7 @@ use pdfcraft_engine::chess::library::find::{BookHits, FindQuery, Found, Hit, MAX
 use pdfcraft_engine::chess::library::index::{IndexedGame, Place};
 use pdfcraft_engine::chess::library::plan::Plan;
 use pdfcraft_engine::chess::library::walk::Caps;
-use pdfcraft_engine::chess::library::{self, BuildOptions, Built, Catalog, CatalogBook, ChangeError, Library, Removed, Skip, State};
+use pdfcraft_engine::chess::library::{self, BuildError, BuildOptions, Built, Catalog, CatalogBook, ChangeError, Library, Removed, Skip, State};
 use pdfcraft_engine::chess::pdfcraft_chess::fen::Fen;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::MoveAt;
 
@@ -69,6 +70,10 @@ const MAX_KEYS: usize = 16;
 const BOOK_ROW: f32 = 44.0;
 /// How long a result waits for its PDF to open, at most.
 const OPEN_WAIT: Duration = Duration::from_secs(120);
+/// How long a result's move waits for its page to be read, once its page is shown, at most.
+const OUTLINE_WAIT: Duration = Duration::from_secs(30);
+/// How often the catalog is read again while another build or change holds the Library.
+const OTHER_LOOK: Duration = Duration::from_secs(2);
 
 /// The dialog's two views.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -116,12 +121,34 @@ impl Fields {
     }
 }
 
+/// What a search asks, of which state of the Library: every change of its catalog and every
+/// build's end moves the generation, so an answer from before is the last one, dimmed and inert
+/// (plan A9-N15c, the review of #431: a book removed is never clickable).
+type Asked = (FindQuery, u64);
+
 /// The search: what it was last asked for, its answer and its job (the rules of plan A9-N3b).
 #[derive(Default)]
 struct Search {
-    now: Option<FindQuery>,
-    answer: Option<(FindQuery, Result<Arc<Found>, String>)>,
-    asking: Option<(FindQuery, Job<Found>)>,
+    now: Option<Asked>,
+    answer: Option<(Asked, Result<Arc<Shown>, String>)>,
+    asking: Option<(Asked, Job<Found>)>,
+    generation: u64,
+}
+
+/// An answer, with what its rows say, made once when it came (not at each pass).
+#[derive(Debug)]
+struct Shown {
+    found: Found,
+    books: Vec<ShownBook>,
+}
+
+/// A book of an answer: its line, the paths in its tooltip, and its rows (the result, its title,
+/// the same in words and what follows it).
+#[derive(Debug)]
+struct ShownBook {
+    head: String,
+    paths: String,
+    rows: Vec<(Item, String, String, String)>,
 }
 
 /// Where the search is.
@@ -130,8 +157,8 @@ enum Status {
     /// Nothing asked yet.
     Idle,
     /// Being looked for, with the last answer to show meanwhile, dimmed.
-    Searching(Option<Arc<Found>>),
-    Found(Arc<Found>),
+    Searching(Option<Arc<Shown>>),
+    Found(Arc<Shown>),
     Failed(String),
 }
 
@@ -146,17 +173,18 @@ impl Search {
         }
     }
 
-    /// Ask for `query`: one running for another query is dropped (which asks it to stop) and
-    /// `spawn`'s takes its place; one answered or running is not asked again unless `again`.
-    /// Whether a search started.
-    fn ask(&mut self, query: FindQuery, again: bool, spawn: impl FnOnce(FindQuery) -> Job<Found>) -> bool {
-        self.now = Some(query.clone());
-        let answered = self.answer.as_ref().is_some_and(|(q, _)| *q == query);
-        let running = self.asking.as_ref().is_some_and(|(q, _)| *q == query);
-        if running || (answered && !again) {
+    /// Ask for `query` of the Library as it is now: one running for something else is dropped
+    /// (which asks it to stop) and `spawn`'s takes its place; one answered or running is not asked
+    /// again. Whether a search started.
+    fn ask(&mut self, query: FindQuery, spawn: impl FnOnce(FindQuery) -> Job<Found>) -> bool {
+        let asked = (query, self.generation);
+        self.now = Some(asked.clone());
+        let answered = self.answer.as_ref().is_some_and(|(q, _)| *q == asked);
+        let running = self.asking.as_ref().is_some_and(|(q, _)| *q == asked);
+        if running || answered {
             return false;
         }
-        self.asking = Some((query.clone(), spawn(query)));
+        self.asking = Some((asked.clone(), spawn(asked.0)));
         true
     }
 }
@@ -181,7 +209,10 @@ pub type BuildHook = Arc<dyn Fn(usize, usize, usize) + Send + Sync>;
 
 /// The build running.
 struct Building {
-    job: Job<Built>,
+    job: Job<Result<Built, BuildError>>,
+    /// Stop: looked at by the build in its walk, while a book is read and hashed and between two
+    /// pages (plan A9-N15c, the review of #431).
+    halt: Arc<AtomicBool>,
     seen: Arc<Mutex<Seen>>,
     /// The book the catalog was last read for: each book's end writes it.
     book_read: usize,
@@ -191,6 +222,7 @@ struct Building {
 impl Drop for Building {
     /// A build dropped (the app gone) is asked to stop between two pages.
     fn drop(&mut self) {
+        self.halt.store(true, Ordering::Relaxed);
         self.job.cancel();
     }
 }
@@ -203,14 +235,26 @@ enum Change {
     Allow(String, bool),
 }
 
-/// What a change gave: the catalog as it is now, and what leaving a folder took out.
+/// What a change gave: the catalog as it is now, what leaving a folder took out, whether another
+/// build or change held the Library when it was read, and whether it was a change (not a read).
 struct Changed {
     catalog: Catalog,
     removed: Option<Removed>,
+    busy: bool,
+    changed: bool,
 }
 
-/// What a plan was made for: the folders, the catalog's time and its yeses.
-type PlanKey = (Vec<String>, u64, Vec<String>);
+/// What a plan was made for: a digest of the catalog's folders, yeses and time, made once when the
+/// catalog was read ([`plan_key`]).
+type PlanKey = u64;
+
+/// The key of the plan for `catalog`.
+fn plan_key(catalog: &Catalog) -> PlanKey {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    (&catalog.dirs, &catalog.allowed, catalog.updated).hash(&mut h);
+    h.finish()
+}
 
 /// A result asked to be opened, waiting for its PDF and its page.
 #[derive(Clone, Debug)]
@@ -222,6 +266,11 @@ struct Opening {
     /// The page's reading was asked for it.
     read: bool,
     since: Instant,
+    /// Its tab was brought to the front and its page shown, once: from then the person's moves
+    /// are never undone; moving away gives the outline up (the review of #431).
+    shown: bool,
+    /// The file changed since the Library read it: only its page, when it has it.
+    changed: bool,
 }
 
 /// Chess ▸ Library…: the dialog, the catalog, the build, the search and a result being opened.
@@ -233,6 +282,13 @@ pub struct LibraryUi {
     pub(crate) open: bool,
     pub(crate) view: View,
     catalog: Option<Arc<Catalog>>,
+    /// The plan's key for `catalog` ([`plan_key`]).
+    catalog_key: PlanKey,
+    /// Another build or change held the Library when the catalog was last read; looked at again
+    /// every [`OTHER_LOOK`] while the dialog is shown, so its end makes Build ready.
+    other_build: bool,
+    /// When the catalog was last asked to be read.
+    read_at: Option<Instant>,
     changing: Option<Job<Result<Changed, ChangeError>>>,
     /// The catalog is to be read again once no change runs.
     stale: bool,
@@ -250,8 +306,10 @@ pub struct LibraryUi {
     /// The FEN field takes the keyboard at the next pass.
     focus_fen: bool,
     opening: Option<Opening>,
-    /// A folder chosen, to add once no change of the catalog runs.
+    /// A folder chosen, to add once no change of the catalog and no build runs (the review of
+    /// #431: a build writes the catalog after each book), and whether that was said.
     adding: Option<PathBuf>,
+    adding_said: bool,
     /// A position the Board tab asked to look for (Look in the Library).
     asked_position: Option<String>,
     hook: Option<BuildHook>,
@@ -286,10 +344,10 @@ impl LibraryUi {
         self.catalog.as_deref()
     }
 
-    /// The search's answer for what was last asked, once it is in.
+    /// The search's answer for what was last asked of the Library as it is now, once it is in.
     pub fn found(&self) -> Option<&Found> {
         match &self.search.answer {
-            Some((q, Ok(f))) if self.search.now.as_ref() == Some(q) => Some(f),
+            Some((q, Ok(f))) if self.search.now.as_ref() == Some(q) => Some(&f.found),
             _ => None,
         }
     }
@@ -308,6 +366,7 @@ impl LibraryUi {
             || self.search.asking.is_some()
             || self.opening.is_some()
             || self.adding.is_some()
+            || (self.open && self.other_build)
     }
 
     /// What the running build says: the book, of how many, its page of how many.
@@ -353,6 +412,22 @@ pub(crate) fn estimate_words(pages: u64, cores: usize) -> String {
     // Pages are counted, so at most 2^64; a float's rounding is all an estimate needs.
     let secs = pages as f64 * SECONDS_PER_PAGE * MEASURED_CORES / (cores.max(1) as f64);
     crate::chess_engine_review::duration_words(secs)
+}
+
+/// Why the PDF at `path` is not opened, in words (the review of #431: each reason its own).
+fn not_opened_words(path: &str, why: Skip) -> String {
+    let template = match why {
+        Skip::InCloud => tl!("{path} is in the cloud, not on this computer: it isn't opened."),
+        Skip::Gone => tl!("{path} is no longer there: build the Library again to forget it."),
+        Skip::Link => tl!("{path} is a link, which the Library never opens."),
+        _ => tl!("{path} can't be opened."),
+    };
+    crate::i18n::fmt(template, &[("path", path)])
+}
+
+/// What a build or a change is told while another holds the Library, in the interface's language.
+fn busy_words() -> &'static str {
+    tl!("Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.")
 }
 
 /// A count as the interface's language writes it.
@@ -508,11 +583,12 @@ impl PdfCraftApp {
         }
         let Some(library) = lib.library() else { return false };
         lib.changing = Some(Job::spawn("pdfcraft-chess-library-catalog", self.run_inline, move |_| {
+            let done = |catalog: Catalog, removed: Option<Removed>| Changed { busy: library.busy(), catalog, removed, changed: true };
             Ok(match change {
-                Change::Read => Ok(Changed { catalog: library.catalog(), removed: None }),
-                Change::Add(dir) => library.add_folder(&dir).map(|catalog| Changed { catalog, removed: None }),
-                Change::Remove(dir) => library.remove_folder(&dir).map(|removed| Changed { catalog: library.catalog(), removed: Some(removed) }),
-                Change::Allow(hash, yes) => library.allow(&hash, yes).map(|catalog| Changed { catalog, removed: None }),
+                Change::Read => Ok(Changed { catalog: library.catalog(), removed: None, busy: library.busy(), changed: false }),
+                Change::Add(dir) => library.add_folder(&dir).map(|catalog| done(catalog, None)),
+                Change::Remove(dir) => library.remove_folder(&dir).map(|removed| done(library.catalog(), Some(removed))),
+                Change::Allow(hash, yes) => library.allow(&hash, yes).map(|catalog| done(catalog, None)),
             })
         }));
         true
@@ -523,16 +599,37 @@ impl PdfCraftApp {
         let dialog = rfd::AsyncFileDialog::new().set_title(tl!("Choose a folder of chess books"));
         self.ask_one(crate::pickers::Ask::Folder(dialog), None, |app, dir| {
             app.chess.library.open = true;
-            // After the change or reading running, when one is.
-            app.chess.library.adding = Some(dir);
-            app.poll_library();
+            app.add_library_folder(dir);
         });
     }
 
+    /// Add folder `dir` to the Library (the folder picker's answer): after the change or reading
+    /// running, and never while a build runs, which writes the catalog after each book and would
+    /// write over it (the review of #431); held until then, and said.
+    pub fn add_library_folder(&mut self, dir: PathBuf) {
+        let lib = &mut self.chess.library;
+        lib.adding = Some(dir);
+        lib.adding_said = false;
+        self.poll_library();
+    }
+
+    /// The catalog changed (a folder added or removed, a yes, a build's end): what the search
+    /// answered before is the last answer, dimmed and inert, and it is asked again (the review of
+    /// #431: a book removed is never clickable).
+    fn library_changed(&mut self) {
+        let lib = &mut self.chess.library;
+        lib.search.generation = lib.search.generation.wrapping_add(1);
+        if let Some((query, _)) = lib.search.now.clone() {
+            self.ask_library(query);
+        }
+    }
+
     /// Start a build of the folders chosen (Build and Continue): a job of its own thread, never
-    /// the interface's; each book opened from its file in the engine's own session.
+    /// the interface's; each book opened from its file in the engine's own session. Not while a
+    /// change of the catalog runs or waits (it would be written over).
     pub(crate) fn start_library_build(&mut self) {
-        if self.chess.library.building.is_some() {
+        let lib = &self.chess.library;
+        if lib.building.is_some() || lib.changing.is_some() || lib.adding.is_some() {
             return;
         }
         let Some(dirs) = self.chess.library.catalog.as_ref().map(|c| c.dirs.iter().map(PathBuf::from).collect::<Vec<_>>()) else { return };
@@ -550,12 +647,16 @@ impl PdfCraftApp {
             app_reading: self.chess.reading_dir.clone(),
             ..BuildOptions::default()
         };
+        let halt = Arc::new(AtomicBool::new(false));
+        let opts = BuildOptions { stop: Some(Arc::clone(&halt)), ..opts };
+        let halted = Arc::clone(&halt);
         let seen: Arc<Mutex<Seen>> = Arc::default();
         let told = Arc::clone(&seen);
         let hook = self.chess.library.hook.clone();
         // Never inline: a build takes hours (R8).
         let job = Job::spawn("pdfcraft-chess-library-build", false, move |ctl| {
-            library.build(&dirs, &opts, &mut |p| {
+            // Its own failures (busy, the folder) are the build's answer, not the job's.
+            Ok(library.build(&dirs, &opts, &mut |p| {
                 {
                     let mut s = lock(&told);
                     s.book = p.book;
@@ -570,17 +671,18 @@ impl PdfCraftApp {
                     h(p.book, p.page, p.pages);
                 }
                 // Stop: the build ends here, between two pages.
-                !ctl.cancelled()
-            })
+                !ctl.cancelled() && !halted.load(Ordering::Relaxed)
+            }))
         });
         let lib = &mut self.chess.library;
         lib.stopped = false;
-        lib.building = Some(Building { job, seen, book_read: 0, stop_asked: false });
+        lib.building = Some(Building { job, halt, seen, book_read: 0, stop_asked: false });
     }
 
-    /// Stop the build running, between two pages.
+    /// Stop the build running: in its walk, while a book is read and hashed, or between two pages.
     pub fn stop_library_build(&mut self) {
         if let Some(b) = &mut self.chess.library.building {
+            b.halt.store(true, Ordering::Relaxed);
             b.job.cancel();
             b.stop_asked = true;
         }
@@ -592,6 +694,7 @@ impl PdfCraftApp {
     /// stopped partway when the Library opens next.
     pub(crate) fn quit_library(&mut self) {
         let Some(b) = self.chess.library.building.take() else { return };
+        b.halt.store(true, Ordering::Relaxed);
         b.job.cancel();
         if !b.job.wait(crate::chess_writer::SETTLE) {
             let s = lock(&b.seen).clone();
@@ -628,17 +731,18 @@ impl PdfCraftApp {
         lib.changing.is_none() && lib.planning.is_none() && lib.building.is_none() && lib.search.asking.is_none()
     }
 
-    /// Search the Library for what the fields ask (`again`: even when answered, the Library having
-    /// changed since).
-    pub(crate) fn search_library(&mut self, again: bool) {
+    /// Search the Library for what the fields ask.
+    pub(crate) fn search_library(&mut self) {
         let Ok(Some(query)) = self.chess.library.fields.query() else { return };
+        self.ask_library(query);
+    }
+
+    /// Search the Library for `query`, as it is now (unless answered or asked already).
+    fn ask_library(&mut self, query: FindQuery) {
         let Some(library) = self.chess.library.library() else { return };
         let inline = self.run_inline;
-        let started = self
-            .chess
-            .library
-            .search
-            .ask(query, again, |q| Job::spawn("pdfcraft-chess-library-find", inline, move |_| Ok(library.find(&q, MAX_LISTED))));
+        let started =
+            self.chess.library.search.ask(query, |q| Job::spawn("pdfcraft-chess-library-find", inline, move |_| Ok(library.find(&q, MAX_LISTED))));
         if started {
             self.poll_library();
         }
@@ -654,7 +758,7 @@ impl PdfCraftApp {
             lib.view = View::Search;
             lib.open = true;
             lib.stale = true;
-            self.search_library(false);
+            self.search_library();
         }
         self.poll_library_catalog();
         self.poll_library_build();
@@ -665,7 +769,8 @@ impl PdfCraftApp {
         {
             let query = query.clone();
             lib.search.asking = None;
-            lib.search.answer = Some((query, out.map(Arc::new)));
+            // Its rows' words made once, here, in the interface's language and notation.
+            lib.search.answer = Some((query, out.map(|found| Arc::new(shown_of(found)))));
         }
         self.library_open_tick();
         if self.chess.library.busy()
@@ -676,8 +781,16 @@ impl PdfCraftApp {
     }
 
     fn poll_library_catalog(&mut self) {
-        if self.chess.library.changing.is_none()
-            && let Some(dir) = self.chess.library.adding.take()
+        let lib = &mut self.chess.library;
+        // A folder picked while a build runs waits for its end: the build writes the catalog after
+        // each book (the review of #431).
+        if lib.adding.is_some() && lib.building.is_some() && !std::mem::replace(&mut lib.adding_said, true) {
+            self.inform(tl!("The folder will be added when the build ends."));
+        }
+        let lib = &mut self.chess.library;
+        if lib.changing.is_none()
+            && lib.building.is_none()
+            && let Some(dir) = lib.adding.take()
         {
             self.change_library(Change::Add(dir));
         }
@@ -686,15 +799,24 @@ impl PdfCraftApp {
             lib.changing = None;
             match out {
                 Ok(Ok(changed)) => {
+                    lib.catalog_key = plan_key(&changed.catalog);
                     lib.catalog = Some(Arc::new(changed.catalog));
+                    lib.other_build = changed.busy && lib.building.is_none();
                     if let Some(r) = changed.removed.filter(|r| r.books > 0) {
                         self.inform(crate::i18n::fmt(tl!("Books left out of the Library: {n}"), &[("n", &n(r.books))]));
+                    }
+                    if changed.changed {
+                        self.library_changed();
                     }
                 }
                 Ok(Err(e)) => {
                     let why = match e {
                         ChangeError::Within(dir) => crate::i18n::fmt(tl!("This folder is in the Library already, through {dir}."), &[("dir", &dir)]),
                         ChangeError::TooMany => crate::i18n::fmt(tl!("The Library has {n} folders already."), &[("n", &n(library::MAX_FOLDERS))]),
+                        ChangeError::Busy => busy_words().to_owned(),
+                        ChangeError::Unreadable(why) => {
+                            crate::i18n::fmt(tl!("The Library's catalog can't be read, so it isn't changed: {e}"), &[("e", &why)])
+                        }
                         ChangeError::NotAHash | ChangeError::Write(_) => {
                             crate::i18n::fmt(tl!("The Library's folders couldn't be changed: {e}"), &[("e", &e.to_string())])
                         }
@@ -715,9 +837,15 @@ impl PdfCraftApp {
                 lib.stale = true;
             }
         }
+        // Another build or change holds it: looked at again now and then, while it is shown.
+        if lib.open && lib.other_build && lib.read_at.is_none_or(|at| at.elapsed() >= OTHER_LOOK) {
+            lib.stale = true;
+        }
         let wanted = lib.open || lib.building.is_some() || lib.catalog.is_some();
         if lib.stale && lib.changing.is_none() && wanted && self.change_library(Change::Read) {
-            self.chess.library.stale = false;
+            let lib = &mut self.chess.library;
+            lib.stale = false;
+            lib.read_at = Some(Instant::now());
         }
     }
 
@@ -728,19 +856,20 @@ impl PdfCraftApp {
         if let Some((key, job)) = lib.planning.as_mut()
             && let Some(out) = job.poll()
         {
-            let key = key.clone();
+            let key = *key;
             lib.planning = None;
             if let Ok(plan) = out {
                 lib.plan = Some((key, plan));
             }
         }
-        let Some(catalog) = lib.catalog.clone() else { return };
+        let Some(empty) = lib.catalog.as_ref().map(|c| c.dirs.is_empty()) else { return };
         if !lib.open || lib.building.is_some() || lib.view != View::Books {
             return;
         }
-        let key: PlanKey = (catalog.dirs.clone(), catalog.updated, catalog.allowed.clone());
+        // Keyed by a digest made once per reading of the catalog, never its lists at each pass.
+        let key = lib.catalog_key;
         let planned = lib.plan.as_ref().is_some_and(|(k, _)| *k == key) || lib.planning.as_ref().is_some_and(|(k, _)| *k == key);
-        if planned || catalog.dirs.is_empty() {
+        if planned || empty {
             return;
         }
         let Some(library) = lib.library() else { return };
@@ -763,7 +892,7 @@ impl PdfCraftApp {
         lib.stale = true;
         lib.plan = None;
         match out {
-            Ok(built) => {
+            Ok(Ok(built)) => {
                 lib.stopped = built.stopped;
                 if built.stopped {
                     self.inform(crate::i18n::fmt(
@@ -778,9 +907,13 @@ impl PdfCraftApp {
                     ));
                 }
                 // What the search found may have changed.
-                if self.chess.library.search.now.is_some() {
-                    self.search_library(true);
-                }
+                self.library_changed();
+            }
+            // Another build or change holds the Library (the review of #431): said, nothing done.
+            Ok(Err(BuildError::Busy)) => self.post_error(busy_words()),
+            Ok(Err(BuildError::Write(e))) => {
+                lib.stopped = true;
+                self.post_error(crate::i18n::fmt(tl!("The Library couldn't be built: {e}"), &[("e", &e)]));
             }
             Err(e) => {
                 lib.stopped = true;
@@ -789,8 +922,10 @@ impl PdfCraftApp {
         }
     }
 
-    /// Open hit `hit` of book `book` of the search's answer (or, `game`, one of its games): its
-    /// PDF, when it is on this computer, at the page; the dialog closes.
+    /// Open hit `hit` of book `book` of the search's answer (or, `game`, one of its games): in the
+    /// tab already showing it, whatever became of its file since; else its PDF, when it is on this
+    /// computer (each path looked at once, at this click), said when it changed since the Library
+    /// read it; at the page. The dialog closes.
     fn open_library_result(&mut self, book: usize, item: Item) {
         let Some(found) = self.chess.library.found().cloned() else { return };
         let Some(b) = found.books.get(book) else { return };
@@ -804,13 +939,22 @@ impl PdfCraftApp {
                 (g.page, None, None)
             }
         };
+        let page = page.and_then(|p| usize::try_from(p).ok());
+        let opening =
+            |path: String, changed: bool| Opening { path, page, place, san: san.clone(), read: false, since: Instant::now(), shown: false, changed };
+        // A tab showing the book already: there (the review of #431).
+        if let Some(path) = b.paths.iter().find(|p| self.tab_showing(p).is_some()).cloned() {
+            self.chess.library.open = false;
+            self.chess.library.opening = Some(opening(path, false));
+            return self.library_open_tick();
+        }
         // The first path still a book here; else why none is opened.
         let mut why: Option<(String, Skip)> = None;
-        let mut path: Option<String> = None;
+        let mut here: Option<(String, (u64, u64))> = None;
         for p in &b.paths {
             match library::on_this_computer(Path::new(p)) {
-                Ok(()) => {
-                    path = Some(p.clone());
+                Ok(stamp) => {
+                    here = Some((p.clone(), stamp));
                     break;
                 }
                 Err(e) => {
@@ -820,28 +964,33 @@ impl PdfCraftApp {
                 }
             }
         }
-        let Some(path) = path else {
+        let Some((path, (size, time))) = here else {
             let (p, e) = why.unwrap_or_default_path();
-            let said = if e == Skip::InCloud {
-                crate::i18n::fmt(tl!("{path} is in the cloud, not on this computer: it isn't opened."), &[("path", &p)])
-            } else {
-                crate::i18n::fmt(tl!("{path} is no longer there: build the Library again to forget it."), &[("path", &p)])
-            };
-            return self.post_error(said);
+            return self.post_error(not_opened_words(&p, e));
         };
-        self.chess.library.open = false;
-        self.chess.library.opening =
-            Some(Opening { path: path.clone(), page: page.and_then(|p| usize::try_from(p).ok()), place, san, read: false, since: Instant::now() });
-        match self.tab_showing(&path) {
-            Some(i) => self.active = Some(i),
-            None => self.open_path(&path),
+        // Changed since the Library read it (its size, and its time on the path it was read from):
+        // said, and only its page shown, when it has it (the review of #431).
+        let changed = self
+            .chess
+            .library
+            .catalog
+            .as_ref()
+            .and_then(|c| c.books.iter().find(|k| k.hash.as_deref() == Some(b.hash.as_str())))
+            .is_some_and(|k| k.size != size || (k.paths.first() == Some(&path) && k.modified != time));
+        if changed {
+            self.inform(tl!("This book changed since the Library read it: build the Library again."));
         }
+        self.chess.library.open = false;
+        self.chess.library.opening = Some(opening(path.clone(), changed));
+        self.open_path(&path);
         self.library_open_tick();
     }
 
-    /// A result being opened: once its PDF shows, its page, then the diagram opened or the move
-    /// outlined (its page read first when the Text tab has not read it). Dropped when its PDF did
-    /// not open (that was said).
+    /// A result being opened: once its PDF shows, its tab is brought to the front and its page
+    /// shown, once; then the diagram opened, or the move outlined (its page read first when the
+    /// Text tab has not read it). From then the person's moves are theirs: going to another tab,
+    /// or waiting longer than [`OUTLINE_WAIT`], gives the outline up, said (the review of #431).
+    /// Dropped when its PDF did not open (that was said).
     fn library_open_tick(&mut self) {
         let Some(mut want) = self.chess.library.opening.take() else { return };
         let Some(i) = self.tab_showing(&want.path) else {
@@ -852,55 +1001,58 @@ impl PdfCraftApp {
             }
             return;
         };
-        if self.active != Some(i) && !want.read {
-            self.active = Some(i);
-        }
         let Some(id) = self.views.get(i).map(|v| v.id) else { return };
         let pages = self.session.get(id).map_or(0, |d| d.info.pages.len());
-        let Some(page) = want.page.filter(|p| *p < pages) else {
-            if want.page.is_none() && matches!(want.place, Some(Place::Pgn { .. })) {
-                self.inform(tl!("This move is in the book's PGN, which gives no page for it."));
+        let page = want.page.filter(|p| *p < pages);
+        if !want.shown {
+            want.shown = true;
+            want.since = Instant::now();
+            self.active = Some(i);
+            let Some(page) = page else {
+                if want.page.is_none() && matches!(want.place, Some(Place::Pgn { .. })) {
+                    self.inform(tl!("This move is in the book's PGN, which gives no page for it."));
+                }
+                return;
+            };
+            if let Some(view) = self.views.get_mut(i) {
+                view.go_to_page(page);
             }
+            // A book that changed: its page only, the move or the diagram there may be another.
+            if want.changed {
+                return;
+            }
+            match want.place {
+                Some(Place::Diagram { index }) => {
+                    return self.pick_after_scan(id, DiagramAt::new(page, usize::try_from(index).unwrap_or(usize::MAX)));
+                }
+                Some(Place::Move { .. }) => {}
+                _ => return,
+            }
+        } else if self.active != Some(i) || want.since.elapsed() >= OUTLINE_WAIT {
+            return self.inform(tl!("The move wasn't outlined: its page wasn't read in time, or you moved away."));
+        }
+        let (Some(page), Some(Place::Move { block, inline })) = (page, want.place) else { return };
+        let at = MoveAt { page: u32::try_from(page).unwrap_or(u32::MAX), block, inline };
+        if self.settle_library_move(id, page, at, want.san.as_deref()) {
             return;
-        };
-        match want.place {
-            Some(Place::Diagram { index }) => {
-                self.pick_after_scan(id, DiagramAt::new(page, usize::try_from(index).unwrap_or(usize::MAX)));
-            }
-            Some(Place::Move { block, inline }) => {
-                let at = MoveAt { page: u32::try_from(page).unwrap_or(u32::MAX), block, inline };
-                if !want.read
-                    && let Some(view) = self.views.get_mut(i)
-                {
-                    view.go_to_page(page);
-                }
-                if self.settle_library_move(id, page, at, want.san.as_deref()) {
-                    return;
-                }
-                // Another page's reading runs: after it.
-                if self.chess.reading.is_some() {
-                    self.chess.library.opening = Some(want);
-                    return;
-                }
-                if want.read {
-                    return self.inform(crate::i18n::fmt(
-                        tl!("The move couldn't be outlined: page {page} reads differently now."),
-                        &[("page", &self.page_label_in(id, page))],
-                    ));
-                }
-                want.read = true;
-                self.chess.library.opening = Some(want.clone());
-                self.read_chess_text(page, false);
-                // Read inline (tests): the move is outlined now.
-                if self.settle_library_move(id, page, at, want.san.as_deref()) {
-                    self.chess.library.opening = None;
-                }
-            }
-            _ => {
-                if let Some(view) = self.views.get_mut(i) {
-                    view.go_to_page(page);
-                }
-            }
+        }
+        // Another page's reading runs: after it, without touching the view meanwhile.
+        if self.chess.reading.is_some() {
+            self.chess.library.opening = Some(want);
+            return;
+        }
+        if want.read {
+            return self.inform(crate::i18n::fmt(
+                tl!("The move couldn't be outlined: page {page} reads differently now."),
+                &[("page", &self.page_label_in(id, page))],
+            ));
+        }
+        want.read = true;
+        self.chess.library.opening = Some(want.clone());
+        self.read_chess_text(page, false);
+        // Read inline (tests): the move is outlined now.
+        if self.settle_library_move(id, page, at, want.san.as_deref()) {
+            self.chess.library.opening = None;
         }
     }
 
@@ -1039,11 +1191,11 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
             }
             Act::Build => app.start_library_build(),
             Act::Stop => app.stop_library_build(),
-            Act::Search => app.search_library(false),
+            Act::Search => app.search_library(),
             Act::FromBoard => {
                 let fen = board_fen(&app.chess);
                 app.chess.library.fields.fen = fen;
-                app.search_library(false);
+                app.search_library();
             }
             Act::Open(book, item) => app.open_library_result(book, item),
             // A build running goes on: its row shows at the foot of the page area.
@@ -1118,7 +1270,8 @@ fn books_view(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, used: usize, a
     let busy = building || lib.changing.is_some();
     section(ui, tl!("Folders"));
     let catalog = lib.catalog.clone();
-    let dirs: Vec<String> = catalog.as_ref().map(|c| c.dirs.clone()).unwrap_or_default();
+    // The catalog's own list, through its `Arc`: nothing copied at each pass.
+    let dirs: &[String] = catalog.as_deref().map_or(&[], |c| c.dirs.as_slice());
     if catalog.is_some() && dirs.is_empty() {
         note(ui, t, tl!("No folder yet: add the folders where your chess books are."));
     }
@@ -1159,7 +1312,7 @@ fn books_view(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, used: usize, a
         note(ui, t, tl!("The folders can't change while the Library is being built."));
     }
     // Read in a moment (a job).
-    let Some(catalog) = catalog else { return };
+    let Some(catalog) = catalog.as_deref() else { return };
     // The books, each with its state in words.
     let books = &catalog.books;
     section(ui, &crate::i18n::fmt(tl!("Books in the Library: {n}"), &[("n", &n(books.len()))]));
@@ -1197,8 +1350,19 @@ fn books_view(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, used: usize, a
     if building {
         return;
     }
+    // Another build or change holds the Library (the review of #431); else one the catalog says
+    // was running and is not: cut short (PdfCraft closed mid-build, or it stopped on an error).
+    if lib.other_build {
+        crate::notice::callout(ui, crate::notice::Tone::Warning, busy_words());
+    } else if catalog.building.is_some() {
+        crate::notice::callout(
+            ui,
+            crate::notice::Tone::Warning,
+            tl!("The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was."),
+        );
+    }
     if !catalog.dirs.is_empty() {
-        let key: PlanKey = (catalog.dirs.clone(), catalog.updated, catalog.allowed.clone());
+        let key = lib.catalog_key;
         match (&lib.plan, &lib.planning) {
             (Some((k, plan)), _) if *k == key => plan_words(ui, t, plan, used),
             (_, Some((_, job))) => {
@@ -1212,9 +1376,9 @@ fn books_view(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, used: usize, a
             _ => {}
         }
     }
-    let partial = books.iter().any(|b| b.state == State::Partial);
+    let partial = books.iter().any(|b| b.state == State::Partial) || catalog.building.is_some();
     let label = if lib.stopped || partial { tl!("Continue") } else { tl!("Build") };
-    let ready = !catalog.dirs.is_empty() && lib.changing.is_none();
+    let ready = !catalog.dirs.is_empty() && lib.changing.is_none() && lib.adding.is_none() && !lib.other_build;
     let build = ui.push_id("chess-library-build", |ui| ui.add_enabled_ui(ready, |ui| crate::widgets::pill_button(ui, label, true)).inner).inner;
     if !dirs.is_empty() {
         crate::widgets::dialog_focus(&build);
@@ -1370,7 +1534,7 @@ fn search_view(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, acts: &mut Ve
 
 /// The list of what was found, book by book (the In the book list's rules, plans A9-N3 and N3b).
 fn results(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, acts: &mut Vec<Act>) {
-    let (found, stale) = match lib.search.status() {
+    let (shown, stale) = match lib.search.status() {
         Status::Idle => return,
         Status::Searching(None) => {
             note(ui, t, tl!("Looking in the Library…"));
@@ -1386,6 +1550,7 @@ fn results(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, acts: &mut Vec<Ac
         }
         Status::Found(f) => (f, false),
     };
+    let found = &shown.found;
     if found.indexes_read == 0 {
         note(ui, t, tl!("No book of the Library is read yet: build it first, in Books."));
         return;
@@ -1404,48 +1569,20 @@ fn results(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, acts: &mut Vec<Ac
         }
         return;
     }
-    for (bi, b) in found.books.iter().enumerate() {
+    for (bi, b) in shown.books.iter().enumerate() {
         ui.add_space(4.0);
-        let head = if b.hits.is_empty() { b.games_total } else { b.total };
-        let title = format!("{} · {}", b.title, crate::i18n::fmt(tl!("Found: {n}"), &[("n", &n(head))]));
-        ui.add(egui::Label::new(RichText::new(&title).font(theme::semibold(12.5))).truncate()).on_hover_text(b.paths.join("\n"));
-        let items: Vec<(Item, String, String, String)> = if b.hits.is_empty() {
-            b.games
-                .iter()
-                .enumerate()
-                .map(|(i, (_, g))| {
-                    let page = g.page.map(|p| crate::i18n::fmt(tl!("from p. {page}"), &[("page", &n(p.saturating_add(1)))])).unwrap_or_default();
-                    let words = game_words(g);
-                    (Item::Game(i), words.clone(), words, page)
-                })
-                .collect()
-        } else {
-            b.hits
-                .iter()
-                .enumerate()
-                .map(|(i, h)| {
-                    let (title, spoken, details) = hit_words(b, h);
-                    (Item::Hit(i), title, spoken, details)
-                })
-                .collect()
-        };
-        for (item, title, spoken, details) in items {
+        ui.add(egui::Label::new(RichText::new(&b.head).font(theme::semibold(12.5))).truncate()).on_hover_text(&b.paths);
+        for (item, title, spoken, details) in &b.rows {
             let (clicked, id) = ui
-                .push_id(("chess-library-hit", bi, item), |ui| {
-                    let r = ui.add(egui::Button::new(RichText::new(&title)).truncate().min_size(vec2(ui.available_width(), 24.0)));
-                    let spoken = [tl!("Show in PDF"), spoken.as_str(), b.title.as_str(), details.as_str()]
-                        .iter()
-                        .filter(|s| !s.is_empty())
-                        .copied()
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    let r = r.on_hover_text(format!("{title}\n{}", b.title));
-                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &spoken));
+                .push_id(("chess-library-hit", bi, *item), |ui| {
+                    let r = ui.add(egui::Button::new(RichText::new(title)).truncate().min_size(vec2(ui.available_width(), 24.0)));
+                    let r = r.on_hover_text(title.as_str());
+                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, spoken));
                     if r.gained_focus() {
                         r.scroll_to_me(None);
                     }
                     if !details.is_empty() {
-                        ui.add(egui::Label::new(RichText::new(&details).small().color(t.text_muted)).truncate());
+                        ui.add(egui::Label::new(RichText::new(details).small().color(t.text_muted)).truncate());
                     }
                     (r.clicked(), r.id)
                 })
@@ -1453,13 +1590,54 @@ fn results(ui: &mut egui::Ui, t: &Tokens, lib: &mut LibraryUi, acts: &mut Vec<Ac
             lib.rows.push(id);
             // A row of the last answer, shown while the next is looked for, does nothing.
             if clicked && !stale {
-                acts.push(Act::Open(bi, item));
+                acts.push(Act::Open(bi, *item));
             }
         }
     }
     if found.listed < found.total {
         note(ui, t, &crate::i18n::fmt(tl!("The first {n} are listed."), &[("n", &n(found.listed))]));
     }
+}
+
+/// An answer with its rows' words, made once when it comes (the review of #431): each book's line
+/// and paths, and each result's title, the same in words (its name) and what follows it.
+fn shown_of(found: Found) -> Shown {
+    let books = found
+        .books
+        .iter()
+        .map(|b| {
+            let total = if b.hits.is_empty() { b.games_total } else { b.total };
+            let head = format!("{} · {}", b.title, crate::i18n::fmt(tl!("Found: {n}"), &[("n", &n(total))]));
+            // Named as Show in PDF, the result in words, the book and what follows.
+            let named = |words: &str, details: &str| {
+                [tl!("Show in PDF"), words, b.title.as_str(), details].iter().filter(|s| !s.is_empty()).copied().collect::<Vec<_>>().join(", ")
+            };
+            let rows: Vec<(Item, String, String, String)> = if b.hits.is_empty() {
+                b.games
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (_, g))| {
+                        let page = g.page.map(|p| crate::i18n::fmt(tl!("from p. {page}"), &[("page", &n(p.saturating_add(1)))])).unwrap_or_default();
+                        let words = game_words(g);
+                        let spoken = named(&words, &page);
+                        (Item::Game(i), words, spoken, page)
+                    })
+                    .collect()
+            } else {
+                b.hits
+                    .iter()
+                    .enumerate()
+                    .map(|(i, h)| {
+                        let (title, words, details) = hit_words(b, h);
+                        let spoken = named(&words, &details);
+                        (Item::Hit(i), title, spoken, details)
+                    })
+                    .collect()
+            };
+            ShownBook { head, paths: b.paths.join("\n"), rows }
+        })
+        .collect();
+    Shown { found, books }
 }
 
 /// While the dialog is closed and a build runs: its row at the foot of the page area, with Stop and
@@ -1541,19 +1719,24 @@ mod tests {
             gates.push(go);
             Job::spawn("library-test", false, move |_| gate.recv().map(|()| Found::default()).map_err(|e| e.to_string()))
         };
+        let shown = || Ok(Arc::new(Shown { found: Found::default(), books: Vec::new() }));
         let mut s = Search::default();
         assert!(matches!(s.status(), Status::Idle));
-        assert!(s.ask(a.clone(), false, &mut gated));
-        assert!(!s.ask(a.clone(), false, &mut gated), "running: not asked again");
-        assert!(s.ask(b.clone(), false, &mut gated), "the newest at once");
-        assert!(s.asking.as_ref().is_some_and(|(q, _)| *q == b));
-        s.answer = Some((a.clone(), Ok(Arc::new(Found::default()))));
+        assert!(s.ask(a.clone(), &mut gated));
+        assert!(!s.ask(a.clone(), &mut gated), "running: not asked again");
+        assert!(s.ask(b.clone(), &mut gated), "the newest at once");
+        assert!(s.asking.as_ref().is_some_and(|(q, _)| q.0 == b));
+        s.answer = Some(((a.clone(), 0), shown()));
         assert!(matches!(s.status(), Status::Searching(Some(_))), "the last answer, dimmed");
         s.asking = None;
-        s.answer = Some((b.clone(), Ok(Arc::new(Found::default()))));
+        s.answer = Some(((b.clone(), 0), shown()));
         assert!(matches!(s.status(), Status::Found(_)));
-        assert!(!s.ask(b.clone(), false, &mut gated), "answered");
-        assert!(s.ask(b, true, &mut gated), "the Library changed: asked again");
+        assert!(!s.ask(b.clone(), &mut gated), "answered");
+        // The Library changed (the review of #431): the answer before is the last one, dimmed and
+        // inert, and the same search is asked again.
+        s.generation += 1;
+        assert!(s.ask(b, &mut gated), "asked again of the Library as it is now");
+        assert!(matches!(s.status(), Status::Searching(Some(_))));
         drop(gates);
     }
 
@@ -1596,5 +1779,82 @@ mod tests {
     #[test]
     fn the_library_is_desktop_only() {
         assert!(crate::commands::DESKTOP_ONLY.contains(&"chess.library"));
+    }
+
+    /// A PDF of `n` blank 600 × 800 pt pages.
+    fn blank_pages(n: usize) -> Vec<u8> {
+        let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 3 + i)).collect();
+        let mut objs = vec![
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")),
+        ];
+        objs.extend((0..n).map(|_| "<< /Type /Page /Parent 2 0 R >>".to_string()));
+        let mut out = b"%PDF-1.7\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objs.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+        for o in offsets {
+            out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+        }
+        out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+        out
+    }
+
+    /// The review of #431 (7): while another page's reading runs, a result being opened brings its
+    /// tab and page to the front once, never again: the person going to another tab gives the
+    /// outline up, said, and is left there; so does a wait past [`OUTLINE_WAIT`].
+    #[test]
+    fn waiting_for_a_reading_never_pins_the_view() {
+        let mut app = PdfCraftApp::new();
+        app.run_inline = true;
+        app.open_bytes("a.pdf", Some("library-pin-a.pdf".into()), blank_pages(3)).unwrap();
+        app.open_bytes("b.pdf", None, blank_pages(1)).unwrap();
+        let a = app.views[0].id;
+        let stamp = app.session.chess_stamp(a).unwrap();
+        let opening = || Opening {
+            path: "library-pin-a.pdf".into(),
+            page: Some(2),
+            place: Some(Place::Move { block: 0, inline: 0 }),
+            san: None,
+            read: false,
+            since: Instant::now(),
+            shown: false,
+            changed: false,
+        };
+        // Another page's reading runs: the result waits behind it.
+        app.chess.reading = Some(crate::chess_text_ui::ChessJob::never_ending_read(a, 0, stamp));
+        app.active = Some(1);
+        app.chess.library.opening = Some(opening());
+        app.library_open_tick();
+        assert_eq!(app.active, Some(0), "its tab, once");
+        assert!(app.chess.library.opening.as_ref().is_some_and(|o| o.shown), "waiting for the reading");
+        app.library_open_tick();
+        assert!(app.chess.library.opening.is_some(), "still waiting, the view left alone");
+        // The person goes to the other tab: left there, the outline given up and said.
+        app.active = Some(1);
+        app.library_open_tick();
+        assert_eq!(app.active, Some(1), "never pulled back");
+        assert!(app.chess.library.opening.is_none(), "given up");
+        assert!(app.notice.as_ref().is_some_and(|n| n.text.contains("wasn't outlined")), "said");
+        // Past the bounded wait: given up too.
+        app.notice = None;
+        app.active = Some(0);
+        let late = Instant::now().checked_sub(OUTLINE_WAIT + Duration::from_secs(1)).unwrap_or_else(Instant::now);
+        app.chess.library.opening = Some(Opening { shown: true, since: late, ..opening() });
+        app.library_open_tick();
+        assert!(app.chess.library.opening.is_none() && app.notice.as_ref().is_some_and(|n| n.text.contains("wasn't outlined")));
+    }
+
+    /// The review of #431 (12): each reason a result's PDF is not opened has its own words.
+    #[test]
+    fn why_a_result_is_not_opened_is_said_for_each_reason() {
+        let said: Vec<String> = [Skip::InCloud, Skip::Gone, Skip::Link, Skip::Unreadable].into_iter().map(|w| not_opened_words("x.pdf", w)).collect();
+        assert!(said.iter().all(|s| s.starts_with("x.pdf")));
+        assert_eq!(said.iter().collect::<std::collections::BTreeSet<_>>().len(), 4, "{said:?}");
+        assert!(said[1].contains("no longer there") && !said[2].contains("no longer there") && !said[3].contains("no longer there"));
     }
 }

@@ -3864,3 +3864,12 @@ pawn structure	Passed	Өтпелі
 	Look in the Library	Кітапханадан іздеу
 	Find this position in every book of the Library	Бұл позицияны Кітапхананың барлық кітабынан іздеу
 	Library…	Кітапхана…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Қалта құру аяқталғанда қосылады.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Осы Кітапхананың басқа құрылуы жүріп жатыр (басқа терезеде, басқа PdfCraft-та немесе пәрмен жолында): оның аяқталуын күтіңіз.
+	The Library's catalog can't be read, so it isn't changed: {e}	Кітапхана каталогын оқу мүмкін емес, сондықтан ол өзгертілмейді: {e}
+	This book changed since the Library read it: build the Library again.	Кітапхана оқығаннан бері бұл кітап өзгерді: Кітапхананы қайта құрыңыз.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Жүріс белгіленбеді: оның беті уақытында оқылмады немесе сіз басқа жерге кеттіңіз.
+	{path} is a link, which the Library never opens.	{path} — сілтеме, Кітапхана оны ешқашан ашпайды.
+	{path} can't be opened.	{path} ашылмайды.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Соңғы құру үзіліп қалды (PdfCraft жабылды немесе қатеге байланысты тоқтады): «Жалғастыру» тоқтаған жерінен жалғастырады.

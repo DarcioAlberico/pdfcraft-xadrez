@@ -3831,3 +3831,12 @@ pawn structure	Passed	通路兵
 	Look in the Library	在书库中查找
 	Find this position in every book of the Library	在书库的所有书中查找此局面
 	Library…	书库…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	构建结束后会添加该文件夹。
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	此书库的另一次构建正在运行（在另一个窗口、另一个 PdfCraft 或命令行中）：请等待它结束。
+	The Library's catalog can't be read, so it isn't changed: {e}	无法读取书库的目录，因此不作更改：{e}
+	This book changed since the Library read it: build the Library again.	书库读取这本书之后，它已更改：请重新构建书库。
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	未框出这步棋：它所在的页面没有及时读取，或者你已转到别处。
+	{path} is a link, which the Library never opens.	{path} 是一个链接，书库从不打开链接。
+	{path} can't be opened.	无法打开 {path}。
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	上次构建中途中断（PdfCraft 已关闭，或因错误停止）：“继续”会从中断处接着读。

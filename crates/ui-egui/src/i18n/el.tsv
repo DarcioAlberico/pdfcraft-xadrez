@@ -3859,3 +3859,12 @@ pawn structure	Passed	Περαστά
 	Look in the Library	Αναζήτηση στη Βιβλιοθήκη
 	Find this position in every book of the Library	Αναζήτηση αυτής της θέσης σε όλα τα βιβλία της Βιβλιοθήκης
 	Library…	Βιβλιοθήκη…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Ο φάκελος θα προστεθεί όταν τελειώσει η κατασκευή.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Εκτελείται άλλη κατασκευή αυτής της Βιβλιοθήκης (σε άλλο παράθυρο, σε άλλο PdfCraft ή στη γραμμή εντολών): περιμένετε να τελειώσει.
+	The Library's catalog can't be read, so it isn't changed: {e}	Ο κατάλογος της Βιβλιοθήκης δεν διαβάζεται, οπότε δεν αλλάζει: {e}
+	This book changed since the Library read it: build the Library again.	Αυτό το βιβλίο άλλαξε από τότε που το διάβασε η Βιβλιοθήκη: κατασκευάστε ξανά τη Βιβλιοθήκη.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Η κίνηση δεν πλαισιώθηκε: η σελίδα της δεν διαβάστηκε εγκαίρως ή μετακινηθήκατε αλλού.
+	{path} is a link, which the Library never opens.	Το {path} είναι σύνδεσμος, που η Βιβλιοθήκη δεν ανοίγει ποτέ.
+	{path} can't be opened.	Το {path} δεν μπορεί να ανοίξει.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Η τελευταία κατασκευή διακόπηκε (το PdfCraft έκλεισε ή σταμάτησε σε σφάλμα): η Συνέχεια συνεχίζει από εκεί που ήταν.

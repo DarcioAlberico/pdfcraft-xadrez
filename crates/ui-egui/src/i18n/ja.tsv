@@ -3868,3 +3868,12 @@ pawn structure	Passed	パスポーン
 	Look in the Library	ライブラリで探す
 	Find this position in every book of the Library	この局面をライブラリのすべての本で探す
 	Library…	ライブラリ…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	フォルダーは構築が終わったときに追加されます。
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	このライブラリの別の構築が実行中です（別のウィンドウ、別の PdfCraft、またはコマンドライン）：終わるまでお待ちください。
+	The Library's catalog can't be read, so it isn't changed: {e}	ライブラリのカタログを読めないため、変更しません：{e}
+	This book changed since the Library read it: build the Library again.	ライブラリが読んだ後にこの本は変更されています：ライブラリを再構築してください。
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	指し手を囲みませんでした：そのページが時間内に読まれなかったか、別の場所へ移動しました。
+	{path} is a link, which the Library never opens.	{path} はリンクです。ライブラリはリンクを開きません。
+	{path} can't be opened.	{path} を開けません。
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	前回の構築は途中で終わりました（PdfCraft が閉じられたか、エラーで止まりました）：「続行」で中断したところから続けます。

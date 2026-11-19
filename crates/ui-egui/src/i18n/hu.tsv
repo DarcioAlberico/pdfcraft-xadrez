@@ -3865,3 +3865,12 @@ pawn structure	Passed	Szabad
 	Look in the Library	Keresés a Könyvtárban
 	Find this position in every book of the Library	Ennek az állásnak a keresése a Könyvtár összes könyvében
 	Library…	Könyvtár…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	A mappa az építés végén kerül hozzáadásra.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	A Könyvtár egy másik építése fut (egy másik ablakban, egy másik PdfCraftban vagy a parancssorban): várja meg, amíg befejeződik.
+	The Library's catalog can't be read, so it isn't changed: {e}	A Könyvtár katalógusa nem olvasható, ezért nem módosul: {e}
+	This book changed since the Library read it: build the Library again.	Ez a könyv megváltozott, mióta a Könyvtár beolvasta: építse fel újra a Könyvtárat.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	A lépés nincs bekeretezve: az oldalát nem sikerült időben beolvasni, vagy máshová lépett.
+	{path} is a link, which the Library never opens.	{path} egy hivatkozás, amelyet a Könyvtár sosem nyit meg.
+	{path} can't be opened.	{path} nem nyitható meg.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Az utolsó építés félbeszakadt (a PdfCraft bezárult, vagy hiba miatt leállt): a Tovább onnan folytatja, ahol tartott.

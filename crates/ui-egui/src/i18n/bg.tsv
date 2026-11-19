@@ -3830,3 +3830,12 @@ pawn structure	Passed	Проходни
 	Look in the Library	Търсене в Библиотеката
 	Find this position in every book of the Library	Търсене на тази позиция във всички книги на Библиотеката
 	Library…	Библиотека…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Папката ще бъде добавена, когато изграждането приключи.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Друго изграждане на тази Библиотека е в ход (в друг прозорец, в друг PdfCraft или от командния ред): изчакайте да приключи.
+	The Library's catalog can't be read, so it isn't changed: {e}	Каталогът на Библиотеката не може да бъде прочетен, затова не се променя: {e}
+	This book changed since the Library read it: build the Library again.	Тази книга е променена, откакто Библиотеката я прочете: изградете Библиотеката отново.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Ходът не беше очертан: страницата му не беше прочетена навреме или сте отишли другаде.
+	{path} is a link, which the Library never opens.	{path} е връзка, която Библиотеката никога не отваря.
+	{path} can't be opened.	{path} не може да бъде отворен.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Последното изграждане беше прекъснато (PdfCraft беше затворен или спря поради грешка): „Продължи“ продължава оттам, докъдето беше стигнало.

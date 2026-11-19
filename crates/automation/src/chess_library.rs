@@ -359,6 +359,9 @@ mod desktop {
                 "bytes": cleared.bytes,
                 "catalog_error": cleared.catalog_error.as_deref().map(|e| self.shown_text(e)),
                 "listing_truncated": cleared.listing_truncated,
+                // Another build or change held the Library: nothing was taken out (plan A9-N15c).
+                "busy": cleared.busy,
+                "why": cleared.busy.then_some(pdfcraft_engine::chess::library::BUSY),
             }))
         }
     }

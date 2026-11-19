@@ -177,6 +177,14 @@ impl JobKind {
 }
 
 impl ChessJob {
+    /// A reading of `page` of document `doc` that never ends (tests that need one running, plan
+    /// A9-N15c).
+    #[cfg(test)]
+    pub(crate) fn never_ending_read(doc: DocId, page: usize, stamp: ScanStamp) -> ChessJob {
+        let kind = JobKind::Read { page, stamp, origin: BookOrigin::Auto, ocr: false };
+        ChessJob { doc, kind, stamp: Some(stamp), job: crate::chess_job::Job::waiting() }
+    }
+
     /// Wait until the work is done (its result waiting for the next frame) or `timeout` passed;
     /// whether it is done. For tests, which wait for the work and not for the clock (plan
     /// A9-Q4b, finding A7-15); the app never blocks on a job.

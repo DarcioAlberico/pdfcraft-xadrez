@@ -3862,3 +3862,12 @@ pawn structure	Passed	Geçer
 	Look in the Library	Kitaplıkta ara
 	Find this position in every book of the Library	Bu konumu Kitaplığın tüm kitaplarında ara
 	Library…	Kitaplık…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Klasör, oluşturma bittiğinde eklenecek.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Bu Kitaplığın başka bir oluşturması sürüyor (başka bir pencerede, başka bir PdfCraft'ta veya komut satırında): bitmesini bekleyin.
+	The Library's catalog can't be read, so it isn't changed: {e}	Kitaplığın kataloğu okunamıyor, bu yüzden değiştirilmiyor: {e}
+	This book changed since the Library read it: build the Library again.	Bu kitap, Kitaplık onu okuduktan sonra değişti: Kitaplığı yeniden oluşturun.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Hamle çerçevelenmedi: sayfası zamanında okunmadı ya da başka bir yere geçtiniz.
+	{path} is a link, which the Library never opens.	{path} bir bağlantı ve Kitaplık bağlantıları asla açmaz.
+	{path} can't be opened.	{path} açılamıyor.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Son oluşturma yarıda kesildi (PdfCraft kapandı ya da bir hatada durdu): Devam Et kaldığı yerden sürdürür.

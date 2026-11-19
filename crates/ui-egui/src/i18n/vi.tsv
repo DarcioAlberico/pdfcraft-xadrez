@@ -4116,3 +4116,12 @@ pawn structure	Passed	Tốt thông
 	Look in the Library	Tìm trong Thư viện
 	Find this position in every book of the Library	Tìm thế cờ này trong mọi sách của Thư viện
 	Library…	Thư viện…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Thư mục sẽ được thêm khi việc xây dựng kết thúc.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Một lần xây dựng khác của Thư viện này đang chạy (trong cửa sổ khác, trong PdfCraft khác hoặc trên dòng lệnh): hãy chờ nó kết thúc.
+	The Library's catalog can't be read, so it isn't changed: {e}	Không đọc được danh mục của Thư viện, nên nó không bị thay đổi: {e}
+	This book changed since the Library read it: build the Library again.	Cuốn sách này đã thay đổi kể từ khi Thư viện đọc nó: hãy xây lại Thư viện.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Nước đi không được viền: trang của nó không được đọc kịp, hoặc bạn đã chuyển sang chỗ khác.
+	{path} is a link, which the Library never opens.	{path} là một liên kết, Thư viện không bao giờ mở liên kết.
+	{path} can't be opened.	Không thể mở {path}.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Lần xây dựng gần nhất bị dừng giữa chừng (PdfCraft đã đóng, hoặc dừng do lỗi): Tiếp tục sẽ đi tiếp từ chỗ đã dừng.

@@ -3871,3 +3871,12 @@ pawn structure	Passed	Prosti
 	Look in the Library	Išči v knjižnici
 	Find this position in every book of the Library	Išči ta položaj v vseh knjigah knjižnice
 	Library…	Knjižnica…
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	Mapa bo dodana, ko se gradnja konča.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	Poteka druga gradnja te knjižnice (v drugem oknu, v drugem PdfCraftu ali v ukazni vrstici): počakajte, da se konča.
+	The Library's catalog can't be read, so it isn't changed: {e}	Kataloga knjižnice ni mogoče prebrati, zato se ne spremeni: {e}
+	This book changed since the Library read it: build the Library again.	Ta knjiga se je spremenila, odkar jo je knjižnica prebrala: znova zgradite knjižnico.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	Poteza ni bila obrobljena: njena stran ni bila pravočasno prebrana ali pa ste šli drugam.
+	{path} is a link, which the Library never opens.	{path} je povezava, ki je knjižnica nikoli ne odpre.
+	{path} can't be opened.	{path} ni mogoče odpreti.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	Zadnja gradnja je bila prekinjena (PdfCraft se je zaprl ali se ustavil ob napaki): Nadaljuj nadaljuje tam, kjer je bila.

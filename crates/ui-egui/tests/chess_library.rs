@@ -12,7 +12,7 @@ use std::time::Duration;
 use egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
-use pdfcraft_engine::chess::library::State;
+use pdfcraft_engine::chess::library::{Library, State};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use pdfcraft_ui_egui::PdfCraftApp;
 
@@ -406,6 +406,213 @@ fn what_cannot_be_written_or_reached_is_said_never_a_panic() {
     assert!(h.state_mut().wait_library(NET));
     h.run_steps(3);
     assert!(said(&h, "folders that can't be listed 1"), "said");
+    drop(h);
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// A build held at the second book until `go` is sent, once.
+fn hold_at_second_book(h: &mut Harness<'static, PdfCraftApp>) -> (std::sync::mpsc::Receiver<()>, std::sync::mpsc::Sender<()>) {
+    let (reached, at) = channel::<()>();
+    let (go, gate) = channel::<()>();
+    let gate = Mutex::new(gate);
+    let armed = AtomicBool::new(true);
+    h.state_mut().set_library_build_hook(Arc::new(move |book, _, _| {
+        if book == 1 && armed.swap(false, Ordering::SeqCst) {
+            let _ = reached.send(());
+            let _ = gate.lock().unwrap().recv_timeout(NET);
+        }
+    }));
+    (at, go)
+}
+
+/// The folders the catalog on disk names.
+fn dirs_on_disk(data: &std::path::Path) -> Vec<String> {
+    Library::new(data.join("library")).catalog().dirs
+}
+
+/// The review of #431 (1): a folder the picker gives while a build runs (the picker was opened
+/// before it) waits for the build's end, said, and is added then; never written over by the
+/// build's catalog, never refused.
+#[test]
+fn a_folder_chosen_while_a_build_runs_is_added_when_it_ends() {
+    let data = temp_dir("race");
+    let (shelf, more) = (data.join("shelf"), data.join("more"));
+    std::fs::create_dir_all(&shelf).unwrap();
+    std::fs::create_dir_all(&more).unwrap();
+    books(&shelf);
+    std::fs::write(more.join("c.pdf"), book(&["1.d4 Nf6 2.c4 e6"])).unwrap();
+    let mut h = harness(&data);
+    open_library(&mut h);
+    add_folder(&mut h, &shelf);
+    let (at, go) = hold_at_second_book(&mut h);
+    h.get_by_role_and_label(Role::Button, "Build").click();
+    h.run_steps(2);
+    at.recv_timeout(NET).expect("the build reaches the second book");
+    // The picker's answer comes while the build runs.
+    h.state_mut().add_library_folder(more.clone());
+    h.run_steps(3);
+    assert!(said(&h, "The folder will be added when the build ends."), "said: {:#?}", names(&h));
+    assert_eq!(dirs_on_disk(&data).len(), 1, "not yet");
+    go.send(()).unwrap();
+    assert!(h.state_mut().wait_library(NET), "the build ends");
+    h.run_steps(3);
+    assert!(h.state_mut().wait_library(NET), "the folder is added");
+    h.run_steps(3);
+    let dirs = dirs_on_disk(&data);
+    assert!(dirs.len() == 2 && dirs.iter().any(|d| d.ends_with("more")) && dirs.iter().any(|d| d.ends_with("shelf")), "{dirs:?} {:#?}", names(&h));
+    assert!(!said(&h, "Another build of this Library is running"), "never refused: {:#?}", names(&h));
+    drop(h);
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// The review of #431 (2): while another build or change holds the Library (another window,
+/// another PdfCraft, the command line), the dialog says so and Build waits; a change asked then is
+/// refused with the same words and changes nothing; once it is let go of, Build is ready again.
+#[test]
+fn a_library_held_elsewhere_is_said_and_build_waits() {
+    let data = temp_dir("held");
+    let shelf = data.join("shelf");
+    std::fs::create_dir_all(&shelf).unwrap();
+    books(&shelf);
+    let mut h = harness(&data);
+    open_library(&mut h);
+    add_folder(&mut h, &shelf);
+    settle(&mut h);
+    h.get_by_label("Close").click();
+    h.run_steps(2);
+    let held = Library::new(data.join("library")).lock().expect("held by the test");
+    open_library(&mut h);
+    assert!(h.state_mut().wait_library(NET));
+    h.run_steps(3);
+    let busy = "Another build of this Library is running (in another window, another PdfCraft or on the command line)";
+    assert!(said(&h, busy), "said: {:#?}", names(&h));
+    assert!(h.get_by_role_and_label(Role::Button, "Build").accesskit_node().is_disabled(), "Build waits");
+    // A change asked meanwhile: refused, the folder kept.
+    let dir = dirs_on_disk(&data).into_iter().next().unwrap();
+    settle(&mut h);
+    h.get_by_label(&format!("Remove {dir}")).click();
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET));
+    h.run_steps(2);
+    assert_eq!(dirs_on_disk(&data), [dir], "nothing changed");
+    assert!(h.state().alert.as_ref().is_some_and(|a| a.text.contains(busy)), "the refusal said: {:?}", h.state().alert);
+    h.state_mut().alert = None;
+    // Let go of: Build is ready again, the catalog looked at again on its own.
+    drop(held);
+    let in_dialog =
+        |h: &Harness<'static, PdfCraftApp>| h.query_by(|n| n.role() == Role::Dialog).is_some_and(|d| d.query_by_label_contains(busy).is_some());
+    assert!(in_dialog(&h), "the dialog says it");
+    assert!(wait_for(&mut h, |h| !in_dialog(h)), "the words go: {:#?}", names(&h));
+    assert!(wait_for(&mut h, |h| h.query_by_role_and_label(Role::Button, "Build").is_some_and(|b| !b.accesskit_node().is_disabled())));
+    drop(h);
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// The review of #431 (3): a build that never ended (PdfCraft closed mid-book, or it stopped on an
+/// error: here a panic in the build) leaves the catalog marked, and the next start says it was cut
+/// short, with Continue; Continue reads what was left and the words go.
+#[test]
+fn a_build_cut_short_is_said_at_the_next_start() {
+    let data = temp_dir("cut");
+    let shelf = data.join("shelf");
+    std::fs::create_dir_all(&shelf).unwrap();
+    books(&shelf);
+    let mut h = harness(&data);
+    open_library(&mut h);
+    add_folder(&mut h, &shelf);
+    h.state_mut().set_library_build_hook(Arc::new(|book, _, _| {
+        if book == 1 {
+            panic!("a test: the build ends partway, as when PdfCraft closes");
+        }
+    }));
+    h.get_by_role_and_label(Role::Button, "Build").click();
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET), "the build ends");
+    h.run_steps(3);
+    assert!(said(&h, "The Library couldn't be built"), "said: {:#?}", names(&h));
+    drop(h);
+    // The next start.
+    let mut h = harness(&data);
+    open_library(&mut h);
+    assert!(h.state_mut().wait_library(NET));
+    h.run_steps(3);
+    let cut = "The last build was cut short (PdfCraft closed, or it stopped on an error)";
+    assert!(said(&h, cut), "said: {:#?}", names(&h));
+    assert_eq!(state_of(&h, "a.pdf"), Some(State::Indexed), "what was done is kept");
+    settle(&mut h);
+    h.get_by_role_and_label(Role::Button, "Continue").click();
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET), "the build ends");
+    h.run_steps(3);
+    assert!(said(&h, "The Library is built"), "said: {:#?}", names(&h));
+    assert!(!said(&h, cut), "the words go");
+    assert_eq!(state_of(&h, "b.pdf"), Some(State::Indexed));
+    drop(h);
+    let _ = std::fs::remove_dir_all(data);
+}
+
+/// The review of #431 (4, 5, 6): a result opens in the tab already showing its book, whatever
+/// became of the file since; a book changed since the Library read it is said so and only its page
+/// shown; a folder removed takes its books' results with it, never left clickable.
+#[test]
+fn a_result_is_opened_as_its_book_is_now() {
+    let data = temp_dir("now");
+    let shelf = data.join("shelf");
+    std::fs::create_dir_all(&shelf).unwrap();
+    books(&shelf);
+    let mut h = harness(&data);
+    open_library(&mut h);
+    add_folder(&mut h, &shelf);
+    h.get_by_role_and_label(Role::Button, "Build").click();
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET));
+    settle(&mut h);
+    h.get_by_role_and_label(Role::RadioButton, "Search").click();
+    h.run_steps(2);
+    type_in(&mut h, "Position (FEN)", &spanish());
+    h.get_by_role_and_label(Role::Button, "Search").click();
+    h.run_steps(3);
+    assert!(h.state_mut().wait_library(NET));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.library.found().map(|f| f.total), Some(2), "{:#?}", names(&h));
+    h.get_by_label_contains("Show in PDF, p. 12 · 3. bishop b5").click();
+    assert!(wait_for(&mut h, |h| h.state().views.len() == 1 && h.state().views[0].flash.is_some()), "opened and outlined");
+    // (6) Its file gone since: the tab showing it is used, nothing said against it.
+    std::fs::remove_file(shelf.join("a.pdf")).unwrap();
+    h.state_mut().notice = None;
+    open_library(&mut h);
+    settle(&mut h);
+    h.get_by_label_contains("Show in PDF, p. 12 · 3. bishop b5").click();
+    h.run_steps(3);
+    assert!(!said(&h, "is no longer there") && h.state().views.len() == 1, "the tab: {:#?}", names(&h));
+    assert_eq!(h.state().active, Some(0));
+    // (4) A book changed since the Library read it: said, its page shown, nothing outlined there.
+    std::fs::write(shelf.join("b.pdf"), book(&["1.d4 d5 2.c4 e6 3.Nc3 Nf6 4.Bg5 Be7"])).unwrap();
+    open_library(&mut h);
+    settle(&mut h);
+    h.get_by_label_contains("Show in PDF, p. 11 · 3. bishop b5").click();
+    assert!(wait_for(&mut h, |h| h.state().views.len() == 2), "opened");
+    h.run_steps(5);
+    assert!(said(&h, "This book changed since the Library read it: build the Library again."), "said: {:#?}", names(&h));
+    let view = &h.state().views[1];
+    assert_eq!((view.current, view.flash.is_none()), (0, true), "its page, nothing outlined");
+    // (5) The folder removed: its books' results go with it.
+    open_library(&mut h);
+    settle(&mut h);
+    h.get_by_role_and_label(Role::RadioButton, "Books").click();
+    h.run_steps(2);
+    let dir = dirs_on_disk(&data).into_iter().next().unwrap();
+    settle(&mut h);
+    h.get_by_label(&format!("Remove {dir}")).click();
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET));
+    h.run_steps(2);
+    assert!(h.state_mut().wait_library(NET));
+    assert_eq!(h.state().chess.library.found().map(|f| f.total), Some(0), "asked again of the Library as it is now");
+    settle(&mut h);
+    h.get_by_role_and_label(Role::RadioButton, "Search").click();
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Show in PDF").is_none(), "no row left to click: {:#?}", names(&h));
     drop(h);
     let _ = std::fs::remove_dir_all(data);
 }

@@ -3766,3 +3766,12 @@ pawn structure	Passed	అడ్డులేని
 	Find this position in every book of the Library	ఈ స్థానాన్ని లైబ్రరీలోని అన్ని పుస్తకాలలో వెతుకు
 	Library…	లైబ్రరీ…
 	Folders	ఫోల్డర్లు
+# A9-N15c, the review of #431: a build that holds the Library, a folder added after a build, a catalog that can't be read, a changed book, a move not outlined, a cut-short build.
+	The folder will be added when the build ends.	నిర్మాణం ముగిసినప్పుడు ఫోల్డర్ జోడించబడుతుంది.
+	Another build of this Library is running (in another window, another PdfCraft or on the command line): wait for it to end.	ఈ లైబ్రరీ యొక్క మరో నిర్మాణం నడుస్తోంది (మరో విండోలో, మరో PdfCraft లో లేదా కమాండ్ లైన్‌లో): అది ముగిసే వరకు వేచి ఉండండి.
+	The Library's catalog can't be read, so it isn't changed: {e}	లైబ్రరీ కేటలాగ్‌ను చదవలేకపోయాము, కాబట్టి అది మార్చబడదు: {e}
+	This book changed since the Library read it: build the Library again.	లైబ్రరీ చదివినప్పటి నుండి ఈ పుస్తకం మారింది: లైబ్రరీని మళ్లీ నిర్మించండి.
+	The move wasn't outlined: its page wasn't read in time, or you moved away.	ఎత్తు గుర్తించబడలేదు: దాని పేజీ సమయానికి చదవబడలేదు, లేదా మీరు వేరే చోటికి వెళ్లారు.
+	{path} is a link, which the Library never opens.	{path} ఒక లింక్, దాన్ని లైబ్రరీ ఎప్పుడూ తెరవదు.
+	{path} can't be opened.	{path} తెరవబడదు.
+	The last build was cut short (PdfCraft closed, or it stopped on an error): Continue goes on from where it was.	చివరి నిర్మాణం మధ్యలో ఆగిపోయింది (PdfCraft మూసివేయబడింది, లేదా లోపంతో ఆగిపోయింది): కొనసాగించు అది ఆగిన చోటు నుండి కొనసాగిస్తుంది.
