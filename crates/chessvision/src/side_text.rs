@@ -4,8 +4,10 @@
 //! first move is set in bold: **23.** Nf3 says White is to move in the diagram, **23...** Rxe4
 //! says Black is. [`hints`] finds that number for each diagram of a page:
 //!
-//! - in the lines below the diagram that share its column (they overlap it horizontally), in
-//!   reading order, up to the next diagram below it;
+//! - in the lines below the diagram that share its column (they overlap it horizontally, or start
+//!   at the left margin of the lines that do: under a diagram set in the middle of its column, a
+//!   short line such as **37.**Rfd1? does not reach across it), in reading order, up to the next
+//!   diagram below it;
 //! - the first move number set in a bold font and followed by a move (`23.` alone, a heading
 //!   number or a page number, is not a move number);
 //! - a number in a regular font is passed over: in prose ("after 23.Nf3 the knight…") it says
@@ -30,6 +32,10 @@ use crate::coords::ViewRect;
 /// How far a line may start above a diagram's bottom edge and still count as below it, in points
 /// (the descenders of the file letters printed under the board).
 const BELOW_TOLERANCE: f32 = 2.0;
+
+/// How far a line's left edge may stand from its column's margin and still start at it, in points
+/// ([`column_margin`]).
+const MARGIN_TOLERANCE: f32 = 2.0;
 
 /// What the first bold move number under a diagram says.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -66,9 +72,12 @@ fn hint_for(text: &PageText, chess: &ChessPageText, diagrams: &[ViewRect], index
         .filter(|(j, e)| *j != index && e.y0 >= diagram.y1 - BELOW_TOLERANCE && overlaps_horizontally(&diagram, e))
         .map(|(_, e)| e.y0)
         .fold(f32::INFINITY, f32::min);
+    let under = |r: &ViewRect| r.y0 >= diagram.y1 - BELOW_TOLERANCE && r.y0 < stop;
+    let margin = column_margin(chess, &diagram, under);
     for line in &chess.lines {
         let r = line.rect;
-        if r.y0 < diagram.y1 - BELOW_TOLERANCE || r.y0 >= stop || !overlaps_horizontally(&diagram, &r) {
+        let in_column = overlaps_horizontally(&diagram, &r) || margin.is_some_and(|m| (r.x0 - m).abs() <= MARGIN_TOLERANCE);
+        if !under(&r) || !in_column {
             continue;
         }
         for (k, span) in line.spans.iter().enumerate() {
@@ -80,6 +89,30 @@ fn hint_for(text: &PageText, chess: &ChessPageText, diagrams: &[ViewRect], index
         }
     }
     None
+}
+
+/// The left margin of the text in a diagram's column: the left edge most of the lines `under` it
+/// that run across it start at, when two or more do (a tie goes to the edge nearest the diagram's).
+/// A diagram set in the middle of its column has short lines under it that do not reach across
+/// it, and they start at this margin; the lines of a column beside it start at another.
+fn column_margin(chess: &ChessPageText, diagram: &ViewRect, under: impl Fn(&ViewRect) -> bool) -> Option<f32> {
+    let mut edges: Vec<(f32, usize)> = Vec::new();
+    for line in chess.lines.iter().filter(|l| under(&l.rect) && overlaps_horizontally(diagram, &l.rect)) {
+        let x = line.rect.x0;
+        if !x.is_finite() {
+            continue;
+        }
+        match edges.iter_mut().find(|(edge, _)| (*edge - x).abs() <= MARGIN_TOLERANCE) {
+            Some((_, count)) => *count = count.saturating_add(1),
+            None => edges.push((x, 1)),
+        }
+    }
+    let distance = |x: f32| (x - diagram.x0).abs();
+    edges
+        .into_iter()
+        .filter(|&(_, count)| count >= 2)
+        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| distance(b.0).total_cmp(&distance(a.0))))
+        .map(|(x, _)| x)
 }
 
 /// How far from a diagram, as a share of its height, a caption may stand above or below it.
@@ -237,6 +270,12 @@ mod tests {
             self
         }
 
+        /// The line goes on from `x`.
+        fn at(mut self, x: f32) -> Self {
+            self.x = x;
+            self
+        }
+
         fn hints(&self, diagrams: &[ViewRect]) -> Vec<Option<MoveNumberHint>> {
             hints(&self.text, &from_page_text(&self.text, None), diagrams)
         }
@@ -340,6 +379,40 @@ mod tests {
         let second = ViewRect::new(0.0, 180.0, 150.0, 205.0);
         let hints = page.hints(&[diagram(), second]);
         assert_eq!(hints, vec![Some(MoveNumberHint { color: Color::White, number: 10 }), Some(MoveNumberHint { color: Color::Black, number: 40 })]);
+    }
+
+    /// A diagram set in the middle of its column (Huschenbeth, *Carlsen vs. Caruana*): the move
+    /// under it, `37.Rfd1?`, is too short to reach across it, but starts at the margin the lines
+    /// that do start at. It says White, not the `37...exd5` after it.
+    #[test]
+    fn a_short_line_at_the_columns_margin_is_under_a_centred_diagram() {
+        let centred = ViewRect::new(100.0, 0.0, 250.0, 150.0);
+        let page = Page::new(160.0)
+            .bold("37.")
+            .body("Rfd1?")
+            .newline()
+            .body("37.d6 followed by e5 makes a powerful passed pawn.")
+            .newline()
+            .bold("37...")
+            .body("exd5 38.exd5 cxd5 39.Rxd5 Rdc8?");
+        assert_eq!(page.hints(&[centred]), vec![Some(MoveNumberHint { color: Color::White, number: 37 })]);
+        // Two columns, the diagram in the right one: the left column's lines start at another
+        // margin, and a short bold move there says nothing about it.
+        let right = ViewRect::new(400.0, 0.0, 550.0, 150.0);
+        let page = Page::new(160.0)
+            .bold("12.")
+            .body("Nf3")
+            .newline()
+            .at(320.0)
+            .body("The knight comes back to defend the king.")
+            .newline()
+            .at(320.0)
+            .bold("31...")
+            .body("Rxe4 32.Qd2 Re8 and Black holds.");
+        assert_eq!(page.hints(&[right]), vec![Some(MoveNumberHint { color: Color::Black, number: 31 })]);
+        // One line across the diagram gives no margin: the short line is not taken.
+        let page = Page::new(160.0).bold("37.").body("Rfd1?").newline().bold("37...").body("exd5 38.exd5 cxd5 39.Rxd5 Rdc8?");
+        assert_eq!(page.hints(&[centred]), vec![Some(MoveNumberHint { color: Color::Black, number: 37 })]);
     }
 
     #[test]

@@ -58,10 +58,12 @@ pub const VERSION: u32 = 1;
 /// settings and models. Raised by a change to detection, to the reading of boards or to chess OCR
 /// that changes what they find, so a reading an earlier build kept is not taken for this one's.
 /// 2: a reading keeps the goal its caption asks (plan A9-N17a, [`ReadPosition::goal`]), which one
-/// kept before lacks.
+/// kept before lacks. 3: the move number under a diagram set in the middle of its column is read
+/// from a short line at the column's margin too (`37.Rfd1?`), which changes the side to move and
+/// the move number of many readings (2026-11-19, game collections).
 ///
 /// [`ReadPosition::goal`]: pdfcraft_chessvision::board::ReadPosition::goal
-pub const SCAN_VERSION: u32 = 2;
+pub const SCAN_VERSION: u32 = 3;
 /// Largest entry file read.
 pub const MAX_ENTRY_BYTES: usize = 16 << 20;
 /// Largest JSON an entry holds, inflated.

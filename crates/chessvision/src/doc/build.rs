@@ -29,7 +29,7 @@ use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
 use super::fragment::{hyphen_join, join_hyphens};
 use super::games::{Key, Loc, Name, Seed, Walker};
-use super::header::{GameHeader, event_line, players_line};
+use super::header::{GameHeader, bare_players_line, event_line, game_label, players_line};
 use super::{
     Block, BlockRole, ChessPage, DiagramBlock, HintKind, Inline, LangTag, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect,
 };
@@ -1032,7 +1032,8 @@ fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
 /// Give a page's text blocks the roles the page decides alone ([`BlockRole`]): its printed number
 /// ([`folio_blocks`]) and its games' headers, the players' line and the event's line after it
 /// (the next text block: a diagram may come between, the page read across its columns,
-/// [`super::header`]); the text inside a diagram's box got its role when the lines were grouped
+/// [`super::header`]), with the game's label before it (`Game 1`, in its block or the one
+/// before); the text inside a diagram's box got its role when the lines were grouped
 /// ([`blocks`]) and keeps it. Returns each players' line's header as read, the event's in it.
 /// The same blocks always get the same roles, so a page built and the same page walked again
 /// from its JSON agree, and a page read before roles were kept walks as it did.
@@ -1044,26 +1045,60 @@ fn assign_roles(blocks: &mut [Block]) -> Vec<Option<GameHeader>> {
         }
     }
     let mut headers: Vec<Option<GameHeader>> = vec![None; blocks.len()];
-    let mut events: Vec<usize> = Vec::new();
+    // The headers' other blocks: an event's line, a game's label.
+    let mut parts: Vec<usize> = Vec::new();
     for (bi, block) in blocks.iter().enumerate() {
         if diagram_text(block) {
             continue;
         }
-        let Some(mut header) = block_text(block).as_deref().and_then(players_line) else { continue };
+        let Some(lines) = block_lines(block) else { continue };
         let next = blocks.iter().enumerate().skip(bi.saturating_add(1)).find(|(_, b)| !matches!(b, Block::Diagram(_)) && !diagram_text(b));
-        if let Some((next, b)) = next
-            && let Some(text) = block_text(b)
-            && event_line(&text, &mut header)
-        {
-            events.push(next);
-        }
+        let next_event = |header: &mut GameHeader| match next {
+            Some((next, b)) if block_lines(b).is_some_and(|l| event_line(&l.concat(), header)) => Some(next),
+            _ => None,
+        };
+        let header = if let Some(mut header) = players_line(&lines.concat()) {
+            parts.extend(next_event(&mut header));
+            header
+        } else {
+            // The players' line without the game's number, under its label or none, is a header
+            // only with the event's line under it, in its block or the next.
+            let players = match lines.as_slice() {
+                [label, rest @ ..] if game_label(label) => rest,
+                all => all,
+            };
+            match players {
+                [players] => {
+                    let Some(mut header) = bare_players_line(players) else { continue };
+                    let Some(next) = next_event(&mut header) else { continue };
+                    parts.push(next);
+                    header
+                }
+                [players, event] => {
+                    let Some(mut header) = bare_players_line(players) else { continue };
+                    if !event_line(event, &mut header) {
+                        continue;
+                    }
+                    header
+                }
+                _ => continue,
+            }
+        };
         if let Some(slot) = headers.get_mut(bi) {
             *slot = Some(header);
         }
+        // The game's label in the paragraph before (`Game 1`) is the header's too; one set as a
+        // heading stays a heading, which the chapters and the book's outline count.
+        if let Some(before) = bi.checked_sub(1)
+            && let Some(b @ Block::Paragraph { .. }) = blocks.get(before)
+            && block_lines(b).is_some_and(|l| matches!(l.as_slice(), [label] if game_label(label)))
+        {
+            parts.push(before);
+        }
     }
     let folios: Vec<usize> = folio_blocks(blocks).into_iter().filter(|&bi| blocks.get(bi).is_some_and(|b| !diagram_text(b))).collect();
-    // An event's line and the page's number are no game's header of their own.
-    for &bi in events.iter().chain(&folios) {
+    // An event's line, a game's label and the page's number are no game's header of their own.
+    for &bi in parts.iter().chain(&folios) {
         if let Some(slot) = headers.get_mut(bi) {
             *slot = None;
         }
@@ -1071,22 +1106,18 @@ fn assign_roles(blocks: &mut [Block]) -> Vec<Option<GameHeader>> {
     for (bi, block) in blocks.iter_mut().enumerate() {
         if folios.contains(&bi) {
             block.set_role(BlockRole::Folio);
-        } else if events.contains(&bi) || headers.get(bi).is_some_and(Option::is_some) {
+        } else if parts.contains(&bi) || headers.get(bi).is_some_and(Option::is_some) {
             block.set_role(BlockRole::GameHeader);
         }
     }
     headers
 }
 
-/// A text block's text, when it holds nothing but text: no move, sign or figurine.
-fn block_text(block: &Block) -> Option<String> {
+/// A text block's lines (its text runs, a line each), when it holds nothing but text: no move,
+/// sign or figurine.
+fn block_lines(block: &Block) -> Option<Vec<&str>> {
     let (Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. }) = block else { return None };
-    let mut out = String::new();
-    for inline in inlines {
-        let Inline::Text { text, .. } = inline else { return None };
-        out.push_str(text);
-    }
-    Some(out)
+    inlines.iter().map(|inline| if let Inline::Text { text, .. } = inline { Some(text.as_str()) } else { None }).collect()
 }
 
 /// Run the page's blocks through the game walker, recording what became of each move.
