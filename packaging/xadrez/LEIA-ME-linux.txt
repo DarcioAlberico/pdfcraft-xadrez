@@ -1,0 +1,63 @@
+PdfCraft - Ferramentas de Xadrez · Linux x86-64
+
+COMO USAR
+- Descompacte: tar -xzf PdfCraft-Xadrez-<versão>-linux-x86_64.tar.gz
+- Abra: ./pdfcraft (dentro da pasta). Não precisa instalar.
+- Os modelos de leitura (pasta models) e o motor Stockfish (pasta engine) são achados
+  sozinhos, ao lado do programa.
+- A ajuda está em "Ajuda - Ferramentas de Xadrez.pdf" (português) e em
+  "Help - Chess Tools.pdf" (inglês). Ela mostra o app no Windows; no Linux é o mesmo app.
+- ./pdfcraft-cli é a linha de comando (./pdfcraft-cli --version, ./pdfcraft-cli tools).
+- O arquivo VERSAO.txt diz a versão e o build.
+
+O QUE PRECISA ESTAR INSTALADO
+- Uma distribuição com glibc 2.35 ou mais nova (Ubuntu 22.04, Debian 12, Fedora 36 ou
+  mais novas, e as derivadas).
+- Um ambiente gráfico (X11 ou Wayland) com GTK 3 e OpenGL, que quase todo desktop já tem.
+  No Debian e no Ubuntu: sudo apt install libgtk-3-0 libxkbcommon0 libgl1
+
+O QUE NÃO VEM NESTE PACOTE
+- Fontes de xadrez de terceiros (as do capítulo 17 da ajuda, como Merida, Hastings,
+  Linares e Zurich): têm licenças próprias que não permitem redistribuí-las. O app funciona
+  sem elas, com os conjuntos de peças que traz. Quem tem as fontes pode pô-las numa pasta
+  "fonts" ao lado do programa.
+
+LICENÇAS
+- PdfCraft: MIT ou Apache 2.0 (LICENSE-MIT, LICENSE-APACHE).
+- Stockfish 19 (pasta engine/stockfish): GPL versão 3, dos autores do Stockfish
+  (Copying.txt e AUTHORS nessa pasta), da página oficial de versões do Stockfish, com o
+  código-fonte junto (engine/stockfish/src).
+- Modelos de leitura (pasta models): treinados pelo autor deste pacote.
+
+----------------------------------------------------------------------------------------
+
+PdfCraft - Chess Tools · Linux x86-64
+
+HOW TO USE
+- Unpack: tar -xzf PdfCraft-Xadrez-<version>-linux-x86_64.tar.gz
+- Run: ./pdfcraft (inside the folder). No installation needed.
+- The reading models (models folder) and the Stockfish engine (engine folder) are found
+  on their own, next to the program.
+- The help is "Help - Chess Tools.pdf" (English) and "Ajuda - Ferramentas de Xadrez.pdf"
+  (Portuguese). Its pictures show the app on Windows; on Linux it is the same app.
+- ./pdfcraft-cli is the command line (./pdfcraft-cli --version, ./pdfcraft-cli tools).
+- VERSAO.txt says the version and the build.
+
+WHAT MUST BE INSTALLED
+- A distribution with glibc 2.35 or newer (Ubuntu 22.04, Debian 12, Fedora 36 or newer,
+  and their derivatives).
+- A graphical desktop (X11 or Wayland) with GTK 3 and OpenGL, which almost every desktop
+  has. On Debian and Ubuntu: sudo apt install libgtk-3-0 libxkbcommon0 libgl1
+
+NOT IN THIS PACKAGE
+- Third-party chess fonts (those in the help's chapter 17, such as Merida, Hastings,
+  Linares and Zurich): their licences don't allow redistributing them. The app works
+  without them, with the piece sets it brings. If you have them, put them in a "fonts"
+  folder next to the program.
+
+LICENCES
+- PdfCraft: MIT or Apache 2.0 (LICENSE-MIT, LICENSE-APACHE).
+- Stockfish 19 (engine/stockfish folder): GPL version 3, by the Stockfish authors
+  (Copying.txt and AUTHORS in that folder), from Stockfish's official releases, with its
+  source code included (engine/stockfish/src).
+- Reading models (models folder): trained by this package's author.

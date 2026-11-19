@@ -1,0 +1,143 @@
+# The chess fork's Linux package (PdfCraft Xadrez): run by hand for a release tag of this repo
+# (xadrez-vX.Y.Z). It builds that tag's source on Ubuntu 22.04 (glibc 2.35, so the program runs on
+# newer distributions too), packs a portable folder like the Windows zip of the same release (the
+# reading models, the two help PDFs and VERSAO.txt come from that zip; Stockfish 19 for Linux from
+# its official release, checked by its SHA-256, with its source), smoke-tests it, and attaches
+# PdfCraft-Xadrez-X.Y.Z-linux-x86_64.tar.gz to the release. Third-party chess fonts are never packed
+# (their licences forbid redistributing them).
+name: Xadrez Linux package
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and attach to, e.g. xadrez-v1.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xadrez-linux-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      SF_URL: https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz
+      SF_SHA256: 9defc0d4e55d49c65a6d042f3e571a39fcea499ade6dbe741b53b8c65e03611f
+      SF_SOURCE: https://github.com/official-stockfish/Stockfish/archive/refs/tags/sf_19.tar.gz
+    steps:
+      - name: Check the tag
+        run: |
+          case "$TAG" in
+            xadrez-v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag must look like xadrez-v1.2.3, not '$TAG'"; exit 1 ;;
+          esac
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName
+
+      - name: Check out the release's source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          path: src
+
+      - name: Check out the packaging notes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tools
+          sparse-checkout: packaging/xadrez
+
+      - name: Check out craft-fonts (the Japanese UI fonts the build embeds)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: 3d9ab3a132ed0eff457e424226a435a901da30d3
+          path: craft-fonts
+
+      - name: System libraries (egui/winit/rfd)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev \
+            libgl1-mesa-dev libgtk-3-dev jq
+
+      - name: Rust (stable)
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+
+      - name: Build
+        working-directory: src
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+        run: |
+          id="$(git rev-parse --short=7 HEAD) $(git show -s --format=%cs HEAD)"
+          echo "build id: $id"
+          PDFCRAFT_BUILD_ID="$id" cargo build --release --locked -j 4 -p pdfcraft -p pdfcraft-cli
+          ./target/release/pdfcraft-cli --version
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          ver="${TAG#xadrez-v}"
+          name="PdfCraft-Xadrez-$ver-linux-x86_64"
+          dir="pkg/$name"
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          mkdir -p "$dir/engine"
+          cp src/target/release/pdfcraft src/target/release/pdfcraft-cli "$dir/"
+          strip "$dir/pdfcraft" "$dir/pdfcraft-cli"
+          # The models, the help and VERSAO.txt: the same files as the release's Windows zip.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*windows-x64.zip" --dir win
+          unzip -q win/*.zip -d win
+          w="$(find win -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          cp -r "$w/models" "$dir/"
+          cp "$w/Ajuda - Ferramentas de Xadrez.pdf" "$w/Help - Chess Tools.pdf" "$w/VERSAO.txt" "$dir/"
+          cp src/LICENSE-MIT src/LICENSE-APACHE "$dir/"
+          cp tools/packaging/xadrez/LEIA-ME-linux.txt "$dir/LEIA-ME.txt"
+          # Stockfish 19 for Linux, as its authors publish it, with its licence and its source.
+          curl -fsSL -o sf.tar.gz "$SF_URL"
+          echo "$SF_SHA256  sf.tar.gz" | sha256sum -c -
+          tar -xzf sf.tar.gz -C "$dir/engine"
+          sf="$(find "$dir/engine" -maxdepth 3 -type f -name 'stockfish*' -perm -u+x | head -n 1)"
+          test -n "$sf" || { echo "::error::no Stockfish program in the archive"; find "$dir/engine" -maxdepth 3; exit 1; }
+          sfdir="$(dirname "$sf")"
+          test -f "$sfdir/Copying.txt" || { echo "::error::Stockfish's licence is missing"; exit 1; }
+          if [ ! -d "$sfdir/src" ]; then
+            curl -fsSL -o sf-src.tar.gz "$SF_SOURCE"
+            mkdir -p "$sfdir/src" && tar -xzf sf-src.tar.gz -C "$sfdir/src" --strip-components=2 --wildcards '*/src/*'
+          fi
+          if [ -e "$dir/fonts" ]; then echo "::error::a fonts folder slipped in"; exit 1; fi
+          find "$dir" -maxdepth 2 | sort
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          cd "pkg/$NAME"
+          ./pdfcraft-cli --version | tee version.txt
+          grep -q "build $(cd ../../src && git rev-parse --short=7 HEAD)" version.txt
+          rm version.txt
+          # The reading models load from the package's own folder.
+          ./pdfcraft-cli chess scan "Help - Chess Tools.pdf" --pages 3 --json > ../scan.json
+          jq '{diagrams, accepted, model}' ../scan.json
+          test "$(jq -r .model.state ../scan.json)" = loaded
+          jq -r .model.folder ../scan.json | grep -q "$NAME/models"
+          # The engine answers.
+          sf="$(find engine -maxdepth 3 -type f -name 'stockfish*' -perm -u+x | head -n 1)"
+          printf 'uci\nquit\n' | "$sf" | grep -m1 '^id name Stockfish'
+          # The desktop program starts far enough to say its version (no window needed).
+          ./pdfcraft --version
+
+      - name: Archive and attach to the release
+        run: |
+          set -euo pipefail
+          tar -C pkg -czf "$NAME.tar.gz" "$NAME"
+          sha256sum "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256"
+          ls -la "$NAME.tar.gz"
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$NAME.tar.gz"
