@@ -692,7 +692,7 @@ In the order they come:
 | **Chess engine** | **Search threads**, **Hash table** and **Endgame tables (Syzygy)** ([chapter 8](#8-analysing-with-an-engine)). |
 | **Write PGN files with a byte order mark (BOM)** | Off: PGN in UTF-8 without a BOM. |
 
-The chess panel is translated into all 22 languages of the interface.
+The chess panel is translated into every language of the interface: its texts are in each of the 22 catalogues besides English, which `cargo xtask chess-gate` checks.
 
 ### Chess pieces
 
