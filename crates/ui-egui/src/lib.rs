@@ -2457,6 +2457,8 @@ impl PdfCraftApp {
         v["chess_move_list"] = self.chess.list_look.to_json();
         v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
         v["chess_move_badges"] = serde_json::Value::Bool(self.chess.move_badges);
+        // The Board tab's board: null for automatic, else the side the user chose, in points.
+        v["chess_board_side"] = self.chess.board_side.to_json();
         v["chess_variations"] = self.chess.variation_rules.to_json();
         // The Diagram tab or the editor in the Diagrams panel, and its main button (plan A8 P3b2).
         v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
@@ -2560,6 +2562,9 @@ impl PdfCraftApp {
         if let Some(on) = v["chess_move_badges"].as_bool() {
             self.chess.move_badges = on;
         }
+        // Absent (an older build's settings) or null: automatic. A number is kept within the
+        // board's bounds.
+        self.chess.board_side = chess_board_tab::BoardSide::from_json(&v["chess_board_side"]);
         if let Some(on) = v["chess_classic_editor"].as_bool() {
             self.chess.classic_editor = on;
         }
@@ -2774,6 +2779,10 @@ impl PdfCraftApp {
                     "off" => false,
                     _ => return Err("move-badges must be on or off".into()),
                 };
+            }
+            // The Board tab's board: `auto`, or a side in points (kept within the board's bounds).
+            ("board-side", _) => {
+                self.chess.board_side = chess_board_tab::BoardSide::parse(value).ok_or("board-side must be auto or a side in points")?;
             }
             ("comment-focus", _) => {
                 self.chess.comment_focus = match value {

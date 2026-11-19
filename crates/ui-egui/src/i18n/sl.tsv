@@ -3887,3 +3887,8 @@ pawn structure	Passed	Prosti
 	Standard PGN	Standardni PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess in ChessBase pri znaku, ki ima kodo za vsako stran, ohranita samo kodo belega: kode črnega se zapišejo kot kode belega. Za Lichess gre znak, ki ga ne pozna, v komentar poteze, ocena šahovskega programa pa kot [%eval]; za ChessBase se diagram zapiše z njegovo lastno oznako.
 	Without ChessBase's training question: {n}	Brez vadbenega vprašanja za ChessBase: {n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	Večja šahovnica
+	Smaller board	Manjša šahovnica
+	Board size: automatic	Velikost šahovnice: samodejno
+	Drag to change the board's size	Povlecite, da spremenite velikost šahovnice

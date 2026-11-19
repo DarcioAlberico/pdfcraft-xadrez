@@ -460,11 +460,11 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 <tr><th style="width:24%">Região (de cima para baixo)</th><th>O que tem</th></tr>
 <tr><td>O trilho, à esquerda</td><td>As ferramentas da partida (capítulo 11).</td></tr>
 <tr><td>Cabeçalho</td><td>O lance mostrado e quem joga (um ponto da cor de quem joga e “Brancas jogam”, na cor do texto; vermelho só para posição ilegal e mate), <b>Analisar</b>, <b>Lista de lances ao lado da página</b>, <b>Tema do tabuleiro</b> e o menu ⋯ do tabuleiro.</td></tr>
-<tr><td>Tabuleiro</td><td>Com a barra de avaliação ao lado quando o motor analisa.</td></tr>
+<tr><td>Tabuleiro</td><td>Com a barra de avaliação ao lado quando o motor analisa, e embaixo a alça que muda o tamanho dele (veja “O tamanho do tabuleiro”, abaixo).</td></tr>
 <tr><td>Navegação</td><td>« ‹ › » (início, anterior, seguinte, fim), o campo <b>Lance</b>, <b>Virar tabuleiro</b> e, no fim, o estado do motor (programa, profundidade, kN/s) ou o material: as peças a mais de cada lado e a diferença em pontos.</td></tr>
 <tr><td>Linhas do motor</td><td>Uma por linha, cortadas com “…” (o texto inteiro na dica), só com o motor ligado (capítulo 8).</td></tr>
 <tr><td>Trilha</td><td>Onde o lance mostrado está: a variante (<i>Linha principal › 5…Bxc5 › 6…Tf8</i>), as continuações numa bifurcação ou o diagrama de origem.</td></tr>
-<tr><td>Lances</td><td>A partida, como num livro (capítulo 10). Preenchem o resto: pelo menos 10 linhas, 7 com as três linhas do motor.</td></tr>
+<tr><td>Lances</td><td>A partida, como num livro (capítulo 10). Preenchem o resto: pelo menos 10 linhas, 7 com as três linhas do motor, 3 com um tamanho de tabuleiro escolhido.</td></tr>
 <tr><td>Barra do pé</td><td><b>Partida</b> ▾ · <b>Comentário</b> · <b>No livro (n)</b> · FEN/PGN ▾.</td></tr>
 </table>
 
@@ -485,11 +485,15 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 </figure>
 </div>
 <h3>O menu ⋯ do tabuleiro</h3>
-<p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; e o diagrama de onde a partida veio.</p>
+<p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; <b>Tabuleiro maior</b>, <b>Tabuleiro menor</b> e <b>Tamanho do tabuleiro: automático</b>; e o diagrama de onde a partida veio.</p>
 <figure class="half">
 <img src="img/14c-menu-motor.png" alt="O menu do tabuleiro com o motor iniciado.">
 <figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
+
+<h2>O tamanho do tabuleiro</h2>
+<p>O tabuleiro começa no tamanho automático: o maior que cabe deixando pelo menos 10 linhas de lances embaixo (7 com as linhas do motor). Para vê-lo maior, arraste a alça fina sob o tabuleiro, na borda de cima da navegação: o ponteiro vira uma seta de redimensionar, e a dica diz <b>Arraste para mudar o tamanho do tabuleiro</b>. Para baixo ele cresce, para cima diminui. O tamanho escolhido vai até a largura da coluna e até deixar 3 linhas de lances; para um tabuleiro ainda maior, alargue a coluna Xadrez. A alça fica fora das casas: arrastar uma peça da fileira de baixo continua jogando.</p>
+<p>Pelo teclado, ou com leitor de tela, o menu ⋯ do tabuleiro tem <b>Tabuleiro maior</b> e <b>Tabuleiro menor</b> (cerca de 10% por vez) e <b>Tamanho do tabuleiro: automático</b>; um duplo clique na alça também volta ao automático. O tamanho escolhido fica guardado para a próxima vez. A janela de xadrez (capítulo 16) tem o seu próprio tamanho: lá o tabuleiro cresce com a janela.</p>
 
 <h2>Abrir uma posição ou partida no tabuleiro</h2>
 <ul>

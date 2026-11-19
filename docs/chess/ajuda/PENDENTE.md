@@ -6,3 +6,4 @@ Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige 
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| Tamanho do tabuleiro | #448 | 7 | A figura 11 (a aba Tabuleiro) não mostra a alça sob o tabuleiro, e a 14c (o menu ⋯ do tabuleiro) não tem **Tabuleiro maior**, **Tabuleiro menor** e **Tamanho do tabuleiro: automático**; o texto do capítulo já os descreve. |

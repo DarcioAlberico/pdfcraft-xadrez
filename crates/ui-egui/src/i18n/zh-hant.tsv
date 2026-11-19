@@ -3822,3 +3822,8 @@ pawn structure	Passed	通路兵
 	Standard PGN	標準 PGN
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	對於黑白雙方各有代碼的符號，Lichess 和 ChessBase 只保留白方的代碼：黑方的代碼寫成白方的代碼。用於 Lichess 時，它不認識的符號寫進該步的註解，引擎評估寫成 [%eval]；用於 ChessBase 時，局面圖寫成它自己的標記。
 	Without ChessBase's training question: {n}	無 ChessBase 訓練題：{n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	放大棋盤
+	Smaller board	縮小棋盤
+	Board size: automatic	棋盤大小：自動
+	Drag to change the board's size	拖曳以變更棋盤大小

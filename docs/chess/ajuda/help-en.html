@@ -461,11 +461,11 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><th style="width:24%">Region (top to bottom)</th><th>What it holds</th></tr>
 <tr><td>The rail, on the left</td><td>The game's tools (chapter 11).</td></tr>
 <tr><td>Header</td><td>The move shown and who is to move (a dot of that side's colour and <b>White to move</b>, in the text colour; red only for an illegal position and for mate), <b>Analyze</b>, <b>Move list beside the page</b>, <b>Board theme</b> and the board's ⋯ menu.</td></tr>
-<tr><td>Board</td><td>With the evaluation bar beside it while the engine analyses.</td></tr>
+<tr><td>Board</td><td>With the evaluation bar beside it while the engine analyses, and under it the grip that changes its size (see “The board's size”, below).</td></tr>
 <tr><td>Navigation</td><td>« ‹ › » (start, back, forward, end), the <b>Move</b> field, <b>Flip board</b> and, at the end, the engine's state (program, depth, kN/s) or the material: each side's extra pieces and the difference in points.</td></tr>
 <tr><td>Engine lines</td><td>One row each, cut short with “…” (the whole text in the tooltip), only while the engine is on (chapter 8).</td></tr>
 <tr><td>Trail</td><td>Where the move shown is: the variation (<i>Main line › 5…Bxc5 › 6…Rf8</i>), the continuations at a fork, or the diagram the game came from.</td></tr>
-<tr><td>Moves</td><td>The game, laid out as in a book (chapter 10). They fill the rest: at least 10 rows, 7 with the engine's three lines.</td></tr>
+<tr><td>Moves</td><td>The game, laid out as in a book (chapter 10). They fill the rest: at least 10 rows, 7 with the engine's three lines, 3 with a board size you chose.</td></tr>
 <tr><td>Footer bar</td><td><b>Game</b> ▾ · <b>Comment</b> · <b>In the book (n)</b> · FEN/PGN ▾.</td></tr>
 </table>
 
@@ -486,11 +486,15 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </figure>
 </div>
 <h3>The board's ⋯ menu</h3>
-<p><b>Lines:</b> 1, 2 or 3 engine lines; once an engine has started, which program and from where (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>, the whole path in the tooltip); <b>Choose engine…</b>; <b>Clear drawings</b>, with a hint on how to draw; and the diagram the game came from.</p>
+<p><b>Lines:</b> 1, 2 or 3 engine lines; once an engine has started, which program and from where (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>, the whole path in the tooltip); <b>Choose engine…</b>; <b>Clear drawings</b>, with a hint on how to draw; <b>Larger board</b>, <b>Smaller board</b> and <b>Board size: automatic</b>; and the diagram the game came from.</p>
 <figure class="half">
 <img src="img/14c-engine-menu.png" alt="The board's menu with the engine started.">
 <figcaption>The board's ⋯ menu once the engine has started. <span class="build">build bc3f895 2026-11-19</span></figcaption>
 </figure>
+
+<h2>The board's size</h2>
+<p>The board starts at its automatic size: the largest that leaves at least 10 rows of moves under it (7 with the engine's lines). To see it larger, drag the thin grip under the board, along the top edge of the navigation row: the pointer becomes a resize arrow, and the tooltip says <b>Drag to change the board's size</b>. Down makes it larger, up smaller. A size you choose goes as far as the column's width and three rows of moves; for a larger board still, widen the Chess column. The grip is off the squares: dragging a piece on the bottom rank still plays it.</p>
+<p>From the keyboard, or with a screen reader, the board's ⋯ menu has <b>Larger board</b> and <b>Smaller board</b> (about 10% a step) and <b>Board size: automatic</b>; a double-click on the grip goes back to automatic too. The size you choose is kept for next time. The chess window (chapter 16) has a size of its own: there the board grows with the window.</p>
 
 <h2>Opening a position or a game on the board</h2>
 <ul>

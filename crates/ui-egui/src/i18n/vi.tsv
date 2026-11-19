@@ -4132,3 +4132,8 @@ pawn structure	Passed	Tốt thông
 	Standard PGN	PGN tiêu chuẩn
 	Lichess and ChessBase keep only White's code of a sign that has one for each side: Black's are written as White's. For lichess, a sign it does not know goes into the move's comment, and the engine's evaluation as [%eval]; for ChessBase, a diagram as its own mark.	Lichess và ChessBase chỉ giữ mã của Trắng cho ký hiệu có mã riêng cho mỗi bên: mã của Đen được ghi như mã của Trắng. Với Lichess, ký hiệu nó không biết được đưa vào chú thích của nước đi, và đánh giá của engine thành [%eval]; với ChessBase, sơ đồ được ghi bằng dấu riêng của nó.
 	Without ChessBase's training question: {n}	Không có câu hỏi luyện tập của ChessBase: {n}
+# Board size: the Board tab's board larger and smaller (its grip and the board's menu).
+	Larger board	Bàn cờ lớn hơn
+	Smaller board	Bàn cờ nhỏ hơn
+	Board size: automatic	Kích thước bàn cờ: tự động
+	Drag to change the board's size	Kéo để thay đổi kích thước bàn cờ
