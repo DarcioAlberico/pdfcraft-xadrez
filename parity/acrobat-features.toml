@@ -1755,7 +1755,7 @@ status = "shipped"
 commands = ["help.about"]
 tools = []
 evidence = ["crates/ui-egui/tests/commands.rs::the_about_dialog_shows_the_running_version"]
-notes = ""
+notes = "In the chess fork (plan A9-V, 2026-11-19) the version line starts with the chess edition's own release number (build_info::EDITION), then the build and upstream's version: Version 1.0.0, build 1eda302 2026-11-19 (PdfCraft 0.9.0)."
 
 [[feature]]
 id = "view.check-for-updates"
@@ -1767,7 +1767,7 @@ status = "partial"
 commands = ["help.check_updates"]
 tools = []
 evidence = ["crates/ui-egui/tests/ui_group/updates.rs::the_fork_never_asks_for_the_original_pdfcrafts_releases", "crates/ui-egui/tests/ui_group/updates.rs::versions_compare_by_number", "apps/pdfcraft/src/updates.rs::answers_are_read_and_only_our_release_pages_are_offered"]
-notes = "Upstream: asks GitHub Releases on request and offers the release page. By the owner's decision there is no check at start and no in-place install (Acrobat has both). In the chess fork (plan A9 E2, 2026-11-11; R10-02) it asks nothing over the network, since the original PdfCraft's releases lack the chess tools: the dialog says PdfCraft Xadrez, the build (the short commit and date of PDFCRAFT_BUILD_ID, else dev; also in About, --version and chess_status) and that new versions come from the dist/app folder (updates::FORK; the GitHub path stays in the code, unused). Missing: telling the user that a newer build is in dist/app."
+notes = "Upstream: asks GitHub Releases on request and offers the release page. By the owner's decision there is no check at start and no in-place install (Acrobat has both). In the chess fork (plan A9 E2, 2026-11-11; R10-02) it asks nothing over the network, since the original PdfCraft's releases lack the chess tools: the dialog says PdfCraft Xadrez, the build (the short commit and date of PDFCRAFT_BUILD_ID, else dev; also in About, --version and chess_status) and that new versions come from the dist/app folder (updates::FORK; the GitHub path stays in the code, unused). The fork numbers its own releases (plan A9-V, 2026-11-19): About, --version, the log and chess_status (edition) show the edition first (build_info::EDITION, 1.0.0, raised by hand at each release into dist/app), and it is the Windows executables' product version; VERSION stays upstream's for this check. Missing: telling the user that a newer build is in dist/app, and the edition in this dialog, which still names only the build."
 
 [[feature]]
 id = "view.single-key-accelerators"
