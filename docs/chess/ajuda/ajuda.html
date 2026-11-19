@@ -63,7 +63,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <div class="kicker">GUIA DE AJUDA</div>
 <div class="title">PdfCraft</div>
 <div class="sub">Ferramentas de xadrez — como ler, revisar, estudar e exportar livros de xadrez em PDF</div>
-<p>Versão do programa descrita: <span class="build-id">build f720627 2026-11-18</span> (o <code>main</code> de 18/11/2026). O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build que está instalado.</p>
+<p>Versão do programa descrita: <span class="build-id">build 7496134 2026-11-19</span> (o <code>main</code> de 19/11/2026, o mesmo do <code>dist/app</code>). O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build que está instalado.</p>
 <p>As figuras foram feitas no próprio PdfCraft, em português, numa janela de 1366 × 768, com um livro de exemplo de 4 páginas: duas partidas de domínio público (Morphy, Paris 1858; Anderssen–Kieseritzky, Londres 1851) com comentários escritos para este guia, dois exercícios e as soluções. Cada figura diz na legenda o build de onde veio.</p>
 </section>
 
@@ -77,7 +77,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <li><span class="cn">6</span><a href="#c6">O PGN do livro</a><span class="pg" data-for="c6"></span></li>
 <li><span class="cn">7</span><a href="#c7">O tabuleiro de análise</a><span class="pg" data-for="c7"></span></li>
 <li><span class="cn">8</span><a href="#c8">Analisar com um motor</a><span class="pg" data-for="c8"></span></li>
-<li><span class="cn">9</span><a href="#c9">No livro: onde a posição aparece</a><span class="pg" data-for="c9"></span></li>
+<li><span class="cn">9</span><a href="#c9">No livro e a Biblioteca</a><span class="pg" data-for="c9"></span></li>
 <li><span class="cn">10</span><a href="#c10">A lista de lances</a><span class="pg" data-for="c10"></span></li>
 <li><span class="cn">11</span><a href="#c11">O trilho de ferramentas</a><span class="pg" data-for="c11"></span></li>
 <li><span class="cn">12</span><a href="#c12">Capturar lances impressos</a><span class="pg" data-for="c12"></span></li>
@@ -106,14 +106,14 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>Tudo roda no seu computador. Nada é enviado para fora.</p>
 <figure>
 <img src="img/01-visao-geral.png" alt="O livro de exemplo com a coluna Xadrez aberta na aba Diagramas.">
-<figcaption>O livro de exemplo depois de <b>Detectar diagramas</b>: a página à esquerda, com a marca de cada diagrama, e a coluna <b>Xadrez</b> à direita, na aba <b>Diagramas</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O livro de exemplo depois de <b>Detectar diagramas</b>: a página à esquerda, com a marca de cada diagrama, e a coluna <b>Xadrez</b> à direita, na aba <b>Diagramas</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Onde ficam as ferramentas</h2>
 <table>
 <tr><th style="width:32%">Lugar</th><th>Para que serve</th></tr>
 <tr><td>A coluna <b>Xadrez</b> (à direita, no lugar do Inspetor)</td><td>O painel de xadrez, com três abas: <b>Diagramas</b> detecta, lista e revisa os diagramas (capítulos 3 e 4); <b>Texto</b> mostra a página lida como xadrez (capítulo 5); <b>Tabuleiro</b> é o tabuleiro de análise (capítulos 7 a 15). Abre pelo botão de xadrez da barra da direita, por <b>Painel de xadrez</b> no menu <b>Xadrez</b> ou pela pesquisa de comandos (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
-<tr><td>O menu <b>Xadrez</b></td><td><b>Detectar diagramas</b>, <b>Painel de xadrez</b>, <b>Carregar PGN do livro…</b>, <b>Exportar revisão do livro…</b> e <b>Importar revisão de um livro…</b>, <b>Criar os marcadores do livro…</b>, <b>Tabuleiro</b>, <b>Analisar a posição</b>, <b>Exportar livro de xadrez…</b> e <b>Atalhos de xadrez</b>. Tem também <b>Procurar no livro por material…</b> (capítulo 9) e <b>Conferir com o motor…</b> (capítulo 8).</td></tr>
+<tr><td>O menu <b>Xadrez</b></td><td><b>Detectar diagramas</b>, <b>Painel de xadrez</b>, <b>Carregar PGN do livro…</b>, <b>Exportar revisão do livro…</b> e <b>Importar revisão de um livro…</b>, <b>Criar os marcadores do livro…</b>, <b>Tabuleiro</b>, <b>Analisar a posição</b>, <b>Exportar livro de xadrez…</b> e <b>Atalhos de xadrez</b>. Tem também <b>Procurar no livro por material…</b> e <b>Biblioteca…</b> (capítulo 9) e <b>Conferir com o motor…</b> (capítulo 8).</td></tr>
 <tr><td><b>Ferramentas</b> ▸ <b>Xadrez</b></td><td>O painel, o tabuleiro, a captura, o PGN do livro e a exportação, como ferramentas do painel <b>Ferramentas</b>.</td></tr>
 <tr><td><b>Lista de lances ao lado da página</b></td><td>A partida do tabuleiro como num livro, numa coluna própria ao lado do PDF (capítulo 10).</td></tr>
 <tr><td><b>Xadrez em janela própria</b></td><td>O tabuleiro e as abas numa janela separada, para outro monitor (capítulo 16).</td></tr>
@@ -122,7 +122,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>O botão de xadrez da barra da direita aparece sozinho, com um ponto, quando o documento é um livro composto numa fonte de xadrez ou tem um PGN ao lado, antes mesmo de você detectar alguma coisa. Toda ferramenta de xadrez também é um comando: aperte <kbd>Ctrl</kbd>+<kbd>K</kbd> e digite parte do nome, como “analisar”, “tabuleiro”, “exportar livro” ou “variante”. Com o teclado no tabuleiro, <kbd>F1</kbd> abre a folha dos atalhos de xadrez.</p>
 <figure class="half">
 <img src="img/02-menu-xadrez.png" alt="O menu Xadrez aberto.">
-<figcaption>O menu <b>Xadrez</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu <b>Xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 
 <h2>A largura da janela decide o leiaute</h2>
@@ -167,7 +167,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>Builds lado a lado</h2>
 <ul>
 <li>Cada cópia do PdfCraft numa pasta tem a própria instância: abrir um PDF pelo <code>pdfcraft.exe</code> de <code>dist/app/anterior-…</code> abre nele, não no build atual. Evite corrigir diagramas nos dois ao mesmo tempo.</li>
-<li>O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build (<code>0.9.0, build f720627 2026-11-18</code>). <b>Ajuda</b> ▸ <b>Verificar atualizações…</b> não consulta a rede: diz “PdfCraft Xadrez <i>build</i>: as versões novas vêm da pasta dist/app.”</li>
+<li>O <b>Sobre</b> e o <code>pdfcraft-cli --version</code> dizem o build (<code>0.9.0, build 7496134 2026-11-19</code>). <b>Ajuda</b> ▸ <b>Verificar atualizações…</b> não consulta a rede: diz “PdfCraft Xadrez <i>build</i>: as versões novas vêm da pasta dist/app.”</li>
 <li>Ao gravar as preferências, este build mantém as que um build mais novo gravou e que ele não conhece. Os builds anteriores a 12/11 ainda as apagam.</li>
 </ul>
 
@@ -199,7 +199,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ol>
 <figure class="half">
 <img src="img/03-detectar.png" alt="O alto da aba Diagramas, com o menu Onde detectar aberto.">
-<figcaption>O alto da aba <b>Diagramas</b>, com o menu <b>Onde detectar</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O alto da aba <b>Diagramas</b>, com o menu <b>Onde detectar</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <p>No alto da aba ficam <b>Detectar diagramas</b> ▾, <b>Exportar livro…</b> (o ícone de arquivo), <b>Tabuleiro</b> e o ⋯ <b>Mais ações de xadrez</b>. Numa coluna estreita, <b>Tabuleiro</b> fica só com o ícone e <b>Detectar diagramas</b> é cortado com “…”; o nome inteiro fica na dica.</p>
 <p>No computador, a detecção usa vários núcleos (até quatro, deixando um para o resto do programa): a lista se enche por lotes de páginas, na ordem do livro. Na web, ela lê uma página por vez.</p>
@@ -240,7 +240,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.9">
 <img src="img/04-lista.png" alt="A lista de diagramas com o menu de uma linha aberto.">
-<figcaption>A lista, com o menu ⋯ de uma linha. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A lista, com o menu ⋯ de uma linha. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p>Na página, cada diagrama tem uma marca na cor do estado, com o número numa aba; um clique escolhe o diagrama, com a ferramenta Selecionar ou com a Mão. Um duplo clique no diagrama da página o abre no tabuleiro.</p>
@@ -262,7 +262,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure class="half">
 <img src="img/05-mais-acoes.png" alt="O menu Mais ações de xadrez aberto.">
-<figcaption>O menu <b>Mais ações de xadrez</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu <b>Mais ações de xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h3>Avisos no painel</h3>
 <p>Sob o cabeçalho do painel aparece um aviso por vez: âmbar quando falta o modelo de peças (“só são lidos os diagramas compostos em fonte de xadrez”) ou quando o documento mudou desde a detecção; vermelho, com ícone, quando um modelo não carregou ou o tabuleiro não pôde ser desenhado.</p>
@@ -272,7 +272,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>Um clique num diagrama da lista, em <b>Revisar agora</b> ou numa marca da página abre o editor. Numa coluna só, ele toma o lugar da lista; com duas colunas (a partir de 1.600 pt), abre na segunda. <b>‹ Diagramas</b> e <kbd>Esc</kbd> voltam à lista, sem descartar nada; numa coluna estreita o botão vira só a seta. O modo Ler e a janela de xadrez têm o mesmo editor.</p>
 <figure>
 <img src="img/06-editor.png" alt="O editor com o Exercício 2.">
-<figcaption>O Exercício 2 do livro, impresso sem o rei preto. A posição lida é ilegal, e por isso ficou a revisar. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O Exercício 2 do livro, impresso sem o rei preto. A posição lida é ilegal, e por isso ficou a revisar. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>O que há no editor</h2>
 <ul>
@@ -288,7 +288,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 
 <figure class="small">
 <img src="img/06b-original.png" alt="O editor em Original, com a imagem do diagrama na página.">
-<figcaption><b>Original</b>: a imagem do Exercício 2 na própria página, no quadrado do tabuleiro. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption><b>Original</b>: a imagem do Exercício 2 na própria página, no quadrado do tabuleiro. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Exemplo: corrigir o diagrama com erro</h2>
@@ -314,7 +314,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.85">
 <img src="img/07-editor-menu.png" alt="O menu do rodapé do editor.">
-<figcaption>O menu ⋯ do rodapé. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu ⋯ do rodapé. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -345,7 +345,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A aba <b>Texto</b> mostra a página da tela lida como documento de xadrez: títulos, parágrafos, lances e diagramas, com o número que o livro imprime (“Texto reconhecido da página xvii”).</p>
 <figure>
 <img src="img/08-texto.png" alt="A página 1 do livro de exemplo na aba Texto.">
-<figcaption>A página 1 do livro de exemplo na aba <b>Texto</b>, com o menu ⋯ da aba aberto. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A página 1 do livro de exemplo na aba <b>Texto</b>, com o menu ⋯ da aba aberto. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>A linha do alto e o menu da aba</h2>
 <p>A linha do alto diz a página lida e de onde ela veio (a camada de texto ou o OCR de xadrez), com <b>Ler com OCR</b> e o menu ⋯ da aba:</p>
@@ -422,7 +422,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure class="half">
 <img src="img/09-oferta.png" alt="A oferta do PGN que está ao lado do PDF.">
-<figcaption>A oferta do PGN que está ao lado do PDF. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A oferta do PGN que está ao lado do PDF. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <p>O PGN é indexado em segundo plano, sem travar a janela, e a aba Texto diz <b>Indexando o PGN do livro…</b> enquanto isso. Um PGN com BOM ou em Latin-1/Windows-1252 é lido inteiro, com os acentos. O PdfCraft indexa até cerca de 250 mil lances: um PGN maior continua guardado, e o aviso diz que só os primeiros lances dele estão ligados ao livro.</p>
 
@@ -430,7 +430,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Alinhar o livro ao PGN</b> (no menu ⋯ da aba Texto, onde depois vira <b>Alinhar de novo</b>, ou pela pesquisa de comandos) lê o livro todo e liga cada página às partidas do PGN, mostrando nas abas Texto e Diagramas a página em que está, com uma barra e <b>Parar</b>. Parar não grava nada e deixa a ligação do livro como estava. Enquanto o livro é alinhado, a aba Texto continua lendo a página mostrada. No fim, o aviso diz o resultado (“O livro está ligado ao PGN: 84 de 95 lances (6 lidos do PGN), 0 em conflito.”), com <b>Desfazer</b>.</p>
 <figure>
 <img src="img/10-alinhado.png" alt="O livro de exemplo alinhado ao PGN.">
-<figcaption>O livro de exemplo depois de <b>Alinhar o livro ao PGN</b>: os diagramas que estão no PGN passam a <b>Confirmado pelo PGN</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O livro de exemplo depois de <b>Alinhar o livro ao PGN</b>: os diagramas que estão no PGN passam a <b>Confirmado pelo PGN</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>O que muda com o PGN</h2>
 <ul>
@@ -449,7 +449,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>A aba <b>Tabuleiro</b> da coluna Xadrez é o tabuleiro de análise e estudo. Ela não rola: cada região tem o seu lugar, e só a lista de lances rola.</p>
 <figure>
 <img src="img/11-tabuleiro.png" alt="A aba Tabuleiro com a Partida da Ópera e desenhos.">
-<figcaption>A aba <b>Tabuleiro</b> com a Partida da Ópera no lance 12…Td8, aberta do diagrama da página 1, com setas e uma casa marcada. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A aba <b>Tabuleiro</b> com a Partida da Ópera no lance 12…Td8, aberta do diagrama da página 1, com setas e uma casa marcada. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:24%">Região (de cima para baixo)</th><th>O que tem</th></tr>
@@ -476,14 +476,14 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/12-fen-pgn.png" alt="O menu FEN/PGN aberto.">
-<figcaption>O menu FEN/PGN ▾. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu FEN/PGN ▾. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h3>O menu ⋯ do tabuleiro</h3>
 <p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; e o diagrama de onde a partida veio.</p>
 <figure class="half">
 <img src="img/14c-menu-motor.png" alt="O menu do tabuleiro com o motor iniciado.">
-<figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 
 <h2>Abrir uma posição ou partida no tabuleiro</h2>
@@ -496,7 +496,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 
 <h2>Jogar e andar pelos lances</h2>
 <p>Jogue clicando numa peça e depois no destino, ou arrastando a peça. Um peão que chega à última fileira pergunta a peça da promoção. As setas da navegação, ou <kbd>←</kbd> <kbd>→</kbd> <kbd>Home</kbd> <kbd>End</kbd> com o teclado nos painéis de xadrez fora do tabuleiro, andam pela linha; <kbd>Page Up</kbd> e <kbd>Page Down</kbd> vão à variante anterior ou à seguinte, e <kbd>↑</kbd> <kbd>↓</kbd> mudam a variante de lugar (capítulo 19). Com o teclado no próprio tabuleiro, as setas andam pelas casas (veja “O tabuleiro pelo teclado”, abaixo).</p>
-<p>Um lance diferente num ponto anterior cria uma variante, como no lichess. Nas Preferências dá para trocar isso: <b>Ao jogar um lance diferente</b> pode <b>Criar variante</b>, <b>Perguntar</b> ou <b>Substituir a continuação</b>. Um diagrama com posição ilegal aparece num quadro vermelho e só pode ser jogado depois de corrigido no editor. Quem joga no começo de uma partida nova se escolhe em <b>Montar posição</b> ou no FEN.</p>
+<p>Um lance diferente num ponto anterior cria uma variante, como no lichess. Nas Preferências dá para trocar isso: <b>Ao jogar um lance diferente</b> pode <b>Criar variante</b>, <b>Perguntar</b> ou <b>Substituir a continuação</b>. Um diagrama com posição ilegal aparece num quadro vermelho e só pode ser jogado depois de corrigido no editor; até lá ele não tem partida, e <b>Dados da partida</b> e <b>Renomear…</b> ficam desligados (capítulo 15). Quem joga no começo de uma partida nova se escolhe em <b>Montar posição</b> ou no FEN.</p>
 
 <h2>O campo Lance</h2>
 <p>O campo <b>Lance</b>, depois de « ‹ › », joga um lance pelo teclado (<kbd>M</kbd> leva até ele; com o motor analisando, ele fica atrás do botão <b>Digitar um lance</b>). Digite <code>Cf3</code>, <code>e4</code>, <code>O-O</code> (nas letras da interface ou em inglês) ou <code>g1f3</code> e <kbd>Enter</kbd>. Um lance que não se pode jogar é dito com o motivo e fica no campo: o que duas peças podem fazer diz quais (<code>Cd2</code>: pode ser <code>Cbd2</code>, <code>Cfd2</code>), e o peão que chega à última fileira sem a peça a pede (<code>e8=D</code>, <code>e8D</code> ou <code>e7e8q</code>). O campo também responde a perguntas, para quem não vê o tabuleiro:</p>
@@ -524,7 +524,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/13-montar.png" alt="A ferramenta Montar posição.">
-<figcaption>A ferramenta <b>Montar posição</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A ferramenta <b>Montar posição</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -533,7 +533,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Analisar</b>, no cabeçalho do tabuleiro (ou <b>Analisar a posição</b> no menu <b>Xadrez</b>), liga o motor UCI, que analisa a posição mostrada até a profundidade 30. Ele recomeça a cada mudança de posição e pausa quando o tabuleiro não está à vista.</p>
 <figure>
 <img src="img/14-motor.png" alt="O Stockfish analisando com três linhas.">
-<figcaption>O Stockfish analisando a posição depois de 12…Td8, com três linhas. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O Stockfish analisando a posição depois de 12…Td8, com três linhas. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <ul>
 <li>As linhas (1, 2 ou 3, em <b>Linhas:</b> no menu ⋯) mostram a avaliação para as brancas (<code>+0,40</code>, <code>#3</code>) na notação escolhida para a lista (capítulo 17). Um clique num lance de uma linha joga a linha até ele: lances que já estão na partida são seguidos, e os outros começam uma variante.</li>
@@ -551,7 +551,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:1">
 <img src="img/15-prefs-motor.png" alt="O grupo Motor de xadrez nas Preferências.">
-<figcaption>O fim da seção <b>Xadrez</b> das Preferências: <b>Modelos de xadrez</b>, <b>Motor de xadrez</b> e o BOM do PGN. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O fim da seção <b>Xadrez</b> das Preferências: <b>Modelos de xadrez</b>, <b>Motor de xadrez</b> e o BOM do PGN. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -559,27 +559,27 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Conferir com o motor…</b> (no menu ⋯ da aba Texto e no menu <b>Xadrez</b>; só no app de mesa) põe o motor para conferir o que o livro diz. O diálogo pede as páginas e <b>Até a profundidade</b> (18) ou <b>Segundos por posição</b> (0,3). <b>Contar as posições</b> lê as páginas, com uma barra, e diz antes de começar quantas posições o motor vai analisar e quanto tempo isso leva (“Posições a conferir: 12.000 (≈ 1 h)”), deixando de fora as que as avaliações guardadas já têm nessa profundidade.</p>
 <figure class="half">
 <img src="img/15b-conferir.png" alt="O diálogo Conferir com o motor depois de contar as posições.">
-<figcaption>O diálogo <b>Conferir com o motor</b> no livro de exemplo, depois de <b>Contar as posições</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O diálogo <b>Conferir com o motor</b> no livro de exemplo, depois de <b>Contar as posições</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <p><b>Começar a conferência</b> roda em segundo plano, com a linha “Conferindo com o motor: posição 5 de 12 (faltam …)” e <b>Parar</b> na aba Texto; o que o motor já achou fica guardado, e <b>Continuar a conferência (faltam n)</b>, no ⋯ e no diálogo, pede só as que faltam. Depois, cada lance da aba Texto mostra a avaliação da posição depois dele, e <b>Divergências (n)</b> (no ⋯ da aba, e o botão ≠ n no alto dela quando há alguma) mostra a lista no lugar do texto da página: a página como o livro a numera, o que o livro diz, o que o cálculo diz, a fonte (motor ou solucionador de mate) e <b>Mostrar no PDF</b>; ‹ Texto e <kbd>Esc</kbd> voltam.</p>
 <div class="two" style="break-inside: avoid">
 <figure>
 <img src="img/08b-texto-avaliado.png" alt="A aba Texto com a avaliação depois de cada lance.">
-<figcaption>A aba <b>Texto</b> depois da conferência: a avaliação depois de cada lance, e o ≠ 1 no alto. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A aba <b>Texto</b> depois da conferência: a avaliação depois de cada lance, e o ≠ 1 no alto. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <figure>
 <img src="img/15c-divergencias.png" alt="A lista de divergências.">
-<figcaption><b>Divergências (1)</b> na Imortal: o livro dá ! a 18.♗d6, e o motor prefere 18.d4. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption><b>Divergências (1)</b> na Imortal: o livro dá ! a 18.♗d6, e o motor prefere 18.d4. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 <p>A conferência aponta o <code>!</code> que perde mais de 1,5 peão para o lance do motor, o <code>?</code> que é o próprio lance do motor, o sinal de avaliação a duas faixas da avaliação (um <code>+−</code> abaixo de +0,70), o “Brancas jogam e ganham” que a avaliação desmente, o exercício com uma segunda linha que também ganha e o mate em n sem mate ou com mais de uma chave; abaixo da profundidade 18 nada é julgado. Uma divergência pode ser um erro de leitura, e não do livro: confira o diagrama e o lance na página antes de anotar a errata.</p>
 
 <!-- ============================================================ 9 -->
-<h1 id="c9"><span class="num">9</span>No livro: onde a posição aparece</h1>
+<h1 id="c9"><span class="num">9</span>No livro e a Biblioteca</h1>
 <p><b>No livro (n)</b>, na barra do pé do tabuleiro, conta quantos lugares do livro aberto têm a posição mostrada: os lances do PGN do livro que chegam a ela e os diagramas lidos com ela. Um clique abre a lista no lugar dos lances; <b>‹ Lances</b> ou <kbd>Esc</kbd> voltam.</p>
 <figure>
 <img src="img/16-no-livro.png" alt="A lista No livro aberta no tabuleiro.">
-<figcaption>A lista <b>No livro</b>, na posição do diagrama da página 1. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A lista <b>No livro</b>, na posição do diagrama da página 1. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>Esta posição</h2>
 <ul>
@@ -595,18 +595,42 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.9">
 <img src="img/17-material.png" alt="A lista No livro por material.">
-<figcaption><b>No livro</b> ▸ <b>Por material</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption><b>No livro</b> ▸ <b>Por material</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h2>O que No livro olha</h2>
 <p>No livro nunca lê o livro: ele olha o PGN do livro e o que já foi lido, nesta sessão ou guardado em disco. Sem nada lido, diz: “Leia o livro (Detectar diagramas ou Texto) para encontrar a posição nele.” Um diagrama corrigido é achado pela posição que você deu. Quando os diagramas lidos não podem ser olhados, ele ainda responde pelo PGN, com um aviso âmbar sobre os diagramas.</p>
+
+<h2>A Biblioteca</h2>
+<p><b>Xadrez</b> ▸ <b>Biblioteca…</b> (só no app de mesa) lê uma vez os livros de xadrez das pastas que você escolher, para que uma posição, um lance, um jogador, um evento ou uma abertura sejam achados em todos eles sem abri-los. É um diálogo com duas vistas, <b>Livros</b> e <b>Pesquisar</b>, que funciona sem nenhum PDF aberto.</p>
+<figure>
+<img src="img/29-biblioteca-livros.png" alt="A Biblioteca na vista Livros, com uma pasta construída.">
+<figcaption>A <b>Biblioteca</b> na vista <b>Livros</b>, com a pasta do livro de exemplo já construída. <span class="build">build 7496134 2026-11-19</span></figcaption>
+</figure>
+<h3>Livros</h3>
+<p><b>Acrescentar uma pasta…</b> escolhe uma pasta, e <b>Remover</b> tira uma: os livros dela saem da Biblioteca, e os arquivos ficam onde estão. Uma pasta dentro de outra já escolhida é recusada. Cada livro diz em que pé está, em palavras: lido (com as páginas, os diagramas, os a revisar e as partidas), <b>Ainda não lido</b>, parado no meio, <b>Na nuvem: nunca aberto</b> ou pulado, com o motivo (<b>Pulado: cópia não permitida</b>, <b>Pulado: não abre</b>, <b>Pulado: maior que 1 GB</b>, <b>Pulado: um link, nunca seguido</b>, <b>Pulado: não está mais lá</b>…). Um livro criptografado pergunta <b>Cifrado: ler na Biblioteca?</b>, com <b>Sim</b> (e depois <b>Deixar de fora</b>): o sim fica guardado, e toda construção lê o livro dali em diante.</p>
+<h3>Construir</h3>
+<p>Nada é lido até você pedir: nunca ao abrir o app, nunca vigiando as pastas. Antes, o diálogo diz o que vai ler e quanto tempo isso leva, mais ou menos (“A ler: 38 livros, 16.944 páginas, ≈ 1 h 2 min (uma estimativa)”), e em quantos núcleos (“Lê em 4 dos 16 núcleos deste computador.”). <b>Construir</b> lê, em segundo plano e um livro por vez, cada livro cujo índice não está em dia, cada um aberto do arquivo, à parte dos documentos que você tem abertos. A linha da construção diz o livro e a página, com <b>Parar</b>; <b>Continuar</b> segue dali, e as páginas já lidas ficam.</p>
+<p>Fechar o diálogo deixa a construção rodando: a linha dela, com <b>Parar</b> e <b>Abrir a Biblioteca</b>, fica no pé da área da página. Sair do app a para entre duas páginas, sem perder o que foi lido. Uma construção por vez: enquanto outra janela, outro PdfCraft ou a ferramenta <code>chess_library_build</code> ocupa a Biblioteca, o diálogo diz isso e <b>Construir</b> espera. Uma construção que não terminou é dita na próxima vez, com <b>Continuar</b>.</p>
+<h3>Pesquisar</h3>
+<div class="two">
+<div>
+<p>Preencha <b>Posição (FEN)</b> (ou use <b>Do tabuleiro</b>, a posição da aba Tabuleiro; <b>Qualquer lado a jogar</b> compara só as peças), <b>Lance (SAN)</b> (<code>Bxh7+</code>), <b>Jogador</b>, <b>Evento</b> ou <b>Abertura (ECO)</b> (<code>B9</code> acha <code>B90</code>), e então <b>Pesquisar</b> ou <kbd>Enter</kbd>. O que foi achado vem livro a livro, cada linha com a página como o livro a numera e o diagrama ou o lance; <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> passam de linha em linha.</p>
+<p>Um resultado abre na aba que já mostra o livro dele, ou abre o PDF na página e contorna o lance (ou abre o diagrama). Um livro que mudou desde que a Biblioteca o leu é dito, e só a página dele é mostrada; um PDF que não está mais lá nunca é aberto. Reabrir a Biblioteca mostra a mesma pesquisa e os mesmos resultados.</p>
+</div>
+<figure style="flex:0.9">
+<img src="img/30-biblioteca-pesquisar.png" alt="A Biblioteca na vista Pesquisar, com um resultado.">
+<figcaption>A vista <b>Pesquisar</b>: <b>Lance (SAN)</b> <code>Qb8+</code> acha o 16.♛b8+ da Partida da Ópera duas vezes, na linha principal (p. 1) e numa variante das soluções (p. 4). <span class="build">build 7496134 2026-11-19</span></figcaption>
+</figure>
+</div>
+<p><b>Procurar na Biblioteca</b>, na lista <b>No livro</b> do tabuleiro, leva a posição do tabuleiro para todos os livros da Biblioteca. A Biblioteca guarda os arquivos dela na pasta de dados do app (<code>chess\library</code>: o catálogo e um índice por livro, até 128 MB), à parte das leituras dos livros que você abre. Pela linha de comando, o mesmo é <code>chess_library_build</code>, <code>_status</code>, <code>_clear</code> e <code>_find</code> (capítulo 20).</p>
 
 <!-- ============================================================ 10 -->
 <h1 id="c10"><span class="num">10</span>A lista de lances</h1>
 <p>A partida do tabuleiro aparece como num livro: na aba Tabuleiro, sob o tabuleiro, e, com <b>Lista de lances ao lado da página</b> (o ícone no cabeçalho do tabuleiro, ou o comando), numa coluna própria ao lado do PDF. Nessa coluna, <b>Esquerda</b> e <b>Direita</b> escolhem o lado, e − e + (<b>Texto menor</b> e <b>Texto maior</b>) mudam o tamanho da letra, de 70 % a 300 %.</p>
 <figure>
 <img src="img/18-lista-ao-lado.png" alt="A lista de lances ao lado da página.">
-<figcaption>A <b>Lista de lances ao lado da página</b>, em texto corrido, com figurinhas. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A <b>Lista de lances ao lado da página</b>, em texto corrido, com figurinhas. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <ul>
 <li><strong>Cabeçalho:</strong> jogadores (com Elo, quando houver), depois evento, local, data e rodada, cada um só quando a etiqueta diz algo. Um clique abre <b>Dados da partida</b>. O resultado (<code>1-0</code>, <code>0-1</code>, <code>½-½</code>, <code>*</code>) vem depois do último lance da linha principal.</li>
@@ -629,7 +653,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.75">
 <img src="img/19-menu-lance.png" alt="O menu de um lance.">
-<figcaption>Botão direito sobre 12…♜d8, na <b>Lista de lances ao lado da página</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>Botão direito sobre 12…♜d8, na <b>Lista de lances ao lado da página</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -669,7 +693,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ol>
 <figure>
 <img src="img/20-captura.png" alt="A captura armada e os lances capturados.">
-<figcaption>Uma seleção, nenhum <kbd>Enter</kbd>: a lista recebe a linha e a variante, e o aviso no pé da página diz quantos lances entraram, com <b>Desfazer</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>Uma seleção, nenhum <kbd>Enter</kbd>: a lista recebe a linha e a variante, e o aviso no pé da página diz quantos lances entraram, com <b>Desfazer</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>Os modos de captura</h2>
 <table>
@@ -747,7 +771,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.7">
 <img src="img/21-paleta.png" alt="A Paleta de sinais.">
-<figcaption>A <b>Paleta de sinais</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A <b>Paleta de sinais</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 <h2>Como os sinais aparecem</h2>
@@ -789,10 +813,10 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/22-partidas.png" alt="A lista de partidas do documento.">
-<figcaption><b>Partidas do documento</b>, no lugar dos lances. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption><b>Partidas do documento</b>, no lugar dos lances. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
-<p><b>Dados da partida</b> (em <b>Partida</b> ▾, ou um clique no cabeçalho da lista de lances) edita brancas, pretas, evento, local, data, rodada e resultado, gravados como etiquetas do PGN; um valor de mais de 256 bytes é cortado, com aviso. <b>Editar o FEN e o PGN</b>, em FEN/PGN ▾, mostra os dois campos no lugar dos lances: edite um e aperte <kbd>Enter</kbd> (FEN) ou <b>Carregar PGN</b>. Uma FEN digitada numa partida com lances pergunta: <b>Nova partida com esta posição</b> ou <b>Substituir esta partida</b>. Texto digitado no campo PGN fica como você digitou enquanto você joga, marcado <b>PGN editado</b>, com <b>Carregar</b> e <b>Descartar</b>; com várias partidas no campo, a primeira vai para o tabuleiro e as outras entram na lista.</p>
+<p><b>Dados da partida</b> (em <b>Partida</b> ▾, ou um clique no cabeçalho da lista de lances) edita brancas, pretas, evento, local, data, rodada e resultado, gravados como etiquetas do PGN; um valor de mais de 256 bytes é cortado, com aviso. <b>Editar o FEN e o PGN</b>, em FEN/PGN ▾, mostra os dois campos no lugar dos lances: edite um e aperte <kbd>Enter</kbd> (FEN) ou <b>Carregar PGN</b>. Com uma posição ilegal no tabuleiro não há partida: os campos de <b>Dados da partida</b> e o <b>Renomear…</b> da lista (o item do menu, o lápis e <kbd>F2</kbd>) ficam desligados e dizem por quê (“O tabuleiro mostra uma posição ilegal: corrija-a antes no editor de diagramas.”). Uma FEN digitada numa partida com lances pergunta: <b>Nova partida com esta posição</b> ou <b>Substituir esta partida</b>. Texto digitado no campo PGN fica como você digitou enquanto você joga, marcado <b>PGN editado</b>, com <b>Carregar</b> e <b>Descartar</b>; com várias partidas no campo, a primeira vai para o tabuleiro e as outras entram na lista.</p>
 <h2>O menu de uma partida</h2>
 <p><b>Renomear…</b> (<kbd>F2</kbd>): brancas, pretas, evento, local, data e rodada, num passo de desfazer; a data é <code>AAAA.MM.DD</code>, com <code>?</code> no que não se sabe (<code>1992.??.??</code>). <b>Duplicar</b>, mover para cima e para baixo (<kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd>; também dá para arrastar a linha). <b>Excluir…</b> (<kbd>Delete</kbd>) pergunta antes; excluir a última partida deixa uma em branco.</p>
 <p><kbd>Ctrl</kbd>+clique põe ou tira uma partida da seleção, e <kbd>Shift</kbd>+clique seleciona um intervalo; numa linha com o teclado, <kbd>Shift</kbd>+<kbd>↑</kbd> / <kbd>↓</kbd> estende a seleção, <kbd>Ctrl</kbd>+<kbd>A</kbd> seleciona todas e <kbd>Ctrl</kbd>+<kbd>Espaço</kbd> marca a linha. O menu, os botões e as teclas agem então em todas as selecionadas, num único passo de desfazer. O Desfazer também desfaz mudanças da lista: exclusões, partidas novas, duplicadas, PGN aberto, diagrama aberto no tabuleiro (“Desfazer Carregar o diagrama”).</p>
@@ -835,7 +859,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>As <b>Preferências</b> têm à esquerda um índice das seções (<b>Geral</b>, <b>Aparência</b>, <b>Documentos e visualização</b>, <b>Cores de leitura</b>, <b>Identidade</b>, <b>Preencher e assinar</b>, <b>Formato de data</b>, <b>Xadrez</b>, <b>JavaScript</b>): um clique leva à seção, que de resto só rola pela barra de rolagem. <b>Fechar</b> fica embaixo, sempre à vista.</p>
 <figure>
 <img src="img/23-preferencias.png" alt="As Preferências na seção Xadrez.">
-<figcaption>As <b>Preferências</b>, com o índice das seções à esquerda, na seção <b>Xadrez</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>As <b>Preferências</b>, com o índice das seções à esquerda, na seção <b>Xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>A seção Xadrez</h2>
 <p>Na ordem em que aparecem:</p>
@@ -867,7 +891,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure>
 <img src="img/24-pecas.png" alt="A grade de conjuntos de peças nas Preferências.">
-<figcaption>A grade de conjuntos de peças e os botões de importação. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A grade de conjuntos de peças e os botões de importação. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:28%">Botão</th><th>Faz</th></tr>
@@ -888,7 +912,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </div>
 <figure style="flex:0.8">
 <img src="img/25-tema.png" alt="O menu Tema do tabuleiro.">
-<figcaption>O menu <b>Tema do tabuleiro</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O menu <b>Tema do tabuleiro</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 </div>
 
@@ -897,7 +921,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p><b>Exportar livro…</b> (o ícone de arquivo no alto da aba Diagramas, o menu ⋯ da aba Texto, ou <b>Exportar livro de xadrez…</b> no menu <b>Xadrez</b>) abre o diálogo <b>Exportar livro de xadrez</b>. Tudo sai com as suas correções, o PGN do livro e as partidas do documento.</p>
 <figure>
 <img src="img/26-exportar.png" alt="O diálogo Exportar livro.">
-<figcaption>O diálogo de exportação, com o resumo do que vai sair. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>O diálogo de exportação, com o resumo do que vai sair. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <table>
 <tr><th style="width:26%">Campo</th><th>Escolhas</th></tr>
@@ -919,7 +943,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </ul>
 <figure class="half">
 <img src="img/27-folha.png" alt="O diálogo com a Folha de exercícios escolhida.">
-<figcaption><b>Folha de exercícios (PDF)</b> no livro de exemplo: os exercícios dele são títulos, não diagramas numerados, então o diálogo diz por quê e <b>Exportar…</b> fica desligado. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption><b>Folha de exercícios (PDF)</b> no livro de exemplo: os exercícios dele são títulos, não diagramas numerados, então o diálogo diz por quê e <b>Exportar…</b> fica desligado. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>O que vai e o que não vai para o livro exportado</h2>
 <ul>
@@ -940,7 +964,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <p>As teclas da partida funcionam com o escopo de xadrez ativo e nunca enquanto um campo de texto tem o foco; as de uma letra, só com <b>Atalhos de uma tecla</b> ligado. No macOS, <kbd>Ctrl</kbd> é <kbd>⌘</kbd> e <kbd>Alt</kbd> é <kbd>⌥</kbd>. As teclas do editor estão no capítulo 4. <kbd>F1</kbd>, no tabuleiro, abre a folha dos atalhos de xadrez (também <b>Atalhos de xadrez</b> no menu <b>Xadrez</b>).</p>
 <figure>
 <img src="img/28-atalhos.png" alt="A folha dos atalhos de xadrez.">
-<figcaption>A folha <b>Atalhos de xadrez</b>. <span class="build">build f720627 2026-11-18</span></figcaption>
+<figcaption>A folha <b>Atalhos de xadrez</b>. <span class="build">build 7496134 2026-11-19</span></figcaption>
 </figure>
 <h2>Tabuleiro e partida</h2>
 <table>
@@ -1014,7 +1038,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td><code>chess_errata</code></td><td>As erratas da notação do livro, em CSV ou Markdown: erro impresso (<code>misprint</code>), a conferir (<code>check</code>) e, com <code>evals_store</code>, o <code>!</code> que o motor refuta.</td></tr>
 <tr><td><code>chess_engine_review</code>, <code>chess_evals</code>, <code>chess_mate</code></td><td>O livro diz × o cálculo diz, a partir das avaliações guardadas; as avaliações; o solucionador de mate.</td></tr>
 <tr><td><code>chess_move_at</code>, <code>chess_position_find</code>, <code>chess_pattern_find</code></td><td>O lance impresso num ponto da página; onde uma posição, ou um material e uma estrutura de peões, aparecem no que já foi lido.</td></tr>
-<tr><td><code>chess_library_build</code>, <code>_find</code>, <code>_status</code>, <code>_clear</code></td><td>A biblioteca: o catálogo e o índice de uma pasta de livros, e a busca de uma posição, um material ou uma partida em todos eles (no app ainda não há o painel).</td></tr>
+<tr><td><code>chess_library_build</code>, <code>_find</code>, <code>_status</code>, <code>_clear</code></td><td>A Biblioteca sem o app: lê as pastas e indexa cada livro (<code>dirs</code>, um livro por vez, <code>max_books</code> por chamada), mostra o estado de cada livro, tira o índice de um livro ou de todos, e acha uma posição, um lance, um jogador, um evento, uma abertura ou um material em todos eles, sem ler página nenhuma (no app, <b>Xadrez</b> ▸ <b>Biblioteca…</b>, capítulo 9).</td></tr>
 <tr><td><code>chess_review_pack_export</code>, <code>_import</code></td><td>A revisão de um livro levada a outra máquina.</td></tr>
 <tr><td><code>chess_cache_status</code>, <code>chess_cache_clear</code>, <code>chess_store_migrate</code></td><td>A leitura guardada em disco; trazer um <code>.pdfcraft/</code> antigo.</td></tr>
 <tr><td><code>chess_read_area</code>, <code>chess_glyph_sample</code>, <code>chess_diagram_crop</code></td><td>O OCR de xadrez num retângulo; uma amostra 32 × 32 para retreino; a imagem de um diagrama recortada da página.</td></tr>

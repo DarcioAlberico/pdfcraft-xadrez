@@ -1,10 +1,11 @@
 # A ajuda do xadrez em PDF
 
-**Status:** a fonte da ajuda é [`ajuda.html`](ajuda.html), em português do Brasil, refeita no passo A9-E1 do plano (`../plano-analise-9.md`) para o build que a capa nomeia. O PDF, as figuras e os geradores ficam fora do repositório.
+**Status:** a fonte da ajuda é [`ajuda.html`](ajuda.html), em português do Brasil, refeita no passo A9-E1 do plano (`../plano-analise-9.md`) e no A9-E1c para o build que a capa nomeia. O PDF, as figuras e os geradores ficam fora do repositório.
 
 | Data | Mudança |
 |---|---|
 | 2026-11-18 | A9-E1: a ajuda refeita para o build `f720627`, com a fonte no repositório. |
+| 2026-11-19 | A9-E1c: a Biblioteca (N15c) e o I6b; as capturas refeitas do build `7496134`, o do `dist/app`. |
 
 ## O que fica onde
 
