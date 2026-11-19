@@ -920,6 +920,15 @@ impl Automation {
                 "number": x.number,
                 "reason": x.reason.name(),
             })).collect::<Vec<_>>()),
+            // The exercises written without ChessBase's training question, and why (plan
+            // A9-N10c); null when none is written (another dialect, comments none, the other
+            // exports).
+            "training_left_out": made.exercises.as_ref().and_then(|e| e.training_left_out.as_ref()).map(|t| t.iter().map(|x| json!({
+                "page": x.at.page.saturating_add(1),
+                "diagram": x.at.index.saturating_add(1),
+                "number": x.number,
+                "reason": x.reason.name(),
+            })).collect::<Vec<_>>()),
             // The moves that got the engine's comment, and the evaluations read (plan A9-N17a);
             // null without evals_store.
             "engine_comments": made.engine_comments,

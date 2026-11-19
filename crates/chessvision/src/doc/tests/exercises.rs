@@ -3,11 +3,15 @@
 
 use super::*;
 use crate::doc::anki::{AnkiDeck, Card, MAX_PREFIX, anki_deck, image_name, media_prefix};
-use crate::doc::exercises::{Exercise, ExercisesPgn, LeftOut, LeftOutReason, exercises_pgn};
+use crate::doc::exercises::{
+    Exercise, ExercisesPgn, LeftOut, LeftOutReason, TrainingLeftOut, TrainingLeftOutReason, exercises_pgn, training_command, training_language,
+};
+use crate::doc::games::MAX_COMMENT_BYTES;
 use crate::doc::markdown::PgnBook;
 use pdfcraft_chess::fen::Fen;
 use pdfcraft_chess::game::{Game as PgnGame, split_pgn};
-use pdfcraft_chess::pgn_style::PgnStyle;
+use pdfcraft_chess::pgn::split_commands;
+use pdfcraft_chess::pgn_style::{PgnDialect, PgnStyle};
 
 const ROOK: &str = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
 /// Black mates at once: `1...Qf1#`.
@@ -205,4 +209,168 @@ fn the_pictures_names_are_safe_and_the_same_on_every_run() {
         assert!(!name.starts_with(['-', '.']) && name.ends_with("-p0001-1.png"), "{name}");
     }
     assert_eq!(image_name("x", usize::MAX, usize::MAX), format!("x-p{}-{}.png", usize::MAX, usize::MAX), "no overflow");
+}
+
+/// White mates at once with the rook from d1: `1.Rd8#`, the move of the D18 session's exercise.
+const BACK_RANK: &str = "6k1/5ppp/8/8/8/8/8/3R2K1 w - - 0 1";
+/// White's first move castles: `1.O-O`.
+const CASTLES: &str = "4k3/8/8/8/8/8/8/4K2R w K - 0 1";
+/// White's first move promotes: `1.a8=Q`.
+const PROMOTES: &str = "8/P7/8/8/8/8/7k/4K3 w - - 0 1";
+
+/// [`training_book`]'s exercises in Portuguese as standard PGN: as main's writer wrote them before
+/// the training question (plan A9-N10c).
+const TRAINING_BOOK_STANDARD: &str = "[Event \"Puzzles\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"1\"]\n[White \"?\"]\n[Black \"?\"]\n\
+[Result \"1-0\"]\n[SetUp \"1\"]\n[FEN \"6k1/5ppp/8/8/8/8/8/3R2K1 w - - 0 1\"]\n[PdfPage \"1\"]\n[PdfPageLabel \"7\"]\n[PdfDiagram \"1\"]\n\
+[PdfPuzzle \"1\"]\n[SourceTitle \"Puzzles\"]\n\n{Brancas jogam (№ 1). Pág. 7 · diagrama 1 de 3. №1. Mate} 1. Rd8# 1-0\n\n\
+[Event \"Puzzles\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"2\"]\n[White \"?\"]\n[Black \"?\"]\n\
+[Result \"*\"]\n[SetUp \"1\"]\n[FEN \"4k3/8/8/8/8/8/8/4K2R w K - 0 1\"]\n[PdfPage \"1\"]\n[PdfPageLabel \"7\"]\n[PdfDiagram \"2\"]\n\
+[PdfPuzzle \"2\"]\n[SourceTitle \"Puzzles\"]\n\n{Brancas jogam (№ 2). Pág. 7 · diagrama 2 de 3. №2. Castle} 1. O-O *\n\n\
+[Event \"Puzzles\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"3\"]\n[White \"?\"]\n[Black \"?\"]\n\
+[Result \"*\"]\n[SetUp \"1\"]\n[FEN \"8/P7/8/8/8/8/7k/4K3 w - - 0 1\"]\n[PdfPage \"1\"]\n[PdfPageLabel \"7\"]\n[PdfDiagram \"3\"]\n\
+[PdfPuzzle \"3\"]\n[SourceTitle \"Puzzles\"]\n\n{Brancas jogam (№ 3). Pág. 7 · diagrama 3 de 3. №3. Queen} 1. a8=Q *\n";
+
+/// Three numbered diagrams on a page, their solutions on the next: a plain move, a castling and
+/// a promotion, the book in `lang`.
+fn training_book(lang: &str) -> ChessDoc {
+    let p0 = page_text(vec![line(45.0, "№1. Mate"), line(245.0, "№2. Castle"), line(445.0, "№3. Queen")]);
+    let d0 = [reading(0, 60.0, BACK_RANK, true, false), reading(1, 260.0, CASTLES, true, false), reading(2, 460.0, PROMOTES, true, false)];
+    let p1 = page_text(vec![
+        line(100.0, "№1. Mate"),
+        line(120.0, "1.Rd8#"),
+        line(160.0, "№2. Castle"),
+        line(180.0, "1.O-O"),
+        line(220.0, "№3. Queen"),
+        line(240.0, "1.a8=Q"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let mut doc = b.finish();
+    for page in &mut doc.pages {
+        page.text_lang = LangTag::parse(lang);
+    }
+    doc
+}
+
+fn written_for(doc: &ChessDoc, dialect: PgnDialect) -> ExercisesPgn {
+    let book = PgnBook { title: Some("Puzzles".into()), labels: vec!["7".into(), "8".into()] };
+    exercises_pgn(doc, &book, PgnStyle { dialect, ..PgnStyle::FULL })
+}
+
+/// A game's move text, its lines joined by spaces (the writer wraps at 79 columns).
+fn movetext_of(chunk: &str) -> String {
+    let body = chunk.split_once("\n\n").map_or("", |(_, m)| m);
+    body.trim_end().lines().collect::<Vec<_>>().join(" ")
+}
+
+/// Plan A9-N10c (decision D20, the D18 session's row D2): in the ChessBase dialect the statement's
+/// comment opens with ChessBase's training question, in the shape the session saw ChessBase 26
+/// write (`{[%tqu "Pt","Mate em 1.","","","d1d8","",10,"h2h3","",5] As brancas jogam e dão
+/// mate.} 1. Rd8# *`), with one answer: the language, the question, two empty fields, the first
+/// move as its squares, empty feedback and 10, then the rest of the statement. The castling and
+/// the promotion, which the session did not see, are written without it and listed.
+#[test]
+fn chessbase_writes_the_training_question_as_the_d18_session_saw_it() {
+    let doc = training_book("pt");
+    let made = written_for(&doc, PgnDialect::ChessBase);
+    println!("CHESSBASE-PGN-BEGIN\n{}CHESSBASE-PGN-END", made.pgn);
+    let numbers: Vec<u32> = made.exercises.iter().map(|e| e.number).collect();
+    assert_eq!(numbers, [1, 2, 3], "every exercise is written: {}", made.pgn);
+    let chunks = split_pgn(&made.pgn, 10);
+    assert_eq!(chunks.len(), 3, "{}", made.pgn);
+    // The D2 row's line, its texts this book's, built by hand.
+    let expected = "{[%tqu \"Pt\",\"Brancas jogam (№ 1).\",\"\",\"\",\"d1d8\",\"\",10] Pág. 7 · diagrama 1 de 3. №1. Mate} 1. Rd8# 1-0";
+    assert_eq!(movetext_of(chunks[0]), expected, "{}", chunks[0]);
+    let line = chunks[0].lines().find(|l| l.contains("[%tqu")).unwrap_or_default();
+    assert!(line.contains(",10]"), "the command on one line: {}", chunks[0]);
+    for (chunk, (said, moves)) in
+        chunks.iter().skip(1).zip([("{Brancas jogam (№ 2). Pág. 7 · diagrama 2 de 3", "1. O-O"), ("{Brancas jogam (№ 3).", "1. a8=Q")])
+    {
+        assert!(!chunk.contains("%tqu"), "no coding is guessed: {chunk}");
+        assert!(chunk.contains(said) && chunk.contains(moves), "written as in standard PGN: {chunk}");
+    }
+    assert_eq!(
+        made.training_left_out,
+        Some(vec![
+            TrainingLeftOut { at: DiagramAt::on(0, 1), number: 2, reason: TrainingLeftOutReason::Castling },
+            TrainingLeftOut { at: DiagramAt::on(0, 2), number: 3, reason: TrainingLeftOutReason::Promotion },
+        ])
+    );
+    assert_eq!((TrainingLeftOutReason::Castling.name(), TrainingLeftOutReason::Promotion.name()), ("castling", "promotion"));
+}
+
+/// Plan A9-N10c: standard PGN and the Lichess dialect write the exercises byte for byte as before
+/// the training question (the PGN below is plan A9-N10's, checked against main's writer), and say
+/// no training question; nor does the ChessBase dialect with the comments left out.
+#[test]
+fn standard_and_lichess_write_no_training_question() {
+    let doc = training_book("pt");
+    let standard = written_for(&doc, PgnDialect::Standard);
+    assert_eq!(standard.pgn, TRAINING_BOOK_STANDARD, "{}", standard.pgn);
+    assert_eq!(standard.training_left_out, None);
+    assert!(!standard.pgn.contains("%tqu"), "{}", standard.pgn);
+    let lichess = written_for(&doc, PgnDialect::Lichess);
+    assert_eq!((lichess.pgn.as_str(), lichess.training_left_out), (standard.pgn.as_str(), None), "no glyph here for lichess to change");
+    let book = PgnBook { title: Some("Puzzles".into()), labels: vec!["7".into(), "8".into()] };
+    let bare = exercises_pgn(&doc, &book, PgnStyle { dialect: PgnDialect::ChessBase, comments: false, ..PgnStyle::FULL });
+    assert!(!bare.pgn.contains('{') && bare.training_left_out.is_none(), "{}", bare.pgn);
+}
+
+/// Plan A9-N10c: the language field is the tab of ChessBase's dialog in the book's language (Ne
+/// for Dutch); any other is En, the question left in the book's language.
+#[test]
+fn the_training_language_is_chessbases_tab_else_english() {
+    let tabs: Vec<(Lang, &str)> = Lang::ALL.iter().map(|&l| (l, training_language(l))).collect();
+    for (lang, tab) in &tabs {
+        let want = match lang {
+            Lang::En => "En",
+            Lang::De => "De",
+            Lang::Fr => "Fr",
+            Lang::Es => "Es",
+            Lang::It => "It",
+            Lang::Nl => "Ne",
+            Lang::Pt => "Pt",
+            _ => "En",
+        };
+        assert_eq!(*tab, want, "{lang:?}");
+    }
+    for (code, start) in
+        [("de", "[%tqu \"De\",\"Weiß am Zug (№ 1).\""), ("nl", "[%tqu \"Ne\",\"Wit aan zet (№ 1).\""), ("ru", "[%tqu \"En\",\"Ход белых (№ 1).\"")]
+    {
+        let pgn = written_for(&training_book(code), PgnDialect::ChessBase).pgn;
+        assert!(pgn.contains(&format!("{{{start},\"\",\"\",\"d1d8\",\"\",10]")), "{code}: {pgn}");
+    }
+}
+
+/// Plan A9-N10c: how ChessBase escapes was not seen, so the question is made safe: a `"` is `'`, a
+/// `]` (which would end the command) and a `[` are parentheses, a line break a space. The command
+/// is then one command to the reader, and never longer than a comment.
+#[test]
+fn the_question_is_made_safe_inside_the_command() {
+    let command = training_command(Lang::En, "Say \"mate\" ]now[\nor\tlater", "e2e4");
+    assert_eq!(command, "[%tqu \"En\",\"Say 'mate' )now( or later\",\"\",\"\",\"e2e4\",\"\",10]");
+    let (prose, commands) = split_commands(&format!("{command} After it."));
+    assert_eq!((prose.as_str(), commands.len()), ("After it.", 1), "{commands:?}");
+    assert_eq!(commands.first().map(|c| (c.name(), c.text.as_str())), Some(("tqu", command.as_str())));
+    // A question past the cap is cut at a character, the command whole.
+    let long = training_command(Lang::Pt, &"é".repeat(MAX_COMMENT_BYTES), "d1d8");
+    assert!(long.len() <= MAX_COMMENT_BYTES && long.ends_with("\",\"\",\"\",\"d1d8\",\"\",10]"), "{}", long.len());
+    assert_eq!(split_commands(&long).1.len(), 1);
+}
+
+/// Plan A9-N10c: the board's reader keeps the training question as one command of the statement's
+/// comment, the rest of the statement its prose; written again, the PGN is the same.
+#[test]
+fn the_training_question_reads_back_as_one_command() {
+    let made = written_for(&training_book("pt"), PgnDialect::ChessBase);
+    let chunk = split_pgn(&made.pgn, 10).into_iter().next().unwrap_or_default();
+    let (game, stopped) = PgnGame::from_pgn(chunk).unwrap();
+    assert_eq!(stopped, None);
+    let (prose, commands) = split_commands(game.comment(0));
+    assert_eq!(prose, "Pág. 7 · diagrama 1 de 3. №1. Mate");
+    let texts: Vec<&str> = commands.iter().map(|c| c.text.as_str()).collect();
+    assert_eq!(texts, ["[%tqu \"Pt\",\"Brancas jogam (№ 1).\",\"\",\"\",\"d1d8\",\"\",10]"]);
+    let again = game.pgn_with(PgnStyle { dialect: PgnDialect::ChessBase, ..PgnStyle::FULL });
+    assert_eq!(again.trim_end(), chunk.trim_end(), "written again, the same");
 }

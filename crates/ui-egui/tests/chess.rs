@@ -6409,6 +6409,11 @@ fn exercise_book(pages: &[(&str, Option<&str>)]) -> Vec<u8> {
 /// [`exercise_book`], a page per `(caption, solution, foot)`: the caption above the board when
 /// there is one, and a caption at the page's foot, which numbers the next page's first diagram.
 fn footed_book(pages: &[(Option<&str>, Option<&str>, Option<&str>)]) -> Vec<u8> {
+    book_of_boards(pages, |_| MERIDA_START.map(String::from))
+}
+
+/// [`footed_book`] with page `i`'s board `board(i)` (its rows in the Chess Merida layout, [`merida`]).
+fn book_of_boards(pages: &[(Option<&str>, Option<&str>, Option<&str>)], board: impl Fn(usize) -> [String; 8]) -> Vec<u8> {
     let widths = vec!["1000"; 95].join(" ");
     let n = pages.len();
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
@@ -6420,7 +6425,7 @@ fn footed_book(pages: &[(Option<&str>, Option<&str>, Option<&str>)]) -> Vec<u8> 
     ];
     for (i, (caption, solution, foot)) in pages.iter().enumerate() {
         let mut c = caption.map(|caption| format!("BT /F2 11 Tf 60 755 Td ({caption}) Tj ET\n")).unwrap_or_default();
-        c.push_str(&font_board(&MERIDA_START.map(String::from)));
+        c.push_str(&font_board(&board(i)));
         if let Some(moves) = solution {
             c.push_str(&format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n"));
         }
@@ -6591,6 +6596,40 @@ fn the_sheets_count_reads_nothing_and_the_export_reads_the_rest() {
     assert!(pages.concat().contains("Nº 5 · p. 5"), "the export read the rest: {pages:?}");
     let done = h.state().chess.export_done.clone().expect("the window says what was written");
     assert!(done.notes.iter().any(|n| n == "Exercises: 5 (solution not read: 1)"), "{:?}", done.notes);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-N10c: the export dialog's **PGN for: ChessBase** reaches the exercises. Their PGN opens
+/// the first exercise's statement with ChessBase's training question, writes the second, whose
+/// first move castles, without it, and the window it ends with counts that one.
+#[test]
+fn the_dialogs_chessbase_choice_writes_the_exercises_training_question() {
+    use egui::accesskit::Role;
+    let dir = corrections_dir("n10c-tqu");
+    std::fs::create_dir_all(&dir).unwrap();
+    let boards = [merida("6k1/5ppp/8/8/8/8/8/3R2K1"), merida("4k3/8/8/8/8/8/8/4K2R")];
+    let pages = [(Some("Exercise 1"), Some("1.Rd8#"), None), (Some("Exercise 2"), Some("1.O-O"), None)];
+    let pdf = book_of_boards(&pages, |i| boards[i].clone());
+    let mut h = harness_with(pdf, 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+    let out = dir.join("exercises.pgn");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.state_mut().open_chess_export();
+    h.run_steps(2);
+    h.get_by_label("PGN — exercises").click();
+    h.run_steps(2);
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().as_deref() == Some("PGN for")).click();
+    h.run_steps(2);
+    h.get_by_label("ChessBase").click();
+    h.run_steps(2);
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    let pgn = std::fs::read_to_string(&out).expect("written");
+    let games: Vec<&str> = pgn.split("\n\n[Event").collect();
+    assert_eq!(games.len(), 2, "{pgn}");
+    assert!(games[0].contains("\n{[%tqu \"En\",\"White to move (№ 1).\",\"\",\"\",\"d1d8\",\"\",10] Page 1"), "{pgn}");
+    assert!(!games[1].contains("%tqu") && games[1].contains("{White to move (№ 2).") && games[1].contains("1. O-O"), "{pgn}");
+    let done = h.state().chess.export_done.clone().expect("the window says what was written");
+    assert!(done.notes.iter().any(|n| n == "Without ChessBase's training question: 1"), "{:?}", done.notes);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

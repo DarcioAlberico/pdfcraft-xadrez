@@ -151,7 +151,8 @@ impl MadeSheet {
             .map(|i| Exercise { at: i.at, number: i.number, moves: i.solution.as_deref().map_or(0, |s| s.split_whitespace().count()) })
             .collect();
         let drawn = self.sheet.items().count();
-        let listed = ExercisesPgn { pgn: String::new(), exercises, left_out: self.sheet.left_out.clone(), warnings: Vec::new() };
+        let listed =
+            ExercisesPgn { pgn: String::new(), exercises, left_out: self.sheet.left_out.clone(), warnings: Vec::new(), training_left_out: None };
         ChessExport {
             bytes: Arc::try_unwrap(self.bytes).unwrap_or_else(|shared| (*shared).clone()),
             images: Vec::new(),
