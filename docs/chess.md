@@ -477,7 +477,7 @@ The rail is a column of 28 pt buttons beside the board, in sections. Each button
 | **Undo**, **Redo** | Ctrl+Z, Ctrl+Shift+Z | The game's own history (below); the names say what they would undo. |
 | **Chess in its own window** | | The board and the Chess panel in a window of their own (desktop only). |
 
-When the rail does not fit the panel's height, the buttons left over go, in order, under ⋯ **More board tools** at the rail's foot; at 1366 × 768, **Chess in its own window** and the last buttons are there, and their keys still work.
+When the rail does not fit the panel's height, the buttons left over go, in order, under ⋯ **More board tools** at the rail's foot, and their keys still work; in a window of 1366 × 768 the whole rail fits.
 
 On macOS, Ctrl is ⌘ and Alt is ⌥. Every tool is also a command (`chess.tool.*`, `chess.variation.*`, `chess.moves.*`, `chess.nag.1`–`6`, `chess.comment.edit`, `chess.palette.toggle`, `chess.source.*`, `chess.window.detach`), so it can be found with Ctrl+K and run by automation.
 
