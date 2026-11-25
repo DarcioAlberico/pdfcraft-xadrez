@@ -3802,7 +3802,6 @@ the move's comment	Move comment	تعليق النقلة
 	Back to Diagrams	العودة إلى المخططات
 	Tools panel collapsed	تم طي لوحة الأدوات
 	Show the page (F6)	إظهار الصفحة (F6)
-	The board is in the column beside.	الرقعة في العمود المجاور.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	إضافة إشارات مرجعية للشطرنج
 	Make the book's bookmarks…	إنشاء الإشارات المرجعية للكتاب…
@@ -4159,4 +4158,5 @@ pawn structure	Passed	حرة
 	Larger board	رقعة أكبر
 	Smaller board	رقعة أصغر
 	Board size: automatic	حجم الرقعة: تلقائي
+	Board size: the largest	حجم الرقعة: الأكبر
 	Drag to change the board's size	اسحب لتغيير حجم الرقعة

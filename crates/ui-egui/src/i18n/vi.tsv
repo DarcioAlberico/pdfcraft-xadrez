@@ -3779,7 +3779,6 @@ the move's comment	Move comment	Bình luận của nước đi
 	Back to Diagrams	Về Sơ đồ
 	Tools panel collapsed	Đã thu gọn bảng Công cụ
 	Show the page (F6)	Hiện trang (F6)
-	The board is in the column beside.	Bàn cờ ở cột bên cạnh.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Thêm dấu trang cờ vua
 	Make the book's bookmarks…	Tạo dấu trang cho sách…
@@ -4136,4 +4135,5 @@ pawn structure	Passed	Tốt thông
 	Larger board	Bàn cờ lớn hơn
 	Smaller board	Bàn cờ nhỏ hơn
 	Board size: automatic	Kích thước bàn cờ: tự động
+	Board size: the largest	Kích thước bàn cờ: lớn nhất
 	Drag to change the board's size	Kéo để thay đổi kích thước bàn cờ

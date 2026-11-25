@@ -3543,7 +3543,6 @@ the move's comment	Move comment	Comentário do lance
 	Back to Diagrams	Voltar para Diagramas
 	Tools panel collapsed	Painel Ferramentas recolhido
 	Show the page (F6)	Mostrar a página (F6)
-	The board is in the column beside.	O tabuleiro está na coluna ao lado.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Adicionar marcadores de xadrez
 	Make the book's bookmarks…	Criar os marcadores do livro…
@@ -3902,4 +3901,5 @@ pawn structure	Passed	Passados
 	Larger board	Tabuleiro maior
 	Smaller board	Tabuleiro menor
 	Board size: automatic	Tamanho do tabuleiro: automático
+	Board size: the largest	Tamanho do tabuleiro: o maior
 	Drag to change the board's size	Arraste para mudar o tamanho do tabuleiro

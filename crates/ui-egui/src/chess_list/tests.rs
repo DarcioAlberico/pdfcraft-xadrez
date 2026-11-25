@@ -172,7 +172,9 @@ fn the_list_follows_the_page() {
 #[test]
 fn the_keys_walk_the_whole_list() {
     let mut h = harness(true);
-    h.get_by_label("Diagram 1 · Verified").focus();
+    // The first page's, at the top: the next one's may be in sight too.
+    let first = h.get_all_by_label("Diagram 1 · Verified").min_by(|a, b| a.rect().min.y.total_cmp(&b.rect().min.y)).unwrap();
+    first.focus();
     h.run_steps(2);
     assert_eq!(h.state().chess.shown_list().focused, Some(DiagramAt::new(0, 0)));
     key(&mut h, Key::ArrowDown);

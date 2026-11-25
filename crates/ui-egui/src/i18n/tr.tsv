@@ -3523,7 +3523,6 @@ the move's comment	Move comment	Hamlenin yorumu
 	Back to Diagrams	Diyagramlar'a dön
 	Tools panel collapsed	Araçlar paneli daraltıldı
 	Show the page (F6)	Sayfayı göster (F6)
-	The board is in the column beside.	Tahta yandaki sütunda.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Satranç yer işaretleri ekle
 	Make the book's bookmarks…	Kitabın yer işaretlerini oluştur…
@@ -3882,4 +3881,5 @@ pawn structure	Passed	Geçer
 	Larger board	Daha büyük tahta
 	Smaller board	Daha küçük tahta
 	Board size: automatic	Tahta boyutu: otomatik
+	Board size: the largest	Tahta boyutu: en büyük
 	Drag to change the board's size	Tahtanın boyutunu değiştirmek için sürükleyin

@@ -7,7 +7,8 @@
 //!   program, clearing the drawings, the diagram the board came from);
 //! - the board, as large as the room the other regions leave allows (with the evaluation bar
 //!   beside it while the engine analyses), or the side the user chose ([`BoardSide`]) by dragging
-//!   the grip under it or with the board's menu, kept between sessions;
+//!   the grip under it or with the board's menu, kept between sessions (in a panel wider than
+//!   tall, with the moves beside it where that gives a larger board: [`Regions::tab`]);
 //! - the navigation row ([`NAV`]): start, back, forward, end, the variations before and after, the
 //!   board turned round, and at its end the engine's state or the material;
 //! - the engine's lines while it analyses, a row of [`ENGINE_LINE`] each (up to
@@ -51,9 +52,20 @@ pub(crate) const BAR: f32 = 24.0;
 /// Least rows of moves without the engine's lines, and with them (§2.8.0 sketch (d)).
 pub(crate) const ROWS: usize = 10;
 pub(crate) const ROWS_WITH_ENGINE: usize = 7;
-/// Least rows of moves under a board whose side the user chose: it may take the room the
-/// automatic board leaves to the moves, all but these.
+/// The rows an automatic board leaves the moves in a wide panel, and the widths (points) from
+/// which they fall from those above and at which they are these (2026-11-25: the moves' room is
+/// wide there, and in a class the board is what is looked at).
+const ROWS_WIDE: usize = 4;
+const WIDE: std::ops::RangeInclusive<f32> = 420.0..=600.0;
+/// Least rows of moves under a board whose side the user chose, while something shows in the
+/// moves' place (the games, the fields, the comment being written: [`rows_kept`]). While only the
+/// moves would, it may take all their room: the board as large as the panel allows.
 pub(crate) const ROWS_CHOSEN: usize = 3;
+/// The board with the moves beside it, where the panel is wide ([`Regions::tab`]): the least width
+/// of the board's side (its header and navigation), of the moves', and the gap between them.
+const BESIDE_BOARD: f32 = 300.0;
+const BESIDE_MOVES: f32 = 260.0;
+const BESIDE_GAP: f32 = 10.0;
 /// The smallest board drawn while the column holds the other regions at all, in points.
 const SMALLEST_BOARD: f32 = 96.0;
 /// The largest side the user may choose, in points: the panels' largest board.
@@ -87,18 +99,24 @@ pub enum MovesView {
 }
 
 /// The board's side in the Chess column's Board tab: automatic, as large as the other regions
-/// and [`ROWS`] rows of moves leave it (the only rule before the user could size it), or the side
-/// the user chose, in points, by dragging the grip under the board or with the board's menu. Kept
-/// between sessions as the settings' `chess_board_side`: null (or absent) for automatic.
+/// and [`ROWS`] rows of moves leave it (or the moves beside it, [`Regions::tab`]); the side the
+/// user chose, in points, by dragging the grip under the board or with the board's menu; or the
+/// largest the panel allows whatever its size (the grip dragged all the way down, or the menu).
+/// Kept between sessions as the settings' `chess_board_size`: null (or absent) for automatic.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) enum BoardSide {
     #[default]
     Auto,
     /// Within [`SMALLEST_BOARD`]..=[`LARGEST_CHOSEN`] when made by [`BoardSide::chosen`].
     Chosen(f32),
+    /// As large as the panel allows, growing and shrinking with it.
+    Largest,
 }
 
 impl BoardSide {
+    /// The settings' word for [`BoardSide::Largest`].
+    const LARGEST: &str = "largest";
+
     /// A side the user chose, `side` points, kept within [`SMALLEST_BOARD`]..=[`LARGEST_CHOSEN`];
     /// a side that is not a number is automatic.
     pub(crate) fn chosen(side: f32) -> BoardSide {
@@ -107,59 +125,95 @@ impl BoardSide {
         if side.is_nan() { BoardSide::Auto } else { BoardSide::Chosen(side.clamp(SMALLEST_BOARD, LARGEST_CHOSEN)) }
     }
 
-    /// The side chosen, if the user chose one (one that is not a number counts as none).
+    /// The side asked for, if the user chose one (one that is not a number counts as none): more
+    /// than any panel allows for the largest.
     fn side(self) -> Option<f32> {
         match self {
             BoardSide::Chosen(side) if !side.is_nan() => Some(side),
+            BoardSide::Largest => Some(f32::INFINITY),
             _ => None,
         }
     }
 
-    /// The settings' `chess_board_side`: null for automatic, else the side in points, to a tenth.
+    /// The settings' `chess_board_size`: null for automatic, `"largest"`, else the side in points,
+    /// to a tenth.
     pub(crate) fn to_json(self) -> serde_json::Value {
+        if self == BoardSide::Largest {
+            return serde_json::Value::from(Self::LARGEST);
+        }
         // `from` gives null for a number JSON can't hold.
         self.side().map_or(serde_json::Value::Null, |side| serde_json::Value::from((f64::from(side) * 10.0).round() / 10.0))
     }
 
     /// What the settings say: a number is a side, kept within the bounds, so a hostile file makes
-    /// neither a NaN nor a board of 10⁹ points; anything else (absent, null, text) is automatic.
+    /// neither a NaN nor a board of 10⁹ points; anything else (absent, null, other text) is
+    /// automatic.
     pub(crate) fn from_json(v: &serde_json::Value) -> BoardSide {
+        if v.as_str() == Some(Self::LARGEST) {
+            return BoardSide::Largest;
+        }
         // `as` saturates: 1e300 becomes infinity, which `chosen` brings down to the largest side.
         v.as_f64().map_or(BoardSide::Auto, |side| BoardSide::chosen(side as f32))
     }
 
-    /// The control channel's `board-side`: `auto`, or a side in points (kept within the bounds).
+    /// The control channel's `board-side`: `auto`, `largest`, or a side in points (kept within the
+    /// bounds).
     pub(crate) fn parse(value: &str) -> Option<BoardSide> {
-        let value = value.trim();
-        if value == "auto" {
-            return Some(BoardSide::Auto);
+        match value.trim() {
+            "auto" => Some(BoardSide::Auto),
+            Self::LARGEST => Some(BoardSide::Largest),
+            value => value.parse::<f32>().ok().filter(|side| side.is_finite()).map(BoardSide::chosen),
         }
-        value.parse::<f32>().ok().filter(|side| side.is_finite()).map(BoardSide::chosen)
     }
 }
 
-/// The board's sizes in one column, for the grip under it and the board's menu: its side as
-/// drawn, the least and the most a side the user chooses gets there (the smallest board; the
-/// column's width, [`ROWS_CHOSEN`] rows of moves and the limit), and whether the user chose it.
+/// What the Board tab's regions are measured from, besides the rectangle.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Measures {
+    /// The engine's lines (0–3).
+    pub(crate) lines: usize,
+    /// A row of moves, in points.
+    pub(crate) row: f32,
+    /// The evaluation bar's room beside the board.
+    pub(crate) eval: f32,
+    /// The largest board, in points.
+    pub(crate) limit: f32,
+    /// The rows of moves kept under a board whose side the user chose ([`rows_kept`]).
+    pub(crate) kept: usize,
+}
+
+/// The rows of moves kept under a board whose side the user chose: none while only the moves
+/// would show there (the board may take all the panel), [`ROWS_CHOSEN`] while something the user
+/// opened shows in their place.
+fn rows_kept(chess: &ChessState) -> usize {
+    let board = chess.board();
+    let open = chess.board_view != MovesView::Moves || board.comment_open || board.open_details || chess.tools.brush().is_some();
+    if open { ROWS_CHOSEN } else { 0 }
+}
+
+/// The board's sizes in the Board tab, for the grip under it and the board's menu: its side as
+/// drawn, the least and the most a side the user chooses gets there (the smallest board; what the
+/// panel allows, [`Regions::tab`]), and what the user chose.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Sizes {
     pub(crate) side: f32,
     pub(crate) least: f32,
     pub(crate) most: f32,
-    pub(crate) chosen: bool,
+    pub(crate) asked: BoardSide,
 }
 
 impl Sizes {
-    /// The sizes in the column [`Regions::column`] measures with the same arguments.
-    pub(crate) fn column(rect: Rect, lines: usize, row: f32, eval: f32, limit: f32, side: BoardSide) -> Sizes {
-        let drawn = |side| Regions::column(rect, lines, row, eval, limit, side).board.width();
-        // A side of 0 gets the smallest board the column gives, one of infinity the largest.
-        Sizes {
-            side: drawn(side),
-            least: drawn(BoardSide::Chosen(0.0)),
-            most: drawn(BoardSide::Chosen(f32::INFINITY)),
-            chosen: side.side().is_some(),
-        }
+    /// The sizes in the tab [`Regions::tab`] measures with the same arguments.
+    pub(crate) fn tab(rect: Rect, m: Measures, side: BoardSide) -> Sizes {
+        let drawn = |side| Regions::tab(rect, m, side).0.board.width();
+        // A side of 0 gets the smallest board the tab gives, the largest its most.
+        Sizes { side: drawn(side), least: drawn(BoardSide::Chosen(0.0)), most: drawn(BoardSide::Largest), asked: side }
+    }
+
+    /// What a side picked by the user is kept as: the most the panel gives is the largest, so the
+    /// board grows with the panel from there.
+    pub(crate) fn pick(self, side: f32) -> BoardSide {
+        if side + 0.5 >= self.most { BoardSide::Largest } else { BoardSide::chosen(side) }
     }
 
     /// Whether Larger board has anything to do (half a point is no step).
@@ -237,10 +291,14 @@ impl Regions {
         lines.min(MAX_ENGINE_LINES) as f32 * ENGINE_LINE
     }
 
-    /// The least height of the moves, `row` points a row: [`ROWS`], or [`ROWS_WITH_ENGINE`] with
-    /// the engine's lines, and the region's own gaps.
-    pub(crate) fn least_moves(lines: usize, row: f32) -> f32 {
-        Self::least_rows(if lines > 0 { ROWS_WITH_ENGINE } else { ROWS }, row)
+    /// The least height of the moves under an automatic board in a column `w` wide, `row` points a
+    /// row: [`ROWS`], or [`ROWS_WITH_ENGINE`] with the engine's lines, falling to [`ROWS_WIDE`] in a
+    /// wide one ([`WIDE`]), and the region's own gaps.
+    pub(crate) fn least_moves(w: f32, lines: usize, row: f32) -> f32 {
+        let narrow = Self::least_rows(if lines > 0 { ROWS_WITH_ENGINE } else { ROWS }, row);
+        let wide = Self::least_rows(ROWS_WIDE, row);
+        let share = ((finite(w) - WIDE.start()) / (WIDE.end() - WIDE.start())).clamp(0.0, 1.0);
+        narrow + (wide - narrow) * share
     }
 
     /// The height of `rows` rows of moves, `row` points each, and the region's own gaps.
@@ -260,9 +318,10 @@ impl Regions {
     /// the evaluation bar's `eval` points beside the board, and the board at most `limit` points.
     /// The board's side is `chosen`'s: automatic, as large as [`ROWS`] rows of moves leave it
     /// ([`ROWS_WITH_ENGINE`] with the engine's lines); or the side the user chose, as far as the
-    /// column's width and [`ROWS_CHOSEN`] rows of moves allow. Either way the smallest board while
-    /// the column has room for it.
-    pub(crate) fn column(rect: Rect, lines: usize, row: f32, eval: f32, limit: f32, chosen: BoardSide) -> Regions {
+    /// column's width and the rows of moves `kept` allow. Either way the smallest board while the
+    /// column has room for it.
+    pub(crate) fn column(rect: Rect, m: Measures, chosen: BoardSide) -> Regions {
+        let Measures { lines, row, eval, limit, kept } = m;
         let (x, top) = (finite(rect.min.x), finite(rect.min.y));
         let (w, h) = (finite(rect.width()).max(0.0), finite(rect.height()).max(0.0));
         let engine = Self::engine_height(lines);
@@ -271,8 +330,8 @@ impl Regions {
         // `min` with a finite room: a chosen infinity is the most the column gives, and minus
         // infinity becomes 0 in `side`, the smallest board.
         let down = match chosen.side() {
-            None => room - Self::least_moves(lines, row),
-            Some(side) => side.min(room - Self::least_rows(ROWS_CHOSEN, row)),
+            None => room - Self::least_moves(w, lines, row),
+            Some(side) => side.min(if kept == 0 { room } else { room - Self::least_rows(kept, row) }),
         };
         let side = Self::side(w - eval, down, room, limit);
         let mut y = top;
@@ -286,6 +345,34 @@ impl Regions {
         let moves = Rect::from_min_max(pos2(x, y), pos2(x + w, bar_top));
         let bar = Rect::from_min_size(pos2(x, bar_top), vec2(w, BAR));
         Regions { header, board, eval, nav, engine, trail, moves, bar, setup }
+    }
+
+    /// The docked Board tab's regions in `rect`, and how they are laid out: in one column, or the
+    /// moves beside the board where that gives the larger board (a panel wider than tall). A side
+    /// both give takes the layout the automatic board has there.
+    pub(crate) fn tab(rect: Rect, m: Measures, chosen: BoardSide) -> (Regions, Arrangement) {
+        let column = Self::column(rect, m, chosen);
+        let (w, h) = (finite(rect.width()).max(0.0), finite(rect.height()).max(0.0));
+        if w < BESIDE_BOARD + BESIDE_GAP + BESIDE_MOVES {
+            return (column, Arrangement::Column);
+        }
+        let eval = finite(m.eval).clamp(0.0, w);
+        // The most the board gets with the moves beside it.
+        let room = (h - HEADER - NAV - Self::engine_height(m.lines)).max(0.0);
+        let most = Self::side(w - BESIDE_GAP - BESIDE_MOVES - eval, room, room, m.limit);
+        let side = chosen.side().map_or(most, |side| side.max(SMALLEST_BOARD).min(most));
+        let in_column = column.board.width();
+        let beside = side > in_column + 0.5
+            || (side + 0.5 >= in_column
+                && matches!(chosen, BoardSide::Chosen(_))
+                && most > Self::column(rect, m, BoardSide::Auto).board.width() + 0.5);
+        if !beside {
+            return (column, Arrangement::Column);
+        }
+        let (x, top) = (finite(rect.min.x), finite(rect.min.y));
+        let left = Rect::from_min_size(pos2(x, top), vec2((side + eval).max(BESIDE_BOARD), h));
+        let right = Rect::from_min_max(pos2(left.max.x + BESIDE_GAP, top), pos2((x + w).max(left.max.x + BESIDE_GAP), top + h));
+        (Self::beside(left, right, m.lines, eval, side), Arrangement::Beside)
     }
 
     /// The regions of two columns: the header, the board, the navigation and the engine's lines in
@@ -351,9 +438,10 @@ fn engine_lines(chess: &ChessState) -> usize {
     if chess.study.analysis { usize::try_from(chess.study.lines).unwrap_or(1).clamp(1, MAX_ENGINE_LINES) } else { 0 }
 }
 
-/// The Board tab in one column, `rect` (the Chess column's Board tab, a narrow chess window).
+/// The Board tab in `rect` (the Chess column's Board tab, a narrow chess window), in one column.
 /// `sizable` (the Chess column's): the board has the side the user chose ([`BoardSide`]), a grip
-/// under it and its sizes in the board's menu; the chess window keeps its own sizing.
+/// under it and its sizes in the board's menu, and the moves stand beside it where that gives a
+/// larger board ([`Regions::tab`]); the chess window keeps its own sizing.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn column(
     ui: &mut egui::Ui,
@@ -365,12 +453,25 @@ pub(crate) fn column(
     rect: Rect,
     sizable: bool,
 ) -> Asked {
-    let eval = crate::chess_study_ui::eval_room(ui, &chess.study);
-    let (lines, row, limit) = (engine_lines(chess), row_height(ui), sizing.side_limit());
-    let chosen = if sizable { chess.board_side } else { BoardSide::Auto };
-    let regions = Regions::column(rect, lines, row, eval, limit, chosen);
-    let sizes = sizable.then(|| Sizes::column(rect, lines, row, eval, limit, chosen));
-    let asked = draw(ui, t, chess, pieces, source_label, sizing, &regions, Arrangement::Column, sizes);
+    let m = Measures {
+        lines: engine_lines(chess),
+        row: row_height(ui),
+        eval: crate::chess_study_ui::eval_room(ui, &chess.study),
+        limit: sizing.side_limit(),
+        kept: rows_kept(chess),
+    };
+    let (regions, layout, sizes) = if sizable {
+        let chosen = chess.board_side;
+        let (regions, layout) = Regions::tab(rect, m, chosen);
+        (regions, layout, Some(Sizes::tab(rect, m, chosen)))
+    } else {
+        (Regions::column(rect, m, BoardSide::Auto), Arrangement::Column, None)
+    };
+    if layout == Arrangement::Beside {
+        // Between the board's side and the moves', as in the chess window.
+        ui.painter().vline(regions.moves.min.x - BESIDE_GAP / 2.0, rect.y_range(), egui::Stroke::new(1.0, t.divider));
+    }
+    let asked = draw(ui, t, chess, pieces, source_label, sizing, &regions, layout, sizes);
     ui.advance_cursor_after_rect(rect);
     asked
 }
@@ -399,8 +500,8 @@ pub(crate) fn beside(
 }
 
 /// How the regions are laid out: in one column, the moves beside the board, or the board alone.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Arrangement {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Arrangement {
     Column,
     Beside,
     BoardOnly,
@@ -466,12 +567,24 @@ fn draw(
     if (setting_up && layout == Arrangement::Column) || layout == Arrangement::BoardOnly {
         return asked;
     }
-    if let Some(a) = in_row(ui, r.trail, "chess-tab-trail", |ui| trail_row(ui, t, chess, source_label)) {
+    // The largest board takes the moves' room too ([`rows_kept`]): what they say of a move that
+    // could not be played is said in the trail's row then.
+    let moves_shown = r.moves.height() >= ROW_LEAST;
+    let trail = in_row(ui, r.trail, "chess-tab-trail", |ui| {
+        if !moves_shown && let Some(m) = chess.board().message.clone() {
+            ui.add(egui::Label::new(egui::RichText::new(m).small().color(t.text_muted)).truncate());
+            return None;
+        }
+        trail_row(ui, t, chess, source_label)
+    });
+    if let Some(a) = trail {
         asked.board = asked.board.or(Some(a));
     }
-    let (board, games) = in_column(ui, r.moves, "chess-tab-moves", |ui| moves_region(ui, t, chess, r.moves));
-    asked.board = asked.board.or(board);
-    asked.games = games;
+    if moves_shown {
+        let (board, games) = in_column(ui, r.moves, "chess-tab-moves", |ui| moves_region(ui, t, chess, r.moves));
+        asked.board = asked.board.or(board);
+        asked.games = games;
+    }
     if let Some(a) = in_row(ui, r.bar, "chess-tab-bar", |ui| bar(ui, t, chess)) {
         asked.board = asked.board.or(Some(a));
     }
@@ -593,12 +706,16 @@ fn board_menu(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, source_labe
     if let Some(sizes) = sizes {
         ui.separator();
         if crate::widgets::menu_entry(ui, sizes.can_grow(), egui::Button::new(tl!("Larger board"))).clicked() {
-            chess.board_side = BoardSide::chosen(sizes.step(true));
+            chess.board_side = sizes.pick(sizes.step(true));
         }
         if crate::widgets::menu_entry(ui, sizes.can_shrink(), egui::Button::new(tl!("Smaller board"))).clicked() {
             chess.board_side = BoardSide::chosen(sizes.step(false));
         }
-        if crate::widgets::menu_entry(ui, sizes.chosen, egui::Button::new(tl!("Board size: automatic"))).clicked() {
+        let largest = sizes.asked == BoardSide::Largest;
+        if crate::widgets::menu_entry(ui, !largest, egui::Button::new(tl!("Board size: the largest"))).clicked() {
+            chess.board_side = BoardSide::Largest;
+        }
+        if crate::widgets::menu_entry(ui, sizes.asked != BoardSide::Auto, egui::Button::new(tl!("Board size: automatic"))).clicked() {
             chess.board_side = BoardSide::Auto;
         }
     }
@@ -691,7 +808,7 @@ fn grip(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, board: Rect, nav:
     if r.dragged() {
         let from = ui.data(|d| d.get_temp::<f32>(id)).unwrap_or(sizes.side);
         let dy = ui.input(|i| i.pointer.press_origin().zip(i.pointer.interact_pos()).map_or(0.0, |(pressed, now)| now.y - pressed.y));
-        chess.board_side = BoardSide::chosen(sizes.dragged(from, dy));
+        chess.board_side = sizes.pick(sizes.dragged(from, dy));
     }
     let active = r.hovered() || r.dragged();
     if active {
@@ -986,6 +1103,11 @@ fn bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<BoardAct
 mod tests {
     use super::*;
 
+    /// Measures with three rows of moves kept under a chosen side.
+    fn of(lines: usize, row: f32, eval: f32, limit: f32) -> Measures {
+        Measures { lines, row, eval, limit, kept: ROWS_CHOSEN }
+    }
+
     fn tall(r: Rect) -> f32 {
         r.height()
     }
@@ -997,7 +1119,7 @@ mod tests {
     fn the_regions_stack_and_the_board_takes_what_the_moves_leave() {
         let rect = Rect::from_min_size(pos2(10.0, 50.0), vec2(330.0, 620.0));
         for lines in 0..=3 {
-            let r = Regions::column(rect, lines, 20.0, if lines > 0 { 18.0 } else { 0.0 }, 1_200.0, BoardSide::Auto);
+            let r = Regions::column(rect, of(lines, 20.0, if lines > 0 { 18.0 } else { 0.0 }, 1_200.0), BoardSide::Auto);
             let order = [r.header, Rect::from_min_max(pos2(rect.min.x, r.board.min.y), r.board.max), r.nav, r.engine, r.trail, r.moves, r.bar];
             for (a, b) in order.iter().zip(order.iter().skip(1)) {
                 assert!((a.max.y - b.min.y).abs() < 0.01, "{lines}: {a:?} then {b:?}");
@@ -1007,13 +1129,13 @@ mod tests {
             assert_eq!((tall(r.header), tall(r.nav), tall(r.trail), tall(r.bar)), (HEADER, NAV, TRAIL, BAR));
             assert_eq!(tall(r.engine), lines as f32 * ENGINE_LINE);
             assert!((r.board.width() - r.board.height()).abs() < 0.01 && r.board.max.x <= rect.max.x + 0.01, "{:?}", r.board);
-            assert!(tall(r.moves) >= Regions::least_moves(lines, 20.0) - 0.01, "{lines}: {:?}", r.moves);
+            assert!(tall(r.moves) >= Regions::least_moves(330.0, lines, 20.0) - 0.01, "{lines}: {:?}", r.moves);
             // The board as wide as the column allows, or as tall as the moves leave.
             let across = rect.width() - r.eval.map_or(0.0, |e| e.width());
-            assert!((r.board.width() - across).abs() < 0.01 || (tall(r.moves) - Regions::least_moves(lines, 20.0)).abs() < 0.01);
+            assert!((r.board.width() - across).abs() < 0.01 || (tall(r.moves) - Regions::least_moves(330.0, lines, 20.0)).abs() < 0.01);
         }
         // Wide: the board stops at its limit and the moves take the rest.
-        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(2_000.0, 3_000.0)), 0, 20.0, 0.0, 380.0, BoardSide::Auto);
+        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(2_000.0, 3_000.0)), of(0, 20.0, 0.0, 380.0), BoardSide::Auto);
         assert_eq!(r.board.width(), 380.0);
         assert!(tall(r.moves) > 2_000.0);
     }
@@ -1022,10 +1144,10 @@ mod tests {
     /// side while there is room for one, and nothing is NaN or negative, whatever the input.
     #[test]
     fn short_or_bad_columns_give_finite_regions() {
-        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(330.0, 300.0)), 3, 20.0, 18.0, 1_200.0, BoardSide::Auto);
+        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(330.0, 300.0)), of(3, 20.0, 18.0, 1_200.0), BoardSide::Auto);
         assert!(r.board.width() >= 0.0 && r.bar.max.y <= 300.0 + 0.01, "{r:?}");
         // 380 − 100 fixed − 200 for ten rows leaves 80: the board keeps its least side.
-        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(330.0, 380.0)), 0, 20.0, 0.0, 1_200.0, BoardSide::Auto);
+        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(330.0, 380.0)), of(0, 20.0, 0.0, 1_200.0), BoardSide::Auto);
         assert!((r.board.width() - SMALLEST_BOARD).abs() < 0.01, "the smallest board before the moves' least rows: {r:?}");
         for (w, h, row, eval, limit) in [
             (f32::NAN, 500.0, 20.0, 0.0, 1_200.0),
@@ -1036,12 +1158,16 @@ mod tests {
         ] {
             let rect = Rect::from_min_size(pos2(0.0, 0.0), vec2(w, h));
             for chosen in CHOSEN {
-                for r in [Regions::column(rect, 9, row, eval, limit, chosen), Regions::beside(rect, rect, 9, eval, limit)] {
+                for r in [Regions::column(rect, of(9, row, eval, limit), chosen), Regions::beside(rect, rect, 9, eval, limit)] {
                     for part in [r.header, r.board, r.nav, r.engine, r.trail, r.moves, r.bar, r.setup] {
                         assert!(part.is_finite() && part.width() >= 0.0 && part.height() >= 0.0, "{w} {h} {row} {eval} {limit} {chosen:?}: {part:?}");
                     }
                 }
-                let sizes = Sizes::column(rect, 9, row, eval, limit, chosen);
+                let (r, _) = Regions::tab(rect, of(9, row, eval, limit), chosen);
+                for part in [r.header, r.board, r.nav, r.engine, r.trail, r.moves, r.bar, r.setup] {
+                    assert!(part.is_finite() && part.width() >= 0.0 && part.height() >= 0.0, "{w} {h} {row} {eval} {limit} {chosen:?}: {part:?}");
+                }
+                let sizes = Sizes::tab(rect, of(9, row, eval, limit), chosen);
                 assert!([sizes.side, sizes.least, sizes.most].iter().all(|v| v.is_finite() && *v >= 0.0), "{sizes:?}");
                 assert!(sizes.least <= sizes.most, "{sizes:?}");
             }
@@ -1050,7 +1176,8 @@ mod tests {
 
     /// Sides a user, a settings file or a bug could ask for, the bad ones made directly (not
     /// through [`BoardSide::chosen`], which would set them right).
-    const CHOSEN: [BoardSide; 10] = [
+    const CHOSEN: [BoardSide; 11] = [
+        BoardSide::Largest,
         BoardSide::Auto,
         BoardSide::Chosen(f32::NAN),
         BoardSide::Chosen(f32::INFINITY),
@@ -1065,7 +1192,7 @@ mod tests {
 
     /// The board's side in one column `w` × `h` points.
     fn side_in(w: f32, h: f32, lines: usize, row: f32, eval: f32, limit: f32, chosen: BoardSide) -> f32 {
-        Regions::column(Rect::from_min_size(pos2(12.0, 40.0), vec2(w, h)), lines, row, eval, limit, chosen).board.width()
+        Regions::column(Rect::from_min_size(pos2(12.0, 40.0), vec2(w, h)), of(lines, row, eval, limit), chosen).board.width()
     }
 
     /// The board's size (2026-11-19): automatic is the rule of before, side for side. The user's
@@ -1104,7 +1231,7 @@ mod tests {
         // The user's window, 340 wide: automatic 152, three rows of 22 leave 306.
         assert_eq!(side_in(340.0, 480.0, 0, 22.0, 0.0, 1_200.0, chosen(280.0)), 280.0);
         assert_eq!(side_in(340.0, 480.0, 0, 22.0, 0.0, 1_200.0, chosen(120.0)), 120.0);
-        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(340.0, 480.0)), 0, 22.0, 0.0, 1_200.0, chosen(1_000.0));
+        let r = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(340.0, 480.0)), of(0, 22.0, 0.0, 1_200.0), chosen(1_000.0));
         assert_eq!(r.board.width(), 306.0, "three rows of moves stop it");
         assert!((tall(r.moves) - Regions::least_rows(ROWS_CHOSEN, 22.0)).abs() < 0.01, "three rows left: {:?}", r.moves);
         assert!((r.bar.max.y - 480.0).abs() < 0.01, "the bar at the foot: {r:?}");
@@ -1126,7 +1253,7 @@ mod tests {
             for h in [0.0, 100.0, 250.0, 480.0, 615.0, 2_000.0] {
                 for c in [0.0, 96.0, 150.0, 300.0, 700.0, 1_200.0, f32::INFINITY] {
                     let rect = Rect::from_min_size(pos2(5.0, 7.0), vec2(w, h));
-                    let r = Regions::column(rect, 0, 22.0, 0.0, 1_200.0, chosen(c));
+                    let r = Regions::column(rect, of(0, 22.0, 0.0, 1_200.0), chosen(c));
                     assert!(r.board.max.x <= rect.max.x + 0.01 && (r.board.width() - r.board.height()).abs() < 0.01, "{w} {h} {c}: {r:?}");
                     let three = Regions::least_rows(ROWS_CHOSEN, 22.0);
                     assert!(tall(r.moves) >= three - 0.01 || r.board.width() <= SMALLEST_BOARD + 0.01, "{w} {h} {c}: {r:?}");
@@ -1140,32 +1267,32 @@ mod tests {
     #[test]
     fn the_sizes_step_and_drag_within_the_column() {
         let rect = Rect::from_min_size(pos2(0.0, 0.0), vec2(340.0, 480.0));
-        let sizes = Sizes::column(rect, 0, 22.0, 0.0, 1_200.0, BoardSide::Auto);
-        assert_eq!(sizes, Sizes { side: 152.0, least: SMALLEST_BOARD, most: 306.0, chosen: false });
+        let sizes = Sizes::tab(rect, of(0, 22.0, 0.0, 1_200.0), BoardSide::Auto);
+        assert_eq!(sizes, Sizes { side: 152.0, least: SMALLEST_BOARD, most: 306.0, asked: BoardSide::Auto });
         assert!(sizes.can_grow() && sizes.can_shrink());
         assert!((sizes.step(true) - 167.2).abs() < 0.01 && (sizes.step(false) - 152.0 / 1.1).abs() < 0.01);
         assert_eq!(sizes.dragged(152.0, 60.0), 212.0);
         assert_eq!((sizes.dragged(152.0, 500.0), sizes.dragged(152.0, -500.0)), (306.0, SMALLEST_BOARD));
         assert_eq!(sizes.dragged(f32::NAN, f32::INFINITY), SMALLEST_BOARD);
         // At the most, Larger board has nothing to do; at the least, Smaller board.
-        let most = Sizes::column(rect, 0, 22.0, 0.0, 1_200.0, BoardSide::Chosen(f32::INFINITY));
-        assert!(most.chosen && !most.can_grow() && most.can_shrink() && most.step(true) == 306.0);
-        let least = Sizes::column(rect, 0, 22.0, 0.0, 1_200.0, BoardSide::chosen(0.0));
+        let most = Sizes::tab(rect, of(0, 22.0, 0.0, 1_200.0), BoardSide::Chosen(f32::INFINITY));
+        assert!(!most.can_grow() && most.can_shrink() && most.step(true) == 306.0);
+        let least = Sizes::tab(rect, of(0, 22.0, 0.0, 1_200.0), BoardSide::chosen(0.0));
         assert!(!least.can_shrink() && least.step(false) == SMALLEST_BOARD);
         // A column too narrow for the smallest board: one size, nothing to step.
-        let narrow = Sizes::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(80.0, 600.0)), 0, 22.0, 0.0, 1_200.0, BoardSide::Auto);
+        let narrow = Sizes::tab(Rect::from_min_size(pos2(0.0, 0.0), vec2(80.0, 600.0)), of(0, 22.0, 0.0, 1_200.0), BoardSide::Auto);
         assert!(narrow.least == 80.0 && narrow.most == 80.0 && !narrow.can_grow() && !narrow.can_shrink());
     }
 
-    /// The settings' `chess_board_side` and the control channel's `board-side`: null, absent or
-    /// not a number is automatic; a number is kept within 96..=1,200 points, so a hostile settings
+    /// The settings' `chess_board_size` and the control channel's `board-side`: null, absent or
+    /// not a number is automatic; a number is kept within 96..=2,400 points, so a hostile settings
     /// file makes neither a NaN nor a board of 10⁹ points; what is written reads back the same.
     #[test]
     fn the_chosen_side_is_read_within_its_bounds() {
         use serde_json::json;
         let read = |v: serde_json::Value| BoardSide::from_json(&v);
         assert_eq!(read(serde_json::Value::Null), BoardSide::Auto);
-        assert_eq!(read(json!({})["chess_board_side"].clone()), BoardSide::Auto);
+        assert_eq!(read(json!({})["chess_board_size"].clone()), BoardSide::Auto);
         assert_eq!(read(json!("300")), BoardSide::Auto);
         assert_eq!(read(json!(true)), BoardSide::Auto);
         assert_eq!(read(json!(250)), BoardSide::Chosen(250.0));
@@ -1173,16 +1300,76 @@ mod tests {
         assert_eq!(read(json!(1e9)), BoardSide::Chosen(LARGEST_CHOSEN));
         assert_eq!(read(json!(-1e300)), BoardSide::Chosen(SMALLEST_BOARD));
         assert_eq!(read(json!(1e-30)), BoardSide::Chosen(SMALLEST_BOARD));
-        for side in [BoardSide::Auto, BoardSide::Chosen(96.0), BoardSide::Chosen(233.4), BoardSide::Chosen(1_200.0)] {
+        for side in [BoardSide::Auto, BoardSide::Chosen(96.0), BoardSide::Chosen(233.4), BoardSide::Chosen(1_200.0), BoardSide::Largest] {
             assert_eq!(read(side.to_json()), side);
         }
         assert_eq!(BoardSide::Chosen(f32::NAN).to_json(), serde_json::Value::Null);
         assert_eq!(BoardSide::chosen(f32::NAN), BoardSide::Auto);
         assert_eq!(BoardSide::parse("auto"), Some(BoardSide::Auto));
+        assert_eq!(BoardSide::parse(" largest "), Some(BoardSide::Largest));
+        assert_eq!(read(json!("largest")), BoardSide::Largest);
         assert_eq!(BoardSide::parse(" 300 "), Some(BoardSide::Chosen(300.0)));
         assert_eq!(BoardSide::parse("1e9"), Some(BoardSide::Chosen(LARGEST_CHOSEN)));
         for bad in ["", "big", "NaN", "inf", "-inf"] {
             assert_eq!(BoardSide::parse(bad), None, "{bad:?}");
+        }
+    }
+
+    /// The largest board (2026-11-25): while only the moves would show under it, it takes their
+    /// room too, and it grows with the panel; with something open there, three rows stay.
+    #[test]
+    fn the_largest_board_takes_all_the_panel_allows() {
+        let none = Measures { kept: 0, ..of(0, 20.0, 0.0, 2_400.0) };
+        let side = |w, h, m| Regions::tab(Rect::from_min_size(pos2(3.0, 4.0), vec2(w, h)), m, BoardSide::Largest);
+        // As wide as the panel while it is tall.
+        assert_eq!(side(500.0, 900.0, none).0.board.width(), 500.0);
+        // As tall as its header, navigation, trail and bar leave: 600 − 100.
+        let (r, layout) = side(550.0, 600.0, none);
+        assert_eq!((r.board.width(), layout), (500.0, Arrangement::Column));
+        assert!(tall(r.moves) < ROW_LEAST && (r.bar.max.y - 604.0).abs() < 0.01, "{r:?}");
+        // Something open in the moves' place: three rows of it.
+        assert_eq!(side(550.0, 600.0, of(0, 20.0, 0.0, 2_400.0)).0.board.width(), 432.0);
+        // A panel wider than tall: the moves beside it, the board to the panel's foot.
+        let (r, layout) = side(1_400.0, 800.0, none);
+        assert_eq!((r.board.width(), layout), (800.0 - HEADER - NAV, Arrangement::Beside));
+        assert!(r.moves.width() >= BESIDE_MOVES && r.moves.min.x >= r.board.max.x && r.bar.max.x <= 1_403.01, "{r:?}");
+        // A 4K screen's height.
+        assert_eq!(side(3_800.0, 2_100.0, none).0.board.width(), 2_100.0 - HEADER - NAV);
+        // A side dragged as far as the panel goes is kept as the largest, one short of it is not.
+        let sizes = Sizes::tab(Rect::from_min_size(pos2(0.0, 0.0), vec2(500.0, 900.0)), none, BoardSide::Auto);
+        assert_eq!((sizes.pick(sizes.dragged(300.0, 900.0)), sizes.pick(320.0)), (BoardSide::Largest, BoardSide::Chosen(320.0)));
+    }
+
+    /// Automatic in a panel wider than tall: the moves beside the board, which is larger so; a
+    /// narrow panel keeps its one column whatever its height.
+    #[test]
+    fn a_wide_panel_puts_the_moves_beside_the_board() {
+        let tab = |w, h, side| Regions::tab(Rect::from_min_size(pos2(0.0, 0.0), vec2(w, h)), of(0, 20.0, 0.0, 2_400.0), side);
+        let (r, layout) = tab(1_000.0, 600.0, BoardSide::Auto);
+        assert_eq!((r.board.width(), layout), (544.0, Arrangement::Beside));
+        // A smaller side chosen there stays beside the moves, and its header keeps its width.
+        let (r, layout) = tab(1_000.0, 600.0, BoardSide::Chosen(150.0));
+        assert_eq!((r.board.width(), r.header.width(), layout), (150.0, BESIDE_BOARD, Arrangement::Beside));
+        assert_eq!(tab(340.0, 480.0, BoardSide::Auto).1, Arrangement::Column);
+        assert_eq!(tab(565.0, 300.0, BoardSide::Largest).1, Arrangement::Column);
+        // Tall: one column, as before.
+        let (r, layout) = tab(700.0, 1_000.0, BoardSide::Auto);
+        assert_eq!((r.board.width(), layout), (700.0, Arrangement::Column));
+        // Wide and about as tall (the user's Inspector): four rows of moves under the board, where
+        // ten would leave 552.
+        let (r, layout) = tab(838.0, 860.0, BoardSide::Auto);
+        assert_eq!((r.board.width(), layout), (672.0, Arrangement::Column));
+        assert_eq!(tall(r.moves), Regions::least_rows(ROWS_WIDE, 20.0));
+        // Every size: inside the panel, square, never smaller than one column gives.
+        for w in [0.0, 300.0, 571.0, 800.0, 1_500.0] {
+            for h in [0.0, 200.0, 450.0, 900.0] {
+                for side in CHOSEN {
+                    let (r, _) = tab(w, h, side);
+                    let column = Regions::column(Rect::from_min_size(pos2(0.0, 0.0), vec2(w, h)), of(0, 20.0, 0.0, 2_400.0), side);
+                    assert!(r.board.max.x <= w + 0.01 && r.moves.max.x <= w + 0.01, "{w} {h} {side:?}: {r:?}");
+                    assert!(r.board.width() + 0.51 >= column.board.width(), "{w} {h} {side:?}: {r:?}");
+                }
+            }
         }
     }
 

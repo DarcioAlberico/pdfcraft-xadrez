@@ -3549,7 +3549,6 @@ the move's comment	Move comment	Коментар до ходу
 	Back to Diagrams	Назад до «Діаграми»
 	Tools panel collapsed	Панель «Інструменти» згорнуто
 	Show the page (F6)	Показати сторінку (F6)
-	The board is in the column beside.	Дошка — у сусідній колонці.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Додати шахові закладки
 	Make the book's bookmarks…	Створити закладки книги…
@@ -3908,4 +3907,5 @@ pawn structure	Passed	Прохідні
 	Larger board	Більша дошка
 	Smaller board	Менша дошка
 	Board size: automatic	Розмір дошки: автоматично
+	Board size: the largest	Розмір дошки: найбільший
 	Drag to change the board's size	Перетягніть, щоб змінити розмір дошки

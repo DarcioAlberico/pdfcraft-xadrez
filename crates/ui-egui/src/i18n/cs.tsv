@@ -3601,7 +3601,6 @@ the move's comment	Move comment	Komentář k tahu
 	Back to Diagrams	Zpět na Diagramy
 	Tools panel collapsed	Panel Nástroje je sbalen
 	Show the page (F6)	Zobrazit stránku (F6)
-	The board is in the column beside.	Šachovnice je ve vedlejším sloupci.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Přidat šachové záložky
 	Make the book's bookmarks…	Vytvořit záložky knihy…
@@ -3960,4 +3959,5 @@ pawn structure	Passed	Volní
 	Larger board	Větší šachovnice
 	Smaller board	Menší šachovnice
 	Board size: automatic	Velikost šachovnice: automatická
+	Board size: the largest	Velikost šachovnice: největší
 	Drag to change the board's size	Tažením změníte velikost šachovnice

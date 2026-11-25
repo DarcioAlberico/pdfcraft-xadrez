@@ -3522,7 +3522,6 @@ the move's comment	Move comment	此著法的評論
 	Start of the game	對局開始
 	Stop	停止
 	The board is empty.	棋盤是空的。
-	The board is in the column beside.	棋盤在旁邊的欄中。
 	The board shows a position that is not legal: correct it in the diagram editor first.	棋盤顯示的是不合法的局面：請先在棋圖編輯器中更正。
 	The book's PGN couldn't be saved: {e}	無法儲存本書的 PGN：{e}
 	The book's alignment was undone.	已復原本書的對齊。
@@ -3826,4 +3825,5 @@ pawn structure	Passed	通路兵
 	Larger board	放大棋盤
 	Smaller board	縮小棋盤
 	Board size: automatic	棋盤大小：自動
+	Board size: the largest	棋盤大小：最大
 	Drag to change the board's size	拖曳以變更棋盤大小

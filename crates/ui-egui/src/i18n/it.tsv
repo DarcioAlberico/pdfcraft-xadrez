@@ -3739,7 +3739,6 @@ the move's comment	Move comment	Commento della mossa
 	Back to Diagrams	Torna ai diagrammi
 	Tools panel collapsed	Pannello Strumenti compresso
 	Show the page (F6)	Mostra la pagina (F6)
-	The board is in the column beside.	La scacchiera è nella colonna accanto.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Aggiungi segnalibri degli scacchi
 	Make the book's bookmarks…	Crea i segnalibri del libro…
@@ -4098,4 +4097,5 @@ pawn structure	Passed	Passati
 	Larger board	Scacchiera più grande
 	Smaller board	Scacchiera più piccola
 	Board size: automatic	Dimensione della scacchiera: automatica
+	Board size: the largest	Dimensione della scacchiera: la massima
 	Drag to change the board's size	Trascina per cambiare la dimensione della scacchiera

@@ -6,3 +6,4 @@ Cada passo do plano A9 (`../plano-analise-9.md`) que muda algo visível corrige 
 
 | Passo | PR | Capítulo da ajuda | O que mudou |
 |---|---|---|---|
+| Abas e tabuleiro (1.2.0) | — | 1, 2, 3 e 7 (`ajuda.html` e `help-en.html`) | O texto já foi corrigido; as figuras ainda mostram a faixa **Diagramas · Texto · Tabuleiro** dentro da coluna, o título **Xadrez** e o tabuleiro em meia largura. Os PDFs e a versão na capa são os da 1.1.0. |

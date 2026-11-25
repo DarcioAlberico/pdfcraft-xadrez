@@ -3481,7 +3481,6 @@ the move's comment	Move comment	ఎత్తు వ్యాఖ్య
 	Start of the game	ఆట ప్రారంభం
 	Stop	ఆపు
 	The board is empty.	బోర్డు ఖాళీగా ఉంది.
-	The board is in the column beside.	బోర్డు పక్కనున్న కాలమ్‌లో ఉంది.
 	The board shows a position that is not legal: correct it in the diagram editor first.	బోర్డు చెల్లని స్థితిని చూపుతోంది: ముందుగా రేఖాచిత్ర ఎడిటర్‌లో దాన్ని సరిచేయండి.
 	The book's PGN couldn't be saved: {e}	పుస్తకం PGNను సేవ్ చేయలేకపోయాం: {e}
 	The book's alignment was undone.	పుస్తకం సరిపోలిక రద్దు చేయబడింది.
@@ -3786,4 +3785,5 @@ pawn structure	Passed	అడ్డులేని
 	Larger board	పెద్ద బోర్డు
 	Smaller board	చిన్న బోర్డు
 	Board size: automatic	బోర్డు పరిమాణం: స్వయంచాలకం
+	Board size: the largest	బోర్డు పరిమాణం: అతి పెద్దది
 	Drag to change the board's size	బోర్డు పరిమాణం మార్చడానికి లాగండి

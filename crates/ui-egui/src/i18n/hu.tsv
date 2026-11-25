@@ -3526,7 +3526,6 @@ the move's comment	Move comment	A lépés megjegyzése
 	Back to Diagrams	Vissza a diagramokhoz
 	Tools panel collapsed	Eszközök panel összecsukva
 	Show the page (F6)	Az oldal megjelenítése (F6)
-	The board is in the column beside.	A tábla a szomszédos oszlopban van.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Sakk-könyvjelzők hozzáadása
 	Make the book's bookmarks…	A könyv könyvjelzőinek létrehozása…
@@ -3885,4 +3884,5 @@ pawn structure	Passed	Szabad
 	Larger board	Nagyobb tábla
 	Smaller board	Kisebb tábla
 	Board size: automatic	Táblaméret: automatikus
+	Board size: the largest	Táblaméret: a legnagyobb
 	Drag to change the board's size	Húzza a tábla méretének módosításához

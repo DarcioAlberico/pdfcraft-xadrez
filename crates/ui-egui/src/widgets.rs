@@ -467,52 +467,86 @@ fn segments<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T
 /// others muted. To assistive technology a tab list named `name` of tabs named by their labels,
 /// each with its place among them and the chosen one selected (plans A9-I15 and I11b); ← and →
 /// move the keyboard along them (egui's moves by direction), Enter or Space chooses. Each tab's
-/// id is `ui.id().with(("dock-tab", i))`. The chosen tab's id, which names its panel
+/// id is the strip's `ui.id().with(("dock-tab", i))`. The chosen tab's id, which names its panel
 /// ([`tab_panel`]).
 pub(crate) fn dock_tabs<T: PartialEq + Copy>(ui: &mut egui::Ui, name: &str, value: &mut T, choices: &[(T, &str)]) -> Option<egui::Id> {
-    const HEIGHT: f32 = 26.0;
-    const PAD: f32 = 12.0;
+    let t = Tokens::get(ui.ctx());
+    ui.scope(|ui| {
+        let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), DOCK_TAB_HEIGHT), Sense::hover());
+        ui.painter().rect_filled(strip, 0.0, t.chrome);
+        ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
+        let (picked, chosen) = dock_tabs_in(ui, strip, name, Some(*value), choices);
+        *value = picked.unwrap_or(*value);
+        chosen
+    })
+    .inner
+}
+
+/// A docking tab's height and the room at each side of its text, as the docking workspace's.
+pub(crate) const DOCK_TAB_HEIGHT: f32 = 26.0;
+const DOCK_TAB_PAD: f32 = 12.0;
+
+/// The width of the tabs named `labels` in the docking workspace's style, in points.
+pub(crate) fn dock_tabs_width<'a>(ui: &egui::Ui, labels: impl IntoIterator<Item = &'a str>) -> f32 {
+    let font = theme::medium(12.0);
+    labels.into_iter().map(|label| text_width(ui, label, &font) + 2.0 * DOCK_TAB_PAD).sum()
+}
+
+/// The tabs `choices` in `strip`, from its left, over what is painted there: each as wide as its
+/// text, all narrower by the same share in a strip too narrow for them. `value` is the one chosen
+/// (none: another tab of the same strip is). The tab clicked, when it isn't the one chosen, and
+/// the chosen one's id.
+pub(crate) fn dock_tabs_in<T: PartialEq + Copy>(
+    ui: &mut egui::Ui,
+    strip: Rect,
+    name: &str,
+    value: Option<T>,
+    choices: &[(T, &str)],
+) -> (Option<T>, Option<egui::Id>) {
     let t = Tokens::get(ui.ctx());
     let font = theme::medium(12.0);
     let base = ui.id();
     let tab_id = |i: usize| base.with(("dock-tab", i));
-    ui.scope(|ui| {
-        ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
-            node.set_role(egui::accesskit::Role::TabList);
-            node.set_label(name);
-        });
-        let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEIGHT), Sense::hover());
-        ui.painter().rect_filled(strip, 0.0, t.chrome);
-        ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
-        let mut x = strip.min.x;
-        for (i, (choice, label)) in choices.iter().enumerate() {
-            let width = (text_width(ui, label, &font) + 2.0 * PAD).min((strip.max.x - x).max(0.0));
-            let r = Rect::from_min_size(egui::pos2(x, strip.min.y), vec2(width, HEIGHT));
-            x += width;
-            let resp = ui.interact(r, tab_id(i), Sense::click());
-            let selected = *value == *choice;
-            resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
-            // A tab, chosen or not, to assistive technology: egui has no tab widget, and a
-            // selectable label is said as a button (plan A9-I15).
-            ui.ctx().accesskit_node_builder(resp.id, |node| {
-                node.set_role(egui::accesskit::Role::Tab);
-                node.clear_toggled();
-                node.set_selected(selected);
-                node.set_position_in_set(i.saturating_add(1));
-                node.set_size_of_set(choices.len());
-            });
-            if selected || resp.hovered() {
-                ui.painter().rect_filled(r, 0.0, t.selected);
-            }
-            let ink = if selected { t.text } else { t.text_muted };
-            ui.painter().with_clip_rect(r).text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
-            focus_ring(ui, &resp, r, 0);
-            if resp.clicked() && !selected {
-                *value = *choice;
-            }
-        }
+    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+        node.set_role(egui::accesskit::Role::TabList);
+        node.set_label(name);
     });
-    choices.iter().position(|(choice, _)| *choice == *value).map(tab_id)
+    let widths: Vec<f32> = choices.iter().map(|(_, label)| dock_tabs_width(ui, [*label])).collect();
+    let natural: f32 = widths.iter().sum();
+    let share = if natural > strip.width() && natural > 0.0 { (strip.width() / natural).max(0.0) } else { 1.0 };
+    let mut picked = None;
+    let mut x = strip.min.x;
+    for (i, ((choice, label), width)) in choices.iter().zip(widths).enumerate() {
+        let width = (width * share).min((strip.max.x - x).max(0.0));
+        let r = Rect::from_min_size(egui::pos2(x, strip.min.y), vec2(width, strip.height()));
+        x += width;
+        let resp = ui.interact(r, tab_id(i), Sense::click());
+        let selected = value == Some(*choice);
+        resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
+        // A tab, chosen or not, to assistive technology: egui has no tab widget, and a
+        // selectable label is said as a button (plan A9-I15).
+        ui.ctx().accesskit_node_builder(resp.id, |node| {
+            node.set_role(egui::accesskit::Role::Tab);
+            node.clear_toggled();
+            node.set_selected(selected);
+            node.set_position_in_set(i.saturating_add(1));
+            node.set_size_of_set(choices.len());
+        });
+        if selected || resp.hovered() {
+            ui.painter().rect_filled(r, 0.0, t.selected);
+        }
+        let ink = if selected { t.text } else { t.text_muted };
+        ui.painter().with_clip_rect(r.intersect(ui.clip_rect())).text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
+        focus_ring(ui, &resp, r, 0);
+        if resp.clicked() && !selected {
+            picked = Some(*choice);
+        }
+        if share < 1.0 {
+            resp.on_hover_text(*label);
+        }
+    }
+    let shown = picked.or(value);
+    (picked, choices.iter().position(|(choice, _)| shown == Some(*choice)).map(tab_id))
 }
 
 /// Makes `ui`'s own node the panel of the tab `tab` ([`dock_tabs`]), named by it: what is put in

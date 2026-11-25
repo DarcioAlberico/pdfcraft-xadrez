@@ -47,9 +47,9 @@ use pdfcraft_engine::chess::collection::OpenKey;
 /// The board image's side, in pixels (it is scaled to the panel).
 const BOARD_PX: u32 = 640;
 
-/// Largest board in the panels, in points: as wide as the panel is dragged, up to the chess
-/// window's largest.
-const MAX_BOARD_PT: f32 = 1_200.0;
+/// Largest board in the panels, in points: as wide as the panel is dragged, a 4K projector's
+/// height included.
+const MAX_BOARD_PT: f32 = 2_400.0;
 
 /// Largest side of the board's picture in the panels, in pixels: a board dragged large stays
 /// sharp.
@@ -70,7 +70,7 @@ pub(crate) struct Sizing {
 }
 
 impl Sizing {
-    /// The panels: at most 1,200 pt, a picture of the screen's pixels within 640..=2,048, one
+    /// The panels: at most 2,400 pt, a picture of the screen's pixels within 640..=2,048, one
     /// column.
     pub(crate) const DOCKED: Sizing = Sizing { max_side: MAX_BOARD_PT, max_px: MAX_BOARD_PX, wide: false };
 

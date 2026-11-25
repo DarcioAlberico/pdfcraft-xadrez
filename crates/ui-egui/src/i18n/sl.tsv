@@ -3532,7 +3532,6 @@ the move's comment	Move comment	Komentar k potezi
 	Back to Diagrams	Nazaj na »Diagrami«
 	Tools panel collapsed	Plošča Orodja je strnjena
 	Show the page (F6)	Pokaži stran (F6)
-	The board is in the column beside.	Šahovnica je v sosednjem stolpcu.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Dodaj šahovske zaznamke
 	Make the book's bookmarks…	Ustvari zaznamke knjige …
@@ -3891,4 +3890,5 @@ pawn structure	Passed	Prosti
 	Larger board	Večja šahovnica
 	Smaller board	Manjša šahovnica
 	Board size: automatic	Velikost šahovnice: samodejno
+	Board size: the largest	Velikost šahovnice: največja
 	Drag to change the board's size	Povlecite, da spremenite velikost šahovnice

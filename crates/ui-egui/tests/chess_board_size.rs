@@ -91,10 +91,10 @@ fn chess_column(h: &Harness<'static, PdfCraftApp>) -> Rect {
     h.ctx.data(|d| d.get_temp::<Rect>(egui::Id::new("pdfcraft-chess-column"))).expect("the Chess column is shown")
 }
 
-/// The settings' `chess_board_side`, as they would be saved now.
+/// The settings' `chess_board_size`, as they would be saved now.
 fn saved_side(h: &Harness<'static, PdfCraftApp>) -> serde_json::Value {
     let v: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
-    v["chess_board_side"].clone()
+    v["chess_board_size"].clone()
 }
 
 /// The grip's rectangle (a splitter; its tooltip, while shown, is a label of the same name).
@@ -161,21 +161,16 @@ fn menu_item_off(h: &mut Harness<'static, PdfCraftApp>, item: &str) -> bool {
 }
 
 /// Where the Board tab's regions run outside the Chess column (their bottoms past the window's
-/// too), and whether the moves keep three rows.
+/// too).
 fn outside(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
     let column = chess_column(h);
     let window = h.ctx.content_rect();
-    let mut out: Vec<String> = regions(h)
+    regions(h)
         .iter()
         .zip(["header", "board", "navigation", "engine", "trail", "moves", "bar"])
         .filter(|(r, _)| r.height() > 0.0 && !(column.contains_rect(r.shrink(0.5)) && window.contains_rect(r.shrink(0.5))))
         .map(|(r, name)| format!("the {name} {r:?} outside {column:?}"))
-        .collect();
-    let moves = regions(h)[5];
-    if moves.height() < 3.0 * 18.0 {
-        out.push(format!("the moves {moves:?} under three rows"));
-    }
-    out
+        .collect()
 }
 
 /// A picture of the window, when `PDFCRAFT_CHESS_SHOTS` names a folder.
@@ -226,10 +221,24 @@ fn at_the_users_window_the_grip_makes_the_board_larger_and_smaller() {
     let saved = saved_side(&h);
     assert!(saved.as_f64().is_some_and(|s| (s as f32 - larger).abs() < 0.1), "saved {saved}, drawn {larger}");
     shot_light_and_dark(&mut h, "board-size-1000x615-larger");
-    // As far down as the pointer goes: the column keeps three rows of moves under it.
+    // As far down as the pointer goes: the largest, kept as such, the moves giving up their room.
     drag_grip(&mut h, 400.0);
     let most = side(&h);
     assert!(most > larger && outside(&h).is_empty(), "{most}: {:#?}", outside(&h));
+    assert_eq!(saved_side(&h), serde_json::json!("largest"));
+    // Something opened in the moves' place: three rows of it at least.
+    let comment = |h: &mut Harness<'static, PdfCraftApp>| {
+        let bar = regions(h)[6];
+        let button = h.query_all_by_label_contains("Comment").find(|n| bar.contains(n.rect().center())).expect("the bar's Comment");
+        button.click();
+        h.run_steps(4);
+    };
+    comment(&mut h);
+    h.run_steps(3);
+    assert!(regions(&h)[5].height() >= 3.0 * 18.0 && outside(&h).is_empty(), "{:?}", regions(&h));
+    comment(&mut h);
+    h.run_steps(3);
+    assert!((side(&h) - most).abs() < 0.01, "and the largest again");
     shot_light_and_dark(&mut h, "board-size-1000x615-largest");
     // Up: smaller.
     drag_grip(&mut h, -60.0);
@@ -271,7 +280,10 @@ fn the_boards_menu_makes_it_larger_smaller_and_automatic() {
     h.state_mut().set_option("board-side", "96").unwrap();
     h.run_steps(3);
     assert!((side(&h) - 96.0).abs() < 0.01 && menu_item_off(&mut h, "Smaller board"), "{}", side(&h));
-    h.state_mut().set_option("board-side", "1200").unwrap();
+    menu_item(&mut h, "Board size: the largest");
+    assert_eq!(saved_side(&h), serde_json::json!("largest"));
+    assert!(menu_item_off(&mut h, "Board size: the largest"), "already the largest");
+    h.state_mut().set_option("board-side", "largest").unwrap();
     h.run_steps(3);
     assert!(menu_item_off(&mut h, "Larger board") && outside(&h).is_empty(), "{}: {:#?}", side(&h), outside(&h));
     assert!(h.state_mut().set_option("board-side", "big").is_err());
@@ -326,4 +338,168 @@ fn a_piece_dragged_at_the_boards_bottom_edge_is_played() {
         assert!((side(&h) - before).abs() < 0.01, "{size:?}: the board kept its size");
         assert_eq!(saved_side(&h), serde_json::Value::Null, "{size:?}: still automatic");
     }
+}
+
+/// The Inspector as wide as `width` points (its divider dragged there).
+fn inspector_width(h: &mut Harness<'static, PdfCraftApp>, width: f32) {
+    let size = serde_json::to_value(craft_ui::layout::SplitSize::FixedSecond(width)).unwrap();
+    // The Tools, while they show, are the other side of the split around it.
+    let path: &[bool] = if h.state().left_open { &[true] } else { &[] };
+    pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "resizeSplit", "path": path, "size": size})).unwrap();
+    h.run_steps(3);
+}
+
+/// 2026-11-25, the user's window (the Inspector dragged to 883 points beside the page): the Board
+/// tab had half of the Inspector, a board of 324 points over a blank half and a blank foot, its
+/// other half saying "The board is in the column beside". The board has all of it now: automatic
+/// it is much larger, the grip dragged down makes it as large as the panel allows, and it grows
+/// with the panel from there (for a class with a projector).
+#[test]
+fn the_board_tab_has_the_whole_inspector() {
+    for (w, ht) in [(1700.0, 1000.0), (1920.0, 1000.0)] {
+        let mut h = harness(egui::vec2(w, ht), None, "1. e4 e5 *");
+        inspector_width(&mut h, 883.0);
+        let column = chess_column(&h);
+        assert!((column.width() - 883.0).abs() <= 3.0, "{column:?}");
+        assert!(h.ctx.data(|d| d.get_temp::<Rect>(egui::Id::new("pdfcraft-chess-second"))).is_none(), "no second column");
+        assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "one board");
+        let auto = side(&h);
+        assert!(auto >= 640.0 && outside(&h).is_empty(), "automatic: {auto} {:#?}", outside(&h));
+        shot_light_and_dark(&mut h, &format!("tabs-{w}x{ht}-auto"));
+        drag_grip(&mut h, 900.0);
+        let most = side(&h);
+        assert!(most >= 770.0 && outside(&h).is_empty(), "the largest: {most} {:#?}", outside(&h));
+        assert_eq!(saved_side(&h), serde_json::json!("largest"));
+        shot_light_and_dark(&mut h, &format!("tabs-{w}x{ht}-largest"));
+        // It follows the panel, narrower and wider.
+        inspector_width(&mut h, 560.0);
+        let narrow = side(&h);
+        assert!(narrow < most && narrow >= 480.0 && outside(&h).is_empty(), "{narrow}");
+        inspector_width(&mut h, 1200.0);
+        let wide = side(&h);
+        assert!(wide >= most && outside(&h).is_empty(), "{wide} {:#?}", outside(&h));
+        shot(&mut h, &format!("tabs-{w}x{ht}-wide.png"));
+        // The grip brings it back down.
+        drag_grip(&mut h, -200.0);
+        assert!((side(&h) - (wide - 200.0)).abs() < 1.5, "{wide} − 200 = {}", side(&h));
+        assert!(saved_side(&h).as_f64().is_some());
+    }
+}
+
+/// The tab named `name`, its place.
+fn tab(h: &Harness<'static, PdfCraftApp>, name: &str) -> Rect {
+    h.get_by(|n| n.role() == egui::accesskit::Role::Tab && n.label().is_some_and(|l| l == name)).rect()
+}
+
+/// The names of the strip's chosen tabs.
+fn chosen(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+    h.query_all_by(|n| n.role() == egui::accesskit::Role::Tab)
+        .filter(|n| n.accesskit_node().is_selected() == Some(true))
+        .filter_map(|n| n.accesskit_node().label())
+        .filter(|l| ["Inspector", "Diagrams", "Text", "Board"].contains(&l.as_str()))
+        .collect()
+}
+
+/// 2026-11-25: Inspector, Diagrams, Text and Board are tabs of one strip, one of them chosen.
+/// The Inspector's shows its other panels (the last one shown, Comments at first), the others the
+/// Chess column, without a second strip or a title over it.
+#[test]
+fn the_chess_tabs_are_at_the_inspectors_level() {
+    use pdfcraft_ui_egui::RightPanel;
+    let mut h = harness(egui::vec2(1366.0, 768.0), None, "1. e4 e5 *");
+    let names = ["Inspector", "Diagrams", "Text", "Board"];
+    let level = |h: &Harness<'static, PdfCraftApp>| {
+        let tabs = names.map(|n| tab(h, n));
+        for (a, b) in tabs.iter().zip(tabs.iter().skip(1)) {
+            assert!((a.center().y - b.center().y).abs() < 0.5 && (a.max.x - b.min.x).abs() < 1.0, "side by side: {tabs:?}");
+        }
+    };
+    level(&h);
+    assert_eq!(chosen(&h), ["Board"]);
+    let column = chess_column(&h);
+    assert!(tab(&h, "Board").max.y <= column.min.y + 0.5, "over the column, which has no strip of its own");
+    assert!(regions(&h)[0].min.y - column.min.y < 12.0, "the board's header at the column's top: {:?} in {column:?}", regions(&h)[0]);
+    shot_light_and_dark(&mut h, "tabs-level-board");
+    let press = |h: &mut Harness<'static, PdfCraftApp>, name: &str| {
+        let at = tab(h, name).center();
+        h.hover_at(at);
+        h.run_steps(1);
+        h.drag_at(at);
+        h.drop_at(at);
+        h.run_steps(4);
+        h.hover_at(egui::pos2(5.0, 5.0));
+        h.run_steps(3);
+    };
+    press(&mut h, "Diagrams");
+    assert_eq!((chosen(&h), h.state().right), (vec!["Diagrams".to_owned()], Some(RightPanel::Chess)));
+    shot_light_and_dark(&mut h, "tabs-level-diagrams");
+    press(&mut h, "Inspector");
+    assert_eq!((chosen(&h), h.state().right), (vec!["Inspector".to_owned()], Some(RightPanel::Comments)), "the Inspector's own");
+    level(&h);
+    shot_light_and_dark(&mut h, "tabs-level-inspector");
+    press(&mut h, "Text");
+    assert_eq!((chosen(&h), h.state().right), (vec!["Text".to_owned()], Some(RightPanel::Chess)));
+    // The last of the Inspector's panels shown is the one it goes back to.
+    h.state_mut().choose_right_panel(Some(RightPanel::Bookmarks));
+    h.run_steps(3);
+    press(&mut h, "Board");
+    assert!(h.state().chess_board_shown());
+    press(&mut h, "Inspector");
+    assert_eq!(h.state().right, Some(RightPanel::Bookmarks));
+    press(&mut h, "Board");
+    // As narrow as the Inspector goes, every tab and Close are in the strip.
+    inspector_width(&mut h, 260.0);
+    let column = chess_column(&h);
+    for name in names {
+        let r = tab(&h, name);
+        assert!(r.min.x >= column.min.x - 1.0 && r.max.x <= column.max.x + 1.0 && r.width() >= 24.0, "{name} {r:?} in {column:?}");
+    }
+    shot(&mut h, "tabs-level-260.png");
+    let at = tab(&h, "Board");
+    let close = h.query_all_by_label("Close").map(|n| n.rect()).find(|r| (r.center().y - at.center().y).abs() < 3.0 && r.min.x >= at.max.x - 0.5);
+    let close = close.expect("Close at the strip's end");
+    assert!(close.max.x <= column.max.x + 1.0, "{close:?}");
+    h.hover_at(close.center());
+    h.run_steps(1);
+    h.drag_at(close.center());
+    h.drop_at(close.center());
+    h.run_steps(4);
+    assert_eq!(h.state().right, None, "closed");
+    // Another panel of the Inspector, the Chess column not opened: no chess tabs.
+    h.state_mut().choose_right_panel(Some(RightPanel::Comments));
+    h.run_steps(3);
+    assert!(h.query_by(|n| n.role() == egui::accesskit::Role::Tab && n.label().is_some_and(|l| l == "Diagrams")).is_none());
+}
+
+/// The same strip when the Move list is in the Inspector's group, in front of it too, and when
+/// the group floats: the chess tabs after the group's own, and a click on one brings the Chess
+/// column to the front.
+#[test]
+fn the_chess_tabs_follow_the_inspectors_group() {
+    let mut h = harness(egui::vec2(1366.0, 768.0), None, "1. e4 e5 *");
+    inspector_width(&mut h, 600.0);
+    let op = |h: &mut Harness<'static, PdfCraftApp>, v: serde_json::Value| {
+        pdfcraft_ui_egui::docking::command(h.state_mut(), false, &v).unwrap();
+        h.run_steps(4);
+    };
+    op(&mut h, serde_json::json!({"operation": "open", "panel": "moves"}));
+    op(&mut h, serde_json::json!({"operation": "move", "panel": "moves", "target": "inspector", "zone": "center"}));
+    op(&mut h, serde_json::json!({"operation": "activate", "panel": "moves"}));
+    let (moves, diagrams) = (tab(&h, "Move list"), tab(&h, "Diagrams"));
+    assert!((moves.max.x - diagrams.min.x).abs() < 1.0 && (moves.center().y - diagrams.center().y).abs() < 0.5, "{moves:?} {diagrams:?}");
+    assert!(chosen(&h).is_empty(), "the Move list is in front: {:?}", chosen(&h));
+    shot(&mut h, "tabs-group-moves.png");
+    let at = tab(&h, "Board").center();
+    h.hover_at(at);
+    h.run_steps(1);
+    h.drag_at(at);
+    h.drop_at(at);
+    h.run_steps(4);
+    assert!(h.state().chess_board_shown(), "the board is in front");
+    assert_eq!(chosen(&h), ["Board"]);
+    op(&mut h, serde_json::json!({"operation": "float", "panel": "inspector", "rect": [200.0, 100.0, 520.0, 560.0]}));
+    let (inspector, diagrams) = (tab(&h, "Inspector"), tab(&h, "Diagrams"));
+    assert!((inspector.max.x - diagrams.min.x).abs() < 1.0 && (inspector.center().y - diagrams.center().y).abs() < 0.5, "{inspector:?} {diagrams:?}");
+    assert_eq!(chosen(&h), ["Board"]);
+    shot(&mut h, "tabs-group-floating.png");
 }

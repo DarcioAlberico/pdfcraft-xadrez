@@ -3490,7 +3490,6 @@ the move's comment	Move comment	Коментар към хода
 	Back to Diagrams	Обратно към Диаграми
 	Tools panel collapsed	Панелът „Инструменти“ е свит
 	Show the page (F6)	Показване на страницата (F6)
-	The board is in the column beside.	Дъската е в съседната колона.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Добави шахматни отметки
 	Make the book's bookmarks…	Създаване на отметките на книгата…
@@ -3850,4 +3849,5 @@ pawn structure	Passed	Проходни
 	Larger board	По-голяма дъска
 	Smaller board	По-малка дъска
 	Board size: automatic	Размер на дъската: автоматичен
+	Board size: the largest	Размер на дъската: най-голям
 	Drag to change the board's size	Плъзнете, за да промените размера на дъската

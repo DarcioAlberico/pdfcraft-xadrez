@@ -3547,7 +3547,6 @@ the move's comment	Move comment	Komentarz do ruchu
 	Start of the game	Początek partii
 	Stop	Zatrzymaj
 	The board is empty.	Szachownica jest pusta.
-	The board is in the column beside.	Szachownica jest w kolumnie obok.
 	The board shows a position that is not legal: correct it in the diagram editor first.	Szachownica pokazuje nielegalną pozycję: najpierw popraw ją w edytorze diagramu.
 	The book's PGN couldn't be saved: {e}	Nie udało się zapisać PGN książki: {e}
 	The book's alignment was undone.	Cofnięto dopasowanie książki.
@@ -3851,4 +3850,5 @@ pawn structure	Passed	Wolne
 	Larger board	Większa szachownica
 	Smaller board	Mniejsza szachownica
 	Board size: automatic	Rozmiar szachownicy: automatyczny
+	Board size: the largest	Rozmiar szachownicy: największy
 	Drag to change the board's size	Przeciągnij, aby zmienić rozmiar szachownicy
