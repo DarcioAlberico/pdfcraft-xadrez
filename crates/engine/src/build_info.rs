@@ -18,7 +18,7 @@
 /// The coordinator raises it at each release that goes into `dist/app`: the minor for a release
 /// with new features (`1.1.0`), the patch for fixes only (`1.0.1`). [`VERSION`] stays upstream's,
 /// for the update check.
-pub const EDITION: &str = "1.1.0";
+pub const EDITION: &str = "1.2.0";
 
 /// The release version from the workspace `Cargo.toml`: upstream PdfCraft's, which the update check
 /// compares with published releases.

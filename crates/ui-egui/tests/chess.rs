@@ -1749,16 +1749,16 @@ fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
         h.run_steps(3);
         let offered = format!("{name} sits beside this PDF. Use it as the book's PGN?");
         h.get_by_label(&offered);
-        // The panel ends where the rail beside the window's right edge begins, and opens 330 pt
-        // wide (plan A9-I7b): the offer's buttons stay between its edges.
+        // The panel ends where the rail beside the window's right edge begins, and opens 360 pt
+        // wide (plans A9-I7b and I0a): the offer's buttons stay between its edges.
         let edge = size.x - 48.0;
-        let start = h.get_by_role_and_label(egui::accesskit::Role::Tab, "Diagrams").rect().min.x;
-        assert!((edge - start - 330.0).abs() <= 24.0, "{theme}: the panel is {} pt wide", edge - start);
+        let start = chess_column(&h).min.x;
+        assert!((edge - start - 360.0).abs() <= 4.0, "{theme}: the panel is {} pt wide", edge - start);
         let not_now = format!("Not now: don't use {name} as the book's PGN");
         let use_it = format!("Use {name} as the book's PGN");
         for label in [&not_now, &use_it] {
             let r = h.get_by_label(label).rect();
-            assert!(r.min.x >= start - 12.0 && r.max.x <= edge, "{theme}: {label} at {r:?}, the panel is {start}..{edge}");
+            assert!(r.min.x >= start && r.max.x <= edge, "{theme}: {label} at {r:?}, the panel is {start}..{edge}");
         }
         shot(&mut h, &format!("pgn-offer-1366-{theme}.png"));
         // The Text tab's own Use, in its menu (plan A9-I9), is on screen.
@@ -5278,12 +5278,15 @@ fn focus_rings(h: &Harness<'static, PdfCraftApp>) -> Vec<(egui::Rect, egui::Rect
 /// (its active descendant), and the ring is that square's.
 fn tab_through(h: &mut Harness<'static, PdfCraftApp>, what: &str) -> (Vec<String>, Vec<String>) {
     use egui::accesskit::Action;
-    let region = chess_column(h);
-    // The column and what scrolls under its foot.
+    // The column with its tabs over it, in the workspace's strip.
+    let column = chess_column(h);
+    let region = egui::Rect::from_min_max(column.min - egui::vec2(0.0, 26.0), column.max);
+    // And what scrolls under its foot.
     let band = egui::Rect::from_x_y_ranges(region.x_range(), egui::Rangef::new(region.min.y, f32::INFINITY));
     let first = h
         .query_all_by(|n| n.data().supports_action(Action::Focus))
-        .filter(|n| region.contains(n.rect().center()))
+        // The Inspector's own tab is the docking workspace's.
+        .filter(|n| region.contains(n.rect().center()) && n.accesskit_node().label().is_none_or(|l| l != "Inspector"))
         .min_by(|a, b| (a.rect().min.y, a.rect().min.x).partial_cmp(&(b.rect().min.y, b.rect().min.x)).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or_else(|| panic!("{what}: a control in {region:?}"));
     first.focus();
@@ -7679,7 +7682,7 @@ fn chess_column(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
 
 /// Plan A9-I0a (§2.8.0, findings R4-03, A6-14): at 1366 × 768 the chess surfaces are one
 /// column, the Inspector's, measured region by region as the plan's sketches are: its tabs
-/// Diagrams · Text · Board in a row at its top; a diagram opened puts its editor in the list's
+/// Diagrams · Text · Board in a row over its top, beside the Inspector's; a diagram opened puts its editor in the list's
 /// place (it had a 320 pt column of its own beside the page, which fell to 29 %); "‹ Diagrams"
 /// and Esc go back to the list, the diagram's row taking the keyboard; the board is the third
 /// tab; and the page keeps all the column, the Tools and the rail leave it.
@@ -7697,8 +7700,11 @@ fn the_chess_surfaces_are_one_column_beside_the_page() {
         .collect();
     for (tab, next) in tabs.iter().zip(tabs.iter().skip(1)) {
         assert!(
-            column.contains_rect(*tab) && tab.max.x <= next.min.x + 0.5 && (tab.center().y - next.center().y).abs() < 1.0,
-            "{tabs:?} in {column:?}"
+            tab.min.x >= column.min.x - 0.5
+                && tab.max.y <= column.min.y + 0.5
+                && tab.max.x <= next.min.x + 0.5
+                && (tab.center().y - next.center().y).abs() < 1.0,
+            "{tabs:?} over {column:?}"
         );
     }
     // The editor in the list's place, in the column.
@@ -7843,7 +7849,7 @@ fn shot_light_and_dark(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
 fn column_tab_at(h: &mut Harness<'static, PdfCraftApp>, place: usize) {
     let column = chess_column(h);
     h.query_all_by(|n| n.role() == egui::accesskit::Role::Tab && n.data().position_in_set() == Some(place + 1))
-        .find(|n| column.contains(n.rect().center()))
+        .find(|n| column.x_range().contains(n.rect().center().x))
         .expect("the Chess column's tab")
         .click();
     h.run_steps(3);
@@ -7900,7 +7906,9 @@ fn nothing_of_the_chess_column_is_outside_it_at_1366() {
                     h.key_press(egui::Key::Escape);
                     h.run_steps(2);
                 }
-                None => found.push("en, board: the rail has no ⋯ (More board tools)".to_owned()),
+                // Every tool on the rail, the chess window's too.
+                None if h.query_by_label("Chess in its own window").is_some() => {}
+                None => found.push("en, board: the rail has neither Chess in its own window nor a ⋯ (More board tools)".to_owned()),
             }
         }
         // The document's games in the moves' place, the moves beside the page.

@@ -117,7 +117,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <h2>Where the tools are</h2>
 <table>
 <tr><th style="width:32%">Place</th><th>What it is for</th></tr>
-<tr><td>The <b>Chess</b> column (on the right, in the Inspector's place)</td><td>The chess panel, with three tabs: <b>Diagrams</b> detects, lists and reviews the diagrams (chapters 3 and 4); <b>Text</b> shows the page read as chess (chapter 5); <b>Board</b> is the analysis board (chapters 7 to 15). It opens from the chess button on the right-hand rail, from <b>Chess panel</b> in the <b>Chess</b> menu, or from the command search (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
+<tr><td>The <b>Chess</b> column (on the right, in the Inspector's panel)</td><td>The chess panel, with three tabs at the level of the <b>Inspector</b> tab: <b>Diagrams</b> detects, lists and reviews the diagrams (chapters 3 and 4); <b>Text</b> shows the page read as chess (chapter 5); <b>Board</b> is the analysis board (chapters 7 to 15). It opens from the chess button on the right-hand rail, from <b>Chess panel</b> in the <b>Chess</b> menu, or from the command search (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
 <tr><td>The <b>Chess</b> menu</td><td><b>Detect diagrams</b>, <b>Chess panel</b>, <b>Load the book's PGN…</b>, <b>Export the book's review…</b> and <b>Import a book's review…</b>, <b>Make the book's bookmarks…</b>, <b>Chess board</b>, <b>Analyze the position</b>, <b>Export chess book…</b> and <b>Chess shortcuts</b>. It also has <b>Find in the book by material…</b> and <b>Library…</b> (chapter 9) and <b>Check with the engine…</b> (chapter 8).</td></tr>
 <tr><td><b>Tools</b> ▸ <b>Chess</b></td><td>The panel, the board, capturing, the book's PGN and the export, as tools of the <b>Tools</b> panel.</td></tr>
 <tr><td><b>Move list beside the page</b></td><td>The board's game laid out as in a book, in a column of its own beside the PDF (chapter 10).</td></tr>
@@ -135,7 +135,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <ul>
 <li><strong>Up to 999 pt</strong> (a 1366 × 768 screen with the interface at 150 % or more): the column takes the page's place. <kbd>F6</kbd>, or the <b>Show the page (F6)</b> button, switches between the two.</li>
 <li><strong>From 1,000 to 1,599 pt</strong>: one column of 360 pt beside the page. A diagram's editor opens in the list's place.</li>
-<li><strong>From 1,600 pt</strong>: two columns, the diagram's editor (or the board) beside the list. From 1,920 pt the columns are 420 pt wide, and the editor's board takes up to 380 pt.</li>
+<li><strong>From 1,600 pt</strong>: two columns, the diagram's editor (or the board) beside the list; on the <b>Board</b> tab the board has the whole panel. From 1,920 pt the columns are 420 pt wide, and the editor's board takes up to 380 pt.</li>
 </ul>
 <p>Below 1,920 pt, opening the chess panel collapses the <b>Tools</b> panel, once a session, with the notice <b>Tools panel collapsed</b> and <b>Undo</b>. A column you resized in the session keeps its size. A layout saved by a build from before 14 November opens without the board's old tab and the old Diagram tab, on the tab that was showing. Read mode has the same column, with the same tabs and the same editor.</p>
 
@@ -465,7 +465,7 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 <tr><td>Navigation</td><td>« ‹ › » (start, back, forward, end), the <b>Move</b> field, <b>Flip board</b> and, at the end, the engine's state (program, depth, kN/s) or the material: each side's extra pieces and the difference in points.</td></tr>
 <tr><td>Engine lines</td><td>One row each, cut short with “…” (the whole text in the tooltip), only while the engine is on (chapter 8).</td></tr>
 <tr><td>Trail</td><td>Where the move shown is: the variation (<i>Main line › 5…Bxc5 › 6…Rf8</i>), the continuations at a fork, or the diagram the game came from.</td></tr>
-<tr><td>Moves</td><td>The game, laid out as in a book (chapter 10). They fill the rest: at least 10 rows, 7 with the engine's three lines, 3 with a board size you chose.</td></tr>
+<tr><td>Moves</td><td>The game, laid out as in a book (chapter 10). They fill the rest: at least 10 rows, 7 with the engine's three lines, 4 in a wide panel, none with the largest board.</td></tr>
 <tr><td>Footer bar</td><td><b>Game</b> ▾ · <b>Comment</b> · <b>In the book (n)</b> · FEN/PGN ▾.</td></tr>
 </table>
 
@@ -486,15 +486,15 @@ figcaption { font-size: 8.8pt; color: #4a5560; margin-top: 3pt; }
 </figure>
 </div>
 <h3>The board's ⋯ menu</h3>
-<p><b>Lines:</b> 1, 2 or 3 engine lines; once an engine has started, which program and from where (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>, the whole path in the tooltip); <b>Choose engine…</b>; <b>Clear drawings</b>, with a hint on how to draw; <b>Larger board</b>, <b>Smaller board</b> and <b>Board size: automatic</b>; and the diagram the game came from.</p>
+<p><b>Lines:</b> 1, 2 or 3 engine lines; once an engine has started, which program and from where (<b>Engine: stockfish-windows-x86-64-universal.exe, in engine\stockfish</b>, the whole path in the tooltip); <b>Choose engine…</b>; <b>Clear drawings</b>, with a hint on how to draw; <b>Larger board</b>, <b>Smaller board</b>, <b>Board size: the largest</b> and <b>Board size: automatic</b>; and the diagram the game came from.</p>
 <figure class="half">
 <img src="img/14c-engine-menu.png" alt="The board's menu with the engine started.">
 <figcaption>The board's ⋯ menu once the engine has started. <span class="build">build 7233142 2026-11-19</span></figcaption>
 </figure>
 
 <h2>The board's size</h2>
-<p>The board starts at its automatic size: the largest that leaves at least 10 rows of moves under it (7 with the engine's lines). To see it larger, drag the thin grip under the board, along the top edge of the navigation row: the pointer becomes a resize arrow, and the tooltip says <b>Drag to change the board's size</b>. Down makes it larger, up smaller. A size you choose goes as far as the column's width and three rows of moves; for a larger board still, widen the Chess column. The grip is off the squares: dragging a piece on the bottom rank still plays it.</p>
-<p>From the keyboard, or with a screen reader, the board's ⋯ menu has <b>Larger board</b> and <b>Smaller board</b> (about 10% a step) and <b>Board size: automatic</b>; a double-click on the grip goes back to automatic too. The size you choose is kept for next time. The chess window (chapter 16) has a size of its own: there the board grows with the window.</p>
+<p>The board starts at its automatic size: the largest that leaves at least 10 rows of moves under it (7 with the engine's lines), or 4 in a wide panel; in a panel wider than tall the moves stand beside the board where that makes it larger. To see it larger, drag the thin grip under the board, along the top edge of the navigation row: the pointer becomes a resize arrow, and the tooltip says <b>Drag to change the board's size</b>. Down makes it larger, up smaller. Dragged all the way, or with <b>Board size: the largest</b> in the ⋯ menu, the board takes all the panel allows, the room of the moves too, and grows and shrinks with the panel from then on: for a class with a projector, widen the Inspector. Opening the comment, the games or the fields brings 3 rows back while they are open. The grip is off the squares: dragging a piece on the bottom rank still plays it.</p>
+<p>From the keyboard, or with a screen reader, the board's ⋯ menu has <b>Larger board</b> and <b>Smaller board</b> (about 10% a step), <b>Board size: the largest</b> and <b>Board size: automatic</b>; a double-click on the grip goes back to automatic too. The size you choose is kept for next time. The chess window (chapter 16) has a size of its own: there the board grows with the window.</p>
 
 <h2>Opening a position or a game on the board</h2>
 <ul>

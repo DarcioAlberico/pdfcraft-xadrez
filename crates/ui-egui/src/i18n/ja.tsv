@@ -3529,7 +3529,6 @@ the move's comment	Move comment	手のコメント
 	Back to Diagrams	局面図に戻る
 	Tools panel collapsed	ツールパネルを折りたたみました
 	Show the page (F6)	ページを表示 (F6)
-	The board is in the column beside.	盤は隣の列にあります。
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	チェスのしおりを追加
 	Make the book's bookmarks…	本のしおりを作成…
@@ -3888,4 +3887,5 @@ pawn structure	Passed	パスポーン
 	Larger board	盤を大きく
 	Smaller board	盤を小さく
 	Board size: automatic	盤のサイズ: 自動
+	Board size: the largest	盤のサイズ: 最大
 	Drag to change the board's size	ドラッグして盤のサイズを変更

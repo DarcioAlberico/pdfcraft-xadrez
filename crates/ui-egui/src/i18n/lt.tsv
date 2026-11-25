@@ -3777,7 +3777,6 @@ the move's comment	Move comment	Ėjimo komentaras
 	Back to Diagrams	Atgal į sąrašą „Diagramos“
 	Tools panel collapsed	Įrankių skydelis suskleistas
 	Show the page (F6)	Rodyti puslapį (F6)
-	The board is in the column beside.	Lenta yra gretimame stulpelyje.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Pridėti šachmatų žymeles
 	Make the book's bookmarks…	Sukurti knygos žymeles…
@@ -4134,4 +4133,5 @@ pawn structure	Passed	Laisvi
 	Larger board	Didesnė lenta
 	Smaller board	Mažesnė lenta
 	Board size: automatic	Lentos dydis: automatinis
+	Board size: the largest	Lentos dydis: didžiausias
 	Drag to change the board's size	Vilkite, kad pakeistumėte lentos dydį

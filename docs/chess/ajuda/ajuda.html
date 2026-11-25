@@ -116,7 +116,7 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 <h2>Onde ficam as ferramentas</h2>
 <table>
 <tr><th style="width:32%">Lugar</th><th>Para que serve</th></tr>
-<tr><td>A coluna <b>Xadrez</b> (à direita, no lugar do Inspetor)</td><td>O painel de xadrez, com três abas: <b>Diagramas</b> detecta, lista e revisa os diagramas (capítulos 3 e 4); <b>Texto</b> mostra a página lida como xadrez (capítulo 5); <b>Tabuleiro</b> é o tabuleiro de análise (capítulos 7 a 15). Abre pelo botão de xadrez da barra da direita, por <b>Painel de xadrez</b> no menu <b>Xadrez</b> ou pela pesquisa de comandos (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
+<tr><td>A coluna <b>Xadrez</b> (à direita, no painel do Inspetor)</td><td>O painel de xadrez, com três abas no mesmo nível da aba <b>Inspetor</b>: <b>Diagramas</b> detecta, lista e revisa os diagramas (capítulos 3 e 4); <b>Texto</b> mostra a página lida como xadrez (capítulo 5); <b>Tabuleiro</b> é o tabuleiro de análise (capítulos 7 a 15). Abre pelo botão de xadrez da barra da direita, por <b>Painel de xadrez</b> no menu <b>Xadrez</b> ou pela pesquisa de comandos (<kbd>Ctrl</kbd>+<kbd>K</kbd>).</td></tr>
 <tr><td>O menu <b>Xadrez</b></td><td><b>Detectar diagramas</b>, <b>Painel de xadrez</b>, <b>Carregar PGN do livro…</b>, <b>Exportar revisão do livro…</b> e <b>Importar revisão de um livro…</b>, <b>Criar os marcadores do livro…</b>, <b>Tabuleiro</b>, <b>Analisar a posição</b>, <b>Exportar livro de xadrez…</b> e <b>Atalhos de xadrez</b>. Tem também <b>Procurar no livro por material…</b> e <b>Biblioteca…</b> (capítulo 9) e <b>Conferir com o motor…</b> (capítulo 8).</td></tr>
 <tr><td><b>Ferramentas</b> ▸ <b>Xadrez</b></td><td>O painel, o tabuleiro, a captura, o PGN do livro e a exportação, como ferramentas do painel <b>Ferramentas</b>.</td></tr>
 <tr><td><b>Lista de lances ao lado da página</b></td><td>A partida do tabuleiro como num livro, numa coluna própria ao lado do PDF (capítulo 10).</td></tr>
@@ -134,7 +134,7 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 <ul>
 <li><strong>Até 999 pt</strong> (uma tela de 1366 × 768 com a interface a 150 % ou mais): a coluna toma o lugar da página. <kbd>F6</kbd> ou o botão <b>Mostrar a página (F6)</b> alternam entre as duas.</li>
 <li><strong>De 1.000 a 1.599 pt</strong>: uma coluna de 360 pt ao lado da página. O editor de um diagrama abre no lugar da lista.</li>
-<li><strong>De 1.600 pt em diante</strong>: duas colunas, com o editor do diagrama (ou o tabuleiro) ao lado da lista. A partir de 1.920 pt as colunas têm 420 pt e o tabuleiro do editor vai até 380 pt.</li>
+<li><strong>De 1.600 pt em diante</strong>: duas colunas, com o editor do diagrama (ou o tabuleiro) ao lado da lista; na aba <b>Tabuleiro</b> o tabuleiro tem o painel inteiro. A partir de 1.920 pt as colunas têm 420 pt e o tabuleiro do editor vai até 380 pt.</li>
 </ul>
 <p>Abaixo de 1.920 pt, ao abrir o painel de xadrez, o painel <b>Ferramentas</b> é recolhido uma vez por sessão, com o aviso <b>Painel Ferramentas recolhido</b> e <b>Desfazer</b>. Uma coluna que você redimensionou na sessão fica como está. Um leiaute salvo por um build anterior a 14/11 abre sem as abas antigas do tabuleiro e do Diagrama, na aba que aparecia. O modo Ler tem a mesma coluna, com as mesmas abas e o mesmo editor.</p>
 
@@ -485,7 +485,7 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 </figure>
 </div>
 <h3>O menu ⋯ do tabuleiro</h3>
-<p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; <b>Tabuleiro maior</b>, <b>Tabuleiro menor</b> e <b>Tamanho do tabuleiro: automático</b>; e o diagrama de onde a partida veio.</p>
+<p><b>Linhas:</b> 1, 2 ou 3 linhas do motor; quando um motor já foi iniciado, de que programa e de onde (<b>Motor: stockfish-windows-x86-64-universal.exe, em engine\stockfish</b>, com o caminho inteiro na dica); <b>Escolher motor…</b>; <b>Apagar desenhos</b>, com a dica de como desenhar; <b>Tabuleiro maior</b>, <b>Tabuleiro menor</b>, <b>Tamanho do tabuleiro: o maior</b> e <b>Tamanho do tabuleiro: automático</b>; e o diagrama de onde a partida veio.</p>
 <figure class="half">
 <img src="img/14c-menu-motor.png" alt="O menu do tabuleiro com o motor iniciado.">
 <figcaption>O menu ⋯ do tabuleiro depois de o motor começar. <span class="build">build 7233142 2026-11-19</span></figcaption>
@@ -494,8 +494,8 @@ pre { font: 8.4pt/1.35 Consolas, "Cascadia Mono", monospace; background: #f1f3f5
 <h2>O tamanho do tabuleiro</h2>
 <div class="two" style="break-inside: avoid">
 <div>
-<p>O tabuleiro começa no tamanho automático: o maior que cabe deixando pelo menos 10 linhas de lances embaixo (7 com as linhas do motor). Para vê-lo maior, arraste a alça fina sob o tabuleiro, na borda de cima da navegação: o ponteiro vira uma seta de redimensionar, e a dica diz <b>Arraste para mudar o tamanho do tabuleiro</b>. Para baixo ele cresce, para cima diminui. O tamanho escolhido vai até a largura da coluna e até deixar 3 linhas de lances; para um tabuleiro ainda maior, alargue a coluna Xadrez. A alça fica fora das casas: arrastar uma peça da fileira de baixo continua jogando.</p>
-<p>Pelo teclado, ou com leitor de tela, o menu ⋯ do tabuleiro tem <b>Tabuleiro maior</b> e <b>Tabuleiro menor</b> (cerca de 10% por vez) e <b>Tamanho do tabuleiro: automático</b>; um duplo clique na alça também volta ao automático. O tamanho escolhido fica guardado para a próxima vez. A janela de xadrez (capítulo 16) tem o seu próprio tamanho: lá o tabuleiro cresce com a janela.</p>
+<p>O tabuleiro começa no tamanho automático: o maior que cabe deixando pelo menos 10 linhas de lances embaixo (7 com as linhas do motor), ou 4 num painel largo; num painel mais largo que alto, os lances ficam ao lado do tabuleiro quando isso o deixa maior. Para vê-lo maior, arraste a alça fina sob o tabuleiro, na borda de cima da navegação: o ponteiro vira uma seta de redimensionar, e a dica diz <b>Arraste para mudar o tamanho do tabuleiro</b>. Para baixo ele cresce, para cima diminui. Arrastada até o fim, ou com <b>Tamanho do tabuleiro: o maior</b> no menu ⋯, o tabuleiro ocupa tudo o que o painel permite, até o espaço dos lances, e daí em diante cresce e diminui com o painel: para uma aula com datashow, alargue o Inspetor. Ao abrir o comentário, as partidas ou os campos, 3 linhas voltam a aparecer enquanto estiverem abertos. A alça fica fora das casas: arrastar uma peça da fileira de baixo continua jogando.</p>
+<p>Pelo teclado, ou com leitor de tela, o menu ⋯ do tabuleiro tem <b>Tabuleiro maior</b> e <b>Tabuleiro menor</b> (cerca de 10% por vez), <b>Tamanho do tabuleiro: o maior</b> e <b>Tamanho do tabuleiro: automático</b>; um duplo clique na alça também volta ao automático. O tamanho escolhido fica guardado para a próxima vez. A janela de xadrez (capítulo 16) tem o seu próprio tamanho: lá o tabuleiro cresce com a janela.</p>
 </div>
 <figure style="flex:0.8">
 <img src="img/11b-tabuleiro-maior.png" alt="O tabuleiro aumentado duas vezes, com a alça sob ele.">

@@ -3528,7 +3528,6 @@ the move's comment	Move comment	Kommentar des Zugs
 	Back to Diagrams	Zurück zu den Diagrammen
 	Tools panel collapsed	Bereich „Werkzeuge“ eingeklappt
 	Show the page (F6)	Seite zeigen (F6)
-	The board is in the column beside.	Das Brett ist in der Spalte daneben.
 # Plan A9-N6: the undo step of a chess book's bookmarks.
 	Add chess bookmarks	Schach-Lesezeichen hinzufügen
 	Make the book's bookmarks…	Lesezeichen des Buchs anlegen…
@@ -3887,4 +3886,5 @@ pawn structure	Passed	Frei
 	Larger board	Größeres Brett
 	Smaller board	Kleineres Brett
 	Board size: automatic	Brettgröße: automatisch
+	Board size: the largest	Brettgröße: größtmöglich
 	Drag to change the board's size	Ziehen, um die Größe des Bretts zu ändern

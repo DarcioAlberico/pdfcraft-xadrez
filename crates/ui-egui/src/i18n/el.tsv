@@ -3575,7 +3575,6 @@ the move's comment	Move comment	Σχόλιο της κίνησης
 	Start of the game	Αρχή της παρτίδας
 	Stop	Διακοπή
 	The board is empty.	Η σκακιέρα είναι κενή.
-	The board is in the column beside.	Η σκακιέρα είναι στη διπλανή στήλη.
 	The board shows a position that is not legal: correct it in the diagram editor first.	Η σκακιέρα δείχνει μη νόμιμη θέση: διορθώστε τη πρώτα στον επεξεργαστή διαγράμματος.
 	The book's PGN couldn't be saved: {e}	Δεν ήταν δυνατή η αποθήκευση του PGN του βιβλίου: {e}
 	The book's alignment was undone.	Η ευθυγράμμιση του βιβλίου αναιρέθηκε.
@@ -3879,4 +3878,5 @@ pawn structure	Passed	Περαστά
 	Larger board	Μεγαλύτερη σκακιέρα
 	Smaller board	Μικρότερη σκακιέρα
 	Board size: automatic	Μέγεθος σκακιέρας: αυτόματο
+	Board size: the largest	Μέγεθος σκακιέρας: το μεγαλύτερο
 	Drag to change the board's size	Σύρετε για να αλλάξετε το μέγεθος της σκακιέρας

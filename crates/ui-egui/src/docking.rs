@@ -528,6 +528,119 @@ fn saved_split_path(saved: &Layout<Panel>, rendered: &Layout<Panel>, path: &[boo
     None
 }
 
+/// The group of tabs that holds the Inspector, whose strip has the Chess column's tabs beside the
+/// Inspector's (2026-11-25: Diagrams, Text and Board at the Inspector's level, not a second strip
+/// under it). Measured before the layout is drawn, so the room kept for them in the strip and
+/// where they go agree.
+#[derive(Clone, Debug)]
+struct ChessStrip {
+    panels: Vec<Panel>,
+    active: usize,
+    floating: bool,
+    /// The width of each panel's tab.
+    widths: Vec<f32>,
+    /// What the strip keeps for the Chess column's tabs.
+    room: f32,
+    /// The Inspector's tab is drawn as not chosen: the Chess column shows.
+    chess: bool,
+}
+
+/// The Inspector's tab is at least this wide beside the Chess column's tabs, in points: the docking
+/// area's least tab and its "…".
+const LEAST_TAB: f32 = 40.0;
+const OVERFLOW: f32 = 22.0;
+/// The grip before a floating group's tabs, as the docking area draws it.
+const FLOAT_GRIP: f32 = 12.0;
+
+impl ChessStrip {
+    /// The strip of `layout`, none where the Inspector has no tabs of its own (an accordion) or
+    /// the Chess column's are not shown.
+    fn of(app: &crate::PdfCraftApp, ui: &egui::Ui, layout: &Layout<Panel>, font: &egui::FontId) -> Option<ChessStrip> {
+        if !app.chess.tabs_open {
+            return None;
+        }
+        let (panels, active, floating) = inspector_group(layout)?;
+        let widths: Vec<f32> = panels.iter().map(|p| crate::widgets::text_width(ui, crate::i18n::t(p.label()), font) + 24.0).collect();
+        // The strip as wide as the last frame's: a panel being dragged narrower keeps its tabs.
+        let strip = ui.data(|d| d.get_temp::<f32>(strip_width_id())).unwrap_or(f32::INFINITY);
+        let least = LEAST_TAB.max(widths.iter().copied().fold(0.0, f32::max));
+        let room = crate::chess_ui::tab_strip_width(ui).min((strip - least).max(0.0));
+        let chess = app.right == Some(crate::RightPanel::Chess) && panels.get(active) == Some(&Panel::Inspector);
+        Some(ChessStrip { panels, active, floating, widths, room, chess })
+    }
+
+    /// Draw the Chess column's tabs over the group's strip, above its `body`: to the right of the
+    /// group's own tabs.
+    fn show(&self, app: &mut crate::PdfCraftApp, ui: &mut egui::Ui, t: &crate::theme::Tokens, body: egui::Rect) {
+        let left = body.min.x + if self.floating { FLOAT_GRIP } else { 0.0 };
+        let strip = egui::Rect::from_min_max(
+            egui::pos2(left.min(body.max.x), body.min.y - crate::widgets::DOCK_TAB_HEIGHT),
+            egui::pos2(body.max.x, body.min.y),
+        );
+        let last = ui.data(|d| d.get_temp::<f32>(strip_width_id()));
+        if last.is_none_or(|last| (last - strip.width()).abs() > 0.5) {
+            ui.data_mut(|d| d.insert_temp(strip_width_id(), strip.width()));
+            ui.ctx().request_repaint();
+        }
+        let room = self.room.min(strip.width());
+        // Where the docking area put the group's own tabs.
+        let fit = craft_ui::tabs::fit(&self.widths, self.active, (strip.width() - room).max(0.0), LEAST_TAB, OVERFLOW);
+        let mut x = strip.min.x;
+        for (i, width) in &fit.shown {
+            let tab = egui::Rect::from_min_size(egui::pos2(x, strip.min.y), egui::vec2(*width, strip.height()));
+            x += width;
+            if self.chess && self.panels.get(*i) == Some(&Panel::Inspector) {
+                // One tab of the strip is chosen, the Chess column's: the docking area, which knows
+                // only its own panels, draws the Inspector's as chosen.
+                let id = dock_id().with(("tab", &Panel::Inspector));
+                ui.ctx().accesskit_node_builder(id, |node| {
+                    node.set_selected(false);
+                    node.clear_toggled();
+                });
+                let own = ui.ctx().read_response(id).is_some_and(|r| r.hovered() || r.has_focus());
+                if !own {
+                    // `with_clip_rect` would keep the body's clip too: the strip is outside it.
+                    let mut painter = ui.painter().clone();
+                    painter.set_clip_rect(tab);
+                    painter.rect_filled(tab, 0.0, t.chrome);
+                    let label = crate::i18n::t(Panel::Inspector.label());
+                    painter.text(tab.center(), egui::Align2::CENTER_CENTER, label, crate::theme::medium(12.0), t.text_muted);
+                }
+            }
+        }
+        let tabs = egui::Rect::from_min_max(egui::pos2((x + fit.overflow_width).min(strip.max.x), strip.min.y), strip.max);
+        let chosen = crate::chess_ui::tab_strip(app, ui, tabs, self.chess, false);
+        if self.chess {
+            app.chess.on_strip = Some(chosen);
+        }
+    }
+}
+
+/// The group of tabs the Inspector is in, in `layout`: its panels, the active one, and whether it
+/// floats.
+fn inspector_group(layout: &Layout<Panel>) -> Option<(Vec<Panel>, usize, bool)> {
+    if let Some(group) = layout.floating.iter().find(|group| group.panels.contains(&Panel::Inspector)) {
+        return Some((group.panels.clone(), group.active, true));
+    }
+    let mut pending: Vec<_> = layout.root.iter().collect();
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::Split { first, second, .. } => {
+                pending.push(first);
+                pending.push(second);
+            }
+            Node::Tabs { panels, active } if panels.contains(&Panel::Inspector) => return Some((panels.clone(), *active, false)),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Where the width of the strip with the Chess column's tabs is kept between frames.
+fn strip_width_id() -> egui::Id {
+    egui::Id::new("pdfcraft-chess-strip-width")
+}
+
 /// The docking area's id, the same every frame.
 fn dock_id() -> egui::Id {
     egui::Id::new("pdfcraft-docking")
@@ -580,6 +693,16 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
     }
     // The notation is drawn in one place: the Move list while it shows, else under the board.
     app.chess.moves_beside = exposed_in(&rendered, Panel::Moves);
+    // The Inspector shows the Chess column, its tabs in the strip from now on; another of its
+    // panels, what the Inspector's own tab shows.
+    match app.right {
+        Some(crate::RightPanel::Chess) if rendered.contains(&Panel::Inspector) => app.chess.tabs_open = true,
+        Some(panel) if panel != crate::RightPanel::Chess => app.chess.inspector_panel = Some(panel),
+        _ => {}
+    }
+    app.chess.on_strip = None;
+    let strip = ChessStrip::of(app, ui, &rendered, &style.font);
+    let tabbed = strip.is_some();
     let output = DockArea::new(dock_id()).show_customized(
         ui,
         &rendered,
@@ -587,13 +710,17 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         |panel| crate::i18n::t(panel.label()).into(),
         permissions,
         panel_limits,
-        &mut Content { app: &mut *app, t },
+        &mut Content { app: &mut *app, t, strip },
     );
     let _ = sync(&mut workspace, app);
     drain_reveals(&mut workspace, app);
     publish_visibility(app, &workspace);
     app.docking = workspace;
     for mut action in output.actions {
+        // The Inspector's own tab, with the Chess column's beside it: the Inspector's other panels.
+        if tabbed && app.right == Some(crate::RightPanel::Chess) && matches!(action, Action::Activate { panel: Panel::Inspector }) {
+            app.choose_right_panel(Some(app.chess.inspector_panel.unwrap_or(crate::RightPanel::Comments)));
+        }
         if (app.active.is_none() || in_page_place)
             && let Action::ResizeSplit { path, .. } = &mut action
         {
@@ -612,11 +739,20 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
 struct Content<'a> {
     app: &'a mut crate::PdfCraftApp,
     t: crate::theme::Tokens,
+    /// The strip the Chess column's tabs are in, beside the Inspector's.
+    strip: Option<ChessStrip>,
 }
 
 impl DockContent<Panel> for Content<'_> {
     fn body(&mut self, ui: &mut egui::Ui, panel: &Panel) {
         let (app, t) = (&mut *self.app, &self.t);
+        // Before the body, so the keyboard meets the tabs first, after the group's own.
+        if let Some(strip) = &self.strip
+            && strip.panels.get(strip.active) == Some(panel)
+        {
+            let body = ui.max_rect();
+            strip.show(app, ui, t, body);
+        }
         match panel {
             Panel::Canvas => {
                 ui.painter().rect_filled(ui.max_rect(), 0.0, t.pasteboard);
@@ -643,6 +779,11 @@ impl DockContent<Panel> for Content<'_> {
             // Taken out of every layout as it loads ([`Workspace::migrate`]), refused after.
             Panel::OldBoard | Panel::OldDiagram => {}
         }
+    }
+
+    /// The room the group's own tabs leave the Chess column's ([`ChessStrip::show`] draws them).
+    fn group_header_width(&self, panels: &[Panel], _active: &Panel, _floating: bool) -> f32 {
+        self.strip.as_ref().filter(|strip| strip.panels == panels).map_or(0.0, |strip| strip.room)
     }
 
     fn panel_menu(&mut self, ui: &mut egui::Ui, panel: &Panel) {

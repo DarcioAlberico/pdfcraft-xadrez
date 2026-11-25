@@ -212,6 +212,13 @@ pub struct ChessState {
     pub tab: crate::chess_text_ui::ChessTab,
     /// The columns the window's width allows the chess surfaces (plan A9-I0a).
     pub budget: crate::chess_budget::BudgetState,
+    /// The workspace's strip has the Chess column's tabs beside the Inspector's: from when the
+    /// column first shows there until the Inspector is closed.
+    pub(crate) tabs_open: bool,
+    /// The strip drew the tabs this pass, and the chosen one's id: the column draws none.
+    pub(crate) on_strip: Option<Option<egui::Id>>,
+    /// The Inspector's panel shown last that is not the Chess column: what its own tab shows.
+    pub(crate) inspector_panel: Option<crate::RightPanel>,
     /// The Diagrams tab shows the selected diagram's editor in the list's place (plan A9-I0a,
     /// master-detail): opened from the list, Review now or the Text tab, closed by "‹ Diagrams"
     /// and Esc. The editor itself ([`ChessState::editor`]) stays while it is closed.
@@ -283,7 +290,7 @@ pub struct ChessState {
     /// A9-N3).
     pub(crate) in_book: crate::chess_in_book::InBook,
     /// The Board tab's board: automatic, or the side the user chose (dragging the grip under it,
-    /// or its menu), kept between sessions as `chess_board_side`.
+    /// or its menu), kept between sessions as `chess_board_size`.
     pub(crate) board_side: crate::chess_board_tab::BoardSide,
 }
 
@@ -879,8 +886,72 @@ pub(crate) fn mark_tab(r: egui::Rect, size: egui::Vec2, page: egui::Rect, ring: 
     if above.min.y >= page.min.y { above } else { egui::Rect::from_min_size(egui::pos2(r.min.x, r.max.y + ring + 1.0), size) }
 }
 
-/// The Inspector's Chess column (plan A9-I0a, §2.8.0): its header, the tabs Diagrams · Text ·
-/// Board, and what the tab chosen shows. A diagram opened replaces the list in the same column
+/// The Chess column's tabs, in order.
+fn tab_choices() -> [(crate::chess_text_ui::ChessTab, &'static str); 3] {
+    use crate::chess_text_ui::ChessTab;
+    [(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text")), (ChessTab::Board, tl!("Board"))]
+}
+
+/// The room of a button at the end of the tabs' strip (Close, Show the page).
+const STRIP_BUTTON: f32 = 26.0;
+
+/// The width the Chess column's tabs and its Close button want in a strip, in points.
+pub(crate) fn tab_strip_width(ui: &egui::Ui) -> f32 {
+    crate::widgets::dock_tabs_width(ui, tab_choices().map(|(_, label)| label)) + STRIP_BUTTON
+}
+
+/// The Chess column's tabs Diagrams · Text · Board in `strip` (2026-11-25): in the docking
+/// workspace's own strip, beside the Inspector's tab and at its level ([`crate::docking`]), or at
+/// the column's top where it has no such strip (Read mode, in the page's place, an accordion).
+/// `chess`: the Chess column shows, so its tab is the one chosen and Close ends the strip;
+/// `to_page`: the button that switches to the page is there too. The chosen tab's id.
+pub(crate) fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui, strip: egui::Rect, chess: bool, to_page: bool) -> Option<egui::Id> {
+    // The keyboard's control in it has the focus ring, as in the column (plan A9-I11b).
+    crate::widgets::ring_zone(ui.ctx(), strip);
+    let buttons = if chess { STRIP_BUTTON * if to_page { 2.0 } else { 1.0 } } else { 0.0 };
+    let ends = egui::pos2((strip.max.x - buttons).max(strip.min.x), strip.max.y);
+    let mut child = ui.new_child(egui::UiBuilder::new().id_salt("chess-tab-strip").max_rect(strip));
+    child.set_clip_rect(strip);
+    let tabs = egui::Rect::from_min_max(strip.min, ends);
+    let value = chess.then_some(app.chess.tab);
+    let (picked, chosen) = child
+        .scope_builder(egui::UiBuilder::new().id_salt("tabs").max_rect(tabs), |ui| {
+            crate::widgets::dock_tabs_in(ui, tabs, tl!("Chess"), value, &tab_choices())
+        })
+        .inner;
+    let mut close = false;
+    let mut page = false;
+    if chess {
+        let end = egui::Rect::from_min_max(egui::pos2(ends.x, strip.min.y), strip.max);
+        let layout = egui::Layout::right_to_left(egui::Align::Center);
+        child.scope_builder(egui::UiBuilder::new().id_salt("buttons").max_rect(end).layout(layout), |ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            close = crate::icons::button(ui, "x", 24.0, false, tl!("Close")).clicked();
+            // Under 1,000 pt: the page in the column's place (F6 too).
+            page = to_page && crate::icons::button(ui, "file-text", 24.0, false, tl!("Show the page (F6)")).clicked();
+        });
+    }
+    if let Some(tab) = picked {
+        app.chess.tab = tab;
+        if app.right == Some(crate::RightPanel::Chess) {
+            // Behind another panel of its group in the workspace, it comes to the front.
+            app.pending_panel_reveals.push(crate::docking::Panel::Inspector);
+        } else {
+            app.choose_right_panel(Some(crate::RightPanel::Chess));
+        }
+    }
+    if close {
+        app.choose_right_panel(None);
+    }
+    if page {
+        app.chess_show_page(true);
+    }
+    chosen
+}
+
+/// The Inspector's Chess column (plan A9-I0a, §2.8.0): the tabs Diagrams · Text · Board (in the
+/// workspace's strip beside the Inspector's tab where there is one, [`tab_strip`]), and what the
+/// tab chosen shows. A diagram opened replaces the list in the same column
 /// (master-detail: "‹ Diagrams" and Esc go back, [`ChessState::diagram_open`]); the board is a
 /// tab of the column, no longer a panel of its own. The same column in Read mode. While the
 /// chess window is out (T13b) it holds the tabs, and the column only says so, so one frame never
@@ -899,7 +970,9 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     // From 1,600 pt, two columns when the Inspector has the room: the diagram being edited
     // beside the Chess column, else the board (plan A9-I0a).
     let whole = ui.max_rect();
-    let two = budget.columns() == 2 && whole.width() >= 2.0 * crate::chess_budget::COLUMN - 1.0;
+    // The Board tab has them both: the board is as large as the whole panel allows (2026-11-25:
+    // it had half of it, the other half blank).
+    let two = budget.columns() == 2 && whole.width() >= 2.0 * crate::chess_budget::COLUMN - 1.0 && app.chess.tab != ChessTab::Board;
     // A diagram opened is edited where its list is: in the chess window while that is out (plan
     // A9-I0c, finding R4-12: it opened in the main window).
     let opened = app.chess_detail_shown(id) && !in_window;
@@ -909,9 +982,8 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let first = second.map_or(whole, |r| egui::Rect::from_min_max(whole.min, egui::pos2(r.min.x, whole.max.y)));
     // Under 1,000 pt the column is in the page's place: its header switches to the page.
     let narrow = budget == crate::chess_budget::Budget::Narrow;
-    let mut to_page = false;
-    let count = app.chess.results_of(id).map(ChessResults::count);
-    let mut close = false;
+    // The tabs, when the workspace's strip has them.
+    let on_strip = app.chess.on_strip.take();
     let mut action = None;
     // Where the columns are, for the layout's tests (plan A9-I0a).
     ui.data_mut(|d| d.insert_temp(egui::Id::new("pdfcraft-chess-column"), first));
@@ -939,35 +1011,19 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     ui.scope_builder(egui::UiBuilder::new().max_rect(first), |ui| {
         egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
             ui.set_min_size(ui.available_size());
-            egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 12, bottom: 0 }).show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(tl!("Chess")).font(theme::semibold(15.5)));
-                    if let Some(c) = count {
-                        ui.label(egui::RichText::new(c.to_string()).font(theme::medium(13.0)).color(t.text_faint));
-                    }
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if crate::icons::button(ui, "x", 26.0, false, tl!("Close")).clicked() {
-                            close = true;
-                        }
-                        // Under 1,000 pt: the page in the column's place (F6 too).
-                        if narrow && crate::icons::button(ui, "file-text", 26.0, false, tl!("Show the page (F6)")).clicked() {
-                            to_page = true;
-                        }
-                    });
-                });
-                ui.add_space(6.0);
-                // In the docking workspace's own tab style (plan A8, P6); a tab list named Chess.
-                chosen = crate::widgets::dock_tabs(
-                    ui,
-                    tl!("Chess"),
-                    &mut app.chess.tab,
-                    &[(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text")), (ChessTab::Board, tl!("Board"))],
-                );
-                // F6, or the Tools collapsed under the keyboard, brought it here: to the tab shown.
-                if focus_column && let Some(tab) = chosen {
-                    ui.memory_mut(|m| m.request_focus(tab));
+            match on_strip {
+                Some(tab) => chosen = tab,
+                None => {
+                    let (strip, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), crate::widgets::DOCK_TAB_HEIGHT), egui::Sense::hover());
+                    ui.painter().rect_filled(strip, 0.0, t.chrome);
+                    ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
+                    chosen = tab_strip(app, ui, strip, true, narrow);
                 }
-            });
+            }
+            // F6, or the Tools collapsed under the keyboard, brought it here: to the tab shown.
+            if focus_column && let Some(tab) = chosen {
+                ui.memory_mut(|m| m.request_focus(tab));
+            }
             ui.add_space(4.0);
             let tab = app.chess.tab;
             // The tab's contents are its panel, named by it (plan A9-I11b).
@@ -978,10 +1034,6 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     let rest = ui.available_rect_before_wrap();
                     ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| crate::chess_diagram_tab::panel(app, ui));
                     ui.advance_cursor_after_rect(rest);
-                } else if tab == ChessTab::Board && board_beside {
-                    egui::Frame::NONE.inner_margin(egui::Margin { left: 14, right: 12, top: 4, bottom: 8 }).show(ui, |ui| {
-                        ui.label(egui::RichText::new(tl!("The board is in the column beside.")).color(t.text_muted));
-                    });
                 } else if tab == ChessTab::Board && !in_window {
                     let rest = ui.available_rect_before_wrap();
                     ui.scope_builder(egui::UiBuilder::new().max_rect(rest), |ui| board_panel(app, ui));
@@ -1012,12 +1064,6 @@ pub(crate) fn column(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             });
         });
     });
-    if close {
-        app.choose_right_panel(None);
-    }
-    if to_page {
-        app.chess_show_page(true);
-    }
     if let Some(a) = action {
         app.chess_action(a);
     }
